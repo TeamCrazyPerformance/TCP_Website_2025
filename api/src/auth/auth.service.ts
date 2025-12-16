@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -8,7 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { User } from '../members/entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { JwtPayload, SanitizedUser } from './types';
+import { JwtPayload, RefreshPayload, SanitizedUser } from './types';
 
 @Injectable()
 export class AuthService {
@@ -16,11 +16,34 @@ export class AuthService {
     @InjectRepository(User) private readonly usersRepo: Repository<User>,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
-  ) {}
+  ) { }
 
   private sanitize(user: User): SanitizedUser {
-    const { id, username, name, email, student_number, profile_image, created_at, updated_at } = user;
-    return { id, username, name, email, student_number, profile_image, created_at, updated_at };
+    const { id, username, name, email, student_number, profile_image, role, created_at, updated_at } = user;
+    return { id, username, name, email, student_number, profile_image, role, created_at, updated_at };
+  }
+
+  private async generateTokens(user: User) {
+    const secret = this.config.get<string>('JWT_SECRET');
+
+    // Access Token: 15분
+    const accessPayload: JwtPayload = { sub: user.id, username: user.username, role: user.role };
+    const access_token = await this.jwt.signAsync(accessPayload, {
+      secret,
+      expiresIn: '15m',
+    });
+
+    // Refresh Token: 7일
+    const refreshPayload: RefreshPayload = { sub: user.id, type: 'refresh' };
+    const refresh_token = await this.jwt.signAsync(refreshPayload, {
+      secret,
+      expiresIn: '7d',
+    });
+
+    // Refresh Token을 DB에 저장
+    await this.usersRepo.update(user.id, { refresh_token });
+
+    return { access_token, refresh_token };
   }
 
   async register(dto: RegisterDto) {
@@ -51,16 +74,11 @@ export class AuthService {
     });
 
     const saved = await this.usersRepo.save(entity);
-
-    const payload: JwtPayload = { sub: saved.id, username: saved.username };
-    const access_token = await this.jwt.signAsync(payload, {
-      secret: this.config.get<string>('JWT_SECRET'),
-      expiresIn: this.config.get<string>('JWT_EXPIRES_IN') || '1d',
-    });
+    const tokens = await this.generateTokens(saved);
 
     return {
       user: this.sanitize(saved),
-      access_token,
+      ...tokens,
     };
   }
 
@@ -81,11 +99,49 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     const user = await this.validateUser(dto.username, dto.password);
-    const payload: JwtPayload = { sub: user.id, username: user.username };
-    const token = await this.jwt.signAsync(payload, {
-      secret: this.config.get<string>('JWT_SECRET'),
-      expiresIn: this.config.get<string>('JWT_EXPIRES_IN') || '1d',
-    });
-    return { user: this.sanitize(user), access_token: token };
+    const tokens = await this.generateTokens(user);
+    return { user: this.sanitize(user), ...tokens };
+  }
+
+  async refresh(refreshToken: string) {
+    try {
+      const secret = this.config.get<string>('JWT_SECRET');
+      const payload = await this.jwt.verifyAsync<RefreshPayload>(refreshToken, { secret });
+
+      // refresh 토큰인지 확인
+      if (payload.type !== 'refresh') {
+        throw new UnauthorizedException('유효하지 않은 refresh token입니다.');
+      }
+
+      // DB에서 사용자 정보 및 저장된 refresh token 조회
+      const user = await this.usersRepo
+        .createQueryBuilder('user')
+        .addSelect('user.refresh_token')
+        .where('user.id = :id', { id: payload.sub })
+        .getOne();
+
+      if (!user) {
+        throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
+      }
+
+      // DB에 저장된 refresh token과 일치하는지 확인
+      if (user.refresh_token !== refreshToken) {
+        throw new UnauthorizedException('유효하지 않은 refresh token입니다.');
+      }
+
+      const tokens = await this.generateTokens(user);
+      return { user: this.sanitize(user), ...tokens };
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new UnauthorizedException('refresh token이 만료되었거나 유효하지 않습니다.');
+    }
+  }
+
+  async logout(userId: number) {
+    // DB에서 refresh token 삭제
+    await this.usersRepo.update(userId, { refresh_token: null });
+    return { message: '로그아웃 되었습니다.' };
   }
 }
