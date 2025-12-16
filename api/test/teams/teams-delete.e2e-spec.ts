@@ -55,9 +55,7 @@ describe('DELETE /api/v1/teams/:id (e2e)', () => {
                     baekjoon_username: 'leader',
                     github_username: 'leader',
                     self_description: '팀장 유저',
-                    is_public_current_company: false,
                     is_public_github_username: false,
-                    is_public_baekjoon_username: false,
                     is_public_email: false,
                 });
 
@@ -85,9 +83,7 @@ describe('DELETE /api/v1/teams/:id (e2e)', () => {
                     baekjoon_username: 'user2',
                     github_username: 'user2',
                     self_description: '일반 유저',
-                    is_public_current_company: false,
                     is_public_github_username: false,
-                    is_public_baekjoon_username: false,
                     is_public_email: false,
                 });
 
