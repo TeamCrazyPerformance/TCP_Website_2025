@@ -56,9 +56,7 @@ describe('POST /api/v1/teams/:id/apply (e2e)', () => {
                     baekjoon_username: 'applicant',
                     github_username: 'applicant',
                     self_description: '테스트 지원자',
-                    is_public_current_company: false,
                     is_public_github_username: false,
-                    is_public_baekjoon_username: false,
                     is_public_email: false,
                 });
 

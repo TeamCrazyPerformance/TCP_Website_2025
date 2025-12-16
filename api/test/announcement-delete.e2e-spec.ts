@@ -56,9 +56,7 @@ describe('DELETE /api/v1/announcements/:id (e2e)', () => {
       baekjoon_username: 'adminuser',
       github_username: 'adminuser',
       self_description: '관리자 계정',
-      is_public_current_company: false,
       is_public_github_username: false,
-      is_public_baekjoon_username: false,
       is_public_email: false,
     });
     // await roleRepo.save({
@@ -87,9 +85,7 @@ describe('DELETE /api/v1/announcements/:id (e2e)', () => {
     //   baekjoon_username: 'user1',
     //   github_username: 'user1',
     //   self_description: '일반 테스트 유저입니다.',
-    //   is_public_current_company: false,
     //   is_public_github_username: false,
-    //   is_public_baekjoon_username: false,
     //   is_public_email: false,
     // });
     // await roleRepo.save({

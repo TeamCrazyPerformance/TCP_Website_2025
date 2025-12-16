@@ -62,9 +62,7 @@ describe('DELETE /api/v1/teams/:id/apply (e2e)', () => {
                     baekjoon_username: 'leader',
                     github_username: 'leader',
                     self_description: '팀장 유저',
-                    is_public_current_company: false,
                     is_public_github_username: false,
-                    is_public_baekjoon_username: false,
                     is_public_email: false,
                 });     
         expect(leaderRes.status).toBe(201);
@@ -91,9 +89,7 @@ describe('DELETE /api/v1/teams/:id/apply (e2e)', () => {
                     baekjoon_username: 'applicant',
                     github_username: 'applicant',
                     self_description: '지원자 유저',
-                    is_public_current_company: false,
                     is_public_github_username: false,
-                    is_public_baekjoon_username: false,
                     is_public_email: false,
                 });
 

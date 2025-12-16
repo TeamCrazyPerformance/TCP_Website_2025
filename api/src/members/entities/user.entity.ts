@@ -76,16 +76,10 @@ export class User {
   @Column({ type: 'varchar', length: 255, nullable: true })
   portfolio_link: string | null;
 
-  @Column({ default: false })
-  is_public_current_company: boolean;
-
-  @Column({ default: false })
+  @Column({ type: 'boolean', default: false })
   is_public_github_username: boolean;
 
-  @Column({ default: false })
-  is_public_baekjoon_username: boolean;
-
-  @Column({ default: false })
+  @Column({ type: 'boolean', default: false })
   is_public_email: boolean;
 
   @Column({ type: 'boolean', default: false })
@@ -102,9 +96,6 @@ export class User {
 
   @UpdateDateColumn()
   updated_at: Date;
-
-
-
 
   @OneToMany(() => Announcement, (announcement) => announcement.author)
   announcements: Announcement[];

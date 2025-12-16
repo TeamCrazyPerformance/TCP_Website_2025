@@ -78,9 +78,6 @@ export class UpdateMemberDto {
   self_description?: string;
 
   @IsOptional()
-  is_public_current_company?: boolean;
-
-  @IsOptional()
   is_public_github_username?: boolean;
 
   @IsOptional()

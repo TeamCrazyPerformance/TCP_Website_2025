@@ -49,9 +49,7 @@ describe('GET /api/v1/admin/members/search (E2E)', () => {
     //   baekjoon_username: 'adminuser',
     //   github_username: 'adminuser',
     //   self_description: '관리자 계정',
-    //   is_public_current_company: false,
     //   is_public_github_username: false,
-    //   is_public_baekjoon_username: false,
     //   is_public_email: false,
     // });
 
@@ -82,9 +80,7 @@ describe('GET /api/v1/admin/members/search (E2E)', () => {
       baekjoon_username: 'hong123',
       github_username: 'honggit',
       self_description: '안녕하세요',
-      is_public_current_company: false,
       is_public_github_username: false,
-      is_public_baekjoon_username: false,
       is_public_email: false,
     });
 
