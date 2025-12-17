@@ -55,13 +55,7 @@ export class RegisterDto {
   self_description?: string;
 
   @IsOptional() @IsBoolean()
-  is_public_current_company?: boolean;
-
-  @IsOptional() @IsBoolean()
   is_public_github_username?: boolean;
-
-  @IsOptional() @IsBoolean()
-  is_public_baekjoon_username?: boolean;
 
   @IsOptional() @IsBoolean()
   is_public_email?: boolean;

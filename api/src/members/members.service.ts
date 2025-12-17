@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike } from 'typeorm';
+import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { PublicUserDto } from './dto/public-user.dto';
 
@@ -12,31 +12,16 @@ export class MembersService {
     ) {}
 
     async getPublicMemberList(): Promise<PublicUserDto[]> {
-        const users = await this.userRepository.find();
-
-        return users.map((user) => {
-          const publicUser: PublicUserDto = {
-            profile_image: user.profile_image,
-            name: user.name,
-            self_description: user.self_description,
-          };
-
-          if (user.is_public_email) 
-            publicUser.email = user.email;
-
-          if (user.is_public_tech_stack) 
-            publicUser.tech_stack = user.tech_stack;
-
-          if (user.is_public_education_status) 
-            publicUser.education_status = user.education_status;
-
-          if (user.is_public_github_username) 
-            publicUser.github_username = user.github_username;
-
-          if (user.is_public_portfolio_link) 
-            publicUser.portfolio_link = user.portfolio_link;
-          
-          return publicUser;
-        });
-      }
+      const users = await this.userRepository.find();
+      return users.map((user) => ({
+        name: user.name,
+        profile_image: user.profile_image,
+        self_description: user.self_description,
+        ...(user.is_public_email && { email: user.email }),
+        ...(user.is_public_tech_stack && { tech_stack: user.tech_stack }),
+        ...(user.is_public_education_status && { education_status: user.education_status }),
+        ...(user.is_public_github_username && { github_username: user.github_username }),
+        ...(user.is_public_portfolio_link && { portfolio_link: user.portfolio_link }),
+      }));
+    }
 }

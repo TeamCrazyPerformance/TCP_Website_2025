@@ -48,9 +48,7 @@ describe('Announcement API (e2e)',() =>{
             current_company: 'seoultech',
             baekjoon_username: 'baekjoon_test',
             github_username: 'github_test',
-            is_public_current_company: false,
             is_public_github_username: false,
-            is_public_baekjoon_username: false,
             is_public_email: false,
         });
 
