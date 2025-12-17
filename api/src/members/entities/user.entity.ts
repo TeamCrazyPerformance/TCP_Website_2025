@@ -7,7 +7,8 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { EducationStatus } from './enums/education-status.enum';
-import { UserGender } from './enums/user-gender.enum'
+import { UserGender } from './enums/user-gender.enum';
+import { UserRole } from './enums/user-role.enum';
 import { Announcement } from '../../announcement/entities/announcement.entity';
 
 @Entity('user')
@@ -52,22 +53,33 @@ export class User {
   })
   gender: UserGender;
 
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    default: UserRole.GUEST,
+  })
+  role: UserRole;
+
+  @Column({ type: 'varchar', length: 500, nullable: true, select: false })
+  refresh_token: string | null;
+
   @Column('text', { array: true, nullable: true })
   tech_stack: string[] | null;
 
-  @Column({ 
-    type: 'enum', 
-    enum: EducationStatus, 
-    default: EducationStatus.Enrolled })
+  @Column({
+    type: 'enum',
+    enum: EducationStatus,
+    default: EducationStatus.Enrolled
+  })
   education_status: EducationStatus;
 
   @Column({ type: 'varchar', nullable: true, length: 255 })
   current_company: string;
 
-  @Column({ type: 'varchar', nullable: true,  length: 255 })
+  @Column({ type: 'varchar', nullable: true, length: 255 })
   baekjoon_username: string;
 
-  @Column({ type: 'varchar', nullable: true,  length: 255 })
+  @Column({ type: 'varchar', nullable: true, length: 255 })
   github_username: string;
 
   @Column({ type: 'text', nullable: true })
