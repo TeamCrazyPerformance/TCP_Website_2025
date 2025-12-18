@@ -104,6 +104,8 @@ describe('POST /api/v1/announcements (e2e)', () => {
       });
 
     expect(res.status).toBe(201);
+    expect(res.body).toHaveProperty('author');
+    expect(res.body.author).toHaveProperty('id');
   });
 
   it('예약 발행 지정 시 201 반환', async () =>{
