@@ -43,7 +43,7 @@ export class AnnouncementController {
         @Body() createDto: CreateAnnouncementDto,
         @Req() req: any, // Passport-JWT에서 유저 정보가 담긴다
     ) {
-        const userId = req.user.id;
+        const userId = req.user.userId;
         return this.announcementService.create(createDto, userId);
     }
 
