@@ -33,6 +33,7 @@ export class AnnouncementService {
       } 
 
       await this.announcementRepository.increment({ id }, 'views', 1);
+      announcement.views += 1;
       return announcement;
     }
 
@@ -40,7 +41,7 @@ export class AnnouncementService {
     async create(createDto: CreateAnnouncementDto, userId: number): Promise<Announcement> {
       const announcement = this.announcementRepository.create({
         ...createDto,
-        publishAt: createDto.publishAt ? new Date(createDto.publishAt) : new Date(), // ublishAt이 지정되지 않으면 현재 시각으로 자동 설정
+        publishAt: createDto.publishAt ? new Date(createDto.publishAt) : new Date(), // publishAt이 지정되지 않으면 현재 시각으로 자동 설정
         author: { id: userId }, // 작성자 연결
       });
       return this.announcementRepository.save(announcement);
