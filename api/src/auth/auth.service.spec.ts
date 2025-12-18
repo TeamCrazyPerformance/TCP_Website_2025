@@ -132,8 +132,8 @@ describe('AuthService', () => {
         expect.objectContaining({ secret: 'secret', expiresIn: '7d' }),
       );
 
-      // refresh_token DB 저장 확인
-      expect(usersRepo.update).toHaveBeenCalledWith(savedUser.id, { refresh_token: 'signed.jwt.token' });
+      // refresh_token 해시화 후 DB 저장 확인
+      expect(usersRepo.update).toHaveBeenCalledWith(savedUser.id, { refresh_token: 'hashed_pw' });
 
       // 응답 스키마
       expect(res).toEqual({
@@ -209,13 +209,16 @@ describe('AuthService', () => {
   });
 
   describe('refresh', () => {
-    it('유효한 refresh_token → 새 토큰 발급', async () => {
+    it('유효한 refresh_token → 새 토큰 발급 (해시 비교)', async () => {
       (jwt.verifyAsync as jest.Mock).mockResolvedValue({ sub: 1, type: 'refresh' });
-      usersRepo.queryBuilder.getOne.mockResolvedValue(savedUser);
+      usersRepo.queryBuilder.getOne.mockResolvedValue({ ...savedUser, refresh_token: 'hashed_refresh_token' });
+      // bcrypt.compare가 true를 반환하면 토큰 일치
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
-      const res = await service.refresh('stored.refresh.token');
+      const res = await service.refresh('client.refresh.token');
 
-      expect(jwt.verifyAsync).toHaveBeenCalledWith('stored.refresh.token', { secret: 'secret' });
+      expect(jwt.verifyAsync).toHaveBeenCalledWith('client.refresh.token', { secret: 'secret' });
+      expect(bcrypt.compare).toHaveBeenCalledWith('client.refresh.token', 'hashed_refresh_token');
       expect(res).toEqual({
         user: expect.objectContaining({ id: savedUser.id }),
         access_token: 'signed.jwt.token',
@@ -223,12 +226,17 @@ describe('AuthService', () => {
       });
     });
 
-    it('DB에 저장된 token과 불일치 → UnauthorizedException', async () => {
+    it('DB에 저장된 token과 불일치 → Reuse Detection으로 세션 무효화', async () => {
       (jwt.verifyAsync as jest.Mock).mockResolvedValue({ sub: 1, type: 'refresh' });
-      usersRepo.queryBuilder.getOne.mockResolvedValue({ ...savedUser, refresh_token: 'different.token' });
+      usersRepo.queryBuilder.getOne.mockResolvedValue({ ...savedUser, refresh_token: 'hashed_token' });
+      // bcrypt.compare가 false를 반환하면 토큰 불일치 (탈취 의심)
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
-      await expect(service.refresh('stored.refresh.token'))
+      await expect(service.refresh('stolen.or.old.token'))
         .rejects.toBeInstanceOf(UnauthorizedException);
+
+      // Reuse Detection: 세션 무효화 확인
+      expect(usersRepo.update).toHaveBeenCalledWith(savedUser.id, { refresh_token: null });
     });
 
     it('만료된 refresh_token → UnauthorizedException', async () => {

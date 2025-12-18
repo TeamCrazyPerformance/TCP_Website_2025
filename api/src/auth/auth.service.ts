@@ -40,8 +40,10 @@ export class AuthService {
       expiresIn: '7d',
     });
 
-    // Refresh Token을 DB에 저장
-    await this.usersRepo.update(user.id, { refresh_token });
+    // Refresh Token을 해시화하여 DB에 저장 (원문은 클라이언트에게만 전달)
+    const saltRounds = Number(this.config.get('BCRYPT_SALT_ROUNDS') ?? 12);
+    const hashedRefreshToken = await bcrypt.hash(refresh_token, saltRounds);
+    await this.usersRepo.update(user.id, { refresh_token: hashedRefreshToken });
 
     return { access_token, refresh_token };
   }
@@ -111,7 +113,7 @@ export class AuthService {
         throw new UnauthorizedException('유효하지 않은 refresh token입니다.');
       }
 
-      // DB에서 사용자 정보 및 저장된 refresh token 조회
+      // DB에서 사용자 정보 및 저장된 refresh token 해시 조회
       const user = await this.usersRepo
         .createQueryBuilder('user')
         .addSelect('user.refresh_token')
@@ -122,11 +124,24 @@ export class AuthService {
         throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
       }
 
-      // DB에 저장된 refresh token과 일치하는지 확인
-      if (user.refresh_token !== refreshToken) {
-        throw new UnauthorizedException('유효하지 않은 refresh token입니다.');
+      // 저장된 refresh token이 없으면 로그아웃 상태
+      if (!user.refresh_token) {
+        throw new UnauthorizedException('로그아웃된 상태입니다. 다시 로그인해주세요.');
       }
 
+      // 해시된 refresh token과 비교
+      const isValidToken = await bcrypt.compare(refreshToken, user.refresh_token);
+
+      if (!isValidToken) {
+        // ⚠️ Reuse Detection: 토큰 불일치 시 탈취로 간주하고 전체 세션 무효화
+        // 이전 토큰이 재사용되었을 가능성 → 모든 세션 즉시 폐기
+        await this.usersRepo.update(user.id, { refresh_token: null });
+        throw new UnauthorizedException(
+          '보안 위협이 감지되었습니다. 토큰이 탈취되었을 수 있습니다. 다시 로그인해주세요.'
+        );
+      }
+
+      // 새 토큰 발급 (Token Rotation)
       const tokens = await this.generateTokens(user);
       return { user: this.sanitize(user), ...tokens };
     } catch (error) {
