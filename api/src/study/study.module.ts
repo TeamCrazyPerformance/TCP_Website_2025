@@ -7,13 +7,13 @@ import { StudyService } from './study.service';
 
 import { Study } from './entities/study.entity';
 import { User } from '../members/entities/user.entity';
-import { Role } from './entities/role.entity';
+import { StudyMember } from './entities/study-member.entity';
 import { Progress } from './entities/progress.entity';
 import { Resource } from './entities/resource.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Study, User, Role, Progress, Resource]),
+    TypeOrmModule.forFeature([Study, User, StudyMember, Progress, Resource]),
     MulterModule.register({
       dest: './uploads',
     }),
@@ -22,4 +22,4 @@ import { Resource } from './entities/resource.entity';
   providers: [StudyService],
   exports: [StudyService],
 })
-export class StudyModule {}
+export class StudyModule { }

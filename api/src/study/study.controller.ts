@@ -42,7 +42,7 @@ import { AuthGuard } from '@nestjs/passport';
 
 @Controller('api/v1/study')
 export class StudyController {
-  constructor(private readonly studyService: StudyService) {}
+  constructor(private readonly studyService: StudyService) { }
 
   /** 1
    * @description Retrieves a list of studies, with an option to filter by year.
@@ -142,7 +142,7 @@ export class StudyController {
     return this.studyService.addMember(
       id,
       addStudyMemberDto.user_id,
-      addStudyMemberDto.role_name,
+      addStudyMemberDto.role,
     );
   }
 

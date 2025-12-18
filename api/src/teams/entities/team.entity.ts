@@ -10,67 +10,67 @@ import { TeamMember } from './team-member.entity';
 
 @Entity('team')
 export class Team {
-    @PrimaryGeneratedColumn()
-    id: number;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-    @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
-    @JoinColumn({ name: 'leader_id' })
-    leader: User | null;   
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'leader_id' })
+  leader: User | null;
 
-    @Column({ type: 'varchar', length: 255 })
-    title: string;  
+  @Column({ type: 'varchar', length: 255 })
+  title: string;
 
-    @Column({ type: 'varchar', length: 100})
-    category: string;   
+  @Column({ type: 'varchar', length: 100 })
+  category: string;
 
-    @Column({ type: 'date', name: 'period_start'})
-    periodStart: Date;    
+  @Column({ type: 'date', name: 'period_start' })
+  periodStart: Date;
 
-    @Column({ type: 'date', name: 'period_end' })
-    periodEnd: Date;  
+  @Column({ type: 'date', name: 'period_end' })
+  periodEnd: Date;
 
-    @Column({ type: 'date' })
-    deadline: Date;   
+  @Column({ type: 'date' })
+  deadline: Date;
 
-    @Column({ type: 'text' })
-    description: string;    
+  @Column({ type: 'text' })
+  description: string;
 
-    @Column({ type: 'varchar', length: 255, name: 'tech_stack', nullable: true })
-    techStack?: string;  
+  @Column({ type: 'varchar', length: 255, name: 'tech_stack', nullable: true })
+  techStack?: string;
 
-    @Column({ type: 'varchar', length: 100, nullable: true })
-    tag?: string;
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  tag?: string;
 
-    @Column({ type: 'text', nullable: true })
-    goals?: string;  
+  @Column({ type: 'text', nullable: true })
+  goals?: string;
 
-    @Column({ type: 'enum', enum: ExecutionType, name: 'execution_type', default: ExecutionType.ONLINE })
-    executionType: ExecutionType;  
+  @Column({ type: 'enum', enum: ExecutionType, name: 'execution_type', default: ExecutionType.ONLINE })
+  executionType: ExecutionType;
 
-    @Column({ type: 'varchar', length: 255, name: 'selection_proc', nullable: true })
-    selectionProc?: string;  
+  @Column({ type: 'varchar', length: 255, name: 'selection_proc', nullable: true })
+  selectionProc?: string;
 
-    @Column({ type: 'varchar', length: 255, nullable: true })
-    link?: string;  
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  link?: string;
 
-    @Column({ type: 'varchar', length: 255})
-    contact: string; 
-    
-    @Column({ type: 'enum', enum: TeamStatus, default: TeamStatus.OPEN })
-    status: TeamStatus;
+  @Column({ type: 'varchar', length: 255 })
+  contact: string;
 
-    @CreateDateColumn({ name: 'created_at' })
-    createdAt: Date;    
+  @Column({ type: 'enum', enum: TeamStatus, default: TeamStatus.OPEN })
+  status: TeamStatus;
 
-    @UpdateDateColumn({ name: 'updated_at' })
-    updatedAt: Date;
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
 
-    @Column({ type: 'varchar', length: 255, name: 'project_image', nullable: true })
-    projectImage?: string; 
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
 
-    @OneToMany(() => TeamRole, (role) => role.team)
-    roles: TeamRole[];  
+  @Column({ type: 'varchar', length: 255, name: 'project_image', nullable: true })
+  projectImage?: string;
 
-    @OneToMany(() => TeamMember, (member) => member.team)
-    members: TeamMember[];  
+  @OneToMany(() => TeamRole, (role) => role.team)
+  roles: TeamRole[];
+
+  @OneToMany(() => TeamMember, (member) => member.team)
+  members: TeamMember[];
 }

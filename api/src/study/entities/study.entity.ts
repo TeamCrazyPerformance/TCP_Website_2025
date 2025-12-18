@@ -6,7 +6,7 @@ import {
   UpdateDateColumn,
   OneToMany,
 } from 'typeorm';
-import { Role } from './role.entity';
+import { StudyMember } from './study-member.entity';
 import { Progress } from './progress.entity';
 import { Resource } from './resource.entity';
 
@@ -24,14 +24,32 @@ export class Study {
   @Column({ type: 'text', nullable: true })
   study_description: string;
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  tag: string;
+
+  @Column({ type: 'int', nullable: true })
+  recruit_count: number;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  period: string;
+
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  apply_deadline: Date;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  place: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  way: string;
+
   @CreateDateColumn()
   created_at: Date;
 
   @UpdateDateColumn()
   updated_at: Date;
 
-  @OneToMany(() => Role, (role) => role.study_id)
-  roles: Role[];
+  @OneToMany(() => StudyMember, (studyMember) => studyMember.study)
+  studyMembers: StudyMember[];
 
   @OneToMany(() => Progress, (progress) => progress.study_id)
   progress: Progress[];

@@ -10,6 +10,7 @@ import { EducationStatus } from './enums/education-status.enum';
 import { UserGender } from './enums/user-gender.enum';
 import { UserRole } from './enums/user-role.enum';
 import { Announcement } from '../../announcement/entities/announcement.entity';
+import { StudyMember } from '../../study/entities/study-member.entity';
 
 @Entity('user')
 export class User {
@@ -111,4 +112,7 @@ export class User {
 
   @OneToMany(() => Announcement, (announcement) => announcement.author)
   announcements: Announcement[];
+
+  @OneToMany(() => StudyMember, (studyMember) => studyMember.user)
+  studyMembers: StudyMember[];
 }

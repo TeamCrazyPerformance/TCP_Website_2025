@@ -9,7 +9,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Study } from './entities/study.entity';
 import { User } from '../members/entities/user.entity';
-import { Role } from './entities/role.entity';
+import { StudyMember } from './entities/study-member.entity';
+import { StudyMemberRole } from './entities/enums/study-member-role.enum';
 import { Progress } from './entities/progress.entity';
 import { Resource } from './entities/resource.entity';
 
@@ -34,13 +35,13 @@ export class StudyService {
     private readonly studyRepository: Repository<Study>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    @InjectRepository(Role)
-    private readonly roleRepository: Repository<Role>,
+    @InjectRepository(StudyMember)
+    private readonly studyMemberRepository: Repository<StudyMember>,
     @InjectRepository(Progress)
     private readonly progressRepository: Repository<Progress>,
     @InjectRepository(Resource)
     private readonly resourceRepository: Repository<Resource>,
-  ) {}
+  ) { }
 
   /** 1
    * @description Retrieves a list of studies, with an option to filter by year.
@@ -51,10 +52,10 @@ export class StudyService {
     // Define the options for the database query.
     const findOptions = {
       // 'relations' tells TypeORM to also load the related entities.
-      // Here, we are asking for the 'roles' of each study,
-      // and for each 'role', we also want the associated 'user'.
+      // Here, we are asking for the 'studyMembers' of each study,
+      // and for each 'studyMember', we also want the associated 'user'.
       // This allows us to get all the data we need in a single query.
-      relations: ['roles', 'roles.user_id'],
+      relations: ['studyMembers', 'studyMembers.user'],
       where: {},
     };
 
@@ -70,9 +71,9 @@ export class StudyService {
 
     // Transform (map) the array of Study entities into an array of StudyResponseDto objects.
     return studies.map((study) => {
-      // For each study, search its 'roles' array to find the entry where the role name is 'Leader'.
-      const leaderRole = study.roles.find(
-        (role) => role.role_name === 'Leader',
+      // For each study, search its 'studyMembers' array to find the entry where role is LEADER.
+      const leaderMember = study.studyMembers.find(
+        (member) => member.role === StudyMemberRole.LEADER,
       );
 
       // Construct and return the DTO object with the required shape.
@@ -81,10 +82,16 @@ export class StudyService {
         study_name: study.study_name,
         start_year: study.start_year,
         study_description: study.study_description,
-        // Safely get the leader's name. If no leader role was found, this will be null.
-        leader_name: leaderRole ? leaderRole.user_id.name : null,
-        // The total member count is the total number of roles associated with the study.
-        members_count: study.roles.length,
+        tag: study.tag,
+        recruit_count: study.recruit_count,
+        period: study.period,
+        apply_deadline: study.apply_deadline,
+        place: study.place,
+        way: study.way,
+        // Safely get the leader's name. If no leader was found, this will be null.
+        leader_name: leaderMember ? leaderMember.user.name : null,
+        // The total member count is the total number of studyMembers associated with the study.
+        members_count: study.studyMembers.length,
       };
     });
   }
@@ -98,7 +105,7 @@ export class StudyService {
     // 1. Fetch the study and all its related data in a single query.
     const study = await this.studyRepository.findOne({
       where: { id },
-      relations: ['roles', 'roles.user_id', 'resources', 'progress'],
+      relations: ['studyMembers', 'studyMembers.user', 'resources', 'progress'],
     });
 
     // 2. If the study doesn't exist, throw a 404 Not Found error.
@@ -106,10 +113,10 @@ export class StudyService {
       throw new NotFoundException('Study not found');
     }
 
-    // 3. Process the 'roles' array to separate the leader from the members.
-    const leaderRole = study.roles.find((role) => role.role_name === 'Leader');
-    const memberRoles = study.roles.filter(
-      (role) => role.role_name === 'member',
+    // 3. Process the 'studyMembers' array to separate the leader from the members.
+    const leaderMember = study.studyMembers.find((member) => member.role === StudyMemberRole.LEADER);
+    const regularMembers = study.studyMembers.filter(
+      (member) => member.role === StudyMemberRole.MEMBER || member.role === StudyMemberRole.PENDING,
     );
 
     // 4. Map the entity data to the shape required by the API response DTO.
@@ -118,17 +125,23 @@ export class StudyService {
       study_name: study.study_name,
       start_year: study.start_year,
       study_description: study.study_description,
-      leader: leaderRole
+      tag: study.tag,
+      recruit_count: study.recruit_count,
+      period: study.period,
+      apply_deadline: study.apply_deadline,
+      place: study.place,
+      way: study.way,
+      leader: leaderMember
         ? {
-            user_id: leaderRole.user_id.id,
-            name: leaderRole.user_id.name,
-            role_name: 'Leader',
-          }
+          user_id: leaderMember.user.id,
+          name: leaderMember.user.name,
+          role: StudyMemberRole.LEADER,
+        }
         : null,
-      members: memberRoles.map((role) => ({
-        user_id: role.user_id.id,
-        name: role.user_id.name,
-        role_name: 'member',
+      members: regularMembers.map((member) => ({
+        user_id: member.user.id,
+        name: member.user.name,
+        role: member.role,
       })),
       resources: study.resources.map((r) => ({
         id: r.id,
@@ -164,13 +177,13 @@ export class StudyService {
     const newStudy = this.studyRepository.create(studyData);
     const savedStudy = await this.studyRepository.save(newStudy);
 
-    // 3. Create a new Role to link the leader to the new study.
-    const leaderRole = this.roleRepository.create({
-      study_id: savedStudy,
-      user_id: leader,
-      role_name: 'Leader',
+    // 3. Create a new StudyMember to link the leader to the new study.
+    const leaderMember = this.studyMemberRepository.create({
+      study: savedStudy,
+      user: leader,
+      role: StudyMemberRole.LEADER,
     });
-    await this.roleRepository.save(leaderRole);
+    await this.studyMemberRepository.save(leaderMember);
 
     return { success: true, id: savedStudy.id };
   }
@@ -200,10 +213,10 @@ export class StudyService {
    * @returns A promise that resolves to an array of DTOs, each representing a member of the study.
    */
   async findMembersByStudyId(id: number): Promise<StudyMemberResponseDto[]> {
-    // 1. Find the study and eager-load its roles and the user for each role.
+    // 1. Find the study and eager-load its studyMembers and the user for each member.
     const study = await this.studyRepository.findOne({
       where: { id },
-      relations: ['roles', 'roles.user_id'],
+      relations: ['studyMembers', 'studyMembers.user'],
     });
 
     // 2. If the study doesn't exist, throw a 404 error.
@@ -211,11 +224,11 @@ export class StudyService {
       throw new NotFoundException('Study not found');
     }
 
-    // 3. Map the array of Role entities to an array of StudyMemberResponseDto.
-    return study.roles.map((role) => ({
-      user_id: role.user_id.id,
-      name: role.user_id.name,
-      role_name: role.role_name,
+    // 3. Map the array of StudyMember entities to an array of StudyMemberResponseDto.
+    return study.studyMembers.map((member) => ({
+      user_id: member.user.id,
+      name: member.user.name,
+      role: member.role,
     }));
   }
 
@@ -232,7 +245,7 @@ export class StudyService {
     // 1. Find the study and the user who will be the new leader.
     const study = await this.studyRepository.findOne({
       where: { id: studyId },
-      relations: ['roles', 'roles.user_id'], // Eager load the roles to find the current leader
+      relations: ['studyMembers', 'studyMembers.user'], // Eager load the members to find the current leader
     });
     if (!study)
       throw new NotFoundException('Study not found');
@@ -241,21 +254,21 @@ export class StudyService {
     if (!newLeader)
       throw new NotFoundException('User not found');
 
-    // 2. Find the role entry for the current leader, if it exists.
-    const currentLeaderRole = study.roles.find((r) => r.role_name === 'Leader');
+    // 2. Find the member entry for the current leader, if it exists.
+    const currentLeaderMember = study.studyMembers.find((m) => m.role === StudyMemberRole.LEADER);
 
-    if (currentLeaderRole) {
-      // 3a. If a leader already exists, update the user on that role entry.
-      currentLeaderRole.user_id = newLeader;
-      await this.roleRepository.save(currentLeaderRole);
+    if (currentLeaderMember) {
+      // 3a. If a leader already exists, update the user on that member entry.
+      currentLeaderMember.user = newLeader;
+      await this.studyMemberRepository.save(currentLeaderMember);
     } else {
-      // 3b. If no leader was previously assigned, create a new role entry.
-      const newRole = this.roleRepository.create({
-        study_id: study,
-        user_id: newLeader,
-        role_name: 'Leader',
+      // 3b. If no leader was previously assigned, create a new member entry.
+      const newMember = this.studyMemberRepository.create({
+        study: study,
+        user: newLeader,
+        role: StudyMemberRole.LEADER,
       });
-      await this.roleRepository.save(newRole);
+      await this.studyMemberRepository.save(newMember);
     }
 
     return { success: true };
@@ -265,12 +278,13 @@ export class StudyService {
    * @description Adds a user as a member to a study. (Admin/Leader only)
    * @param studyId The ID of the study.
    * @param userId The ID of the user to add.
+   * @param role The role of the user (true = leader, false = member).
    * @returns A promise that resolves to a DTO indicating success.
    */
   async addMember(
     studyId: number,
     userId: number,
-    role_name: string,
+    role: StudyMemberRole,
   ): Promise<SuccessResponseDto> {
     // 1. Find the parent study and the user to be added to ensure they both exist.
     const study = await this.studyRepository.findOneBy({ id: studyId });
@@ -281,27 +295,27 @@ export class StudyService {
     if (!userToAdd)
       throw new NotFoundException('User not found');
 
-    // 2. Check if a role linking this user and study already exists to prevent duplicates.
-    const existingRole = await this.roleRepository.findOne({
-      where: { study_id: { id: studyId }, user_id: { id: userId } },
+    // 2. Check if a member linking this user and study already exists to prevent duplicates.
+    const existingMember = await this.studyMemberRepository.findOne({
+      where: { study: { id: studyId }, user: { id: userId } },
     });
-    if (existingRole) {
+    if (existingMember) {
       throw new ConflictException('User already exists in study');
     }
 
-    // 3. Create a new 'Member' role to link the user to the study and save it.
-    const newMemberRole = this.roleRepository.create({
-      study_id: study,
-      user_id: userToAdd,
-      role_name: role_name,
+    // 3. Create a new StudyMember to link the user to the study and save it.
+    const newMember = this.studyMemberRepository.create({
+      study: study,
+      user: userToAdd,
+      role: role,
     });
-    await this.roleRepository.save(newMemberRole);
+    await this.studyMemberRepository.save(newMember);
 
     return { success: true };
   }
 
   /** 8
-   * @description Removes a member from a specific study by deleting their role. (Admin/Leader only)
+   * @description Removes a member from a specific study by deleting their StudyMember entry. (Admin/Leader only)
    * @param studyId The ID of the study.
    * @param userId The ID of the user to remove.
    * @returns A promise that resolves to a DTO indicating success.
@@ -310,21 +324,21 @@ export class StudyService {
     studyId: number,
     userId: number,
   ): Promise<SuccessResponseDto> {
-    // 1. Find the specific Role that links the user to the study.
-    const roleToRemove = await this.roleRepository.findOne({
+    // 1. Find the specific StudyMember that links the user to the study.
+    const memberToRemove = await this.studyMemberRepository.findOne({
       where: {
-        study_id: { id: studyId },
-        user_id: { id: userId },
+        study: { id: studyId },
+        user: { id: userId },
       },
     });
 
-    // 2. If no such role exists, the user is not a member of the study.
-    if (!roleToRemove) {
+    // 2. If no such member exists, the user is not a member of the study.
+    if (!memberToRemove) {
       throw new NotFoundException('Member not found in study');
     }
 
-    // 3. Delete the found Role entity to remove the member.
-    await this.roleRepository.delete(roleToRemove.id);
+    // 3. Delete the found StudyMember entity to remove the member.
+    await this.studyMemberRepository.delete(memberToRemove.id);
 
     return { success: true };
   }
@@ -401,10 +415,10 @@ export class StudyService {
     updateProgressDto: UpdateProgressDto,
   ): Promise<SuccessResponseDto> {
     // 1. Validate that at least one field has a meaningful value (not undefined)
-    const hasValidFields = Object.entries(updateProgressDto).some(([key, value]) => 
+    const hasValidFields = Object.entries(updateProgressDto).some(([key, value]) =>
       value !== undefined && value !== null && value !== ''
     );
-    
+
     if (!hasValidFields) {
       throw new BadRequestException(
         'At least one field to update must be provided.',
@@ -569,7 +583,7 @@ export class StudyService {
 
     // 2. Exclude users who are already in the specified study
     queryBuilder.andWhere(
-      'user.id NOT IN (SELECT "user_id" FROM "Role" WHERE "study_id" = :studyId)',
+      'user.id NOT IN (SELECT "user_id" FROM "StudyMember" WHERE "study_id" = :studyId)',
       { studyId },
     );
 
