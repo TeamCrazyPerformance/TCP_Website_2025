@@ -4,6 +4,7 @@ import { MulterModule } from '@nestjs/platform-express';
 
 import { StudyController } from './study.controller';
 import { StudyService } from './study.service';
+import { StudyRolesGuard } from './guards/study-roles.guard';
 
 import { Study } from './entities/study.entity';
 import { User } from '../members/entities/user.entity';
@@ -19,7 +20,7 @@ import { Resource } from './entities/resource.entity';
     }),
   ],
   controllers: [StudyController],
-  providers: [StudyService],
-  exports: [StudyService],
+  providers: [StudyService, StudyRolesGuard],
+  exports: [StudyService, StudyRolesGuard],
 })
 export class StudyModule { }

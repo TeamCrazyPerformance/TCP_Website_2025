@@ -16,6 +16,7 @@ import { Resource } from './entities/resource.entity';
 
 // DTOs
 import { CreateStudyDto } from './dto/request/create-study.dto';
+import { UpdateStudyDto } from './dto/request/update-study.dto';
 import { StudyResponseDto } from './dto/response/study-response.dto';
 import { StudyDetailResponseDto } from './dto/response/study-detail-response.dto';
 import { CreateStudyResponseDto } from './dto/response/create-study-response.dto';
@@ -189,6 +190,40 @@ export class StudyService {
   }
 
   /** 4
+   * @description Updates an existing study's information.
+   * @param id The ID of the study to update.
+   * @param updateStudyDto The data to update.
+   * @returns A promise that resolves to a DTO indicating success.
+   */
+  async updateStudy(
+    id: number,
+    updateStudyDto: UpdateStudyDto,
+  ): Promise<SuccessResponseDto> {
+    // 1. Validate that at least one field has a meaningful value
+    const hasValidFields = Object.entries(updateStudyDto).some(
+      ([, value]) => value !== undefined && value !== null && value !== '',
+    );
+
+    if (!hasValidFields) {
+      throw new BadRequestException(
+        'At least one field to update must be provided.',
+      );
+    }
+
+    // 2. Find the study to ensure it exists
+    const study = await this.studyRepository.findOneBy({ id });
+    if (!study) {
+      throw new NotFoundException(`Study with ID "${id}" not found`);
+    }
+
+    // 3. Merge the changes from the DTO into the found entity and save
+    Object.assign(study, updateStudyDto);
+    await this.studyRepository.save(study);
+
+    return { success: true };
+  }
+
+  /** 5
    * @description Deletes a study by its ID. (Admin only)
    * @param id The ID of the study to delete.
    * @returns A promise that resolves to a DTO indicating success.
