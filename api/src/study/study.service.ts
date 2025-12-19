@@ -22,6 +22,7 @@ import { StudyDetailResponseDto } from './dto/response/study-detail-response.dto
 import { CreateStudyResponseDto } from './dto/response/create-study-response.dto';
 import { SuccessResponseDto } from './dto/response/success-response.dto';
 import { StudyMemberResponseDto } from './dto/response/study-member.response.dto';
+import { StudyMemberDetailResponseDto } from './dto/response/study-member-detail.response.dto';
 import { StudyProgressResponseDto } from './dto/response/study-progress.response.dto';
 import { CreateProgressResponseDto } from './dto/response/create-progress-response.dto';
 import { CreateProgressDto } from './dto/request/create-progress.dto';
@@ -44,7 +45,7 @@ export class StudyService {
     private readonly resourceRepository: Repository<Resource>,
   ) { }
 
-  /** 1
+  /**
    * @description Retrieves a list of studies, with an option to filter by year.
    * @param year The optional year to filter the studies by.
    * @returns A promise that resolves to an array of study summary DTOs.
@@ -97,7 +98,7 @@ export class StudyService {
     });
   }
 
-  /** 2
+  /**
    * @description Retrieves detailed information for a specific study by its ID.
    * @param id The ID of the study to retrieve.
    * @returns A promise that resolves to a detailed DTO of the study.
@@ -158,7 +159,7 @@ export class StudyService {
     };
   }
 
-  /** 3
+  /**
    * @description Creates a new study and assigns a leader.
    * @param createStudyDto The data for creating the new study.
    * @returns A promise resolving to an object with the success status and the new study's ID.
@@ -189,7 +190,7 @@ export class StudyService {
     return { success: true, id: savedStudy.id };
   }
 
-  /** 4
+  /**
    * @description Updates an existing study's information.
    * @param id The ID of the study to update.
    * @param updateStudyDto The data to update.
@@ -223,7 +224,7 @@ export class StudyService {
     return { success: true };
   }
 
-  /** 5
+  /**
    * @description Deletes a study by its ID. (Admin only)
    * @param id The ID of the study to delete.
    * @returns A promise that resolves to a DTO indicating success.
@@ -267,7 +268,42 @@ export class StudyService {
     }));
   }
 
-  /** 6
+  /**
+   * @description Finds a specific member's detailed information in a study. (Admin/Leader only)
+   * @param studyId The ID of the study.
+   * @param userId The ID of the user to get details for.
+   * @returns A promise that resolves to a DTO with detailed member information.
+   */
+  async findMemberDetailByStudyId(
+    studyId: number,
+    userId: number,
+  ): Promise<StudyMemberDetailResponseDto> {
+    // 1. Find the specific study member
+    const studyMember = await this.studyMemberRepository.findOne({
+      where: { study: { id: studyId }, user: { id: userId } },
+      relations: ['user'],
+    });
+
+    if (!studyMember) {
+      throw new NotFoundException(
+        `Member with ID "${userId}" not found in study with ID "${studyId}"`,
+      );
+    }
+
+    // 2. Return detailed member information
+    return {
+      user_id: studyMember.user.id,
+      name: studyMember.user.name,
+      role: studyMember.role,
+      student_number: studyMember.user.student_number,
+      phone_number: studyMember.user.phone_number,
+      email: studyMember.user.email,
+      major: studyMember.user.major,
+      profile_image: studyMember.user.profile_image,
+    };
+  }
+
+  /**
    * @description Updates the leader of a specific study.
    * @param studyId The ID of the study to update.
    * @param newLeaderId The ID of the user to be appointed as the new leader.
@@ -309,7 +345,7 @@ export class StudyService {
     return { success: true };
   }
 
-  /** 7
+  /**
    * @description Adds a user as a member to a study. (Admin/Leader only)
    * @param studyId The ID of the study.
    * @param userId The ID of the user to add.
@@ -349,7 +385,7 @@ export class StudyService {
     return { success: true };
   }
 
-  /** 8
+  /**
    * @description Removes a member from a specific study by deleting their StudyMember entry. (Admin/Leader only)
    * @param studyId The ID of the study.
    * @param userId The ID of the user to remove.
@@ -378,7 +414,7 @@ export class StudyService {
     return { success: true };
   }
 
-  /** 9
+  /**
    * @description Finds all progress entries for a given study. (Admin/Leader/Member only)
    * @param studyId The ID of the study.
    * @returns A promise that resolves to an array of DTOs, each representing a progress entry.
@@ -405,7 +441,7 @@ export class StudyService {
     }));
   }
 
-  /** 10
+  /**
    * @description Creates a new progress entry for a specific study. (Admin/Leader only)
    * @param studyId The ID of the study to add progress to.
    * @param createProgressDto The data for the new progress entry.
@@ -437,7 +473,7 @@ export class StudyService {
     };
   }
 
-  /** 11
+  /**
    * @description Updates a specific progress entry for a study. (Admin/Leader only)
    * @param studyId The ID of the study.
    * @param progressId The ID of the progress entry to update.
@@ -480,7 +516,7 @@ export class StudyService {
     return { success: true };
   }
 
-  /** 12
+  /**
    * @description Deletes a specific progress entry from a study. (Admin/Leader only)
    * @param studyId The ID of the study.
    * @param progressId The ID of the progress entry to delete.
@@ -507,7 +543,7 @@ export class StudyService {
     return { success: true };
   }
 
-  /** 13
+  /**
    * @description Finds all resources for a given study. (Admin/Leader/Member only)
    * @param studyId The ID of the study.
    * @returns A promise that resolves to an array of DTOs, each representing a resource.
@@ -535,7 +571,7 @@ export class StudyService {
     }));
   }
 
-  /** 14
+  /**
    * @description Creates a resource record from an uploaded file. (Admin/Leader only)
    * @param studyId The ID of the study to which the resource will be added.
    * @param file The file object provided by Multer.
@@ -571,7 +607,7 @@ export class StudyService {
     };
   }
 
-  /** 15
+  /**
    * @description Deletes a specific resource from a study. (Admin/Leader only)
    * @param studyId The ID of the study.
    * @param resourceId The ID of the resource to delete.
@@ -598,7 +634,7 @@ export class StudyService {
     return { success: true };
   }
 
-  /** 16
+  /**
    * @description Searches for users by a keyword, excluding any who are already members of a specific study. (Admin/Leader only)
    * @param studyId The ID of the study for which to exclude existing members.
    * @param search The keyword to search for in user names and emails.
@@ -630,5 +666,115 @@ export class StudyService {
       name: user.name,
       email: user.email,
     }));
+  }
+
+  /**
+   * @description Allows a member to apply to a study with pending status.
+   * @param studyId The ID of the study to apply to.
+   * @param userId The ID of the user applying.
+   * @returns A promise that resolves to a DTO indicating success.
+   */
+  async applyToStudy(
+    studyId: number,
+    userId: number,
+  ): Promise<SuccessResponseDto> {
+    // 1. Find the study to ensure it exists
+    const study = await this.studyRepository.findOneBy({ id: studyId });
+    if (!study) {
+      throw new NotFoundException(`Study with ID "${studyId}" not found`);
+    }
+
+    // 2. Find the user to ensure they exist
+    const user = await this.userRepository.findOneBy({ id: userId });
+    if (!user) {
+      throw new NotFoundException(`User with ID "${userId}" not found`);
+    }
+
+    // 3. Check if the user is already a member of the study (in any role)
+    const existingMember = await this.studyMemberRepository.findOne({
+      where: { study: { id: studyId }, user: { id: userId } },
+    });
+    if (existingMember) {
+      throw new ConflictException('You have already applied to or are a member of this study');
+    }
+
+    // 4. Create a new StudyMember with PENDING role
+    const newMember = this.studyMemberRepository.create({
+      study: study,
+      user: user,
+      role: StudyMemberRole.PENDING,
+    });
+    await this.studyMemberRepository.save(newMember);
+
+    return { success: true };
+  }
+
+  /**
+   * @description Approves a pending study applicant, changing their role from PENDING to MEMBER.
+   * @param studyId The ID of the study.
+   * @param userId The ID of the user to approve.
+   * @returns A promise that resolves to a DTO indicating success.
+   */
+  async approveMember(
+    studyId: number,
+    userId: number,
+  ): Promise<SuccessResponseDto> {
+    // 1. Find the study member entry
+    const studyMember = await this.studyMemberRepository.findOne({
+      where: { study: { id: studyId }, user: { id: userId } },
+    });
+
+    if (!studyMember) {
+      throw new NotFoundException(
+        `User with ID "${userId}" is not found in study with ID "${studyId}"`,
+      );
+    }
+
+    // 2. Verify the member is in PENDING status
+    if (studyMember.role !== StudyMemberRole.PENDING) {
+      throw new BadRequestException(
+        'Only pending applicants can be approved',
+      );
+    }
+
+    // 3. Update the role to MEMBER
+    studyMember.role = StudyMemberRole.MEMBER;
+    await this.studyMemberRepository.save(studyMember);
+
+    return { success: true };
+  }
+
+  /**
+   * @description Allows a member to leave a study on their own.
+   * @param studyId The ID of the study to leave.
+   * @param userId The ID of the user leaving.
+   * @returns A promise that resolves to a DTO indicating success.
+   */
+  async leaveStudy(
+    studyId: number,
+    userId: number,
+  ): Promise<SuccessResponseDto> {
+    // 1. Find the study member entry
+    const studyMember = await this.studyMemberRepository.findOne({
+      where: { study: { id: studyId }, user: { id: userId } },
+    });
+
+    if (!studyMember) {
+      throw new NotFoundException(
+        'You are not a member of this study',
+      );
+    }
+
+    // 2. Leaders cannot leave the study (they must transfer leadership first)
+    if (studyMember.role === StudyMemberRole.LEADER) {
+      throw new BadRequestException(
+        'Leaders cannot leave the study. Please transfer leadership first.',
+      );
+    }
+
+    // 3. Delete the study member entry
+    await this.studyMemberRepository.delete(studyMember.id);
+
+    return { success: true };
   }
 }
