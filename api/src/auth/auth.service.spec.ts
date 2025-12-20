@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { User } from '../members/entities/user.entity';
+import { RefreshToken } from './entities/refresh-token.entity';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -31,6 +32,13 @@ const mockUsersRepo = (): MockRepo<User> & { queryBuilder: ReturnType<typeof cre
   };
 };
 
+const mockRefreshTokenRepo = (): MockRepo<RefreshToken> => ({
+  create: jest.fn(),
+  save: jest.fn(),
+  find: jest.fn(),
+  delete: jest.fn(),
+});
+
 const mockJwtService = () => ({
   signAsync: jest.fn(),
   verifyAsync: jest.fn(),
@@ -43,6 +51,7 @@ const mockConfigService = (values: Record<string, any> = {}) => ({
 describe('AuthService', () => {
   let service: AuthService;
   let usersRepo: ReturnType<typeof mockUsersRepo>;
+  let refreshTokenRepo: ReturnType<typeof mockRefreshTokenRepo>;
   let jwt: ReturnType<typeof mockJwtService>;
   let config: ReturnType<typeof mockConfigService>;
 
@@ -69,7 +78,6 @@ describe('AuthService', () => {
     student_number: '20230001',
     profile_image: 'default_profile_image.png',
     role: UserRole.GUEST,
-    refresh_token: 'stored.refresh.token',
     created_at: new Date('2024-01-01'),
     updated_at: new Date('2024-01-01'),
   } as User;
@@ -79,6 +87,7 @@ describe('AuthService', () => {
     jest.spyOn(bcrypt, 'compare').mockImplementation(() => Promise.resolve(true));
 
     const repoInstance = mockUsersRepo();
+    const refreshTokenRepoInstance = mockRefreshTokenRepo();
     const jwtInstance = mockJwtService();
     const configInstance = mockConfigService({ BCRYPT_SALT_ROUNDS: 12, JWT_SECRET: 'secret' });
 
@@ -86,6 +95,7 @@ describe('AuthService', () => {
       providers: [
         AuthService,
         { provide: getRepositoryToken(User), useValue: repoInstance },
+        { provide: getRepositoryToken(RefreshToken), useValue: refreshTokenRepoInstance },
         { provide: JwtService, useValue: jwtInstance },
         { provide: ConfigService, useValue: configInstance },
       ],
@@ -93,6 +103,7 @@ describe('AuthService', () => {
 
     service = module.get(AuthService);
     usersRepo = repoInstance;
+    refreshTokenRepo = refreshTokenRepoInstance;
     jwt = jwtInstance;
     config = configInstance;
 
@@ -101,6 +112,10 @@ describe('AuthService', () => {
     usersRepo.create!.mockReset();
     usersRepo.save!.mockReset();
     usersRepo.update!.mockReset().mockResolvedValue({ affected: 1 });
+    refreshTokenRepo.create!.mockReset().mockReturnValue({ id: 1 });
+    refreshTokenRepo.save!.mockReset().mockResolvedValue({ id: 1 });
+    refreshTokenRepo.find!.mockReset();
+    refreshTokenRepo.delete!.mockReset().mockResolvedValue({ affected: 1 });
     (jwt.signAsync as jest.Mock).mockReset().mockResolvedValue('signed.jwt.token');
     (jwt.verifyAsync as jest.Mock).mockReset();
   });
@@ -132,8 +147,12 @@ describe('AuthService', () => {
         expect.objectContaining({ secret: 'secret', expiresIn: '7d' }),
       );
 
-      // refresh_token 해시화 후 DB 저장 확인
-      expect(usersRepo.update).toHaveBeenCalledWith(savedUser.id, { refresh_token: 'hashed_pw' });
+      // RefreshToken 테이블에 저장 확인
+      expect(refreshTokenRepo.create).toHaveBeenCalledWith(expect.objectContaining({
+        token_hash: 'hashed_pw',
+        user_id: savedUser.id,
+      }));
+      expect(refreshTokenRepo.save).toHaveBeenCalled();
 
       // 응답 스키마
       expect(res).toEqual({
@@ -209,16 +228,31 @@ describe('AuthService', () => {
   });
 
   describe('refresh', () => {
+    const storedToken: RefreshToken = {
+      id: 1,
+      token_hash: 'hashed_refresh_token',
+      user_id: 1,
+      device_info: 'Chrome on Mac',
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      last_used_at: null,
+      created_at: new Date(),
+      user: savedUser,
+    };
+
     it('유효한 refresh_token → 새 토큰 발급 (해시 비교)', async () => {
       (jwt.verifyAsync as jest.Mock).mockResolvedValue({ sub: 1, type: 'refresh' });
-      usersRepo.queryBuilder.getOne.mockResolvedValue({ ...savedUser, refresh_token: 'hashed_refresh_token' });
-      // bcrypt.compare가 true를 반환하면 토큰 일치
+      usersRepo.findOne!.mockResolvedValue(savedUser);
+      refreshTokenRepo.find!.mockResolvedValue([storedToken]);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       const res = await service.refresh('client.refresh.token');
 
       expect(jwt.verifyAsync).toHaveBeenCalledWith('client.refresh.token', { secret: 'secret' });
       expect(bcrypt.compare).toHaveBeenCalledWith('client.refresh.token', 'hashed_refresh_token');
+
+      // 기존 토큰 삭제 확인 (Token Rotation)
+      expect(refreshTokenRepo.delete).toHaveBeenCalledWith({ id: storedToken.id });
+
       expect(res).toEqual({
         user: expect.objectContaining({ id: savedUser.id }),
         access_token: 'signed.jwt.token',
@@ -228,15 +262,15 @@ describe('AuthService', () => {
 
     it('DB에 저장된 token과 불일치 → Reuse Detection으로 세션 무효화', async () => {
       (jwt.verifyAsync as jest.Mock).mockResolvedValue({ sub: 1, type: 'refresh' });
-      usersRepo.queryBuilder.getOne.mockResolvedValue({ ...savedUser, refresh_token: 'hashed_token' });
-      // bcrypt.compare가 false를 반환하면 토큰 불일치 (탈취 의심)
+      usersRepo.findOne!.mockResolvedValue(savedUser);
+      refreshTokenRepo.find!.mockResolvedValue([storedToken]);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       await expect(service.refresh('stolen.or.old.token'))
         .rejects.toBeInstanceOf(UnauthorizedException);
 
-      // Reuse Detection: 세션 무효화 확인
-      expect(usersRepo.update).toHaveBeenCalledWith(savedUser.id, { refresh_token: null });
+      // Reuse Detection: 모든 세션 무효화 확인
+      expect(refreshTokenRepo.delete).toHaveBeenCalledWith({ user_id: savedUser.id });
     });
 
     it('만료된 refresh_token → UnauthorizedException', async () => {
@@ -255,8 +289,9 @@ describe('AuthService', () => {
 
     it('로그아웃된 사용자의 refresh_token → UnauthorizedException', async () => {
       (jwt.verifyAsync as jest.Mock).mockResolvedValue({ sub: 1, type: 'refresh' });
-      // 로그아웃된 사용자는 refresh_token이 null
-      usersRepo.queryBuilder.getOne.mockResolvedValue({ ...savedUser, refresh_token: null });
+      usersRepo.findOne!.mockResolvedValue(savedUser);
+      // 로그아웃된 사용자는 토큰이 없음
+      refreshTokenRepo.find!.mockResolvedValue([]);
 
       await expect(service.refresh('some.refresh.token'))
         .rejects.toBeInstanceOf(UnauthorizedException);
@@ -264,20 +299,66 @@ describe('AuthService', () => {
 
     it('사용자를 찾을 수 없음 → UnauthorizedException', async () => {
       (jwt.verifyAsync as jest.Mock).mockResolvedValue({ sub: 999, type: 'refresh' });
-      usersRepo.queryBuilder.getOne.mockResolvedValue(null);
+      usersRepo.findOne!.mockResolvedValue(null);
 
       await expect(service.refresh('valid.refresh.token'))
         .rejects.toBeInstanceOf(UnauthorizedException);
     });
+
+    it('DB에 저장된 토큰이 만료됨 → 토큰 삭제 및 UnauthorizedException', async () => {
+      const expiredToken = {
+        ...storedToken,
+        expires_at: new Date(Date.now() - 1000), // 과거 시간
+      };
+      (jwt.verifyAsync as jest.Mock).mockResolvedValue({ sub: 1, type: 'refresh' });
+      usersRepo.findOne!.mockResolvedValue(savedUser);
+      refreshTokenRepo.find!.mockResolvedValue([expiredToken]);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await expect(service.refresh('client.refresh.token'))
+        .rejects.toBeInstanceOf(UnauthorizedException);
+
+      // 만료된 토큰 삭제 확인
+      expect(refreshTokenRepo.delete).toHaveBeenCalledWith({ id: expiredToken.id });
+    });
   });
 
   describe('logout', () => {
-    it('정상 로그아웃 → refresh_token null로 업데이트', async () => {
+    const storedToken: RefreshToken = {
+      id: 1,
+      token_hash: 'hashed_refresh_token',
+      user_id: 1,
+      device_info: 'Chrome on Mac',
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      last_used_at: null,
+      created_at: new Date(),
+      user: savedUser,
+    };
+
+    it('refresh_token 제공 시 → 해당 토큰만 삭제 (현재 디바이스 로그아웃)', async () => {
+      refreshTokenRepo.find!.mockResolvedValue([storedToken]);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      const res = await service.logout(1, 'client.refresh.token');
+
+      expect(refreshTokenRepo.delete).toHaveBeenCalledWith({ id: storedToken.id });
+      expect(res).toEqual({ message: '로그아웃 되었습니다.' });
+    });
+
+    it('refresh_token 미제공 시 → 모든 토큰 삭제 (모든 디바이스 로그아웃)', async () => {
       const res = await service.logout(1);
 
-      expect(usersRepo.update).toHaveBeenCalledWith(1, { refresh_token: null });
+      expect(refreshTokenRepo.delete).toHaveBeenCalledWith({ user_id: 1 });
       expect(res).toEqual({ message: '로그아웃 되었습니다.' });
     });
   });
-});
 
+  describe('logoutAll', () => {
+    it('모든 디바이스에서 로그아웃 → 모든 토큰 삭제', async () => {
+      const res = await service.logoutAll(1);
+
+      expect(refreshTokenRepo.delete).toHaveBeenCalledWith({ user_id: 1 });
+      expect(res).toEqual({ message: '모든 기기에서 로그아웃 되었습니다.' });
+    });
+  });
+});

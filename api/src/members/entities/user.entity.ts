@@ -11,6 +11,7 @@ import { UserGender } from './enums/user-gender.enum';
 import { UserRole } from './enums/user-role.enum';
 import { Announcement } from '../../announcement/entities/announcement.entity';
 import { StudyMember } from '../../study/entities/study-member.entity';
+import { RefreshToken } from '../../auth/entities/refresh-token.entity';
 
 @Entity('user')
 export class User {
@@ -60,9 +61,6 @@ export class User {
     default: UserRole.GUEST,
   })
   role: UserRole;
-
-  @Column({ type: 'varchar', length: 500, nullable: true, select: false })
-  refresh_token: string | null;
 
   @Column('text', { array: true, nullable: true })
   tech_stack: string[] | null;
@@ -115,4 +113,7 @@ export class User {
 
   @OneToMany(() => StudyMember, (studyMember) => studyMember.user)
   studyMembers: StudyMember[];
+
+  @OneToMany(() => RefreshToken, (token) => token.user)
+  refreshTokens: RefreshToken[];
 }

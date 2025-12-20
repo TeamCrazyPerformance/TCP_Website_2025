@@ -6,6 +6,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 
 import { User } from '../members/entities/user.entity';
+import { RefreshToken } from './entities/refresh-token.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtPayload, RefreshPayload, SanitizedUser } from './types';
@@ -14,6 +15,7 @@ import { JwtPayload, RefreshPayload, SanitizedUser } from './types';
 export class AuthService {
   constructor(
     @InjectRepository(User) private readonly usersRepo: Repository<User>,
+    @InjectRepository(RefreshToken) private readonly refreshTokenRepo: Repository<RefreshToken>,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
   ) { }
@@ -23,7 +25,7 @@ export class AuthService {
     return { id, username, name, email, student_number, profile_image, role, created_at, updated_at };
   }
 
-  private async generateTokens(user: User) {
+  private async generateTokens(user: User, deviceInfo?: string) {
     const secret = this.config.get<string>('JWT_SECRET');
 
     // Access Token: 15분
@@ -43,7 +45,16 @@ export class AuthService {
     // Refresh Token을 해시화하여 DB에 저장 (원문은 클라이언트에게만 전달)
     const saltRounds = Number(this.config.get('BCRYPT_SALT_ROUNDS') ?? 12);
     const hashedRefreshToken = await bcrypt.hash(refresh_token, saltRounds);
-    await this.usersRepo.update(user.id, { refresh_token: hashedRefreshToken });
+
+    // 새 RefreshToken 엔티티 생성 및 저장
+    const tokenEntity = this.refreshTokenRepo.create({
+      token_hash: hashedRefreshToken,
+      user_id: user.id,
+      device_info: deviceInfo ?? null,
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7일 후
+      last_used_at: null,
+    });
+    await this.refreshTokenRepo.save(tokenEntity);
 
     return { access_token, refresh_token };
   }
@@ -97,9 +108,9 @@ export class AuthService {
     return user;
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, deviceInfo?: string) {
     const user = await this.validateUser(dto.username, dto.password);
-    const tokens = await this.generateTokens(user);
+    const tokens = await this.generateTokens(user, deviceInfo);
     return { user: this.sanitize(user), ...tokens };
   }
 
@@ -113,36 +124,52 @@ export class AuthService {
         throw new UnauthorizedException('유효하지 않은 refresh token입니다.');
       }
 
-      // DB에서 사용자 정보 및 저장된 refresh token 해시 조회
-      const user = await this.usersRepo
-        .createQueryBuilder('user')
-        .addSelect('user.refresh_token')
-        .where('user.id = :id', { id: payload.sub })
-        .getOne();
+      // DB에서 사용자 정보 조회
+      const user = await this.usersRepo.findOne({ where: { id: payload.sub } });
 
       if (!user) {
         throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
       }
 
-      // 저장된 refresh token이 없으면 로그아웃 상태
-      if (!user.refresh_token) {
+      // 사용자의 모든 refresh token 조회
+      const storedTokens = await this.refreshTokenRepo.find({
+        where: { user_id: payload.sub },
+      });
+
+      if (storedTokens.length === 0) {
         throw new UnauthorizedException('로그아웃된 상태입니다. 다시 로그인해주세요.');
       }
 
-      // 해시된 refresh token과 비교
-      const isValidToken = await bcrypt.compare(refreshToken, user.refresh_token);
+      // 저장된 토큰들 중 일치하는 것 찾기
+      let matchedToken: RefreshToken | null = null;
+      for (const storedToken of storedTokens) {
+        const isValid = await bcrypt.compare(refreshToken, storedToken.token_hash);
+        if (isValid) {
+          matchedToken = storedToken;
+          break;
+        }
+      }
 
-      if (!isValidToken) {
+      if (!matchedToken) {
         // ⚠️ Reuse Detection: 토큰 불일치 시 탈취로 간주하고 전체 세션 무효화
         // 이전 토큰이 재사용되었을 가능성 → 모든 세션 즉시 폐기
-        await this.usersRepo.update(user.id, { refresh_token: null });
+        await this.refreshTokenRepo.delete({ user_id: user.id });
         throw new UnauthorizedException(
           '보안 위협이 감지되었습니다. 토큰이 탈취되었을 수 있습니다. 다시 로그인해주세요.'
         );
       }
 
-      // 새 토큰 발급 (Token Rotation)
-      const tokens = await this.generateTokens(user);
+      // 만료 여부 확인
+      if (matchedToken.expires_at < new Date()) {
+        await this.refreshTokenRepo.delete({ id: matchedToken.id });
+        throw new UnauthorizedException('refresh token이 만료되었습니다.');
+      }
+
+      // 기존 토큰 삭제 (Token Rotation)
+      await this.refreshTokenRepo.delete({ id: matchedToken.id });
+
+      // 새 토큰 발급
+      const tokens = await this.generateTokens(user, matchedToken.device_info ?? undefined);
       return { user: this.sanitize(user), ...tokens };
     } catch (error) {
       if (error instanceof UnauthorizedException) {
@@ -152,9 +179,30 @@ export class AuthService {
     }
   }
 
-  async logout(userId: number) {
-    // DB에서 refresh token 삭제
-    await this.usersRepo.update(userId, { refresh_token: null });
+  async logout(userId: number, refreshToken?: string) {
+    if (refreshToken) {
+      // 특정 토큰만 삭제 (현재 디바이스만 로그아웃)
+      const storedTokens = await this.refreshTokenRepo.find({
+        where: { user_id: userId },
+      });
+
+      for (const storedToken of storedTokens) {
+        const isValid = await bcrypt.compare(refreshToken, storedToken.token_hash);
+        if (isValid) {
+          await this.refreshTokenRepo.delete({ id: storedToken.id });
+          break;
+        }
+      }
+    } else {
+      // 모든 토큰 삭제 (모든 디바이스에서 로그아웃)
+      await this.refreshTokenRepo.delete({ user_id: userId });
+    }
     return { message: '로그아웃 되었습니다.' };
+  }
+
+  async logoutAll(userId: number) {
+    // 모든 디바이스에서 로그아웃
+    await this.refreshTokenRepo.delete({ user_id: userId });
+    return { message: '모든 기기에서 로그아웃 되었습니다.' };
   }
 }

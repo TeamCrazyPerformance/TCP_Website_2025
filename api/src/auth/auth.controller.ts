@@ -76,9 +76,31 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async logout(
     @Request() req,
+    @Req() expressReq: ExpressRequest,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.authService.logout(req.user.userId);
+    // 쿠키에서 refresh_token 읽기 (현재 디바이스만 로그아웃)
+    const refreshToken = expressReq.cookies?.['refresh_token'];
+    const result = await this.authService.logout(req.user.userId, refreshToken);
+
+    // 쿠키 삭제
+    res.clearCookie('refresh_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+    });
+
+    return result;
+  }
+
+  @Post('logout-all')
+  @UseGuards(JwtAuthGuard)
+  async logoutAll(
+    @Request() req,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.logoutAll(req.user.userId);
 
     // 쿠키 삭제
     res.clearCookie('refresh_token', {
