@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsString, Min } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, Min, IsDateString } from 'class-validator';
 
 export class CreateStudyDto {
   @IsString()
@@ -10,8 +10,32 @@ export class CreateStudyDto {
   start_year: number;
 
   @IsString()
+  @IsOptional()
+  study_description?: string;
+
+  @IsString()
+  @IsOptional()
+  tag?: string;
+
+  @IsNumber()
+  @IsOptional()
+  recruit_count?: number;
+
+  @IsString()
+  @IsOptional()
+  period?: string;
+
+  @IsDateString()
   @IsNotEmpty()
-  study_description: string;
+  apply_deadline: string;
+
+  @IsString()
+  @IsOptional()
+  place?: string;
+
+  @IsString()
+  @IsOptional()
+  way?: string;
 
   @IsNumber()
   @IsNotEmpty()

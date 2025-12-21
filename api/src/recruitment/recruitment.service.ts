@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { CreateRecruitmentDto } from './dto/create-recruitment.dto';
 import { UpdateRecruitmentDto } from './dto/update-recruitment.dto';
 import { Resume } from './entities/resume.entity';
@@ -23,14 +23,19 @@ export class RecruitmentService {
     private readonly awardRepository: Repository<Award>,
     @InjectRepository(Project)
     private readonly projectRepository: Repository<Project>,
-  ) {}
+    private readonly dataSource: DataSource,
+  ) { }
 
   async create(createRecruitmentDto: CreateRecruitmentDto) {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
       this.logger.log('New application submitted');
 
       // Resume 엔티티 생성
-      const resume = this.resumeRepository.create({
+      const resume = queryRunner.manager.create(Resume, {
         name: createRecruitmentDto.name,
         student_number: createRecruitmentDto.student_number,
         major: createRecruitmentDto.major,
@@ -42,34 +47,38 @@ export class RecruitmentService {
         submit_year: createRecruitmentDto.submit_year,
       });
 
-      // Resume 저장 (cascade로 인해 awards, projects도 함께 저장됨)
-      const savedResume = await this.resumeRepository.save(resume);
+      // Resume 저장
+      const savedResume = await queryRunner.manager.save(Resume, resume);
 
       // Awards 저장 (선택사항)
       if (createRecruitmentDto.awards && createRecruitmentDto.awards.length > 0) {
         const awards = createRecruitmentDto.awards.map((awardDto) =>
-          this.awardRepository.create({
+          queryRunner.manager.create(Award, {
             ...awardDto,
             resume_id: savedResume.id,
           }),
         );
-        await this.awardRepository.save(awards);
+        await queryRunner.manager.save(Award, awards);
       }
 
       // Projects 저장 (선택사항)
       if (createRecruitmentDto.projects && createRecruitmentDto.projects.length > 0) {
         const projects = createRecruitmentDto.projects.map((projectDto) =>
-          this.projectRepository.create({
+          queryRunner.manager.create(Project, {
             ...projectDto,
             resume_id: savedResume.id,
           }),
         );
-        await this.projectRepository.save(projects);
+        await queryRunner.manager.save(Project, projects);
       }
+
+      await queryRunner.commitTransaction();
 
       this.logger.log(`Application created with ID: ${savedResume.id}`);
       return { success: true, id: savedResume.id };
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof Error) {
         this.logger.error(
           `Failed to create application: ${error.message}`,
@@ -84,6 +93,8 @@ export class RecruitmentService {
       throw new InternalServerErrorException(
         'An unexpected error occurred on the server.',
       );
+    } finally {
+      await queryRunner.release();
     }
   }
 
@@ -147,65 +158,72 @@ export class RecruitmentService {
 
   // 특정 지원서 수정
   async update(id: number, updateRecruitmentDto: UpdateRecruitmentDto) {
+    // 기존 지원서 존재 여부 확인 (트랜잭션 시작 전)
+    const existingResume = await this.resumeRepository.findOne({
+      where: { id },
+    });
+
+    if (!existingResume) {
+      throw new NotFoundException(`Recruitment with ID "${id}" not found`);
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
       this.logger.log(`Updating application #${id}`);
 
-      // 기존 지원서 존재 여부 확인
-      const resume = await this.resumeRepository.findOne({
-        where: { id },
-        relations: ['awards', 'projects'],
-      });
-
-      if (!resume) {
-        throw new NotFoundException(`Recruitment with ID "${id}" not found`);
-      }
-
       // Resume 필드 업데이트
-      Object.assign(resume, {
-        name: updateRecruitmentDto.name ?? resume.name,
-        student_number: updateRecruitmentDto.student_number ?? resume.student_number,
-        major: updateRecruitmentDto.major ?? resume.major,
-        phone_number: updateRecruitmentDto.phone_number ?? resume.phone_number,
-        tech_stack: updateRecruitmentDto.tech_stack ?? resume.tech_stack,
-        area_interest: updateRecruitmentDto.area_interest ?? resume.area_interest,
-        self_introduction: updateRecruitmentDto.self_introduction ?? resume.self_introduction,
-        club_expectation: updateRecruitmentDto.club_expectation ?? resume.club_expectation,
-        submit_year: updateRecruitmentDto.submit_year ?? resume.submit_year,
+      Object.assign(existingResume, {
+        name: updateRecruitmentDto.name ?? existingResume.name,
+        student_number: updateRecruitmentDto.student_number ?? existingResume.student_number,
+        major: updateRecruitmentDto.major ?? existingResume.major,
+        phone_number: updateRecruitmentDto.phone_number ?? existingResume.phone_number,
+        tech_stack: updateRecruitmentDto.tech_stack ?? existingResume.tech_stack,
+        area_interest: updateRecruitmentDto.area_interest ?? existingResume.area_interest,
+        self_introduction: updateRecruitmentDto.self_introduction ?? existingResume.self_introduction,
+        club_expectation: updateRecruitmentDto.club_expectation ?? existingResume.club_expectation,
+        submit_year: updateRecruitmentDto.submit_year ?? existingResume.submit_year,
       });
 
-      await this.resumeRepository.save(resume);
+      await queryRunner.manager.save(Resume, existingResume);
 
       // Awards 업데이트 (제공된 경우 기존 것 삭제 후 재생성)
       if (updateRecruitmentDto.awards !== undefined) {
-        await this.awardRepository.delete({ resume_id: id });
+        await queryRunner.manager.delete(Award, { resume_id: id });
         if (updateRecruitmentDto.awards.length > 0) {
           const awards = updateRecruitmentDto.awards.map((awardDto) =>
-            this.awardRepository.create({
+            queryRunner.manager.create(Award, {
               ...awardDto,
               resume_id: id,
             }),
           );
-          await this.awardRepository.save(awards);
+          await queryRunner.manager.save(Award, awards);
         }
       }
 
       // Projects 업데이트 (제공된 경우 기존 것 삭제 후 재생성)
       if (updateRecruitmentDto.projects !== undefined) {
-        await this.projectRepository.delete({ resume_id: id });
+        await queryRunner.manager.delete(Project, { resume_id: id });
         if (updateRecruitmentDto.projects.length > 0) {
           const projects = updateRecruitmentDto.projects.map((projectDto) =>
-            this.projectRepository.create({
+            queryRunner.manager.create(Project, {
               ...projectDto,
               resume_id: id,
             }),
           );
-          await this.projectRepository.save(projects);
+          await queryRunner.manager.save(Project, projects);
         }
       }
+
+      await queryRunner.commitTransaction();
 
       this.logger.log(`Application #${id} updated successfully`);
       return { success: true };
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -213,6 +231,8 @@ export class RecruitmentService {
       throw new InternalServerErrorException(
         'An error occurred on the server.',
       );
+    } finally {
+      await queryRunner.release();
     }
   }
 

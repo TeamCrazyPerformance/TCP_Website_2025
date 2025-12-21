@@ -1,11 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, UnauthorizedException } from '@nestjs/common';
 import { RegisterDto } from './dto/register.dto';
 import { EducationStatus } from '../members/entities/enums/education-status.enum';
 import { UserGender } from '../members/entities/enums/user-gender.enum';
 import { UserRole } from '../members/entities/enums/user-role.enum';
+import { Response, Request } from 'express';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -28,6 +29,17 @@ describe('AuthController', () => {
     updated_at: new Date('2024-01-01'),
   };
 
+  // Mock Response 객체
+  const createMockResponse = (): Partial<Response> => ({
+    cookie: jest.fn(),
+    clearCookie: jest.fn(),
+  });
+
+  // Mock Request 객체
+  const createMockRequest = (cookies: Record<string, string> = {}): Partial<Request> => ({
+    cookies,
+  });
+
   beforeEach(async () => {
     mockAuthService = {
       register: jest.fn(),
@@ -45,7 +57,7 @@ describe('AuthController', () => {
   });
 
   describe('register', () => {
-    it('유효 DTO면 서비스 호출 & access_token + refresh_token 반환', async () => {
+    it('유효 DTO면 서비스 호출 & access_token 반환 (refresh_token은 쿠키로)', async () => {
       const dto: RegisterDto = {
         username: 'stce01',
         password: 'P@ssword1234',
@@ -68,12 +80,18 @@ describe('AuthController', () => {
       };
       mockAuthService.register.mockResolvedValue(mockResult);
 
-      const res = await controller.register(dto);
+      const mockRes = createMockResponse();
+      const res = await controller.register(dto, mockRes as Response);
 
       expect(mockAuthService.register).toHaveBeenCalledWith(dto);
-      expect(res).toBe(mockResult);
+      expect(mockRes.cookie).toHaveBeenCalledWith(
+        'refresh_token',
+        'refresh.token',
+        expect.objectContaining({ httpOnly: true }),
+      );
       expect(res.access_token).toBeDefined();
-      expect(res.refresh_token).toBeDefined();
+      // refresh_token은 응답 body에서 제거됨
+      expect((res as any).refresh_token).toBeUndefined();
     });
 
     it('DTO 유효성: 잘못된 필드면 ValidationPipe에서 예외', async () => {
@@ -105,7 +123,7 @@ describe('AuthController', () => {
   });
 
   describe('login', () => {
-    it('로그인 성공 → access_token + refresh_token 반환', async () => {
+    it('로그인 성공 → access_token 반환 (refresh_token은 쿠키로)', async () => {
       const dto = { username: 'stce01', password: 'P@ssword1234' };
       const mockResult = {
         user: mockUser,
@@ -114,17 +132,24 @@ describe('AuthController', () => {
       };
       mockAuthService.login.mockResolvedValue(mockResult);
 
-      const res = await controller.login(dto);
+      const mockRes = createMockResponse();
+      const res = await controller.login(dto, mockRes as Response);
 
       expect(mockAuthService.login).toHaveBeenCalledWith(dto);
+      expect(mockRes.cookie).toHaveBeenCalledWith(
+        'refresh_token',
+        'refresh.token',
+        expect.objectContaining({ httpOnly: true }),
+      );
       expect(res.access_token).toBeDefined();
-      expect(res.refresh_token).toBeDefined();
+      expect((res as any).refresh_token).toBeUndefined();
     });
   });
 
   describe('refresh', () => {
-    it('유효한 refresh_token → 새 토큰 반환', async () => {
-      const dto = { refresh_token: 'valid.refresh.token' };
+    it('쿠키에서 유효한 refresh_token → 새 토큰 반환', async () => {
+      const mockReq = createMockRequest({ refresh_token: 'valid.refresh.token' });
+      const mockRes = createMockResponse();
       const mockResult = {
         user: mockUser,
         access_token: 'new.access.token',
@@ -132,25 +157,44 @@ describe('AuthController', () => {
       };
       mockAuthService.refresh.mockResolvedValue(mockResult);
 
-      const res = await controller.refresh(dto);
+      const res = await controller.refresh(mockReq as Request, mockRes as Response);
 
       expect(mockAuthService.refresh).toHaveBeenCalledWith('valid.refresh.token');
+      expect(mockRes.cookie).toHaveBeenCalledWith(
+        'refresh_token',
+        'new.refresh.token',
+        expect.objectContaining({ httpOnly: true }),
+      );
       expect(res.access_token).toBeDefined();
-      expect(res.refresh_token).toBeDefined();
+      expect((res as any).refresh_token).toBeUndefined();
+    });
+
+    it('쿠키에 refresh_token 없으면 → UnauthorizedException', async () => {
+      const mockReq = createMockRequest({}); // 쿠키 없음
+      const mockRes = createMockResponse();
+
+      await expect(controller.refresh(mockReq as Request, mockRes as Response))
+        .rejects.toBeInstanceOf(UnauthorizedException);
+
+      expect(mockAuthService.refresh).not.toHaveBeenCalled();
     });
   });
 
   describe('logout', () => {
-    it('로그아웃 성공 → 성공 메시지 반환', async () => {
+    it('로그아웃 성공 → 쿠키 삭제 & 성공 메시지 반환', async () => {
       const mockReq = { user: { userId: 1 } };
+      const mockRes = createMockResponse();
       const mockResult = { message: '로그아웃 되었습니다.' };
       mockAuthService.logout.mockResolvedValue(mockResult);
 
-      const res = await controller.logout(mockReq);
+      const res = await controller.logout(mockReq, mockRes as Response);
 
       expect(mockAuthService.logout).toHaveBeenCalledWith(1);
+      expect(mockRes.clearCookie).toHaveBeenCalledWith(
+        'refresh_token',
+        expect.objectContaining({ httpOnly: true }),
+      );
       expect(res.message).toBe('로그아웃 되었습니다.');
     });
   });
 });
-
