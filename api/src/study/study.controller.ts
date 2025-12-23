@@ -18,7 +18,10 @@ import {
   FileTypeValidator,
   UseGuards,
   Req,
+  Res,
+  StreamableFile,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { StudyService } from './study.service';
 
@@ -332,6 +335,24 @@ export class StudyController {
     @Param('resourceId', ParseIntPipe) resourceId: number,
   ): Promise<SuccessResponseDto> {
     return this.studyService.deleteResource(id, resourceId);
+  }
+
+  /**
+   * @description Downloads a specific resource file from a study. (Admin/Leader/Member only)
+   * @param id The ID of the study.
+   * @param resourceId The ID of the resource to download.
+   * @param res The Express response object.
+   * @returns A StreamableFile of the resource.
+   */
+  @Get(':id/resources/:resourceId/download')
+  @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
+  @StudyRoles(StudyMemberRole.LEADER, StudyMemberRole.MEMBER)
+  async downloadResource(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('resourceId', ParseIntPipe) resourceId: number,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    return this.studyService.downloadResource(id, resourceId, res);
   }
 
   /**
