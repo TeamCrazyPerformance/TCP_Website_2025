@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull, LessThan } from 'typeorm';
 import { Study } from './entities/study.entity';
 import { User } from '../members/entities/user.entity';
 import { StudyMember } from './entities/study-member.entity';
@@ -560,9 +560,9 @@ export class StudyService {
       throw new NotFoundException('Study not found');
     }
 
-    // 2. Find all resource entries that are linked to this study ID.
+    // 2. Find all resource entries that are linked to this study ID and not deleted.
     const resources = await this.resourceRepository.find({
-      where: { study_id: { id: studyId } },
+      where: { study_id: { id: studyId }, deleted_at: IsNull() },
     });
 
     // 3. Map the array of Resource entities to the response DTO format.
@@ -611,7 +611,8 @@ export class StudyService {
   }
 
   /**
-   * @description Deletes a specific resource from a study. (Admin/Leader only)
+   * @description Soft deletes a specific resource from a study. (Admin/Leader only)
+   * The actual file will be deleted after 7 days by a scheduled cleanup job.
    * @param studyId The ID of the study.
    * @param resourceId The ID of the resource to delete.
    * @returns A promise that resolves to a DTO indicating success.
@@ -620,19 +621,25 @@ export class StudyService {
     studyId: number,
     resourceId: number,
   ): Promise<SuccessResponseDto> {
-    // 1. Attempt to delete the resource that matches both IDs.
-    // This single query validates that the resource belongs to the study.
-    const deleteResult = await this.resourceRepository.delete({
-      id: resourceId,
-      study_id: { id: studyId },
+    // 1. Find the resource that matches both IDs and is not already deleted.
+    const resource = await this.resourceRepository.findOne({
+      where: {
+        id: resourceId,
+        study_id: { id: studyId },
+        deleted_at: IsNull(),
+      },
     });
 
-    // 2. If no rows were affected, the resource was not found.
-    if (deleteResult.affected === 0) {
+    // 2. If no resource was found, throw not found exception.
+    if (!resource) {
       throw new NotFoundException(
         `Resource with ID "${resourceId}" not found in study with ID "${studyId}"`,
       );
     }
+
+    // 3. Soft delete by setting deleted_at timestamp.
+    resource.deleted_at = new Date();
+    await this.resourceRepository.save(resource);
 
     return { success: true };
   }
@@ -649,9 +656,9 @@ export class StudyService {
     resourceId: number,
     res: Response,
   ): Promise<StreamableFile> {
-    // 1. Find the resource that matches both IDs.
+    // 1. Find the resource that matches both IDs and is not deleted.
     const resource = await this.resourceRepository.findOne({
-      where: { id: resourceId, study_id: { id: studyId } },
+      where: { id: resourceId, study_id: { id: studyId }, deleted_at: IsNull() },
     });
 
     if (!resource) {

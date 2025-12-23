@@ -291,16 +291,24 @@ describe('StudyService', () => {
   });
 
   describe('deleteResource', () => {
-    it('should delete resource successfully', async () => {
-      mockResourceRepository.delete.mockResolvedValue({ affected: 1, raw: {} });
+    it('should soft delete resource successfully', async () => {
+      const mockResource = {
+        id: 1,
+        name: 'test.pdf',
+        dir_path: '/uploads/test.pdf',
+        deleted_at: null,
+      };
+      mockResourceRepository.findOne.mockResolvedValue(mockResource);
+      mockResourceRepository.save.mockResolvedValue({ ...mockResource, deleted_at: new Date() });
 
       const result = await service.deleteResource(1, 1);
 
       expect(result).toEqual({ success: true });
+      expect(mockResourceRepository.save).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException for non-existent resource', async () => {
-      mockResourceRepository.delete.mockResolvedValue({ affected: 0, raw: {} });
+      mockResourceRepository.findOne.mockResolvedValue(null);
 
       await expect(service.deleteResource(1, 999)).rejects.toThrow(
         NotFoundException,

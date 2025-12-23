@@ -29,6 +29,9 @@ export class Resource {
   @UpdateDateColumn()
   updated_at: Date;
 
+  @Column({ type: 'timestamp', nullable: true, default: null })
+  deleted_at: Date | null;
+
   @ManyToOne(() => Study, (study) => study.resources)
   @JoinColumn({ name: 'study_id' })
   study_id: Study;

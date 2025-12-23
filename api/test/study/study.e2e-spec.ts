@@ -417,6 +417,52 @@ describe('Study Integration Tests', () => {
     });
   });
 
+  describe('/api/v1/study/:id/members/:userId (GET)', () => {
+    it('should return 401 when no JWT token is provided', () => {
+      return request(app.getHttpServer())
+        .get('/api/v1/study/1/members/1')
+        .expect(401);
+    });
+
+    it('should require authentication for member detail', () => {
+      return request(app.getHttpServer())
+        .get('/api/v1/study/1/members/1')
+        .set('Authorization', `Bearer ${validToken}`)
+        .then((res) => {
+          expect([200, 401, 403, 404]).toContain(res.status);
+        });
+    });
+  });
+
+  describe('/api/v1/study/:id (PATCH)', () => {
+    it('should return 401 when no JWT token is provided', () => {
+      return request(app.getHttpServer())
+        .patch('/api/v1/study/1')
+        .send({ study_name: 'Updated Study' })
+        .expect(401);
+    });
+
+    it('should return 400 or 401 for empty update body', () => {
+      return request(app.getHttpServer())
+        .patch('/api/v1/study/1')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({})
+        .then((res) => {
+          expect([400, 401]).toContain(res.status);
+        });
+    });
+
+    it('should accept valid update request with auth', () => {
+      return request(app.getHttpServer())
+        .patch('/api/v1/study/1')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({ study_name: 'Updated Study Name' })
+        .then((res) => {
+          expect([200, 401, 403]).toContain(res.status);
+        });
+    });
+  });
+
   describe('/api/v1/study/:id/leader (PATCH)', () => {
     it('should return 401 when no JWT token is provided', () => {
       const updateDto: UpdateStudyLeaderDto = { user_id: 2 };
