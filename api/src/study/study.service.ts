@@ -1,10 +1,13 @@
 import * as path from 'path';
+import * as fs from 'fs';
 import {
   BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
+  StreamableFile,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Study } from './entities/study.entity';
@@ -632,6 +635,47 @@ export class StudyService {
     }
 
     return { success: true };
+  }
+
+  /**
+   * @description Downloads a specific resource file from a study. (Admin/Leader/Member only)
+   * @param studyId The ID of the study.
+   * @param resourceId The ID of the resource to download.
+   * @param res The Express response object to set headers.
+   * @returns A StreamableFile of the resource.
+   */
+  async downloadResource(
+    studyId: number,
+    resourceId: number,
+    res: Response,
+  ): Promise<StreamableFile> {
+    // 1. Find the resource that matches both IDs.
+    const resource = await this.resourceRepository.findOne({
+      where: { id: resourceId, study_id: { id: studyId } },
+    });
+
+    if (!resource) {
+      throw new NotFoundException(
+        `Resource with ID "${resourceId}" not found in study with ID "${studyId}"`,
+      );
+    }
+
+    // 2. Verify that the file exists on the filesystem.
+    if (!fs.existsSync(resource.dir_path)) {
+      throw new NotFoundException('Resource file not found on server');
+    }
+
+    // 3. Create a read stream for the file.
+    const fileStream = fs.createReadStream(resource.dir_path);
+
+    // 4. Set response headers for file download.
+    res.set({
+      'Content-Type': 'application/octet-stream',
+      'Content-Disposition': `attachment; filename="${encodeURIComponent(resource.name)}"`,
+    });
+
+    // 5. Return the file as a StreamableFile.
+    return new StreamableFile(fileStream);
   }
 
   /**
