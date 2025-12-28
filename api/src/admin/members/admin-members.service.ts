@@ -1,43 +1,74 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { User } from '../../members/entities/user.entity';
-import { UpdateMemberDto } from './dto/update-member.dto';
+import { AdminUpdateMemberDto } from './dto/admin-update-member.dto';
 
 @Injectable()
 export class AdminMembersService {
-    constructor(
-      @InjectRepository(User)
-      private readonly userRepository: Repository<User>,
-    ) {}    
-    
-    async search(type: string, word: string): Promise<User[]> {
-      const query = this.userRepository.createQueryBuilder('user');
-    
-      if (type === 'tech_stack') {
-        return query
-          .where(':word = ANY(user.tech_stack)', { word })
-          .getMany();
-      } else {
-        return query
-          .where(`user.${type} ILIKE :word`, { word: `%${word}%` })
-          .getMany();
-      }
+  constructor(
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+  ) {}
+
+  // 관리자용 멤버 전체 조회 (soft delete 된 멤버는 제외)
+  async findAllMembers() {
+    return this.userRepository.find({
+      where: {
+        deleted_at: IsNull(),
+      },
+      select: [
+        'id',
+        'username',
+        'name',
+        'student_number',
+        'profile_image',
+        'email',
+        'role',
+        'join_year',
+        'tech_stack',
+        'education_status',
+        'created_at',
+      ],
+      order: {
+        name: 'ASC',
+      },
+    });
+  }
+
+  async updateMember(id: number, dto: AdminUpdateMemberDto) {
+    const user = await this.userRepository.findOne({
+      where: {
+        id,
+        deleted_at: IsNull(),
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('존재하지 않거나 삭제된 회원입니다.');
     }
 
-    async update(id: number, updateDto: UpdateMemberDto): Promise<User>{
-      await this.userRepository.update(id, updateDto);
-      const updatedUser = await this.userRepository.findOneBy({id});  
-      if (!updatedUser) {
-      throw new NotFoundException(`User with ID ${id} not found`);
-    } 
-    return updatedUser;
-    } 
+    Object.assign(user, dto);
 
-    async remove(id: number): Promise<void>{
-      const result = await this.userRepository.delete(id);
-      if (result.affected === 0) {
-      throw new NotFoundException(`User with ID ${id} not found`);
-      }
+    return this.userRepository.save(user);
+  }
+
+  // 관리자용 멤버 삭제 (Soft Delete)
+   async deleteMember(id: number): Promise<void> {
+    const user = await this.userRepository.findOne({
+      where: {
+        id,
+        deleted_at: IsNull(),
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('존재하지 않거나 이미 삭제된 회원입니다.');
     }
+
+    await this.userRepository.softRemove(user);
+  }
 }
