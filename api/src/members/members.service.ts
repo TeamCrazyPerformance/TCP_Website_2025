@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { PublicUserDto } from './dto/public-user.dto';
+import { IsNull } from 'typeorm';
 
 @Injectable()
 export class MembersService {
@@ -12,7 +13,9 @@ export class MembersService {
     ) {}
 
     async getPublicMemberList(): Promise<PublicUserDto[]> {
-      const users = await this.userRepository.find();
+      const users = await this.userRepository.find({
+        where: { deleted_at: IsNull() },
+      });
       return users.map((user) => ({
         name: user.name,
         profile_image: user.profile_image,
