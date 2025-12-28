@@ -41,19 +41,21 @@ export class AdminMembersService {
 
   async updateMember(id: number, dto: AdminUpdateMemberDto) {
     const user = await this.userRepository.findOne({
-      where: {
-        id,
-        deleted_at: IsNull(),
-      },
+      where: { id,deleted_at: IsNull() },
     });
 
     if (!user) {
       throw new NotFoundException('존재하지 않거나 삭제된 회원입니다.');
     }
 
-    Object.assign(user, dto);
+    await this.userRepository.update(
+      { id, deleted_at: IsNull() },
+      dto,
+    );
 
-    return this.userRepository.save(user);
+    return this.userRepository.findOne({
+      where: { id, deleted_at: IsNull() },
+    });
   }
 
   // 관리자용 멤버 삭제 (Soft Delete)
