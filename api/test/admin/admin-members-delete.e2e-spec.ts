@@ -29,7 +29,7 @@ describe('DELETE /api/v1/admin/members/:id (e2e)', () => {
     dataSource = moduleFixture.get(DataSource);
     userRepository = dataSource.getRepository(User);
 
-    await dataSource.query(`TRUNCATE TABLE "user" RESTART IDENTITY CASCADE;`);
+    await dataSource.query(`TRUNCATE TABLE refresh_token, "user" RESTART IDENTITY CASCADE;`);
 
     // --- 관리자 계정 생성 ---
     const adminRes = await request(app.getHttpServer())
@@ -104,7 +104,7 @@ describe('DELETE /api/v1/admin/members/:id (e2e)', () => {
   });
 
   afterAll(async () => {
-    await dataSource.query(`TRUNCATE TABLE "user" RESTART IDENTITY CASCADE;`);
+    await dataSource.query(`TRUNCATE TABLE refresh_token, "user" RESTART IDENTITY CASCADE;`);
     await app.close();
   });
 
@@ -136,7 +136,7 @@ describe('DELETE /api/v1/admin/members/:id (e2e)', () => {
       .delete(`/api/v1/admin/members/${testUser.id}`)
       .set('Authorization', `Bearer ${adminToken}`);
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(204);
 
     // Soft delete 확인 - deleted_at이 설정되었는지 확인
     const deleted = await userRepository.findOne({
@@ -215,7 +215,7 @@ describe('DELETE /api/v1/admin/members/:id (e2e)', () => {
       .delete(`/api/v1/admin/members/${testUser.id}`)
       .set('Authorization', `Bearer ${adminToken}`);
 
-    expect(firstRes.status).toBe(200);
+    expect(firstRes.status).toBe(204);
 
     // 두 번째 삭제 시도
     const secondRes = await request(app.getHttpServer())

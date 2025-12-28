@@ -29,12 +29,12 @@ describe('GET /api/v1/admin/members (e2e)', () => {
   });
 
   afterAll(async () => {
-    await dataSource.query(`TRUNCATE TABLE "user" RESTART IDENTITY CASCADE;`);
+    await dataSource.query(`TRUNCATE TABLE refresh_token, "user" RESTART IDENTITY CASCADE;`);
     await app.close();
   });
 
   beforeEach(async () => {
-    await dataSource.query(`TRUNCATE TABLE "user" RESTART IDENTITY CASCADE;`);
+    await dataSource.query(`TRUNCATE TABLE refresh_token, "user" RESTART IDENTITY CASCADE;`);
 
     // --- 관리자 계정 생성 ---
     const adminRes = await request(app.getHttpServer())
