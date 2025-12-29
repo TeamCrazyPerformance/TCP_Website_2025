@@ -1,12 +1,12 @@
 import * as request from 'supertest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import { AppModule } from '../../src/app.module';
+import { AppModule } from '../../../src/app.module';
 import { DataSource } from 'typeorm';
-import { User } from '../../src/members/entities/user.entity';
-import { UserGender } from '../../src/members/entities/enums/user-gender.enum';
-import { EducationStatus } from '../../src/members/entities/enums/education-status.enum';
-import { UserRole } from '../../src/members/entities/enums/user-role.enum';
+import { User } from '../../../src/members/entities/user.entity';
+import { UserGender } from '../../../src/members/entities/enums/user-gender.enum';
+import { EducationStatus } from '../../../src/members/entities/enums/education-status.enum';
+import { UserRole } from '../../../src/members/entities/enums/user-role.enum';
 
 describe('PATCH /api/v1/admin/members/:id (e2e)', () => {
   let app: INestApplication;
