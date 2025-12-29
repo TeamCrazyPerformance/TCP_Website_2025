@@ -5,6 +5,7 @@ import {
   OneToMany,
   CreateDateColumn,
   UpdateDateColumn,
+  DeleteDateColumn,
 } from 'typeorm';
 import { EducationStatus } from './enums/education-status.enum';
 import { UserGender } from './enums/user-gender.enum';
@@ -107,6 +108,9 @@ export class User {
 
   @UpdateDateColumn()
   updated_at: Date;
+
+  @DeleteDateColumn()
+  deleted_at: Date | null;
 
   @OneToMany(() => Announcement, (announcement) => announcement.author)
   announcements: Announcement[];

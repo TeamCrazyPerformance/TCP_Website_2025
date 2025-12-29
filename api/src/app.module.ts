@@ -7,12 +7,16 @@ import { AdminMembersModule } from './admin/members/admin-members.module';
 import { AnnouncementModule } from './announcement/announcement.module';
 import { TeamsModule } from './teams/teams.module';
 import { StudyModule } from './study/study.module';
+import { ActivityImagesModule } from './admin/activity-images/activity-images.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { JobsModule } from './jobs/jobs.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ScheduleModule.forRoot(),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -33,6 +37,8 @@ import { StudyModule } from './study/study.module';
     AnnouncementModule,
     TeamsModule,
     StudyModule,
+    ActivityImagesModule,
+    JobsModule,
   ],
 })
 export class AppModule {}
