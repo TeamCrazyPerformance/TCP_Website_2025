@@ -7,6 +7,7 @@ import { AdminMembersModule } from './admin/members/admin-members.module';
 import { AnnouncementModule } from './announcement/announcement.module';
 import { TeamsModule } from './teams/teams.module';
 import { StudyModule } from './study/study.module';
+import { ActivityImagesModule } from './admin/activity-images/activity-images.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { StudyModule } from './study/study.module';
     AnnouncementModule,
     TeamsModule,
     StudyModule,
+    ActivityImagesModule,
   ],
 })
 export class AppModule {}
