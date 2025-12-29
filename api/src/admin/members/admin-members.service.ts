@@ -12,7 +12,7 @@ export class AdminMembersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-  ) {}
+  ) { }
 
   // 관리자용 멤버 전체 조회 (soft delete 된 멤버는 제외)
   async findAllMembers() {
@@ -39,9 +39,9 @@ export class AdminMembersService {
     });
   }
 
-  async updateMember(id: number, dto: AdminUpdateMemberDto) {
+  async updateMember(id: string, dto: AdminUpdateMemberDto) {
     const user = await this.userRepository.findOne({
-      where: { id,deleted_at: IsNull() },
+      where: { id, deleted_at: IsNull() },
     });
 
     if (!user) {
@@ -59,7 +59,7 @@ export class AdminMembersService {
   }
 
   // 관리자용 멤버 삭제 (Soft Delete)
-   async deleteMember(id: number): Promise<void> {
+  async deleteMember(id: string): Promise<void> {
     const user = await this.userRepository.findOne({
       where: {
         id,

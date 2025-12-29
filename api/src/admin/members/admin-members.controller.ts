@@ -5,7 +5,7 @@ import {
   Patch,
   Delete,
   Body,
-  ParseIntPipe,
+  ParseUUIDPipe,
   UseGuards,
 } from '@nestjs/common';
 import { AdminMembersService } from './admin-members.service';
@@ -20,7 +20,7 @@ import { HttpCode } from '@nestjs/common/decorators/http/http-code.decorator';
 @Roles(UserRole.ADMIN)
 @Controller('api/v1/admin/members')
 export class AdminMembersController {
-  constructor(private readonly adminMembersService: AdminMembersService) {}
+  constructor(private readonly adminMembersService: AdminMembersService) { }
 
   @Get()
   findAllMembers() {
@@ -29,7 +29,7 @@ export class AdminMembersController {
 
   @Patch(':id')
   updateMember(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AdminUpdateMemberDto,
   ) {
     return this.adminMembersService.updateMember(id, dto);
@@ -37,7 +37,7 @@ export class AdminMembersController {
 
   @Delete(':id')
   @HttpCode(204)
-  deleteMember(@Param('id', ParseIntPipe) id: number) {
+  deleteMember(@Param('id', ParseUUIDPipe) id: string) {
     return this.adminMembersService.deleteMember(id);
   }
 }

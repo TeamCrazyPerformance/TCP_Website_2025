@@ -6,6 +6,7 @@ import {
   ValidationPipe,
   Param,
   ParseIntPipe,
+  ParseUUIDPipe,
   Post,
   Body,
   HttpCode,
@@ -137,7 +138,7 @@ export class StudyController {
   @StudyRoles(StudyMemberRole.LEADER)
   async findMemberDetail(
     @Param('id', ParseIntPipe) id: number,
-    @Param('userId', ParseIntPipe) userId: number,
+    @Param('userId', ParseUUIDPipe) userId: string,
   ): Promise<StudyMemberDetailResponseDto> {
     return this.studyService.findMemberDetailByStudyId(id, userId);
   }
@@ -209,7 +210,7 @@ export class StudyController {
   @StudyRoles(StudyMemberRole.LEADER)
   async removeMember(
     @Param('id', ParseIntPipe) id: number,
-    @Param('userId', ParseIntPipe) userId: number,
+    @Param('userId', ParseUUIDPipe) userId: string,
   ): Promise<SuccessResponseDto> {
     return await this.studyService.removeMember(id, userId);
   }
@@ -401,7 +402,7 @@ export class StudyController {
   @StudyRoles(StudyMemberRole.LEADER)
   async approveMember(
     @Param('id', ParseIntPipe) id: number,
-    @Param('userId', ParseIntPipe) userId: number,
+    @Param('userId', ParseUUIDPipe) userId: string,
   ): Promise<SuccessResponseDto> {
     return this.studyService.approveMember(id, userId);
   }

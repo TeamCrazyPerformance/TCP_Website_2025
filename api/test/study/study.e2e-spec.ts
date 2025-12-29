@@ -371,7 +371,7 @@ describe('Study Integration Tests', () => {
         study_name: 'New Study',
         start_year: 2025,
         study_description: 'New study description',
-        leader_id: 1,
+        leader_id: 'test-uuid-1',
         apply_deadline: '2025-12-31',
       };
 
@@ -465,7 +465,7 @@ describe('Study Integration Tests', () => {
 
   describe('/api/v1/study/:id/leader (PATCH)', () => {
     it('should return 401 when no JWT token is provided', () => {
-      const updateDto: UpdateStudyLeaderDto = { user_id: 2 };
+      const updateDto: UpdateStudyLeaderDto = { user_id: 'test-uuid-2' };
 
       return request(app.getHttpServer())
         .patch('/api/v1/study/1/leader')
@@ -487,7 +487,7 @@ describe('Study Integration Tests', () => {
   describe('/api/v1/study/:id/members (POST)', () => {
     it('should return 401 when no JWT token is provided', () => {
       const addMemberDto: AddStudyMemberDto = {
-        user_id: 1,
+        user_id: 'test-uuid-1',
         role: StudyMemberRole.MEMBER,
       };
 

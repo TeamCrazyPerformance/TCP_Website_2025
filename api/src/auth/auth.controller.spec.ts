@@ -18,7 +18,7 @@ describe('AuthController', () => {
   };
 
   const mockUser = {
-    id: 1,
+    id: 'test-uuid-user-1',
     username: 'stce01',
     name: '홍길동',
     email: 'stce01@example.com',
@@ -182,14 +182,15 @@ describe('AuthController', () => {
 
   describe('logout', () => {
     it('로그아웃 성공 → 쿠키 삭제 & 성공 메시지 반환', async () => {
-      const mockReq = { user: { userId: 1 } };
+      const mockReq = { user: { userId: 'test-uuid-user-1' } };
+      const mockExpressReq = { cookies: { refresh_token: 'test.refresh.token' } };
       const mockRes = createMockResponse();
       const mockResult = { message: '로그아웃 되었습니다.' };
       mockAuthService.logout.mockResolvedValue(mockResult);
 
-      const res = await controller.logout(mockReq, mockRes as Response);
+      const res = await controller.logout(mockReq as any, mockExpressReq as any, mockRes as Response);
 
-      expect(mockAuthService.logout).toHaveBeenCalledWith(1);
+      expect(mockAuthService.logout).toHaveBeenCalledWith('test-uuid-user-1', 'test.refresh.token');
       expect(mockRes.clearCookie).toHaveBeenCalledWith(
         'refresh_token',
         expect.objectContaining({ httpOnly: true }),

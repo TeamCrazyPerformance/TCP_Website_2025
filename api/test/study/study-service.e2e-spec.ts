@@ -138,7 +138,7 @@ describe('StudyService', () => {
         study_name: 'Test Study',
         start_year: 2025,
         study_description: 'Test Description',
-        leader_id: 999,
+        leader_id: 'non-existent-uuid',
         apply_deadline: '2025-12-31',
       };
 
@@ -169,7 +169,7 @@ describe('StudyService', () => {
       mockStudyRepository.findOneBy.mockResolvedValue(null);
 
       await expect(
-        service.addMember(999, 1, StudyMemberRole.MEMBER),
+        service.addMember(999, 'test-uuid-1', StudyMemberRole.MEMBER),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -179,13 +179,13 @@ describe('StudyService', () => {
       mockUserRepository.findOneBy.mockResolvedValue(null);
 
       await expect(
-        service.addMember(1, 999, StudyMemberRole.MEMBER),
+        service.addMember(1, 'non-existent-uuid', StudyMemberRole.MEMBER),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw ConflictException for existing member', async () => {
       const mockStudy = { id: 1, study_name: 'Test' } as Study;
-      const mockUser = { id: 1, name: 'Test User' } as User;
+      const mockUser = { id: 'test-uuid-1', name: 'Test User' } as unknown as User;
       const mockStudyMember = { id: 1, role: StudyMemberRole.MEMBER } as StudyMember;
 
       mockStudyRepository.findOneBy.mockResolvedValue(mockStudy);
@@ -193,7 +193,7 @@ describe('StudyService', () => {
       mockStudyMemberRepository.findOne.mockResolvedValue(mockStudyMember);
 
       await expect(
-        service.addMember(1, 1, StudyMemberRole.MEMBER),
+        service.addMember(1, 'test-uuid-1', StudyMemberRole.MEMBER),
       ).rejects.toThrow(ConflictException);
     });
   });
@@ -202,7 +202,7 @@ describe('StudyService', () => {
     it('should throw NotFoundException for non-existent member', async () => {
       mockStudyMemberRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.removeMember(1, 999)).rejects.toThrow(
+      await expect(service.removeMember(1, 'non-existent-uuid')).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -212,7 +212,7 @@ describe('StudyService', () => {
       mockStudyMemberRepository.findOne.mockResolvedValue(mockStudyMember);
       mockStudyMemberRepository.delete.mockResolvedValue({ affected: 1, raw: {} });
 
-      const result = await service.removeMember(1, 1);
+      const result = await service.removeMember(1, 'test-uuid-1');
 
       expect(result).toEqual({ success: true });
     });
@@ -222,21 +222,21 @@ describe('StudyService', () => {
     it('should throw NotFoundException for non-existent study', async () => {
       mockStudyRepository.findOneBy.mockResolvedValue(null);
 
-      await expect(service.applyToStudy(999, 1)).rejects.toThrow(
+      await expect(service.applyToStudy(999, 'test-uuid-1')).rejects.toThrow(
         NotFoundException,
       );
     });
 
     it('should throw ConflictException for already existing member', async () => {
       const mockStudy = { id: 1 } as Study;
-      const mockUser = { id: 1 } as User;
+      const mockUser = { id: 'test-uuid-1' } as unknown as User;
       const mockStudyMember = { id: 1 } as StudyMember;
 
       mockStudyRepository.findOneBy.mockResolvedValue(mockStudy);
       mockUserRepository.findOneBy.mockResolvedValue(mockUser);
       mockStudyMemberRepository.findOne.mockResolvedValue(mockStudyMember);
 
-      await expect(service.applyToStudy(1, 1)).rejects.toThrow(
+      await expect(service.applyToStudy(1, 'test-uuid-1')).rejects.toThrow(
         ConflictException,
       );
     });
@@ -246,7 +246,7 @@ describe('StudyService', () => {
     it('should throw NotFoundException for non-existent member', async () => {
       mockStudyMemberRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.approveMember(1, 999)).rejects.toThrow(
+      await expect(service.approveMember(1, 'non-existent-uuid')).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -255,7 +255,7 @@ describe('StudyService', () => {
       const mockStudyMember = { id: 1, role: StudyMemberRole.MEMBER } as StudyMember;
       mockStudyMemberRepository.findOne.mockResolvedValue(mockStudyMember);
 
-      await expect(service.approveMember(1, 1)).rejects.toThrow(
+      await expect(service.approveMember(1, 'test-uuid-1')).rejects.toThrow(
         BadRequestException,
       );
     });
@@ -265,7 +265,7 @@ describe('StudyService', () => {
     it('should throw NotFoundException for non-member', async () => {
       mockStudyMemberRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.leaveStudy(1, 999)).rejects.toThrow(
+      await expect(service.leaveStudy(1, 'non-existent-uuid')).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -274,7 +274,7 @@ describe('StudyService', () => {
       const mockStudyMember = { id: 1, role: StudyMemberRole.LEADER } as StudyMember;
       mockStudyMemberRepository.findOne.mockResolvedValue(mockStudyMember);
 
-      await expect(service.leaveStudy(1, 1)).rejects.toThrow(
+      await expect(service.leaveStudy(1, 'test-uuid-1')).rejects.toThrow(
         BadRequestException,
       );
     });
@@ -284,7 +284,7 @@ describe('StudyService', () => {
       mockStudyMemberRepository.findOne.mockResolvedValue(mockStudyMember);
       mockStudyMemberRepository.delete.mockResolvedValue({ affected: 1, raw: {} });
 
-      const result = await service.leaveStudy(1, 1);
+      const result = await service.leaveStudy(1, 'test-uuid-1');
 
       expect(result).toEqual({ success: true });
     });
@@ -398,7 +398,7 @@ describe('StudyService', () => {
       mockStudyMemberRepository.findOne.mockResolvedValue(null);
 
       await expect(
-        service.findMemberDetailByStudyId(1, 999),
+        service.findMemberDetailByStudyId(1, 'non-existent-uuid'),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -417,7 +417,7 @@ describe('StudyService', () => {
       };
       mockStudyMemberRepository.findOne.mockResolvedValue(mockMember);
 
-      const result = await service.findMemberDetailByStudyId(1, 1);
+      const result = await service.findMemberDetailByStudyId(1, 'test-uuid-1');
 
       expect(result.user_id).toBe(1);
       expect(result.name).toBe('Test User');
@@ -429,7 +429,7 @@ describe('StudyService', () => {
     it('should throw NotFoundException for non-existent study', async () => {
       mockStudyRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.updateLeader(999, 1)).rejects.toThrow(
+      await expect(service.updateLeader(999, 'test-uuid-1')).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -439,7 +439,7 @@ describe('StudyService', () => {
       mockStudyRepository.findOne.mockResolvedValue(mockStudy);
       mockUserRepository.findOneBy.mockResolvedValue(null);
 
-      await expect(service.updateLeader(1, 999)).rejects.toThrow(
+      await expect(service.updateLeader(1, 'non-existent-uuid')).rejects.toThrow(
         NotFoundException,
       );
     });

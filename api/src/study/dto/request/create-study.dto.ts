@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString, Min, IsDateString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, Min, IsDateString, IsUUID } from 'class-validator';
 
 export class CreateStudyDto {
   @IsString()
@@ -37,7 +37,7 @@ export class CreateStudyDto {
   @IsOptional()
   way?: string;
 
-  @IsNumber()
+  @IsUUID()
   @IsNotEmpty()
-  leader_id: number;
+  leader_id: string;
 }

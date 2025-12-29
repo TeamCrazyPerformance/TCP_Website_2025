@@ -14,7 +14,7 @@ describe('PATCH /api/v1/announcements/:id (e2e)', () => {
   let service: AnnouncementService;
   let adminToken: string;
   let userToken: string;
-  let authorId: number;
+  let authorId: string;
   let announcementId1: number; // 업데이트 검증용
   let announcementId2: number; // 빈 바디(no-op) 검증용
 
@@ -124,14 +124,14 @@ describe('PATCH /api/v1/announcements/:id (e2e)', () => {
     expect(res.status).toBe(200);
 
     const getRes = await request(app.getHttpServer())
-        .get(`/api/v1/announcements/${announcementId1}`);
+      .get(`/api/v1/announcements/${announcementId1}`);
 
     expect(getRes.status).toBe(200);
     expect(getRes.body.title).toBe('수정된 제목');
     expect(getRes.body.contents).toBe('수정된 본문');
   });
 
-  it('예약 발행일 수정 시 200 반환', async () =>{
+  it('예약 발행일 수정 시 200 반환', async () => {
     const futureDate = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(); // 2시간 뒤
     const res = await request(app.getHttpServer())
       .patch(`/api/v1/announcements/${announcementId1}`)
@@ -161,7 +161,7 @@ describe('PATCH /api/v1/announcements/:id (e2e)', () => {
     expect(after.body.title).toBe(prevTitle);
     expect(after.body.contents).toBe(prevContents);
   });
- 
+
   it('인증 없이 요청 시 401 반환', async () => {
     const res = await request(app.getHttpServer())
       .patch(`/api/v1/announcements/${announcementId1}`)

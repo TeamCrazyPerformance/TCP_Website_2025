@@ -71,7 +71,7 @@ describe('AuthService', () => {
   };
 
   const savedUser: User = {
-    id: 1,
+    id: 'test-uuid-user-1',
     username: 'stce01',
     name: '홍길동',
     email: 'stce01@example.com',
@@ -170,7 +170,7 @@ describe('AuthService', () => {
 
     it('username 중복 시 ConflictException', async () => {
       usersRepo.findOne!
-        .mockResolvedValueOnce({ id: 77 })
+        .mockResolvedValueOnce({ id: 'test-uuid-77' })
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(null);
 
@@ -180,7 +180,7 @@ describe('AuthService', () => {
     it('email 중복 시 ConflictException', async () => {
       usersRepo.findOne!
         .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ id: 88 })
+        .mockResolvedValueOnce({ id: 'test-uuid-88' })
         .mockResolvedValueOnce(null);
 
       await expect(service.register(baseDto)).rejects.toBeInstanceOf(ConflictException);
@@ -190,7 +190,7 @@ describe('AuthService', () => {
       usersRepo.findOne!
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ id: 99 });
+        .mockResolvedValueOnce({ id: 'test-uuid-99' });
 
       await expect(service.register(baseDto)).rejects.toBeInstanceOf(ConflictException);
     });
@@ -231,7 +231,7 @@ describe('AuthService', () => {
     const storedToken: RefreshToken = {
       id: 1,
       token_hash: 'hashed_refresh_token',
-      user_id: 1,
+      user_id: 'test-uuid-user-1',
       device_info: 'Chrome on Mac',
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       last_used_at: null,
@@ -240,7 +240,7 @@ describe('AuthService', () => {
     };
 
     it('유효한 refresh_token → 새 토큰 발급 (해시 비교)', async () => {
-      (jwt.verifyAsync as jest.Mock).mockResolvedValue({ sub: 1, type: 'refresh' });
+      (jwt.verifyAsync as jest.Mock).mockResolvedValue({ sub: 'test-uuid-user-1', type: 'refresh' });
       usersRepo.findOne!.mockResolvedValue(savedUser);
       refreshTokenRepo.find!.mockResolvedValue([storedToken]);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
@@ -261,7 +261,7 @@ describe('AuthService', () => {
     });
 
     it('DB에 저장된 token과 불일치 → Reuse Detection으로 세션 무효화', async () => {
-      (jwt.verifyAsync as jest.Mock).mockResolvedValue({ sub: 1, type: 'refresh' });
+      (jwt.verifyAsync as jest.Mock).mockResolvedValue({ sub: 'test-uuid-user-1', type: 'refresh' });
       usersRepo.findOne!.mockResolvedValue(savedUser);
       refreshTokenRepo.find!.mockResolvedValue([storedToken]);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
@@ -281,14 +281,14 @@ describe('AuthService', () => {
     });
 
     it('access_token으로 refresh 시도 → UnauthorizedException', async () => {
-      (jwt.verifyAsync as jest.Mock).mockResolvedValue({ sub: 1, username: 'stce01', role: 'GUEST' });
+      (jwt.verifyAsync as jest.Mock).mockResolvedValue({ sub: 'test-uuid-user-1', username: 'stce01', role: 'GUEST' });
 
       await expect(service.refresh('access.token.here'))
         .rejects.toBeInstanceOf(UnauthorizedException);
     });
 
     it('로그아웃된 사용자의 refresh_token → UnauthorizedException', async () => {
-      (jwt.verifyAsync as jest.Mock).mockResolvedValue({ sub: 1, type: 'refresh' });
+      (jwt.verifyAsync as jest.Mock).mockResolvedValue({ sub: 'test-uuid-user-1', type: 'refresh' });
       usersRepo.findOne!.mockResolvedValue(savedUser);
       // 로그아웃된 사용자는 토큰이 없음
       refreshTokenRepo.find!.mockResolvedValue([]);
@@ -298,7 +298,7 @@ describe('AuthService', () => {
     });
 
     it('사용자를 찾을 수 없음 → UnauthorizedException', async () => {
-      (jwt.verifyAsync as jest.Mock).mockResolvedValue({ sub: 999, type: 'refresh' });
+      (jwt.verifyAsync as jest.Mock).mockResolvedValue({ sub: 'non-existent-uuid', type: 'refresh' });
       usersRepo.findOne!.mockResolvedValue(null);
 
       await expect(service.refresh('valid.refresh.token'))
@@ -310,7 +310,7 @@ describe('AuthService', () => {
         ...storedToken,
         expires_at: new Date(Date.now() - 1000), // 과거 시간
       };
-      (jwt.verifyAsync as jest.Mock).mockResolvedValue({ sub: 1, type: 'refresh' });
+      (jwt.verifyAsync as jest.Mock).mockResolvedValue({ sub: 'test-uuid-user-1', type: 'refresh' });
       usersRepo.findOne!.mockResolvedValue(savedUser);
       refreshTokenRepo.find!.mockResolvedValue([expiredToken]);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
@@ -327,7 +327,7 @@ describe('AuthService', () => {
     const storedToken: RefreshToken = {
       id: 1,
       token_hash: 'hashed_refresh_token',
-      user_id: 1,
+      user_id: 'test-uuid-user-1',
       device_info: 'Chrome on Mac',
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       last_used_at: null,
@@ -339,25 +339,25 @@ describe('AuthService', () => {
       refreshTokenRepo.find!.mockResolvedValue([storedToken]);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
-      const res = await service.logout(1, 'client.refresh.token');
+      const res = await service.logout('test-uuid-user-1', 'client.refresh.token');
 
       expect(refreshTokenRepo.delete).toHaveBeenCalledWith({ id: storedToken.id });
       expect(res).toEqual({ message: '로그아웃 되었습니다.' });
     });
 
     it('refresh_token 미제공 시 → 모든 토큰 삭제 (모든 디바이스 로그아웃)', async () => {
-      const res = await service.logout(1);
+      const res = await service.logout('test-uuid-user-1');
 
-      expect(refreshTokenRepo.delete).toHaveBeenCalledWith({ user_id: 1 });
+      expect(refreshTokenRepo.delete).toHaveBeenCalledWith({ user_id: 'test-uuid-user-1' });
       expect(res).toEqual({ message: '로그아웃 되었습니다.' });
     });
   });
 
   describe('logoutAll', () => {
     it('모든 디바이스에서 로그아웃 → 모든 토큰 삭제', async () => {
-      const res = await service.logoutAll(1);
+      const res = await service.logoutAll('test-uuid-user-1');
 
-      expect(refreshTokenRepo.delete).toHaveBeenCalledWith({ user_id: 1 });
+      expect(refreshTokenRepo.delete).toHaveBeenCalledWith({ user_id: 'test-uuid-user-1' });
       expect(res).toEqual({ message: '모든 기기에서 로그아웃 되었습니다.' });
     });
   });
