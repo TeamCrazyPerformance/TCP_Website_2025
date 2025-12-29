@@ -36,16 +36,16 @@ export class ActivityImagesController {
     },
 
     @Body()
-    body: {
+    body?: {
       removeCompetition?: string;
       removeStudy?: string;
       removeMt?: string;
     },
   ) {
     await this.service.save(files, {
-      competition: body.removeCompetition === 'true',
-      study: body.removeStudy === 'true',
-      mt: body.removeMt === 'true',
+      competition: body?.removeCompetition === 'true',
+      study: body?.removeStudy === 'true',
+      mt: body?.removeMt === 'true',
     });
 
     return { message: '활동 사진 저장 완료' };

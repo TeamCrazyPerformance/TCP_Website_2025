@@ -15,12 +15,12 @@ export class ActivityImagesService {
       competition?: Express.Multer.File[];
       study?: Express.Multer.File[];
       mt?: Express.Multer.File[];
-    },
+    } = {},
     removeFlags: {
       competition?: boolean;
       study?: boolean;
       mt?: boolean;
-    },
+    } = {},
   ) {
     this.ensureDir();
 
