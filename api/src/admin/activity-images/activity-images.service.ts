@@ -43,6 +43,35 @@ export class ActivityImagesService {
     );
   }
 
+  getAll(): {
+    competition: string | null;
+    study: string | null;
+    mt: string | null;
+  } {
+    return {
+      competition: this.getImageUrl('competition.jpg'),
+      study: this.getImageUrl('study.jpg'),
+      mt: this.getImageUrl('mt.jpg'),
+    };
+  }
+
+  private getImageUrl(filename: string): string | null {
+    const filePath = path.join(this.basePath, filename);
+    if (fs.existsSync(filePath)) {
+      return `/activities/${filename}`;
+    }
+    return null;
+  }
+
+  delete(type: 'competition' | 'study' | 'mt') {
+    const filename = `${type}.jpg`;
+    const filePath = path.join(this.basePath, filename);
+
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  }
+
   private ensureDir() {
     if (!fs.existsSync(this.basePath)) {
       fs.mkdirSync(this.basePath, { recursive: true });

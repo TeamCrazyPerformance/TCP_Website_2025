@@ -1,10 +1,14 @@
 import {
   Controller,
   Post,
+  Get,
+  Delete,
+  Param,
   UseGuards,
   UseInterceptors,
   UploadedFiles,
   Body,
+  BadRequestException,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -17,7 +21,12 @@ import { ActivityImagesService } from './activity-images.service';
 @Roles(UserRole.ADMIN)
 @Controller('/api/v1/admin/activity-images')
 export class ActivityImagesController {
-  constructor(private readonly service: ActivityImagesService) {}
+  constructor(private readonly service: ActivityImagesService) { }
+
+  @Get()
+  getAll() {
+    return this.service.getAll();
+  }
 
   @Post()
   @UseInterceptors(
@@ -49,5 +58,17 @@ export class ActivityImagesController {
     });
 
     return { message: '활동 사진 저장 완료' };
+  }
+
+  @Delete(':type')
+  delete(@Param('type') type: string) {
+    if (!['competition', 'study', 'mt'].includes(type)) {
+      throw new BadRequestException(
+        'type은 competition, study, mt 중 하나여야 합니다.',
+      );
+    }
+
+    this.service.delete(type as 'competition' | 'study' | 'mt');
+    return { message: `${type} 사진 삭제 완료` };
   }
 }
