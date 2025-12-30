@@ -146,7 +146,7 @@ describe('StudyController', () => {
         study_name: 'New Study',
         start_year: 2025,
         study_description: 'New Description',
-        leader_id: 1,
+        leader_id: 'test-uuid-1',
         apply_deadline: '2025-12-31',
       };
       const mockResponse = { success: true, id: 1 };
@@ -206,13 +206,13 @@ describe('StudyController', () => {
 
   describe('updateLeader', () => {
     it('should update study leader', async () => {
-      const updateDto: UpdateStudyLeaderDto = { user_id: 2 };
+      const updateDto: UpdateStudyLeaderDto = { user_id: 'test-uuid-2' };
       const mockResponse = { success: true };
       mockStudyService.updateLeader.mockResolvedValue(mockResponse);
 
       const result = await controller.updateLeader(1, updateDto);
 
-      expect(mockStudyService.updateLeader).toHaveBeenCalledWith(1, 2);
+      expect(mockStudyService.updateLeader).toHaveBeenCalledWith(1, 'test-uuid-2');
       expect(result).toEqual(mockResponse);
     });
 
@@ -226,7 +226,7 @@ describe('StudyController', () => {
   describe('addMember', () => {
     it('should add a member to study', async () => {
       const addMemberDto: AddStudyMemberDto = {
-        user_id: 3,
+        user_id: 'test-uuid-3',
         role: StudyMemberRole.MEMBER,
       };
       const mockResponse = { success: true };
@@ -234,7 +234,7 @@ describe('StudyController', () => {
 
       const result = await controller.addMember(1, addMemberDto);
 
-      expect(mockStudyService.addMember).toHaveBeenCalledWith(1, 3, StudyMemberRole.MEMBER);
+      expect(mockStudyService.addMember).toHaveBeenCalledWith(1, 'test-uuid-3', StudyMemberRole.MEMBER);
       expect(result).toEqual(mockResponse);
     });
 
@@ -250,9 +250,9 @@ describe('StudyController', () => {
       const mockResponse = { success: true };
       mockStudyService.removeMember.mockResolvedValue(mockResponse);
 
-      const result = await controller.removeMember(1, 2);
+      const result = await controller.removeMember(1, 'test-uuid-2');
 
-      expect(mockStudyService.removeMember).toHaveBeenCalledWith(1, 2);
+      expect(mockStudyService.removeMember).toHaveBeenCalledWith(1, 'test-uuid-2');
       expect(result).toEqual(mockResponse);
     });
 
@@ -509,9 +509,9 @@ describe('StudyController', () => {
       };
       mockStudyService.findMemberDetailByStudyId.mockResolvedValue(mockMemberDetail);
 
-      const result = await controller.findMemberDetail(1, 1);
+      const result = await controller.findMemberDetail(1, 'test-uuid-1');
 
-      expect(mockStudyService.findMemberDetailByStudyId).toHaveBeenCalledWith(1, 1);
+      expect(mockStudyService.findMemberDetailByStudyId).toHaveBeenCalledWith(1, 'test-uuid-1');
       expect(result).toEqual(mockMemberDetail);
     });
 
@@ -546,9 +546,9 @@ describe('StudyController', () => {
       const mockResponse = { success: true };
       mockStudyService.approveMember.mockResolvedValue(mockResponse);
 
-      const result = await controller.approveMember(1, 2);
+      const result = await controller.approveMember(1, 'test-uuid-2');
 
-      expect(mockStudyService.approveMember).toHaveBeenCalledWith(1, 2);
+      expect(mockStudyService.approveMember).toHaveBeenCalledWith(1, 'test-uuid-2');
       expect(result).toEqual(mockResponse);
     });
 

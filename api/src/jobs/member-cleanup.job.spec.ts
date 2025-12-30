@@ -42,7 +42,7 @@ describe('MemberCleanupJob (unit)', () => {
   });
 
   it('30일 지난 soft delete 유저를 hard delete 한다', async () => {
-    const expiredUser = { id: 1 } as User;
+    const expiredUser = { id: 'test-uuid-1' } as User;
     mockFind.mockResolvedValue([expiredUser]);
     mockRemove.mockResolvedValue([expiredUser]);
 
@@ -51,10 +51,10 @@ describe('MemberCleanupJob (unit)', () => {
     // find가 올바른 조건으로 호출되었는지 검증
     expect(mockFind).toHaveBeenCalledTimes(1);
     const callArgs = mockFind.mock.calls[0][0];
-    
+
     expect(callArgs.withDeleted).toBe(true);
     expect(callArgs.where.deleted_at).toBeDefined();
-    
+
     // 날짜 계산이 정확한지 검증
     const actualCondition = callArgs.where.deleted_at;
     expect(actualCondition).toBeInstanceOf(FindOperator);

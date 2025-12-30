@@ -1,9 +1,9 @@
 import { UserRole } from '../../members/entities/enums/user-role.enum';
-export type JwtPayload = { sub: number; username: string; role: UserRole };
-export type RefreshPayload = { sub: number; type: 'refresh' };
+export type JwtPayload = { sub: string; username: string; role: UserRole };
+export type RefreshPayload = { sub: string; type: 'refresh' };
 
 export type SanitizedUser = {
-  id: number;
+  id: string;
   username: string;
   name: string;
   email: string;

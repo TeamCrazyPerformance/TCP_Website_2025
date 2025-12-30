@@ -279,7 +279,7 @@ export class StudyService {
    */
   async findMemberDetailByStudyId(
     studyId: number,
-    userId: number,
+    userId: string,
   ): Promise<StudyMemberDetailResponseDto> {
     // 1. Find the specific study member
     const studyMember = await this.studyMemberRepository.findOne({
@@ -314,7 +314,7 @@ export class StudyService {
    */
   async updateLeader(
     studyId: number,
-    newLeaderId: number,
+    newLeaderId: string,
   ): Promise<SuccessResponseDto> {
     // 1. Find the study and the user who will be the new leader.
     const study = await this.studyRepository.findOne({
@@ -357,7 +357,7 @@ export class StudyService {
    */
   async addMember(
     studyId: number,
-    userId: number,
+    userId: string,
     role: StudyMemberRole,
   ): Promise<SuccessResponseDto> {
     // 1. Find the parent study and the user to be added to ensure they both exist.
@@ -396,7 +396,7 @@ export class StudyService {
    */
   async removeMember(
     studyId: number,
-    userId: number,
+    userId: string,
   ): Promise<SuccessResponseDto> {
     // 1. Find the specific StudyMember that links the user to the study.
     const memberToRemove = await this.studyMemberRepository.findOne({
@@ -727,7 +727,7 @@ export class StudyService {
    */
   async applyToStudy(
     studyId: number,
-    userId: number,
+    userId: string,
   ): Promise<SuccessResponseDto> {
     // 1. Find the study to ensure it exists
     const study = await this.studyRepository.findOneBy({ id: studyId });
@@ -768,7 +768,7 @@ export class StudyService {
    */
   async approveMember(
     studyId: number,
-    userId: number,
+    userId: string,
   ): Promise<SuccessResponseDto> {
     // 1. Find the study member entry
     const studyMember = await this.studyMemberRepository.findOne({
@@ -803,7 +803,7 @@ export class StudyService {
    */
   async leaveStudy(
     studyId: number,
-    userId: number,
+    userId: string,
   ): Promise<SuccessResponseDto> {
     // 1. Find the study member entry
     const studyMember = await this.studyMemberRepository.findOne({

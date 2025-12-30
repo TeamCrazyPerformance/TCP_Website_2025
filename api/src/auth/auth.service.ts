@@ -179,7 +179,7 @@ export class AuthService {
     }
   }
 
-  async logout(userId: number, refreshToken?: string) {
+  async logout(userId: string, refreshToken?: string) {
     if (refreshToken) {
       // 특정 토큰만 삭제 (현재 디바이스만 로그아웃)
       const storedTokens = await this.refreshTokenRepo.find({
@@ -200,7 +200,7 @@ export class AuthService {
     return { message: '로그아웃 되었습니다.' };
   }
 
-  async logoutAll(userId: number) {
+  async logoutAll(userId: string) {
     // 모든 디바이스에서 로그아웃
     await this.refreshTokenRepo.delete({ user_id: userId });
     return { message: '모든 기기에서 로그아웃 되었습니다.' };

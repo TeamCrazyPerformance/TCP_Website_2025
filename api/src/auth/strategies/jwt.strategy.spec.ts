@@ -16,6 +16,7 @@ const mockUsersRepo = () => {
     const queryBuilder = createMockQueryBuilder();
     return {
         createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
+        findOne: jest.fn(),
         queryBuilder,
     };
 };
@@ -29,10 +30,10 @@ describe('JwtStrategy', () => {
     let usersRepo: ReturnType<typeof mockUsersRepo>;
 
     const mockUser: Partial<User> = {
-        id: 1,
+        id: 'test-uuid-user-1',
         username: 'testuser',
         role: UserRole.MEMBER,
-        refresh_token: 'valid.refresh.token',
+        refreshTokens: [{ id: 1 }] as any,
     };
 
     beforeEach(async () => {
@@ -52,20 +53,20 @@ describe('JwtStrategy', () => {
 
     describe('validate', () => {
         it('유효한 access_token payload → user 정보 반환', async () => {
-            usersRepo.queryBuilder.getOne.mockResolvedValue(mockUser);
+            usersRepo.findOne.mockResolvedValue(mockUser);
 
-            const payload = { sub: 1, username: 'testuser', role: UserRole.MEMBER };
+            const payload = { sub: 'test-uuid-user-1', username: 'testuser', role: UserRole.MEMBER };
             const result = await strategy.validate(payload);
 
             expect(result).toEqual({
-                userId: 1,
+                userId: 'test-uuid-user-1',
                 username: 'testuser',
                 role: UserRole.MEMBER,
             });
         });
 
         it('refresh_token으로 API 접근 시도 → UnauthorizedException', async () => {
-            const payload = { sub: 1, type: 'refresh' };
+            const payload = { sub: 'test-uuid-user-1', type: 'refresh' };
 
             await expect(strategy.validate(payload as any))
                 .rejects.toThrow(UnauthorizedException);
@@ -74,9 +75,9 @@ describe('JwtStrategy', () => {
         });
 
         it('존재하지 않는 사용자 → UnauthorizedException', async () => {
-            usersRepo.queryBuilder.getOne.mockResolvedValue(null);
+            usersRepo.findOne.mockResolvedValue(null);
 
-            const payload = { sub: 999, username: 'unknown', role: UserRole.MEMBER };
+            const payload = { sub: 'non-existent-uuid', username: 'unknown', role: UserRole.MEMBER };
 
             await expect(strategy.validate(payload))
                 .rejects.toThrow(UnauthorizedException);
@@ -85,10 +86,10 @@ describe('JwtStrategy', () => {
         });
 
         it('로그아웃된 상태에서 access_token 사용 → UnauthorizedException', async () => {
-            // 로그아웃된 사용자는 refresh_token이 null
-            usersRepo.queryBuilder.getOne.mockResolvedValue({ ...mockUser, refresh_token: null });
+            // 로그아웃된 사용자는 refreshTokens가 빈 배열
+            usersRepo.findOne.mockResolvedValue({ ...mockUser, refreshTokens: [] });
 
-            const payload = { sub: 1, username: 'testuser', role: UserRole.MEMBER };
+            const payload = { sub: 'test-uuid-user-1', username: 'testuser', role: UserRole.MEMBER };
 
             await expect(strategy.validate(payload))
                 .rejects.toThrow(UnauthorizedException);
@@ -98,14 +99,14 @@ describe('JwtStrategy', () => {
 
         it('유효하지 않은 access_token (사용자 role 불일치해도 DB 기준으로 검증)', async () => {
             // payload의 role과 DB의 role이 다르더라도 DB 조회 결과로 반환
-            usersRepo.queryBuilder.getOne.mockResolvedValue({ ...mockUser, role: UserRole.ADMIN });
+            usersRepo.findOne.mockResolvedValue({ ...mockUser, role: UserRole.ADMIN });
 
-            const payload = { sub: 1, username: 'testuser', role: UserRole.MEMBER };
+            const payload = { sub: 'test-uuid-user-1', username: 'testuser', role: UserRole.MEMBER };
             const result = await strategy.validate(payload);
 
             // 현재 구현은 payload의 role을 그대로 반환하지만 DB에서 검증은 통과
             expect(result).toEqual({
-                userId: 1,
+                userId: 'test-uuid-user-1',
                 username: 'testuser',
                 role: UserRole.MEMBER,
             });

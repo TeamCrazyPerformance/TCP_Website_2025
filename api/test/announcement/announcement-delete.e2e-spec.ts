@@ -14,7 +14,7 @@ describe('DELETE /api/v1/announcements/:id (e2e)', () => {
   let service: AnnouncementService;
   let adminToken: string;
   let userToken: string;
-  let authorId: number;
+  let authorId: string;
   let announcementId: number;
 
   beforeAll(async () => {

@@ -26,12 +26,12 @@ export class TeamsService {
         private readonly userRepository: Repository<User>,
 
         private dataSource: DataSource,
-    ) {}
+    ) { }
 
     // 모집글 생성
-    async create(userId: number, dto:CreateTeamDto): Promise<Team>{
-        const leader = await this.userRepository.findOneBy({id:userId});
-        if(!leader) throw new NotFoundException('User not found');
+    async create(userId: string, dto: CreateTeamDto): Promise<Team> {
+        const leader = await this.userRepository.findOneBy({ id: userId });
+        if (!leader) throw new NotFoundException('User not found');
 
         if (!dto.roles?.length) {
             throw new BadRequestException('At least one role is required');
@@ -50,8 +50,8 @@ export class TeamsService {
 
         return this.dataSource.transaction(async (manager) => {
             // 팀 생성
-            const team = manager.create(Team, { 
-                ...dto, 
+            const team = manager.create(Team, {
+                ...dto,
                 leader,
                 status: TeamStatus.OPEN,
                 periodStart: new Date(dto.periodStart),
@@ -89,11 +89,11 @@ export class TeamsService {
     }
 
     // 모집글 조회
-    async findAll(): Promise<Team[]>{
+    async findAll(): Promise<Team[]> {
         return this.teamRepository.find({
-            relations:[
+            relations: [
                 'leader',
-                'roles',                
+                'roles',
             ],
             order: { createdAt: 'DESC' },
         });
@@ -103,13 +103,13 @@ export class TeamsService {
     async findOne(id: number): Promise<Team> {
         const team = await this.teamRepository.findOne({
             where: { id },
-            relations:[
+            relations: [
                 'leader',
                 'roles',
             ],
         });
 
-        if(!team) {
+        if (!team) {
             throw new NotFoundException(`Team with id ${id} not found`);
         }
 
@@ -117,7 +117,7 @@ export class TeamsService {
     }
 
     // 모집글 수정
-    async update(userId: number, teamId: number, dto: UpdateTeamDto): Promise<Team> {
+    async update(userId: string, teamId: number, dto: UpdateTeamDto): Promise<Team> {
         return this.dataSource.transaction(async (manager) => {
             const team = await manager.findOne(Team, {
                 where: { id: teamId },
@@ -129,7 +129,7 @@ export class TeamsService {
                 throw new NotFoundException(`Team ${teamId} not found`);
             }
             if (!team.leader || team.leader.id !== userId) {
-              throw new ForbiddenException('Only the team leader can update this team');
+                throw new ForbiddenException('Only the team leader can update this team');
             }
 
             // 팀 기본 정보 업데이트
@@ -169,19 +169,19 @@ export class TeamsService {
     }
 
     // 기존 역할의 수정/삭제를 처리하는 헬퍼 함수
-    private async processRoleUpdates(manager: any,team: Team,rolesToUpdate: UpdateTeamRoleDto[],): Promise<void> {
+    private async processRoleUpdates(manager: any, team: Team, rolesToUpdate: UpdateTeamRoleDto[],): Promise<void> {
         const existingRoleMap = new Map(team.roles.map(role => [role.id, role]));
 
         for (const roleDto of rolesToUpdate) {
             const existingRole = existingRoleMap.get(roleDto.id);
-      
+
             if (!existingRole) {
                 throw new BadRequestException(`Role with id ${roleDto.id} not found in this team`);
             }
 
             if (roleDto.action === 'delete') {
                 await manager.delete(TeamRole, existingRole.id);
-            } 
+            }
             else {
                 // 이름 중복 검사를 위해 현재 팀의 다른 역할을 확인
                 if (roleDto.roleName && roleDto.roleName !== existingRole.roleName) {
@@ -193,7 +193,7 @@ export class TeamsService {
                     }
                     existingRole.roleName = roleDto.roleName;
                 }
-        
+
                 if (roleDto.recruitCount) {
                     existingRole.recruitCount = roleDto.recruitCount;
                 }
@@ -201,7 +201,7 @@ export class TeamsService {
                 await manager.save(existingRole);
             }
         }
-        
+
     }
 
     // 새로운 역할 추가를 처리하는 헬퍼 함수
@@ -224,19 +224,19 @@ export class TeamsService {
         const savedRoles = await manager.save(newRoles);
 
         if (!team.roles) {
-          team.roles = [];
+            team.roles = [];
         }
         team.roles.push(...savedRoles);
     }
 
     // 모집글 삭제
-    async remove(userId: number, id: number): Promise<void> {
+    async remove(userId: string, id: number): Promise<void> {
         const team = await this.teamRepository.findOne({
             where: { id },
             relations: ['leader'],
         });
 
-        if(!team) {
+        if (!team) {
             throw new NotFoundException(`Team with id ${id} not found`);
         }
 
@@ -254,7 +254,7 @@ export class TeamsService {
     }
 
     // 모집 상태 변경
-    async changeStatus(userId: number, id: number, status: TeamStatus): Promise<Team>{
+    async changeStatus(userId: string, id: number, status: TeamStatus): Promise<Team> {
         const team = await this.teamRepository.findOne({
             where: { id },
             relations: ['leader'],
@@ -263,11 +263,11 @@ export class TeamsService {
         if (!team) {
             throw new NotFoundException(`Team with id ${id} not found`);
         }
-    
+
         if (!team.leader) {
             throw new ForbiddenException('This team has no leader and its status cannot be changed.');
         }
-    
+
         if (team.leader.id !== userId) {
             throw new ForbiddenException('Only the team leader can change the status.');
         }
@@ -277,32 +277,32 @@ export class TeamsService {
     }
 
     // 팀 지원 (지원해도 해당 역할 인원수는 변화 X)
-    async apply(userId: number, teamId: number, dto: ApplyTeamDto): Promise<TeamMember>{
+    async apply(userId: string, teamId: number, dto: ApplyTeamDto): Promise<TeamMember> {
         //  팀조회
         const team = await this.teamRepository.findOne({
             where: { id: teamId },
             relations: ['roles'],
         });
-        if(!team){
+        if (!team) {
             throw new NotFoundException(`Team with id ${teamId} not found`);
         }
 
         // 유저 조회
         const user = await this.userRepository.findOneBy({ id: userId });
-        if(!user){
+        if (!user) {
             throw new NotFoundException('User not found');
         }
 
         // 중복 지원 체크
         const existing = await this.teamMemberRepository.findOne({
-             where: { user: { id: userId }, team: { id: teamId } },
+            where: { user: { id: userId }, team: { id: teamId } },
         });
         if (existing) {
             throw new BadRequestException('You have already applied to this team');
         }
 
         // 역할 조회
-        const role = await this.teamRoleRepository.findOneBy({ id: dto.roleId});
+        const role = await this.teamRoleRepository.findOneBy({ id: dto.roleId });
         if (!role) {
             throw new NotFoundException(`Role with id ${dto.roleId} not found`);
         }
@@ -318,18 +318,18 @@ export class TeamsService {
     }
 
     // 팀 지원 취소(취소해도 해당 역할 인원수는 변화 X)
-    async cancelApply(userId: number, teamId: number): Promise<void>{
+    async cancelApply(userId: string, teamId: number): Promise<void> {
         // 지원 내역 조회
         const member = await this.teamMemberRepository.findOne({
             where: { user: { id: userId }, team: { id: teamId } },
             relations: ['team', 'user'],
         });
 
-        if(!member){
+        if (!member) {
             throw new NotFoundException('Application not found');
         }
 
-        if(member.isLeader){
+        if (member.isLeader) {
             throw new ForbiddenException('Leader cannot cancel application');
         }
 
