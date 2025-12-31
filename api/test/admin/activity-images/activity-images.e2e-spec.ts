@@ -196,4 +196,58 @@ describe('POST /api/v1/admin/activity-images (e2e)', () => {
       .set('Authorization', `Bearer ${userToken}`)
       .expect(403);
   });
+
+  describe('GET /api/v1/admin/activity-images', () => {
+    it('관리자가 이미지 목록 조회 시 200 반환', async () => {
+      // Setup: Create dummy files
+      if (!fs.existsSync(basePath)) fs.mkdirSync(basePath, { recursive: true });
+      fs.writeFileSync(competitionPath, 'dummy');
+
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/admin/activity-images')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(res.body).toHaveProperty('competition');
+      // study and mt might be null if not created, or strings if they exist.
+      // The implementation returns path if exists, null if not.
+      expect(res.body.competition).toContain('/activities/competition.jpg');
+    });
+
+    it('일반 사용자가 조회 시 403 반환', async () => {
+      await request(app.getHttpServer())
+        .get('/api/v1/admin/activity-images')
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(403);
+    });
+  });
+
+  describe('DELETE /api/v1/admin/activity-images/:type', () => {
+    it('관리자가 특정 이미지 삭제 시 200 반환', async () => {
+      // Setup
+      if (!fs.existsSync(basePath)) fs.mkdirSync(basePath, { recursive: true });
+      fs.writeFileSync(competitionPath, 'dummy');
+
+      await request(app.getHttpServer())
+        .delete('/api/v1/admin/activity-images/competition')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(fs.existsSync(competitionPath)).toBe(false);
+    });
+
+    it('잘못된 타입으로 삭제 요청 시 400 반환', async () => {
+      await request(app.getHttpServer())
+        .delete('/api/v1/admin/activity-images/invalidType')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(400);
+    });
+
+    it('일반 사용자가 삭제 요청 시 403 반환', async () => {
+      await request(app.getHttpServer())
+        .delete('/api/v1/admin/activity-images/competition')
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(403);
+    });
+  });
 });

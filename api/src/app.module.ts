@@ -10,11 +10,13 @@ import { StudyModule } from './study/study.module';
 import { ActivityImagesModule } from './admin/activity-images/activity-images.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { JobsModule } from './jobs/jobs.module';
+import { AdminSystemModule } from './admin/system/admin-system.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: ['.env', '../envs/api.env'],
     }),
     ScheduleModule.forRoot(),
     TypeOrmModule.forRootAsync({
@@ -38,7 +40,8 @@ import { JobsModule } from './jobs/jobs.module';
     TeamsModule,
     StudyModule,
     ActivityImagesModule,
+    AdminSystemModule,
     JobsModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }
