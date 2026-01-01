@@ -14,7 +14,7 @@ const REFRESH_TOKEN_COOKIE_OPTIONS = {
   path: '/',                // 모든 경로에서 전송 (필요시 '/auth'로 제한 가능)
 };
 
-@Controller('auth')
+@Controller('api/v1/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) { }
 

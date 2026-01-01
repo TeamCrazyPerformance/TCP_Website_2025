@@ -18,7 +18,7 @@ import { Resource } from './entities/resource.entity';
   imports: [
     TypeOrmModule.forFeature([Study, User, StudyMember, Progress, Resource]),
     MulterModule.register({
-      dest: './uploads',
+      dest: './uploads/resources',
     }),
     ScheduleModule.forRoot(),
   ],

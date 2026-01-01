@@ -58,7 +58,7 @@ services:
       - LOGSTASH_HOST=logstash
       - LOGSTASH_PORT=5000
     volumes:
-      - ./api/public/activities:/var/app/public/activities
+      - ./api/uploads:/var/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -83,6 +83,7 @@ services:
       - "5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
+      - ./db/backups:/backups
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d mydb || exit 1"]
       interval: 5s

@@ -6,7 +6,7 @@ import * as path from 'path';
 export class ActivityImagesService {
   private readonly basePath = path.join(
     process.cwd(),
-    'public',
+    'uploads',
     'activities',
   );
 
