@@ -58,7 +58,7 @@ services:
       - LOGSTASH_HOST=logstash
       - LOGSTASH_PORT=5000
     volumes:
-      - ./api/public/activities:/var/app/public/activities
+      - ./api/uploads:/var/app/uploads
     depends_on:
       db:
         condition: service_healthy

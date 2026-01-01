@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsDateString, IsEmail, IsEnum, IsNumber, IsOptional, IsString, Length, MaxLength } from 'class-validator';
+import { IsArray, IsBoolean, IsDateString, IsEmail, IsEnum, IsNumber, IsOptional, IsString, Length, Matches, MaxLength } from 'class-validator';
 import { EducationStatus } from '../../members/entities/enums/education-status.enum';
 import { UserGender } from '../../members/entities/enums/user-gender.enum';
 
@@ -6,7 +6,11 @@ export class RegisterDto {
   @IsString() @Length(3, 50)
   username: string;
 
-  @IsString() @Length(8, 255)
+  @IsString()
+  @Length(8, 255)
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/, {
+    message: '비밀번호는 대문자, 소문자, 숫자, 특수문자(@$!%*?&)를 각각 1개 이상 포함해야 합니다.',
+  })
   password: string;
 
   @IsString() @Length(1, 50)
