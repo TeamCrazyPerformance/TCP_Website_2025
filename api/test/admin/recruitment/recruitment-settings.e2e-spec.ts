@@ -101,7 +101,6 @@ describe('Recruitment Settings API (e2e)', () => {
     });
 
     beforeEach(async () => {
-        // 각 테스트 전 설정 초기화
         await settingsRepository.clear();
     });
 
@@ -112,9 +111,9 @@ describe('Recruitment Settings API (e2e)', () => {
                 .set('Authorization', `Bearer ${adminToken}`)
                 .expect(200);
 
-            expect(res.body).toHaveProperty('isApplicationEnabled', false);
-            expect(res.body).toHaveProperty('autoEnableOnStart', false);
-            expect(res.body).toHaveProperty('autoDisableOnEnd', false);
+            expect(res.body).toHaveProperty('is_application_enabled', false);
+            expect(res.body).toHaveProperty('auto_enable_on_start', false);
+            expect(res.body).toHaveProperty('auto_disable_on_end', false);
         });
 
         it('Normal user cannot get admin settings (403)', async () => {
@@ -133,50 +132,48 @@ describe('Recruitment Settings API (e2e)', () => {
 
     describe('PATCH /api/v1/admin/recruitment/settings', () => {
         it('Admin can update settings', async () => {
-            const startDate = '2026-01-01T00:00:00.000Z';
-            const endDate = '2026-01-31T23:59:59.000Z';
+            const start_date = '2026-01-01T00:00:00.000Z';
+            const end_date = '2026-01-31T23:59:59.000Z';
 
             const res = await request(app.getHttpServer())
                 .patch('/api/v1/admin/recruitment/settings')
                 .set('Authorization', `Bearer ${adminToken}`)
                 .send({
-                    startDate,
-                    endDate,
-                    isApplicationEnabled: true,
-                    autoEnableOnStart: true,
-                    autoDisableOnEnd: true,
+                    start_date,
+                    end_date,
+                    is_application_enabled: true,
+                    auto_enable_on_start: true,
+                    auto_disable_on_end: true,
                 })
                 .expect(200);
 
-            expect(res.body.isApplicationEnabled).toBe(true);
-            expect(res.body.autoEnableOnStart).toBe(true);
-            expect(res.body.autoDisableOnEnd).toBe(true);
-            expect(new Date(res.body.startDate).toISOString()).toBe(startDate);
-            expect(new Date(res.body.endDate).toISOString()).toBe(endDate);
+            expect(res.body.is_application_enabled).toBe(true);
+            expect(res.body.auto_enable_on_start).toBe(true);
+            expect(res.body.auto_disable_on_end).toBe(true);
+            expect(new Date(res.body.start_date).toISOString()).toBe(start_date);
+            expect(new Date(res.body.end_date).toISOString()).toBe(end_date);
         });
 
         it('Admin can clear dates by setting null', async () => {
-            // 먼저 날짜 설정
             await request(app.getHttpServer())
                 .patch('/api/v1/admin/recruitment/settings')
                 .set('Authorization', `Bearer ${adminToken}`)
-                .send({ startDate: '2026-01-01T00:00:00.000Z' });
+                .send({ start_date: '2026-01-01T00:00:00.000Z' });
 
-            // null로 설정
             const res = await request(app.getHttpServer())
                 .patch('/api/v1/admin/recruitment/settings')
                 .set('Authorization', `Bearer ${adminToken}`)
-                .send({ startDate: null })
+                .send({ start_date: null })
                 .expect(200);
 
-            expect(res.body.startDate).toBeNull();
+            expect(res.body.start_date).toBeNull();
         });
 
         it('Normal user cannot update settings (403)', async () => {
             await request(app.getHttpServer())
                 .patch('/api/v1/admin/recruitment/settings')
                 .set('Authorization', `Bearer ${userToken}`)
-                .send({ isApplicationEnabled: true })
+                .send({ is_application_enabled: true })
                 .expect(403);
         });
     });
@@ -191,12 +188,11 @@ describe('Recruitment Settings API (e2e)', () => {
             expect(res.body.success).toBe(true);
             expect(res.body.message).toContain('시작');
 
-            // 상태 확인
             const statusRes = await request(app.getHttpServer())
                 .get('/api/v1/recruitment/status')
                 .expect(200);
 
-            expect(statusRes.body.isApplicationEnabled).toBe(true);
+            expect(statusRes.body.is_application_enabled).toBe(true);
         });
 
         it('Normal user cannot start recruitment (403)', async () => {
@@ -209,12 +205,10 @@ describe('Recruitment Settings API (e2e)', () => {
 
     describe('POST /api/v1/admin/recruitment/stop-now', () => {
         it('Admin can stop recruitment immediately', async () => {
-            // 먼저 시작
             await request(app.getHttpServer())
                 .post('/api/v1/admin/recruitment/start-now')
                 .set('Authorization', `Bearer ${adminToken}`);
 
-            // 중단
             const res = await request(app.getHttpServer())
                 .post('/api/v1/admin/recruitment/stop-now')
                 .set('Authorization', `Bearer ${adminToken}`)
@@ -223,12 +217,11 @@ describe('Recruitment Settings API (e2e)', () => {
             expect(res.body.success).toBe(true);
             expect(res.body.message).toContain('중단');
 
-            // 상태 확인
             const statusRes = await request(app.getHttpServer())
                 .get('/api/v1/recruitment/status')
                 .expect(200);
 
-            expect(statusRes.body.isApplicationEnabled).toBe(false);
+            expect(statusRes.body.is_application_enabled).toBe(false);
         });
     });
 
@@ -238,9 +231,9 @@ describe('Recruitment Settings API (e2e)', () => {
                 .get('/api/v1/recruitment/status')
                 .expect(200);
 
-            expect(res.body).toHaveProperty('isApplicationEnabled');
-            expect(res.body).toHaveProperty('startDate');
-            expect(res.body).toHaveProperty('endDate');
+            expect(res.body).toHaveProperty('is_application_enabled');
+            expect(res.body).toHaveProperty('start_date');
+            expect(res.body).toHaveProperty('end_date');
         });
 
         it('Returns correct status after admin updates', async () => {
@@ -248,18 +241,18 @@ describe('Recruitment Settings API (e2e)', () => {
                 .patch('/api/v1/admin/recruitment/settings')
                 .set('Authorization', `Bearer ${adminToken}`)
                 .send({
-                    isApplicationEnabled: true,
-                    startDate: '2026-01-01T00:00:00.000Z',
-                    endDate: '2026-01-31T23:59:59.000Z',
+                    is_application_enabled: true,
+                    start_date: '2026-01-01T00:00:00.000Z',
+                    end_date: '2026-01-31T23:59:59.000Z',
                 });
 
             const res = await request(app.getHttpServer())
                 .get('/api/v1/recruitment/status')
                 .expect(200);
 
-            expect(res.body.isApplicationEnabled).toBe(true);
-            expect(res.body.startDate).not.toBeNull();
-            expect(res.body.endDate).not.toBeNull();
+            expect(res.body.is_application_enabled).toBe(true);
+            expect(res.body.start_date).not.toBeNull();
+            expect(res.body.end_date).not.toBeNull();
         });
     });
 });

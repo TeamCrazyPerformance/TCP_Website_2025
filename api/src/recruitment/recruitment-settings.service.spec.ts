@@ -10,12 +10,12 @@ describe('RecruitmentSettingsService', () => {
 
     const mockSettings: RecruitmentSettings = {
         id: 1,
-        startDate: null,
-        endDate: null,
-        isApplicationEnabled: false,
-        autoEnableOnStart: false,
-        autoDisableOnEnd: false,
-        updatedAt: new Date(),
+        start_date: null,
+        end_date: null,
+        is_application_enabled: false,
+        auto_enable_on_start: false,
+        auto_disable_on_end: false,
+        updated_at: new Date(),
     };
 
     beforeEach(async () => {
@@ -66,64 +66,64 @@ describe('RecruitmentSettingsService', () => {
         it('should update settings with provided values', async () => {
             const updatedSettings = {
                 ...mockSettings,
-                isApplicationEnabled: true,
-                autoEnableOnStart: true,
+                is_application_enabled: true,
+                auto_enable_on_start: true,
             };
             repository.findOne.mockResolvedValue(mockSettings);
             repository.save.mockResolvedValue(updatedSettings);
 
             const result = await service.updateSettings({
-                isApplicationEnabled: true,
-                autoEnableOnStart: true,
+                is_application_enabled: true,
+                auto_enable_on_start: true,
             });
 
-            expect(result.isApplicationEnabled).toBe(true);
-            expect(result.autoEnableOnStart).toBe(true);
+            expect(result.is_application_enabled).toBe(true);
+            expect(result.auto_enable_on_start).toBe(true);
         });
 
-        it('should update startDate and endDate', async () => {
-            const startDate = '2026-01-01T00:00:00Z';
-            const endDate = '2026-01-31T23:59:59Z';
+        it('should update start_date and end_date', async () => {
+            const start_date = '2026-01-01T00:00:00Z';
+            const end_date = '2026-01-31T23:59:59Z';
             const updatedSettings = {
                 ...mockSettings,
-                startDate: new Date(startDate),
-                endDate: new Date(endDate),
+                start_date: new Date(start_date),
+                end_date: new Date(end_date),
             };
             repository.findOne.mockResolvedValue(mockSettings);
             repository.save.mockResolvedValue(updatedSettings);
 
-            const result = await service.updateSettings({ startDate, endDate });
+            const result = await service.updateSettings({ start_date, end_date });
 
-            expect(result.startDate).toEqual(new Date(startDate));
-            expect(result.endDate).toEqual(new Date(endDate));
+            expect(result.start_date).toEqual(new Date(start_date));
+            expect(result.end_date).toEqual(new Date(end_date));
         });
     });
 
     describe('startNow', () => {
         it('should enable application immediately', async () => {
             repository.findOne.mockResolvedValue(mockSettings);
-            repository.save.mockResolvedValue({ ...mockSettings, isApplicationEnabled: true });
+            repository.save.mockResolvedValue({ ...mockSettings, is_application_enabled: true });
 
             const result = await service.startNow();
 
             expect(result.success).toBe(true);
             expect(repository.save).toHaveBeenCalledWith(
-                expect.objectContaining({ isApplicationEnabled: true }),
+                expect.objectContaining({ is_application_enabled: true }),
             );
         });
     });
 
     describe('stopNow', () => {
         it('should disable application immediately', async () => {
-            const enabledSettings = { ...mockSettings, isApplicationEnabled: true };
+            const enabledSettings = { ...mockSettings, is_application_enabled: true };
             repository.findOne.mockResolvedValue(enabledSettings);
-            repository.save.mockResolvedValue({ ...enabledSettings, isApplicationEnabled: false });
+            repository.save.mockResolvedValue({ ...enabledSettings, is_application_enabled: false });
 
             const result = await service.stopNow();
 
             expect(result.success).toBe(true);
             expect(repository.save).toHaveBeenCalledWith(
-                expect.objectContaining({ isApplicationEnabled: false }),
+                expect.objectContaining({ is_application_enabled: false }),
             );
         });
     });
@@ -135,9 +135,9 @@ describe('RecruitmentSettingsService', () => {
             const result = await service.getPublicStatus();
 
             expect(result).toEqual({
-                isApplicationEnabled: mockSettings.isApplicationEnabled,
-                startDate: mockSettings.startDate,
-                endDate: mockSettings.endDate,
+                is_application_enabled: mockSettings.is_application_enabled,
+                start_date: mockSettings.start_date,
+                end_date: mockSettings.end_date,
             });
         });
     });
@@ -149,17 +149,17 @@ describe('RecruitmentSettingsService', () => {
 
             const settingsWithAutoEnable = {
                 ...mockSettings,
-                autoEnableOnStart: true,
-                startDate: pastDate,
-                isApplicationEnabled: false,
+                auto_enable_on_start: true,
+                start_date: pastDate,
+                is_application_enabled: false,
             };
             repository.findOne.mockResolvedValue(settingsWithAutoEnable);
-            repository.save.mockResolvedValue({ ...settingsWithAutoEnable, isApplicationEnabled: true });
+            repository.save.mockResolvedValue({ ...settingsWithAutoEnable, is_application_enabled: true });
 
             await service.checkAndUpdateAutomation();
 
             expect(repository.save).toHaveBeenCalledWith(
-                expect.objectContaining({ isApplicationEnabled: true }),
+                expect.objectContaining({ is_application_enabled: true }),
             );
         });
 
@@ -169,17 +169,17 @@ describe('RecruitmentSettingsService', () => {
 
             const settingsWithAutoDisable = {
                 ...mockSettings,
-                autoDisableOnEnd: true,
-                endDate: pastDate,
-                isApplicationEnabled: true,
+                auto_disable_on_end: true,
+                end_date: pastDate,
+                is_application_enabled: true,
             };
             repository.findOne.mockResolvedValue(settingsWithAutoDisable);
-            repository.save.mockResolvedValue({ ...settingsWithAutoDisable, isApplicationEnabled: false });
+            repository.save.mockResolvedValue({ ...settingsWithAutoDisable, is_application_enabled: false });
 
             await service.checkAndUpdateAutomation();
 
             expect(repository.save).toHaveBeenCalledWith(
-                expect.objectContaining({ isApplicationEnabled: false }),
+                expect.objectContaining({ is_application_enabled: false }),
             );
         });
 
@@ -197,9 +197,9 @@ describe('RecruitmentSettingsService', () => {
 
             const settingsWithFutureStart = {
                 ...mockSettings,
-                autoEnableOnStart: true,
-                startDate: futureDate,
-                isApplicationEnabled: false,
+                auto_enable_on_start: true,
+                start_date: futureDate,
+                is_application_enabled: false,
             };
             repository.findOne.mockResolvedValue(settingsWithFutureStart);
 

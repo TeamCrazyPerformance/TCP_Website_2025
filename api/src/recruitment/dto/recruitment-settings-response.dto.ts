@@ -1,20 +1,20 @@
 export class RecruitmentSettingsResponseDto {
     id: number;
-    startDate: Date | null;
-    endDate: Date | null;
-    isApplicationEnabled: boolean;
-    autoEnableOnStart: boolean;
-    autoDisableOnEnd: boolean;
-    updatedAt: Date;
+    start_date: Date | null;
+    end_date: Date | null;
+    is_application_enabled: boolean;
+    auto_enable_on_start: boolean;
+    auto_disable_on_end: boolean;
+    updated_at: Date;
 }
 
 export class RecruitmentStatusResponseDto {
     /** 현재 지원 가능 여부 */
-    isApplicationEnabled: boolean;
+    is_application_enabled: boolean;
 
     /** 모집 시작일 */
-    startDate: Date | null;
+    start_date: Date | null;
 
     /** 모집 종료일 */
-    endDate: Date | null;
+    end_date: Date | null;
 }

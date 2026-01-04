@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { RecruitmentSettings } from './entities/recruitment-settings.entity';
@@ -26,11 +26,11 @@ export class RecruitmentSettingsService {
         if (!settings) {
             this.logger.log('Creating default recruitment settings');
             settings = this.settingsRepository.create({
-                startDate: null,
-                endDate: null,
-                isApplicationEnabled: false,
-                autoEnableOnStart: false,
-                autoDisableOnEnd: false,
+                start_date: null,
+                end_date: null,
+                is_application_enabled: false,
+                auto_enable_on_start: false,
+                auto_disable_on_end: false,
             });
             settings = await this.settingsRepository.save(settings);
         }
@@ -54,20 +54,20 @@ export class RecruitmentSettingsService {
     ): Promise<RecruitmentSettingsResponseDto> {
         const settings = await this.getOrCreateSettings();
 
-        if (dto.startDate !== undefined) {
-            settings.startDate = dto.startDate ? new Date(dto.startDate) : null;
+        if (dto.start_date !== undefined) {
+            settings.start_date = dto.start_date ? new Date(dto.start_date) : null;
         }
-        if (dto.endDate !== undefined) {
-            settings.endDate = dto.endDate ? new Date(dto.endDate) : null;
+        if (dto.end_date !== undefined) {
+            settings.end_date = dto.end_date ? new Date(dto.end_date) : null;
         }
-        if (dto.isApplicationEnabled !== undefined) {
-            settings.isApplicationEnabled = dto.isApplicationEnabled;
+        if (dto.is_application_enabled !== undefined) {
+            settings.is_application_enabled = dto.is_application_enabled;
         }
-        if (dto.autoEnableOnStart !== undefined) {
-            settings.autoEnableOnStart = dto.autoEnableOnStart;
+        if (dto.auto_enable_on_start !== undefined) {
+            settings.auto_enable_on_start = dto.auto_enable_on_start;
         }
-        if (dto.autoDisableOnEnd !== undefined) {
-            settings.autoDisableOnEnd = dto.autoDisableOnEnd;
+        if (dto.auto_disable_on_end !== undefined) {
+            settings.auto_disable_on_end = dto.auto_disable_on_end;
         }
 
         const updated = await this.settingsRepository.save(settings);
@@ -81,7 +81,7 @@ export class RecruitmentSettingsService {
      */
     async startNow(): Promise<{ success: boolean; message: string }> {
         const settings = await this.getOrCreateSettings();
-        settings.isApplicationEnabled = true;
+        settings.is_application_enabled = true;
         await this.settingsRepository.save(settings);
 
         this.logger.log('Recruitment started immediately');
@@ -93,7 +93,7 @@ export class RecruitmentSettingsService {
      */
     async stopNow(): Promise<{ success: boolean; message: string }> {
         const settings = await this.getOrCreateSettings();
-        settings.isApplicationEnabled = false;
+        settings.is_application_enabled = false;
         await this.settingsRepository.save(settings);
 
         this.logger.log('Recruitment stopped immediately');
@@ -107,9 +107,9 @@ export class RecruitmentSettingsService {
         const settings = await this.getOrCreateSettings();
 
         return {
-            isApplicationEnabled: settings.isApplicationEnabled,
-            startDate: settings.startDate,
-            endDate: settings.endDate,
+            is_application_enabled: settings.is_application_enabled,
+            start_date: settings.start_date,
+            end_date: settings.end_date,
         };
     }
 
@@ -128,24 +128,24 @@ export class RecruitmentSettingsService {
 
         // 시작일 도달 시 자동 활성화
         if (
-            settings.autoEnableOnStart &&
-            settings.startDate &&
-            settings.startDate <= now &&
-            !settings.isApplicationEnabled
+            settings.auto_enable_on_start &&
+            settings.start_date &&
+            settings.start_date <= now &&
+            !settings.is_application_enabled
         ) {
-            settings.isApplicationEnabled = true;
+            settings.is_application_enabled = true;
             updated = true;
             this.logger.log('Application automatically enabled (start date reached)');
         }
 
         // 종료일 경과 시 자동 비활성화
         if (
-            settings.autoDisableOnEnd &&
-            settings.endDate &&
-            settings.endDate < now &&
-            settings.isApplicationEnabled
+            settings.auto_disable_on_end &&
+            settings.end_date &&
+            settings.end_date < now &&
+            settings.is_application_enabled
         ) {
-            settings.isApplicationEnabled = false;
+            settings.is_application_enabled = false;
             updated = true;
             this.logger.log('Application automatically disabled (end date passed)');
         }
