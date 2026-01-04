@@ -11,6 +11,7 @@ import { ActivityImagesModule } from './admin/activity-images/activity-images.mo
 import { ScheduleModule } from '@nestjs/schedule';
 import { JobsModule } from './jobs/jobs.module';
 import { AdminSystemModule } from './admin/system/admin-system.module';
+import { ProfileModule } from './mypage/profile/profile.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { AdminSystemModule } from './admin/system/admin-system.module';
     ActivityImagesModule,
     AdminSystemModule,
     JobsModule,
+    ProfileModule,
   ],
 })
 export class AppModule { }
