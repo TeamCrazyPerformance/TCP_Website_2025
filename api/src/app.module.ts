@@ -12,6 +12,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { JobsModule } from './jobs/jobs.module';
 import { AdminSystemModule } from './admin/system/admin-system.module';
 import { ProfileModule } from './mypage/profile/profile.module';
+import { PrivacyModule } from './mypage/privacy/privacy.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { ProfileModule } from './mypage/profile/profile.module';
     AdminSystemModule,
     JobsModule,
     ProfileModule,
+    PrivacyModule,
   ],
 })
 export class AppModule { }
