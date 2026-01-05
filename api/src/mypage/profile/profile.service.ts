@@ -45,7 +45,12 @@ export class ProfileService {
       throw new NotFoundException('사용자를 찾을 수 없습니다.');
     }
 
-    Object.assign(user, dto);
+    // DTO에서 실제로 값이 제공된 속성들만 업데이트
+    Object.keys(dto).forEach(key => {
+      if (dto[key] !== undefined && dto[key] !== null) {
+        user[key] = dto[key];
+      }
+    });
 
     return this.userRepository.save(user);
   }

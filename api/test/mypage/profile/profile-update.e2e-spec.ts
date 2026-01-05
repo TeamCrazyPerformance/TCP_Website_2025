@@ -6,7 +6,7 @@ import { DataSource } from 'typeorm';
 import { UserGender } from '../../../src/members/entities/enums/user-gender.enum';
 import { EducationStatus } from '../../../src/members/entities/enums/education-status.enum';
 
-describe('PATCH /api/mypage/profile (e2e)', () => {
+describe('PATCH /api/v1/mypage/profile (e2e)', () => {
   let app: INestApplication;
   let dataSource: DataSource;
   let userToken: string;
@@ -29,10 +29,10 @@ describe('PATCH /api/mypage/profile (e2e)', () => {
     
     // 테스트용 사용자 생성 (회원가입)
     const userRegisterRes = await request(app.getHttpServer())
-      .post('/auth/register')
+      .post('/api/v1/auth/register')
       .send({
         username: 'testuser',
-        password: 'password',
+        password: 'TestPassword123!',
         name: '테스트유저',
         student_number: '20250001',
         phone_number: '010-1234-5678',
@@ -41,15 +41,17 @@ describe('PATCH /api/mypage/profile (e2e)', () => {
         join_year: 2025,
         birth_date: new Date('2000-01-01'),
         gender: UserGender.Male,
-        education_status: EducationStatus.Enrolled
+        education_status: EducationStatus.Enrolled,
+        github_username: 'testuser_github',
+        self_description: '안녕하세요. 테스트 사용자입니다.'
       });
 
     expect(userRegisterRes.status).toBe(201);
 
     // 로그인하여 토큰 획득
     const loginResponse = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ username: 'testuser', password: 'password' });
+      .post('/api/v1/auth/login')
+      .send({ username: 'testuser', password: 'TestPassword123!' });
     
     userToken = loginResponse.body.access_token;
   });
@@ -69,7 +71,7 @@ describe('PATCH /api/mypage/profile (e2e)', () => {
     };
 
     const response = await request(app.getHttpServer())
-      .patch('/api/mypage/profile')
+      .patch('/api/v1/mypage/profile')
       .set('Authorization', `Bearer ${userToken}`)
       .send(updateData);
 
@@ -87,7 +89,7 @@ describe('PATCH /api/mypage/profile (e2e)', () => {
     };
 
     const response = await request(app.getHttpServer())
-      .patch('/api/mypage/profile')
+      .patch('/api/v1/mypage/profile')
       .set('Authorization', `Bearer ${userToken}`)
       .send(updateData);
 
@@ -95,14 +97,14 @@ describe('PATCH /api/mypage/profile (e2e)', () => {
     expect(response.body.self_description).toBe(updateData.self_description);
     // 다른 필드는 변경되지 않아야 함
     expect(response.body.github_username).toBe('testuser_github');
-    expect(response.body.portfolio_link).toBe('https://portfolio.example.com');
+    expect(response.body.portfolio_link).toBe(null);
   });
 
   it('빈 업데이트 시 200 반환', async () => {
     const updateData = {};
 
     const response = await request(app.getHttpServer())
-      .patch('/api/mypage/profile')
+      .patch('/api/v1/mypage/profile')
       .set('Authorization', `Bearer ${userToken}`)
       .send(updateData);
 
@@ -110,6 +112,7 @@ describe('PATCH /api/mypage/profile (e2e)', () => {
     // 기존 데이터가 그대로 유지되어야 함
     expect(response.body.github_username).toBe('testuser_github');
     expect(response.body.self_description).toBe('안녕하세요. 테스트 사용자입니다.');
+    expect(response.body.portfolio_link).toBe(null);
   });
 
   it('인증 토큰 없을 시 401 반환', async () => {
@@ -118,7 +121,7 @@ describe('PATCH /api/mypage/profile (e2e)', () => {
     };
 
     const response = await request(app.getHttpServer())
-      .patch('/api/mypage/profile')
+      .patch('/api/v1/mypage/profile')
       .send(updateData);
 
     expect(response.status).toBe(401);
