@@ -13,6 +13,7 @@ import { JobsModule } from './jobs/jobs.module';
 import { AdminSystemModule } from './admin/system/admin-system.module';
 import { ProfileModule } from './mypage/profile/profile.module';
 import { PrivacyModule } from './mypage/privacy/privacy.module';
+import { WithdrawModule } from './mypage/withdraw/withdraw.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { PrivacyModule } from './mypage/privacy/privacy.module';
     JobsModule,
     ProfileModule,
     PrivacyModule,
+    WithdrawModule,
   ],
 })
 export class AppModule { }
