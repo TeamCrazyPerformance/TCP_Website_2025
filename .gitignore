@@ -1,0 +1,19 @@
+# =============================================================================
+# Root .gitignore (Infrastructure / ELK)
+# =============================================================================
+
+# Environment files with secrets
+# *.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Docker volumes data (if stored locally)
+db-data/
+es-data/
+redis-data/
