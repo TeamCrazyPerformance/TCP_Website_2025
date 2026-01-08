@@ -1,0 +1,52 @@
+# =============================================================================
+# Kibana Configuration for Production
+# =============================================================================
+
+# 서버 설정
+server.host: "0.0.0.0"
+server.port: 5601
+server.name: tcp-website-kibana
+
+# Elasticsearch 연결
+elasticsearch.hosts: ["http://elasticsearch:9200"]
+
+# =============================================================================
+# 보안 설정 (프로덕션 필수)
+# =============================================================================
+
+# Elasticsearch 인증 정보 (xpack.security.enabled: true 시 필요)
+elasticsearch.username: "kibana_system"
+elasticsearch.password: "password12345"
+
+# 세션 암호화 키 (32자 이상, 프로덕션에서 필수)
+# xpack.security.encryptionKey: "something_at_least_32_characters"
+# xpack.encryptedSavedObjects.encryptionKey: "something_at_least_32_characters"
+# xpack.reporting.encryptionKey: "something_at_least_32_characters"
+
+# HTTPS 활성화 (인증서 필요)
+# server.ssl.enabled: true
+# server.ssl.certificate: /path/to/your/server.crt
+# server.ssl.key: /path/to/your/server.key
+
+# =============================================================================
+# 로깅 설정
+# =============================================================================
+
+logging.root.level: info
+
+# 파일 로깅
+# logging.appenders.file:
+#   type: file
+#   fileName: /var/log/kibana/kibana.log
+#   layout:
+#     type: json
+
+# =============================================================================
+# 기타 설정
+# =============================================================================
+
+# 텔레메트리 비활성화 (선택)
+telemetry.enabled: false
+
+# 기본 언어 설정
+# i18n.locale: "ko-KR"
