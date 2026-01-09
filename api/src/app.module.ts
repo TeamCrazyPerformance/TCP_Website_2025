@@ -14,6 +14,7 @@ import { AdminSystemModule } from './admin/system/admin-system.module';
 import { ProfileModule } from './mypage/profile/profile.module';
 import { PrivacyModule } from './mypage/privacy/privacy.module';
 import { WithdrawModule } from './mypage/withdraw/withdraw.module';
+import { MyPageTeamsModule } from './mypage/teams/mypage-teams.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { WithdrawModule } from './mypage/withdraw/withdraw.module';
     ProfileModule,
     PrivacyModule,
     WithdrawModule,
+    MyPageTeamsModule,
   ],
 })
 export class AppModule { }
