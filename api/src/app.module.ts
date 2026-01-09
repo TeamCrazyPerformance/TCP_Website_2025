@@ -11,6 +11,10 @@ import { ActivityImagesModule } from './admin/activity-images/activity-images.mo
 import { ScheduleModule } from '@nestjs/schedule';
 import { JobsModule } from './jobs/jobs.module';
 import { AdminSystemModule } from './admin/system/admin-system.module';
+import { ProfileModule } from './mypage/profile/profile.module';
+import { PrivacyModule } from './mypage/privacy/privacy.module';
+import { WithdrawModule } from './mypage/withdraw/withdraw.module';
+import { MyPageTeamsModule } from './mypage/teams/mypage-teams.module';
 import { LoggerModule } from './logger/logger.module';
 import { HttpLoggerMiddleware } from './logger/http-logger.middleware';
 
@@ -45,6 +49,10 @@ import { HttpLoggerMiddleware } from './logger/http-logger.middleware';
     AdminSystemModule,
     JobsModule,
     LoggerModule,
+    ProfileModule,
+    PrivacyModule,
+    WithdrawModule,
+    MyPageTeamsModule,
   ],
 })
 export class AppModule implements NestModule {
