@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
@@ -15,6 +15,8 @@ import { ProfileModule } from './mypage/profile/profile.module';
 import { PrivacyModule } from './mypage/privacy/privacy.module';
 import { WithdrawModule } from './mypage/withdraw/withdraw.module';
 import { MyPageTeamsModule } from './mypage/teams/mypage-teams.module';
+import { LoggerModule } from './logger/logger.module';
+import { HttpLoggerMiddleware } from './logger/http-logger.middleware';
 
 @Module({
   imports: [
@@ -46,10 +48,15 @@ import { MyPageTeamsModule } from './mypage/teams/mypage-teams.module';
     ActivityImagesModule,
     AdminSystemModule,
     JobsModule,
+    LoggerModule,
     ProfileModule,
     PrivacyModule,
     WithdrawModule,
     MyPageTeamsModule,
   ],
 })
-export class AppModule { }
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(HttpLoggerMiddleware).forRoutes('*');
+  }
+}
