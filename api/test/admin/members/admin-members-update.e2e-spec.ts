@@ -33,10 +33,10 @@ describe('PATCH /api/v1/admin/members/:id (e2e)', () => {
 
     // --- 관리자 계정 생성 ---
     const adminRes = await request(app.getHttpServer())
-      .post('/auth/register')
+      .post('/api/v1/auth/register')
       .send({
         username: 'admin',
-        password: 'adminpassword',
+        password: 'AdminPassword123!',
         name: '관리자',
         student_number: '20230001',
         profile_image: '',
@@ -44,7 +44,7 @@ describe('PATCH /api/v1/admin/members/:id (e2e)', () => {
         email: 'admin@example.com',
         major: '컴퓨터공학과',
         join_year: 2023,
-        birth_date: new Date('2000-01-01'),
+        birth_date: '2000-01-01',
         gender: UserGender.Male,
         tech_stack: [],
         education_status: EducationStatus.Enrolled,
@@ -65,10 +65,10 @@ describe('PATCH /api/v1/admin/members/:id (e2e)', () => {
 
     // --- 일반 사용자 계정 생성 ---
     const userRes = await request(app.getHttpServer())
-      .post('/auth/register')
+      .post('/api/v1/auth/register')
       .send({
         username: 'normaluser',
-        password: 'userpassword',
+        password: 'UserPassword123!',
         name: '일반사용자',
         student_number: '20230002',
         profile_image: '',
@@ -76,7 +76,7 @@ describe('PATCH /api/v1/admin/members/:id (e2e)', () => {
         email: 'user@example.com',
         major: '소프트웨어학과',
         join_year: 2023,
-        birth_date: new Date('2001-02-02'),
+        birth_date: '2001-02-02',
         gender: UserGender.Female,
         tech_stack: [],
         education_status: EducationStatus.Enrolled,
@@ -93,13 +93,13 @@ describe('PATCH /api/v1/admin/members/:id (e2e)', () => {
 
     // 로그인
     const adminLogin = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ username: 'admin', password: 'adminpassword' });
+      .post('/api/v1/auth/login')
+      .send({ username: 'admin', password: 'AdminPassword123!' });
     adminToken = adminLogin.body.access_token;
 
     const userLogin = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ username: 'normaluser', password: 'userpassword' });
+      .post('/api/v1/auth/login')
+      .send({ username: 'normaluser', password: 'UserPassword123!' });
     userToken = userLogin.body.access_token;
   });
 
@@ -165,7 +165,7 @@ describe('PATCH /api/v1/admin/members/:id (e2e)', () => {
 
   it('존재하지 않는 회원 ID로 수정 요청 시 404 반환', async () => {
     const res = await request(app.getHttpServer())
-      .patch('/api/v1/admin/members/999999')
+      .patch('/api/v1/admin/members/550e8400-e29b-41d4-a716-446655440000')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
         name: '존재하지않는사용자',
@@ -218,7 +218,7 @@ describe('PATCH /api/v1/admin/members/:id (e2e)', () => {
       email: 'deleted@example.com',
       major: '전자공학과',
       join_year: 2023,
-      birth_date: new Date('2002-03-03'),
+      birth_date: '2002-03-03',
       gender: UserGender.Male,
       tech_stack: [],
       education_status: EducationStatus.Enrolled,

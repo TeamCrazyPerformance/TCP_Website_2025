@@ -46,7 +46,7 @@ describe('GET /api/v1/announcements/:id (e2e)', () => {
             email: 'admin@test.com',
             major: '컴퓨터공학과',
             join_year: 2025,
-            birth_date: new Date('2000-01-01'),
+            birth_date: '2000-01-01',
             role: 'ADMIN',
         });
         await userRepository.save(user);

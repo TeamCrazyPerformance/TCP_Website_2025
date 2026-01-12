@@ -47,10 +47,10 @@ describe('Admin System API (e2e)', () => {
 
         // --- Create Admin Account ---
         const adminRes = await request(app.getHttpServer())
-            .post('/auth/register')
+            .post('/api/v1/auth/register')
             .send({
                 username: 'admin_sys',
-                password: 'adminpassword',
+                password: 'AdminPassword123!',
                 name: '관리자',
                 student_number: '99990001',
                 profile_image: '',
@@ -58,7 +58,7 @@ describe('Admin System API (e2e)', () => {
                 email: 'adminsys@example.com',
                 major: 'Computer Science',
                 join_year: 2023,
-                birth_date: new Date('2000-01-01'),
+                birth_date: '2000-01-01',
                 gender: UserGender.Male,
                 tech_stack: [],
                 education_status: EducationStatus.Enrolled,
@@ -75,16 +75,16 @@ describe('Admin System API (e2e)', () => {
         await userRepository.save(admin);
 
         const adminLogin = await request(app.getHttpServer())
-            .post('/auth/login')
-            .send({ username: 'admin_sys', password: 'adminpassword' });
+            .post('/api/v1/auth/login')
+            .send({ username: 'admin_sys', password: 'AdminPassword123!' });
         adminToken = adminLogin.body.access_token;
 
         // --- Create Normal User Account ---
         await request(app.getHttpServer())
-            .post('/auth/register')
+            .post('/api/v1/auth/register')
             .send({
                 username: 'user_sys',
-                password: 'userpassword',
+                password: 'UserPassword123!',
                 name: '사용자',
                 student_number: '99990002',
                 profile_image: '',
@@ -92,7 +92,7 @@ describe('Admin System API (e2e)', () => {
                 email: 'usersys@example.com',
                 major: 'Computer Science',
                 join_year: 2023,
-                birth_date: new Date('2000-01-01'),
+                birth_date: '2000-01-01',
                 gender: UserGender.Female,
                 tech_stack: [],
                 education_status: EducationStatus.Enrolled,
@@ -103,13 +103,19 @@ describe('Admin System API (e2e)', () => {
             });
 
         const userLogin = await request(app.getHttpServer())
-            .post('/auth/login')
-            .send({ username: 'user_sys', password: 'userpassword' });
+            .post('/api/v1/auth/login')
+            .send({ username: 'user_sys', password: 'UserPassword123!' });
         userToken = userLogin.body.access_token;
     });
 
     afterAll(async () => {
         await dataSource.query(`TRUNCATE TABLE refresh_token, "user" RESTART IDENTITY CASCADE;`);
+        
+        // DataSource 연결 닫기
+        if (dataSource && dataSource.isInitialized) {
+            await dataSource.destroy();
+        }
+        
         await app.close();
     });
 

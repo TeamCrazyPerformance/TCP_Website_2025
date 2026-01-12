@@ -38,10 +38,10 @@ describe('GET /api/v1/admin/members (e2e)', () => {
 
     // --- 관리자 계정 생성 ---
     const adminRes = await request(app.getHttpServer())
-      .post('/auth/register')
+      .post('/api/v1/auth/register')
       .send({
         username: 'admin',
-        password: 'adminpassword',
+        password: 'AdminPassword123!',
         name: '관리자',
         student_number: '20230001',
         profile_image: '',
@@ -49,7 +49,7 @@ describe('GET /api/v1/admin/members (e2e)', () => {
         email: 'admin@example.com',
         major: '컴퓨터공학과',
         join_year: 2023,
-        birth_date: new Date('2000-01-01'),
+        birth_date: '2000-01-01',
         gender: UserGender.Male,
         tech_stack: [],
         education_status: EducationStatus.Enrolled,
@@ -63,6 +63,7 @@ describe('GET /api/v1/admin/members (e2e)', () => {
 
     expect(adminRes.status).toBe(201);
     const admin = await userRepository.findOneBy({ id: adminRes.body.id });
+    if (!admin) throw new Error('Admin user not found');
 
     // 관리자 권한 부여
     admin.role = UserRole.ADMIN;
@@ -70,16 +71,16 @@ describe('GET /api/v1/admin/members (e2e)', () => {
 
     // 관리자 로그인
     const adminLogin = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ username: 'admin', password: 'adminpassword' });
+      .post('/api/v1/auth/login')
+      .send({ username: 'admin', password: 'AdminPassword123!' });
     adminToken = adminLogin.body.access_token;
 
     // --- 일반 사용자 계정 생성 ---
     const userRes = await request(app.getHttpServer())
-      .post('/auth/register')
+      .post('/api/v1/auth/register')
       .send({
         username: 'normaluser',
-        password: 'userpassword',
+        password: 'UserPassword123!',
         name: '일반사용자',
         student_number: '20230002',
         profile_image: '',
@@ -87,7 +88,7 @@ describe('GET /api/v1/admin/members (e2e)', () => {
         email: 'user@example.com',
         major: '소프트웨어학과',
         join_year: 2023,
-        birth_date: new Date('2001-02-02'),
+        birth_date: '2001-02-02',
         gender: UserGender.Female,
         tech_stack: [],
         education_status: EducationStatus.Enrolled,
@@ -103,8 +104,8 @@ describe('GET /api/v1/admin/members (e2e)', () => {
 
     // 일반 사용자 로그인
     const userLogin = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ username: 'normaluser', password: 'userpassword' });
+      .post('/api/v1/auth/login')
+      .send({ username: 'normaluser', password: 'UserPassword123!' });
     userToken = userLogin.body.access_token;
   });
 
@@ -143,11 +144,11 @@ describe('GET /api/v1/admin/members (e2e)', () => {
 
   it('멤버 목록이 이름순으로 정렬되어 조회됨', async () => {
     // 추가 테스트 사용자 생성
-    await request(app.getHttpServer())
-      .post('/auth/register')
+    const user1Res = await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
       .send({
         username: 'zzz_last',
-        password: 'password',
+        password: 'Password123!',
         name: 'zzz마지막',
         student_number: '20230010',
         profile_image: '',
@@ -155,7 +156,7 @@ describe('GET /api/v1/admin/members (e2e)', () => {
         email: 'zzz@example.com',
         major: '컴퓨터공학과',
         join_year: 2023,
-        birth_date: new Date('2000-01-01'),
+        birth_date: '2000-01-01',
         gender: UserGender.Male,
         tech_stack: [],
         education_status: EducationStatus.Enrolled,
@@ -166,12 +167,13 @@ describe('GET /api/v1/admin/members (e2e)', () => {
         is_public_github_username: false,
         is_public_email: false,
       });
+    expect(user1Res.status).toBe(201);
 
-    await request(app.getHttpServer())
-      .post('/auth/register')
+    const user2Res = await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
       .send({
         username: 'aaa_first',
-        password: 'password',
+        password: 'Password123!',
         name: 'aaa첫번째',
         student_number: '20230011',
         profile_image: '',
@@ -179,7 +181,7 @@ describe('GET /api/v1/admin/members (e2e)', () => {
         email: 'aaa@example.com',
         major: '컴퓨터공학과',
         join_year: 2023,
-        birth_date: new Date('2000-01-01'),
+        birth_date: '2000-01-01',
         gender: UserGender.Male,
         tech_stack: [],
         education_status: EducationStatus.Enrolled,
@@ -190,6 +192,7 @@ describe('GET /api/v1/admin/members (e2e)', () => {
         is_public_github_username: false,
         is_public_email: false,
       });
+    expect(user2Res.status).toBe(201);
 
     const res = await request(app.getHttpServer())
       .get('/api/v1/admin/members')
@@ -207,10 +210,10 @@ describe('GET /api/v1/admin/members (e2e)', () => {
   it('soft delete된 멤버는 목록에 포함되지 않음', async () => {
     // 삭제할 테스트 사용자 생성
     const deleteUserRes = await request(app.getHttpServer())
-      .post('/auth/register')
+      .post('/api/v1/auth/register')
       .send({
         username: 'deleteduser',
-        password: 'password',
+        password: 'Password123!',
         name: '삭제될사용자',
         student_number: '20230020',
         profile_image: '',
@@ -218,7 +221,7 @@ describe('GET /api/v1/admin/members (e2e)', () => {
         email: 'deleted@example.com',
         major: '컴퓨터공학과',
         join_year: 2023,
-        birth_date: new Date('2000-01-01'),
+        birth_date: '2000-01-01',
         gender: UserGender.Male,
         tech_stack: [],
         education_status: EducationStatus.Enrolled,
@@ -229,8 +232,19 @@ describe('GET /api/v1/admin/members (e2e)', () => {
         is_public_github_username: false,
         is_public_email: false,
       });
-
-    const deleteUserId = deleteUserRes.body.user.id;
+    
+    expect(deleteUserRes.status).toBe(201);
+    const deleteUserId = deleteUserRes.body.id || deleteUserRes.body.user?.id;
+    
+    if (!deleteUserId) {
+      throw new Error(`No user ID found in registration response: ${JSON.stringify(deleteUserRes.body)}`);
+    }
+    
+    // UUID 형식 확인
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(deleteUserId)) {
+      throw new Error(`Invalid UUID format: ${deleteUserId}`);
+    }
 
     // 삭제 전 목록 조회
     const beforeDeleteRes = await request(app.getHttpServer())
@@ -238,12 +252,19 @@ describe('GET /api/v1/admin/members (e2e)', () => {
       .set('Authorization', `Bearer ${adminToken}`);
 
     const beforeCount = beforeDeleteRes.body.length;
+    
+    // 삭제 전 사용자가 목록에 있는지 확인
+    const userExists = beforeDeleteRes.body.some(u => u.id === deleteUserId);
+    if (!userExists) {
+      throw new Error(`User ${deleteUserId} not found in member list before deletion`);
+    }
 
-    // DELETE API로 삭제
-    await request(app.getHttpServer())
+    // DELETE API로 삭제 (에러 확인)
+    const deleteRes = await request(app.getHttpServer())
       .delete(`/api/v1/admin/members/${deleteUserId}`)
-      .set('Authorization', `Bearer ${adminToken}`)
-      .expect(204);
+      .set('Authorization', `Bearer ${adminToken}`);
+    
+    expect(deleteRes.status).toBe(204);
 
     // 삭제 후 목록 조회
     const afterDeleteRes = await request(app.getHttpServer())
@@ -278,10 +299,10 @@ describe('GET /api/v1/admin/members (e2e)', () => {
 
     // 관리자만 다시 생성
     const adminRes = await request(app.getHttpServer())
-      .post('/auth/register')
+      .post('/api/v1/auth/register')
       .send({
         username: 'admin',
-        password: 'adminpassword',
+        password: 'AdminPassword123!',
         name: '관리자',
         student_number: '20230001',
         profile_image: '',
@@ -289,7 +310,7 @@ describe('GET /api/v1/admin/members (e2e)', () => {
         email: 'admin@example.com',
         major: '컴퓨터공학과',
         join_year: 2023,
-        birth_date: new Date('2000-01-01'),
+        birth_date: '2000-01-01',
         gender: UserGender.Male,
         tech_stack: [],
         education_status: EducationStatus.Enrolled,
@@ -300,18 +321,21 @@ describe('GET /api/v1/admin/members (e2e)', () => {
         is_public_github_username: false,
         is_public_email: false,
       });
+    
+    expect(adminRes.status).toBe(201);
 
     const admin = await userRepository.findOneBy({ id: adminRes.body.id });
+    if (!admin) throw new Error('Admin user not found in empty array test');
     admin.role = UserRole.ADMIN;
     await userRepository.save(admin);
 
     const adminLogin = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ username: 'admin', password: 'adminpassword' });
+      .post('/api/v1/auth/login')
+      .send({ username: 'admin', password: 'AdminPassword123!' });
     const newAdminToken = adminLogin.body.access_token;
 
     // 관리자만 남기고 모두 삭제
-    await dataSource.query(`DELETE FROM "user" WHERE id != ${admin.id};`);
+    await dataSource.query(`DELETE FROM "user" WHERE id != '${admin.id}';`);
 
     const res = await request(app.getHttpServer())
       .get('/api/v1/admin/members')
