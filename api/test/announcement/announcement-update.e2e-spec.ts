@@ -36,17 +36,17 @@ describe('PATCH /api/v1/announcements/:id (e2e)', () => {
 
     // 관리자 계정 생성 (회원가입)
     const adminRegisterRes = await request(app.getHttpServer())
-      .post('/auth/register')
+      .post('/api/v1/auth/register')
       .send({
         username: 'adminuser',
-        password: 'adminpassword',
+        password: 'AdminPassword123!',
         name: '관리자',
         student_number: '20239998',
         phone_number: '010-8888-8888',
         email: 'admin@example.com',
         major: '컴퓨터공학과',
         join_year: 2023,
-        birth_date: new Date('2001-01-01'),
+        birth_date: '2001-01-01',
         gender: UserGender.Male,
         education_status: EducationStatus.Enrolled
       });
@@ -63,23 +63,23 @@ describe('PATCH /api/v1/announcements/:id (e2e)', () => {
 
     // 관리자 로그인
     const adminLogin = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ username: 'adminuser', password: 'adminpassword' });
+      .post('/api/v1/auth/login')
+      .send({ username: 'adminuser', password: 'AdminPassword123!' });
     adminToken = adminLogin.body.access_token;
 
     // 일반 사용자 계정 생성 (회원가입)
     const userRegisterRes = await request(app.getHttpServer())
-      .post('/auth/register')
+      .post('/api/v1/auth/register')
       .send({
         username: 'user1',
-        password: 'userpassword',
+        password: 'UserPassword123!',
         name: '일반사용자',
         student_number: '20231111',
         phone_number: '010-1111-1111',
         email: 'user@example.com',
         major: '컴퓨터공학과',
         join_year: 2023,
-        birth_date: new Date('2001-01-01'),
+        birth_date: '2001-01-01',
         gender: UserGender.Male,
         education_status: EducationStatus.Enrolled
       });
@@ -88,8 +88,8 @@ describe('PATCH /api/v1/announcements/:id (e2e)', () => {
 
     // 일반 사용자 로그인
     const userLogin = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ username: 'user1', password: 'userpassword' });
+      .post('/api/v1/auth/login')
+      .send({ username: 'user1', password: 'UserPassword123!' });
     userToken = userLogin.body.access_token;
 
     // 테스트용 공지 2개 생성
@@ -109,6 +109,12 @@ describe('PATCH /api/v1/announcements/:id (e2e)', () => {
     await dataSource.query(
       `TRUNCATE TABLE announcement, "user" RESTART IDENTITY CASCADE;`
     );
+    
+    // DataSource 연결 닫기
+    if (dataSource && dataSource.isInitialized) {
+      await dataSource.destroy();
+    }
+    
     await app.close();
   });
 

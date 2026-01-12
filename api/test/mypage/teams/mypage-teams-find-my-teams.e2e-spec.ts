@@ -43,7 +43,7 @@ describe('GET /api/v1/mypage/teams (e2e)', () => {
         email: 'test@example.com',
         major: '컴퓨터공학과',
         join_year: 2025,
-        birth_date: new Date('2000-01-01'),
+        birth_date: '2000-01-01',
         gender: UserGender.Male,
         education_status: EducationStatus.Enrolled
       });
@@ -59,7 +59,7 @@ describe('GET /api/v1/mypage/teams (e2e)', () => {
         email: 'leader@example.com',
         major: '컴퓨터공학과',
         join_year: 2024,
-        birth_date: new Date('1999-01-01'),
+        birth_date: '1999-01-01',
         gender: UserGender.Male,
         education_status: EducationStatus.Enrolled
       });

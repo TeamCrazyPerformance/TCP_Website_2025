@@ -19,7 +19,7 @@ describe('POST /api/v1/admin/activity-images (e2e)', () => {
 
   const basePath = path.join(
     process.cwd(),
-    'public',
+    'uploads',
     'activities',
   );
 
@@ -44,10 +44,10 @@ describe('POST /api/v1/admin/activity-images (e2e)', () => {
 
     // --- 관리자 계정 생성 ---
     const adminRes = await request(app.getHttpServer())
-      .post('/auth/register')
+      .post('/api/v1/auth/register')
       .send({
         username: 'admin',
-        password: 'adminpassword',
+        password: 'AdminPassword123!',
         name: '관리자',
         student_number: '20230001',
         profile_image: '',
@@ -55,7 +55,7 @@ describe('POST /api/v1/admin/activity-images (e2e)', () => {
         email: 'admin@example.com',
         major: '컴퓨터공학과',
         join_year: 2023,
-        birth_date: new Date('2000-01-01'),
+        birth_date: '2000-01-01',
         gender: UserGender.Male,
         tech_stack: [],
         education_status: EducationStatus.Enrolled,
@@ -76,16 +76,16 @@ describe('POST /api/v1/admin/activity-images (e2e)', () => {
 
     // 관리자 로그인
     const adminLogin = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ username: 'admin', password: 'adminpassword' });
+      .post('/api/v1/auth/login')
+      .send({ username: 'admin', password: 'AdminPassword123!' });
     adminToken = adminLogin.body.access_token;
 
     // --- 일반 사용자 계정 생성 ---
     const userRes = await request(app.getHttpServer())
-      .post('/auth/register')
+      .post('/api/v1/auth/register')
       .send({
         username: 'normaluser',
-        password: 'userpassword',
+        password: 'UserPassword123!',
         name: '일반사용자',
         student_number: '20230002',
         profile_image: '',
@@ -93,7 +93,7 @@ describe('POST /api/v1/admin/activity-images (e2e)', () => {
         email: 'user@example.com',
         major: '소프트웨어학과',
         join_year: 2023,
-        birth_date: new Date('2001-02-02'),
+        birth_date: '2001-02-02',
         gender: UserGender.Female,
         tech_stack: [],
         education_status: EducationStatus.Enrolled,
@@ -109,8 +109,8 @@ describe('POST /api/v1/admin/activity-images (e2e)', () => {
 
     // 일반 사용자 로그인
     const userLogin = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ username: 'normaluser', password: 'userpassword' });
+      .post('/api/v1/auth/login')
+      .send({ username: 'normaluser', password: 'UserPassword123!' });
     userToken = userLogin.body.access_token;
   });
 

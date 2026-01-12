@@ -12,5 +12,8 @@
   },
   "moduleNameMapper": {
     "^src/(.*)$": "<rootDir>/../src/$1"
-  }
+  },
+  "testTimeout": 30000,
+  "setupFilesAfterEnv": ["<rootDir>/jest-e2e.setup.ts"],
+  "forceExit": true
 }

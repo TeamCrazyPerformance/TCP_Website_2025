@@ -24,7 +24,10 @@ class LogstashTcpTransport extends winston.transports.Stream {
         this.port = opts.port;
         this.socket = socket;
 
-        this.connect();
+        // 테스트 환경에서는 Logstash 연결 비활성화
+        if (process.env.NODE_ENV !== 'test') {
+            this.connect();
+        }
     }
 
     private connect() {

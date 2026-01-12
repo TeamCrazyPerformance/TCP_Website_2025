@@ -42,7 +42,7 @@ describe('MembersController (e2e)', () => {
   it('이메일 공개 여부가 true일 때 200 상태 코드와 email 필드 포함된 멤버 리스트 반환', async () => {
     await userRepository.save({
       username: 'test1',
-      password: '1234',
+      password: 'TestPassword123!',
       name: '이순신',
       student_number: '20250002',
       profile_image: '',
@@ -68,7 +68,7 @@ describe('MembersController (e2e)', () => {
   it('이메일 공개 여부가 false일 때 200 상태 코드와 email 필드가 제외된 멤버 리스트 반환', async () => {
     await userRepository.save({
       username: 'test2',
-      password: '1234',
+      password: 'TestPassword123!',
       name: '이순신',
       student_number: '20250002',
       profile_image: 'img.png',

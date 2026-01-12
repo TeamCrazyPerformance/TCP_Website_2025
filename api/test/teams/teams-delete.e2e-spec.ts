@@ -36,10 +36,10 @@ describe('DELETE /api/v1/teams/:id (e2e)', () => {
 
         // --- leader 계정 생성 ---
          const leaderRes  = await request(app.getHttpServer())
-                .post('/auth/register')
+                .post('/api/v1/auth/register')
                 .send({
                     username: 'leader',
-                    password: 'leaderpassword',
+                    password: 'TestPassword123!',
                     name: '팀장',
                     student_number: '20231111',
                     profile_image: '',
@@ -47,7 +47,7 @@ describe('DELETE /api/v1/teams/:id (e2e)', () => {
                     email: 'leader@example.com',
                     major: '컴퓨터공학과',
                     join_year: 2023,
-                    birth_date: new Date('2000-01-01'),
+                    birth_date: '2000-01-01',
                     gender: UserGender.Male,
                     tech_stack: [],
                     education_status: EducationStatus.Enrolled,
@@ -64,10 +64,10 @@ describe('DELETE /api/v1/teams/:id (e2e)', () => {
 
         // --- notLeader 계정 생성 ---
         const userRes = await request(app.getHttpServer())
-                .post('/auth/register')
+                .post('/api/v1/auth/register')
                 .send({
                     username: 'user',
-                    password: 'userpassword',
+                    password: 'UserPassword123!',
                     name: '일반사용자',
                     student_number: '20232222',
                     profile_image: '',
@@ -75,7 +75,7 @@ describe('DELETE /api/v1/teams/:id (e2e)', () => {
                     email: 'user2@example.com',
                     major: '정보통신학과',
                     join_year: 2023,
-                    birth_date: new Date('2001-02-02'),
+                    birth_date: '2001-02-02',
                     gender: UserGender.Female,
                     tech_stack: [],
                     education_status: EducationStatus.Enrolled,
@@ -91,13 +91,13 @@ describe('DELETE /api/v1/teams/:id (e2e)', () => {
 
         // 로그인
         const leaderLogin = await request(app.getHttpServer())
-           .post('/auth/login')
-           .send({ username: 'leader', password: 'leaderpassword' });
+           .post('/api/v1/auth/login')
+           .send({ username: 'leader', password: 'TestPassword123!' });
         leaderToken = leaderLogin.body.access_token;
         
          const userLogin = await request(app.getHttpServer())
-           .post('/auth/login')
-           .send({ username: 'user', password: 'userpassword' });
+           .post('/api/v1/auth/login')
+           .send({ username: 'user', password: 'UserPassword123!' });
         userToken = userLogin.body.access_token;
 
     });
@@ -106,6 +106,12 @@ describe('DELETE /api/v1/teams/:id (e2e)', () => {
         await dataSource.query(
             `TRUNCATE TABLE team_member, team_role, team, "user" RESTART IDENTITY CASCADE;`,
         );
+        
+        // DataSource 연결 닫기
+        if (dataSource && dataSource.isInitialized) {
+            await dataSource.destroy();
+        }
+        
         await app.close();
     });
 
