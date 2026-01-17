@@ -44,13 +44,8 @@
     env_file:
       - ./envs/api.env
       - ./envs/db_prod.env
-      - ./envs/redis.env
     environment:
       # DB 설정 (db_prod.env 의존)
-      # Redis (PASSWORD: redis.env 의존)
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_DB: 0
       # Logstash (윈스턴 TCP/UDP 전송 시 사용)
       LOGSTASH_HOST: logstash
       LOGSTASH_PORT: 5000
@@ -94,28 +89,6 @@
       interval: 5s
       timeout: 5s
       retries: 20
-    networks: [internal]
-    restart: unless-stopped
-
-  # Redis with AOF + password
-  redis:
-    image: redis:7-alpine
-    container_name: redis
-    # 내부 네트워크에서만 접근 가능 (보안)
-    expose:
-      - "6379"
-    env_file:
-      - ./envs/redis.env
-    environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}", "--maxmemory-policy", "allkeys-lru", "--maxmemory", "512mb"]
-    volumes:
-      - redis-data:/data  
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a \"$REDIS_PASSWORD\" ping | grep -q PONG"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
     networks: [internal]
     restart: unless-stopped
 
@@ -212,4 +185,3 @@ networks:
 volumes:
   db-data:
   es-data:
-  redis-data:

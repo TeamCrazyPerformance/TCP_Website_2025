@@ -63,22 +63,6 @@ openssl rand -base64 32
 
 ---
 
-### 1.4 Redis 환경 변수 (`envs/redis.env`)
-
-현재 비어있습니다. 프로덕션에서는 Redis 인증을 활성화하세요:
-
-```env
-# envs/redis.env
-REDIS_PASSWORD=your_strong_redis_password
-```
-
-그리고 `docker-compose.yml`의 redis 서비스에서:
-```yaml
-command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
-```
-
----
-
 ## 2. 보안 설정
 
 ### 2.1 포트 접근 제한 ✅
@@ -88,7 +72,6 @@ command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSW
 | 서비스 | 설정 | 상태 |
 |--------|------|------|
 | PostgreSQL | `expose: "5432"` | ✅ 내부망만 |
-| Redis | `expose: "6379"` | ✅ 내부망만 |
 | Elasticsearch | `expose: "9200"` | ✅ 내부망만 |
 | Kibana | `expose: "5601"` | ✅ 내부망만 |
 | Logstash | `expose: "5000"` | ✅ 내부망만 |
@@ -229,7 +212,6 @@ curl http://localhost/api/health
 | 관리자 비밀번호 | `envs/db.env` | `ADMIN_PASSWORD` |
 | Elasticsearch | `envs/elk.env` | `ELASTIC_PASSWORD` |
 | Kibana | `envs/elk.env` | `KIBANA_SYSTEM_PASSWORD` |
-| Redis | `envs/redis.env` | `REDIS_PASSWORD` (추가 필요) |
 
 ---
 

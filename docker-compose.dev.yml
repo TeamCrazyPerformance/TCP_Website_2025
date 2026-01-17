@@ -36,16 +36,10 @@ services:
     env_file:
       - ./envs/api.env
       - ./envs/db.env
-      - ./envs/redis.env
     environment:
       # DB (db.env 의 실제 값이 우선이지만, 컨테이너 네트워크용 host는 여기서 고정)
       DB_HOST: db
       DB_PORT: 5432
-
-      # Redis
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_DB: 0
 
       # Logstash
       LOGSTASH_HOST: logstash
@@ -71,25 +65,6 @@ services:
       - ./envs/db.env
     ports:
       - "5432:5432"
-
-  # Redis (dev에서는 외부에서 붙을 수 있게 포트 오픈)
-  redis:
-    env_file:
-      - ./envs/redis.env
-    environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me}
-    command:
-      - redis-server
-      - --appendonly
-      - "yes"
-      - --requirepass
-      - "${REDIS_PASSWORD}"
-      - --maxmemory-policy
-      - allkeys-lru
-      - --maxmemory
-      - 512mb
-    ports:
-      - "6379:6379"
 
   # Static web (nginx로 dist 서빙)
   web:
