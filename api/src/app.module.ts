@@ -32,9 +32,9 @@ import { RecruitmentModule } from './recruitment/recruitment.module';
         type: 'postgres',
         host: config.get<string>('DB_HOST') || 'localhost',
         port: config.get<number>('DB_PORT') || 5432,
-        username: config.get<string>('DB_USERNAME') || 'user',
+        username: config.get<string>('DB_USER') || 'user',
         password: config.get<string>('DB_PASSWORD') || 'password',
-        database: config.get<string>('DB_DATABASE') || 'mydb',
+        database: config.get<string>('DB_NAME') || 'mydb',
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: true, // 개발 중에만 true
         logging: true,
