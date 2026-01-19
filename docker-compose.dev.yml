@@ -35,9 +35,9 @@ services:
     command: npm run start:dev
     env_file:
       - ./envs/api.env
-      - ./envs/db.env
+      - ./envs/db_dev.env
     environment:
-      # DB (db.env 의 실제 값이 우선이지만, 컨테이너 네트워크용 host는 여기서 고정)
+      # DB (db_dev.env 의 실제 값이 우선이지만, 컨테이너 네트워크용 host는 여기서 고정)
       DB_HOST: db
       DB_PORT: 5432
 
@@ -62,7 +62,7 @@ services:
   # PostgreSQL
   db:
     env_file:
-      - ./envs/db.env
+      - ./envs/db_dev.env
     ports:
       - "5432:5432"
 
