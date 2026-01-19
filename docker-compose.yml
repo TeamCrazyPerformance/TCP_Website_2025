@@ -76,8 +76,7 @@
     container_name: db
     env_file:
       - ./envs/db_prod.env
-    environment:
-      # DB 설정 (db_prod.env 의존)
+    # DB 설정 (db_prod.env 의존)
     # 내부 네트워크에서만 접근 가능 (보안)
     expose:
       - "5432"
