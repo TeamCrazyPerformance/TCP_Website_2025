@@ -15,6 +15,7 @@ import { ProfileModule } from './mypage/profile/profile.module';
 import { PrivacyModule } from './mypage/privacy/privacy.module';
 import { WithdrawModule } from './mypage/withdraw/withdraw.module';
 import { MyPageTeamsModule } from './mypage/teams/mypage-teams.module';
+import { AccountModule } from './mypage/account/account.module';
 import { LoggerModule } from './logger/logger.module';
 import { HttpLoggerMiddleware } from './logger/http-logger.middleware';
 import { RecruitmentModule } from './recruitment/recruitment.module';
@@ -54,6 +55,7 @@ import { RecruitmentModule } from './recruitment/recruitment.module';
     PrivacyModule,
     WithdrawModule,
     MyPageTeamsModule,
+    AccountModule,
     RecruitmentModule,
   ],
 })
