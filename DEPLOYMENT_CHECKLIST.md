@@ -31,7 +31,7 @@ openssl rand -base64 64
 
 ---
 
-### 1.2 데이터베이스 환경 변수 (`envs/db.env`)
+### 1.2 데이터베이스 환경 변수 (`envs/db_dev.env`)
 
 | 변수명 | 설명 | 권장 조치 |
 |--------|------|-----------|
@@ -45,7 +45,7 @@ openssl rand -base64 64
 | `ADMIN_USERNAME` | 초기 관리자 사용자명 | 🟡 필요시 변경 |
 
 > [!CAUTION]
-> `docker-compose.yml`에서도 DB 관련 환경변수가 하드코딩되어 있습니다. `envs/db.env` 값과 동일하게 변경하세요!
+> `docker-compose.yml`에서도 DB 관련 환경변수가 하드코딩되어 있습니다. `envs/db_dev.env` 값과 동일하게 변경하세요!
 
 ---
 
@@ -165,7 +165,7 @@ environment:
 
 # 개선 (env_file 사용)
 env_file:
-  - ./envs/db.env
+  - ./envs/db_dev.env
   - ./envs/api.env
 ```
 
@@ -208,8 +208,8 @@ curl http://localhost/api/health
 | 항목 | 파일 | 변수 |
 |------|------|------|
 | JWT 시크릿 | `envs/api.env` | `JWT_SECRET` |
-| DB 비밀번호 | `envs/db.env` + `docker-compose.yml` | `DB_PASSWORD` |
-| 관리자 비밀번호 | `envs/db.env` | `ADMIN_PASSWORD` |
+| DB 비밀번호 | `envs/db_dev.env` + `docker-compose.yml` | `DB_PASSWORD` |
+| 관리자 비밀번호 | `envs/db_dev.env` | `ADMIN_PASSWORD` |
 | Elasticsearch | `envs/elk.env` | `ELASTIC_PASSWORD` |
 | Kibana | `envs/elk.env` | `KIBANA_SYSTEM_PASSWORD` |
 
