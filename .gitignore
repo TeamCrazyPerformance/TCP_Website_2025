@@ -17,3 +17,18 @@ logs/
 db-data/
 es-data/
 redis-data/
+
+# Node / frontend build artifacts
+node_modules/
+web/src/node_modules/
+api/node_modules/
+web/dist/
+web/src/build/
+web/src/.env*
+api/.env*
+package-lock.json
+web/src/package-lock.json
+api/package-lock.json
+yarn.lock
+web/src/yarn.lock
+api/yarn.lock
