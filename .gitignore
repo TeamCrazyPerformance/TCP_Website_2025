@@ -20,15 +20,15 @@ redis-data/
 
 # Node / frontend build artifacts
 node_modules/
-web/src/node_modules/
+web/node_modules/
 api/node_modules/
 web/dist/
-web/src/build/
-web/src/.env*
+web/build/
+web/.env*
 api/.env*
 package-lock.json
-web/src/package-lock.json
+web/package-lock.json
 api/package-lock.json
 yarn.lock
-web/src/yarn.lock
+web/yarn.lock
 api/yarn.lock
