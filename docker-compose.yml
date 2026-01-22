@@ -60,13 +60,12 @@
       logstash:
         condition: service_started
     command: node dist/main.js
-    # Basic liveness check for proxy/depends_on gating
-      # TODO: frontend merge 이후 실제 엔드포인트로 healthcheck 수정 (아마도 health)
-      # healthcheck:
-      #   test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
-      #   interval: 10s
-      #   timeout: 5s
-      #   retries: 5
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health/live || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
     networks: [internal]
     restart: unless-stopped
 
