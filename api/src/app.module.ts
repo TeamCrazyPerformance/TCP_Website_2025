@@ -20,6 +20,7 @@ import { AccountModule } from './mypage/account/account.module';
 import { LoggerModule } from './logger/logger.module';
 import { HttpLoggerMiddleware } from './logger/http-logger.middleware';
 import { RecruitmentModule } from './recruitment/recruitment.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { RecruitmentModule } from './recruitment/recruitment.module';
     MyPageTeamsModule,
     AccountModule,
     RecruitmentModule,
+    HealthModule,
   ],
 })
 export class AppModule implements NestModule {
