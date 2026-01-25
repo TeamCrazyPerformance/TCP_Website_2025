@@ -1,0 +1,759 @@
+:root {
+  --primary-black: #0a0a0a;
+  --secondary-gray: #1a1a1a;
+  --light-gray: #2a2a2a;
+  --accent-blue: #a8c5e6;
+  --accent-purple: #c5a8e6;
+  --accent-green: #a8e6c5;
+  --accent-pink: #e6a8c5;
+}
+
+body {
+  font-family: 'Spoqa Han Sans Neo', sans-serif;
+  background-color: var(--primary-black);
+  color: #ffffff;
+}
+
+.orbitron {
+  font-family: 'Orbitron', monospace;
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.card-hover {
+  transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(168, 197, 230, 0.2);
+}
+
+.nav-link {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+  transition: width 0.3s ease;
+}
+
+.nav-link:hover::after {
+  width: 100%;
+}
+
+.cta-button {
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  transition: all 0.3s ease;
+}
+
+.cta-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 30px rgba(168, 197, 230, 0.3);
+}
+
+.feature-card {
+  background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.promo-placeholder {
+  background: linear-gradient(135deg, var(--light-gray), var(--secondary-gray));
+  border: 2px dashed rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.scroll-fade {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.6s ease;
+}
+
+.scroll-fade.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Accordion Styles */
+.accordion-item {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.accordion-item:hover {
+  border-color: rgba(168, 197, 230, 0.3);
+}
+
+.accordion-header {
+  background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.accordion-header:hover {
+  background: linear-gradient(135deg, var(--light-gray), var(--secondary-gray));
+}
+
+.accordion-header.active {
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  color: var(--primary-black);
+}
+
+.accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  background: rgba(42, 42, 42, 0.5);
+}
+
+.accordion-content.active {
+  max-height: 1000px; /* 충분히 큰 값으로 설정하여 내용이 잘리지 않도록 합니다. */
+}
+
+.accordion-body {
+  padding: 20px;
+}
+
+.accordion-icon {
+  transition: transform 0.3s ease;
+}
+
+.accordion-icon.rotate {
+  transform: rotate(180deg);
+}
+
+/* Stat Card Styles */
+.stat-card {
+  background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 24px;
+  border-radius: 16px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(168, 197, 230, 0.2);
+}
+
+/* Activity Tag Styles */
+.activity-tag {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  margin: 4px;
+}
+
+.tag-competition {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
+.tag-study {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+
+.tag-project {
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+}
+
+.tag-event {
+  background: rgba(168, 85, 247, 0.2);
+  color: #d8b4fe;
+}
+
+.tag-achievement {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fde68a;
+}
+
+/* Member Card Styles */
+.member-card {
+  background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.member-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 5px;
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+  transform: translateY(-100%);
+  transition: transform 0.3s ease-out;
+}
+
+.member-card:hover::before {
+  transform: translateY(0);
+}
+
+.member-card .img-container {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid transparent;
+  background-origin: border-box;
+  background-clip: content-box, border-box;
+  background-image:
+    linear-gradient(var(--secondary-gray), var(--secondary-gray)),
+    linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  margin-bottom: 1rem;
+}
+
+.member-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Modal Styles */
+.modal {
+  display: none; /* 기본적으로 숨김. React에서 isModalOpen 상태로 제어 */
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(5px);
+  justify-content: center; /* Flexbox 속성으로 중앙 정렬 */
+  align-items: center; /* Flexbox 속성으로 중앙 정렬 */
+}
+
+/* React에서 isModalOpen이 true일 때 'active' 클래스를 조건부로 추가하여 display: flex를 만듭니다. */
+.modal.active {
+  display: flex;
+}
+
+.modal-content {
+  background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh; /* 모달이 화면을 넘지 않도록 최대 높이 설정 */
+  overflow-y: auto; /* 내용이 넘칠 경우 스크롤 허용 */
+  position: relative;
+  animation: fadeInScale 0.3s ease-out; /* 모달 열릴 때 애니메이션 */
+}
+
+/* Modal Open Animation */
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.5rem;
+  color: #ffffff;
+  transition: border-color 0.3s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(168, 197, 230, 0.2);
+}
+
+.form-input::placeholder {
+  color: #9ca3af; /* placeholder 색상 추가 */
+}
+
+.form-textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.checkbox-container input[type='checkbox'] {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: var(--accent-blue); /* 체크박스 색상 */
+}
+
+.required::after {
+  content: ' *';
+  color: #ef4444; /* Tailwind red-500 */
+}
+
+.close-modal {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.close-modal:hover {
+  color: var(--accent-blue);
+}
+
+.achievement-card {
+  background: linear-gradient(
+    135deg,
+    rgba(168, 197, 230, 0.1),
+    rgba(197, 168, 230, 0.1)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+/* Announcement Item Styles */
+.announcement-item {
+  background: var(--secondary-gray);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.announcement-item:hover {
+  background-color: var(--light-gray);
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(168, 197, 230, 0.15);
+}
+
+/* Study Item Styles */
+.study-item {
+  background: var(--secondary-gray);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  cursor: pointer; /* 클릭 가능하도록 커서 변경 */
+}
+
+.study-item:hover {
+  background-color: var(--light-gray);
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(168, 197, 230, 0.15);
+}
+
+/* Tag Styles (Study 페이지 전용) */
+.tag {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 9999px; /* Tailwind's rounded-full */
+  font-size: 0.75rem; /* Tailwind's text-xs */
+  font-weight: 500;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Study Page Specific Tag Colors */
+.tag-blue {
+  background-color: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+.tag-purple {
+  background-color: rgba(168, 85, 247, 0.2);
+  color: #d8b4fe;
+}
+.tag-green {
+  background-color: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+}
+.tag-yellow {
+  background-color: rgba(245, 158, 11, 0.2);
+  color: #fde68a;
+}
+.tag-red {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
+/* Recruitment Card Styles */
+.recruitment-card {
+  background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+.recruitment-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(168, 197, 230, 0.2);
+}
+
+/* Login Page Specific Styles */
+.login-card {
+  background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px); /* 로그인 카드 뒷 배경 블러 효과 */
+}
+
+.input-field {
+  background: rgba(42, 42, 42, 0.5); /* light-gray의 50% 투명도 */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(168, 197, 230, 0.1);
+}
+
+.input-field::placeholder {
+  color: #9ca3af; /* Tailwind gray-400 */
+}
+
+.login-button {
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  transition: all 0.3s ease;
+}
+
+.login-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(168, 197, 230, 0.3);
+}
+
+.secondary-link {
+  color: #9ca3af; /* Tailwind gray-400 */
+  transition: color 0.3s ease;
+}
+
+.secondary-link:hover {
+  color: var(--accent-blue);
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.custom-checkbox {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.custom-checkbox:checked {
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  border-color: var(--accent-blue);
+}
+
+/* ----- register Page----- */
+.input-group {
+  position: relative;
+}
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #9ca3af; /* gray-400 */
+}
+.password-toggle:hover {
+  color: #d1d5db; /* gray-300 */
+}
+
+.validation-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.slide-down {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+}
+.slide-down.show {
+  max-height: 300px; /* 충분히 큰 값으로 설정 */
+}
+
+.btn-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-enabled {
+  opacity: 1;
+  cursor: pointer;
+}
+
+.success-icon {
+  color: #10b981;
+} /* Tailwind green-500 */
+.error-icon {
+  color: #ef4444;
+} /* Tailwind red-500 */
+
+.loading-spinner {
+  border: 2px solid #374151; /* gray-700 */
+  border-top: 2px solid var(--accent-purple); /* accent-purple */
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Sidebar Styles */
+/* AdminDashboard */
+.sidebar {
+  width: 260px;
+  background: linear-gradient(
+    180deg,
+    var(--secondary-gray),
+    var(--primary-black)
+  );
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  transition: transform 0.3s ease-in-out;
+}
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+    position: fixed;
+    z-index: 100;
+    height: 100%;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+}
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  font-size: 0.875rem;
+  color: #cbd5e1; /* gray-300 */
+  border-radius: 0.5rem;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+.sidebar-link:hover {
+  background-color: rgba(168, 197, 230, 0.1);
+  color: #ffffff;
+}
+.sidebar-link i {
+  width: 1.5rem; /* w-6 */
+  text-align: center;
+}
+
+/* Widget Card Styles */
+.widget-card {
+  background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.progress-bar {
+  background-color: var(--light-gray);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+.progress-bar-inner {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+  border-radius: 9999px;
+}
+
+/* About Page Specific Styles */
+/* Custom Gradients for About Page Accordion Years */
+.gradient-blue-purple {
+  background: linear-gradient(
+    135deg,
+    #60a5fa,
+    #a78bfa
+  ); /* from-blue-500 to-purple-500 */
+}
+.gradient-green-blue {
+  background: linear-gradient(
+    135deg,
+    #34d399,
+    #60a5fa
+  ); /* from-green-500 to-blue-500 */
+}
+.gradient-yellow-red {
+  background: linear-gradient(
+    135deg,
+    #facc15,
+    #ef4444
+  ); /* from-yellow-500 to-red-500 */
+}
+.gradient-purple-pink {
+  background: linear-gradient(
+    135deg,
+    #a78bfa,
+    #ec4899
+  ); /* from-purple-500 to-pink-500 */
+}
+
+/* 기존 .nav-link 스타일 아래에 추가 */
+
+/* New active state for nav-link */
+.nav-link.active {
+  color: #ffffff; /* 텍스트를 흰색으로 */
+}
+
+/* 활성 상태일 때 밑줄도 100% 나오도록 설정 */
+.nav-link.active::after {
+  width: 100%;
+}
+
+/* 기존 nav-link에 text-gray-300이 기본으로 적용되어 있으므로, 
+   active 클래스가 있을 때는 text-gray-300을 오버라이드해야 합니다.
+   이를 위해 조건부 클래스 적용 시 'active'를 먼저, 'text-gray-300'을 나중에 배치합니다. */
+/* Header.jsx에서 Link 컴포넌트의 className을 다음과 같이 수정합니다:
+   className={`nav-link orbitron text-sm font-medium ${isActive('/about') ? 'active' : 'text-gray-300'} hover:text-white`}
+   이렇게 하면 active일 때만 'active' 클래스가 추가되고, 아닐 때만 'text-gray-300'이 적용됩니다.
+   active 클래스에 color: #ffffff가 직접 정의되어 있으므로 문제없이 작동합니다.
+*/
+
+/* announcement_write.html 전용 스타일 */
+.form-card {
+  background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.form-input {
+  background-color: var(--light-gray);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  transition: all 0.3s ease;
+}
+
+.form-input:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(168, 197, 230, 0.1);
+  outline: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 30px rgba(168, 197, 230, 0.3);
+}
+
+.btn-secondary {
+  background: var(--light-gray);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+  background: var(--secondary-gray);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.category-chip {
+  background: var(--light-gray);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.category-chip:hover {
+  border-color: var(--accent-blue);
+}
+
+.category-chip.selected {
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  border-color: var(--accent-purple);
+}
+
+.preview-modal {
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+}
+
+.char-counter {
+  font-size: 0.875rem;
+  color: #9ca3af;
+}
+
+.char-counter.warning {
+  color: var(--accent-pink);
+}
+
+.toolbar-btn {
+  padding: 0.5rem;
+  background: var(--light-gray);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border-radius: 0.375rem;
+  transition: all 0.3s ease;
+}
+
+.toolbar-btn:hover {
+  background: var(--accent-blue);
+  color: var(--primary-black);
+}

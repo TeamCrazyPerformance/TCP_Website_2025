@@ -1,0 +1,32 @@
+Frontend build warnings (npm run build in web/src):
+
+src/pages/Team.jsx
+  Line 236:6: React Hook useEffect has a missing dependency: 'mapTeam'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+src/pages/admin/AdminApplicationManagement.jsx
+  Line 1:27: 'useMemo' is defined but never used  no-unused-vars
+
+src/pages/admin/AdminModifyUserInfo.jsx
+  Line 36:11: 'handleSelectUser' is assigned a value but never used  no-unused-vars
+
+src/pages/admin/AdminPermission.jsx
+  Line 1:36: 'useEffect' is defined but never used          no-unused-vars
+  Line 1:47: 'useCallback' is defined but never used        no-unused-vars
+  Line 19:19: 'setUsers' is assigned a value but never used  no-unused-vars
+
+src/pages/admin/AdminServer.jsx
+  Line 1:27: 'useEffect' is defined but never used            no-unused-vars
+  Line 47:21: 'setMetrics' is assigned a value but never used  no-unused-vars
+  Line 49:12: 'logs' is assigned a value but never used        no-unused-vars
+
+src/pages/admin/AdminTeam.jsx
+  Line 19:19: 'setTeams' is assigned a value but never used          no-unused-vars
+  Line 20:21: 'setFilters' is assigned a value but never used        no-unused-vars
+  Line 21:18: 'setSort' is assigned a value but never used           no-unused-vars
+  Line 22:12: 'selectedItems' is assigned a value but never used     no-unused-vars
+  Line 22:27: 'setSelectedItems' is assigned a value but never used  no-unused-vars
+
+src/pages/mypage/MyPageSettings.jsx
+  Line 1:27: 'useEffect' is defined but never used  no-unused-vars
+  Line 113:33: The href attribute requires a valid value to be accessible. Provide a valid, navigable address as the href value. If you cannot provide a valid href, but still need the element to resemble a link, use a button and change it with appropriate styles. Learn more: https://github.com/jsx-eslint/eslint-plugin-jsx-a11y/blob/HEAD/docs/rules/anchor-is-valid.md  jsx-a11y/anchor-is-valid
+  Line 114:36: The href attribute requires a valid value to be accessible. Provide a valid, navigable address as the href value. If you cannot provide a valid href, but still need the element to resemble a link, use a button and change it with appropriate styles. Learn more: https://github.com/jsx-eslint/eslint-plugin-jsx-a11y/blob/HEAD/docs/rules/anchor-is-valid.md  jsx-a11y/anchor-is-valid
