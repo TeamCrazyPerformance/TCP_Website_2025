@@ -54,10 +54,11 @@ services:
       - ./api:/var/app
       - /var/app/node_modules
     healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 3000 || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health/live || exit 1"]
       interval: 10s
-      timeout: 5s
+      timeout: 3s
       retries: 5
+      start_period: 20s
 
   # PostgreSQL
   db:
