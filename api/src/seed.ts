@@ -7,16 +7,16 @@ import { UserRole } from './members/entities/enums/user-role.enum';
 import { UserGender } from './members/entities/enums/user-gender.enum';
 import { EducationStatus } from './members/entities/enums/education-status.enum';
 
-// envs/api.env 파일 로드
-dotenv.config({ path: path.join(__dirname, '../../envs/api.env') });
+// envs/db_prod.env 파일 로드 (DB 정보 + ADMIN 정보)
+dotenv.config({ path: path.join(__dirname, '../../envs/db_prod.env') });
 
 const AppDataSource = new DataSource({
     type: 'postgres',
     host: process.env.DB_HOST || 'localhost',
     port: Number(process.env.DB_PORT) || 5432,
-    username: process.env.DB_USER || process.env.DB_USER || 'user',
+    username: process.env.DB_USER || 'user',
     password: process.env.DB_PASSWORD || 'password',
-    database: process.env.DB_NAME || process.env.DB_NAME || 'mydb',
+    database: process.env.DB_NAME || 'mydb',
     entities: [__dirname + '/**/*.entity{.ts,.js}'],
     synchronize: false,
 });
@@ -53,12 +53,12 @@ async function seed() {
     admin.username = adminUsername;
     admin.password = hashedPassword;
     admin.name = '관리자';
-    admin.student_number = '00000000';
-    admin.phone_number = '010-0000-0000';
+    admin.student_number = '26000000';
+    admin.phone_number = '010-1234-5678';
     admin.email = adminEmail;
-    admin.major = 'Computer Science';
+    admin.major = '컴퓨터공학과';
     admin.join_year = new Date().getFullYear();
-    admin.birth_date = new Date('1990-01-01');
+    admin.birth_date = new Date('2026-01-01');
     admin.gender = UserGender.Male;
     admin.role = UserRole.ADMIN;
     admin.education_status = EducationStatus.Enrolled;
