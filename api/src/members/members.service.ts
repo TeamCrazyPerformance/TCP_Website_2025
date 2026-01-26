@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { Repository, IsNull, Not } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 import { User } from './entities/user.entity';
 import { PublicUserDto } from './dto/public-user.dto';
+import { UserRole } from './entities/enums/user-role.enum';
 
 @Injectable()
 export class MembersService {
@@ -26,7 +27,10 @@ export class MembersService {
 
   async getPublicMemberList(): Promise<PublicUserDto[]> {
     const users = await this.userRepository.find({
-      where: { deleted_at: IsNull() },
+      where: {
+        deleted_at: IsNull(),
+        role: Not(UserRole.GUEST),
+      },
     });
     return users.map((user) => ({
       name: user.name,
