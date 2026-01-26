@@ -239,8 +239,6 @@ const Withdraw = () => {
                                         <div><span className="text-gray-400">이메일:</span><span className="text-white ml-2 font-medium">{displayEmail || '-'}</span></div>
                                     </div>
                                 </div>
-                                </div>
-
                                 <div className="space-y-4 mb-8">
                                     <div className="checkbox-container">
                                         <input type="checkbox" id="confirm-data-loss" name="dataLoss" checked={confirmations.dataLoss} onChange={handleConfirmationChange} required />
