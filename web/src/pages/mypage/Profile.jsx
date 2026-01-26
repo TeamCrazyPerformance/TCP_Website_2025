@@ -10,24 +10,28 @@ import {
   faTrophy,
 } from '@fortawesome/free-solid-svg-icons';
 import { faGithub } from '@fortawesome/free-brands-svg-icons';
+import { apiGet, apiPatch, apiPatchMultipart } from '../../api/client';
 
 function Profile() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   // 프로필 정보 상태 관리
   const [profile, setProfile] = useState({
-    photo: 'https://via.placeholder.com/150/A8C5E6/FFFFFF?text=김TCP',
-    nickname: '김TCP',
-    major: '컴퓨터공학과',
-    studentId: '20학번',
-    role: 'Full-Stack Developer',
-    email: 'kimtcp@seoultech.ac.kr',
-    bio: '안녕하세요! TCP에서 활동 중인 김TCP입니다. 웹 개발과 알고리즘에 관심이 많고, 새로운 기술을 배우는 것을 좋아합니다.',
-    techStack: ['JavaScript', 'React', 'Node.js', 'Python', 'MySQL'],
+    photo: '',
+    nickname: '',
+    major: '',
+    studentId: '',
+    role: '',
+    email: '',
+    bio: '',
+    techStack: [],
     status: 'student',
-    github: 'https://github.com/kimtcp',
-    portfolio: 'https://portfolio.kimtcp.com',
+    github: '',
+    portfolio: '',
   });
 
-  // 통계 상태 (데모 데이터)
+  // 통계 상태 (데모 데이터 - 백엔드 API 미구현 시 유지, 추후 연동)
   const [stats] = useState({
     joinPeriod: '2년 3개월',
     joinDate: '2022년 3월',
@@ -41,7 +45,7 @@ function Profile() {
     competitionsAwards: 1,
   });
 
-  // 최근 활동 상태 (데모 데이터)
+  // 최근 활동 상태 (데모 데이터 - 백엔드 API 미구현 시 유지, 추후 연동)
   const [activities] = useState([
     {
       title: 'React 심화 스터디',
@@ -68,11 +72,43 @@ function Profile() {
 
   // 모달 관련 상태
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
-  const [selectedPhotoSrc, setSelectedPhotoSrc] = useState(profile.photo);
+  const [selectedPhotoFile, setSelectedPhotoFile] = useState(null);
+  const [previewPhotoSrc, setPreviewPhotoSrc] = useState(null);
   const fileInputRef = useRef(null);
 
   // textarea 자동 높이 조절을 위한 ref
   const bioRef = useRef(null);
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+      const data = await apiGet('/api/v1/mypage/profile');
+
+      // API 응답 데이터를 상태에 매핑
+      setProfile({
+        photo: data.profile_image ? (data.profile_image.startsWith('http') ? data.profile_image : `${process.env.REACT_APP_API_BASE || ''}/uploads/profiles/${data.profile_image}`) : 'https://via.placeholder.com/150/A8C5E6/FFFFFF?text=NoImage',
+        nickname: data.name || '',
+        major: data.major || '',
+        studentId: data.student_number ? `${data.student_number.substring(2, 4)}학번` : '',
+        role: data.role || 'Member',
+        email: data.email || '',
+        bio: data.self_description || '',
+        techStack: data.tech_stack || [],
+        status: data.education_status || 'student', // enum 매핑 필요 시 조정
+        github: data.github_username || '',
+        portfolio: data.portfolio_link || '',
+      });
+    } catch (err) {
+      console.error('프로필 불러오기 실패:', err);
+      setError('프로필 정보를 불러오는데 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Team.jsx에서 가져온 태그 스타일 헬퍼 함수
   const getTagBgClass = (tag) => {
@@ -127,32 +163,9 @@ function Profile() {
 
   // 모든 사용 가능한 기술 스택 태그 목록
   const allTechTags = [
-    'JavaScript',
-    'React',
-    'TypeScript',
-    'Node.js',
-    'Python',
-    'C++',
-    'Java',
-    'Spring',
-    'Next.js',
-    'MySQL',
-    'MongoDB',
-    'Flutter',
-    'Swift',
-    'Kotlin',
-    'Unity',
-    'C#',
-    'CSS',
-    'TailwindCSS',
-    'AI',
-    'TensorFlow',
-    'PyTorch',
-    'Hugging Face',
-    'DevOps',
-    'Kubernetes',
-    'Docker',
-    'AWS',
+    'JavaScript', 'React', 'TypeScript', 'Node.js', 'Python', 'C++', 'Java', 'Spring', 'Next.js',
+    'MySQL', 'MongoDB', 'Flutter', 'Swift', 'Kotlin', 'Unity', 'C#', 'CSS', 'TailwindCSS',
+    'AI', 'TensorFlow', 'PyTorch', 'Hugging Face', 'DevOps', 'Kubernetes', 'Docker', 'AWS',
   ];
 
   // 기술 스택 태그 클릭 핸들러
@@ -179,33 +192,54 @@ function Profile() {
   // 모달 열기/닫기
   const openPhotoModal = () => {
     setIsPhotoModalOpen(true);
-    setSelectedPhotoSrc(profile.photo);
+    setPreviewPhotoSrc(profile.photo);
+    setSelectedPhotoFile(null);
   };
   const closePhotoModal = () => {
     setIsPhotoModalOpen(false);
+    setSelectedPhotoFile(null);
+    setPreviewPhotoSrc(null);
   };
 
-  // 프리셋 사진 선택
-  const selectPresetPhoto = (src) => {
-    setSelectedPhotoSrc(src);
-  };
-
-  // 파일 업로드 처리
+  // 파일 업로드 처리 (미리보기)
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
+      setSelectedPhotoFile(file);
       const reader = new FileReader();
       reader.onload = (e) => {
-        setSelectedPhotoSrc(e.target.result);
+        setPreviewPhotoSrc(e.target.result);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  // 프로필 사진 변경 저장
-  const savePhotoChange = () => {
-    setProfile((prev) => ({ ...prev, photo: selectedPhotoSrc }));
-    closePhotoModal();
+  // 프로필 사진 변경 저장 (실제 업로드)
+  const savePhotoChange = async () => {
+    if (!selectedPhotoFile) {
+      closePhotoModal();
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedPhotoFile);
+
+      const response = await apiPatchMultipart('/api/v1/members/me/profile-image', formData);
+
+      // 업로드 성공 후 프로필 상태 업데이트
+      // response.profile_image는 서버에서 반환된 파일 경로 (db에 저장된 값)
+      const newPhotoUrl = response.profile_image.startsWith('http')
+        ? response.profile_image
+        : `${process.env.REACT_APP_API_BASE || ''}/uploads/profiles/${response.profile_image}`;
+
+      setProfile(prev => ({ ...prev, photo: newPhotoUrl }));
+      alert('프로필 사진이 변경되었습니다.');
+      closePhotoModal();
+    } catch (err) {
+      console.error('사진 업로드 실패:', err);
+      alert('사진 업로드에 실패했습니다: ' + err.message);
+    }
   };
 
   // 프로필 정보 수정 핸들러
@@ -215,9 +249,26 @@ function Profile() {
   };
 
   // 프로필 정보 저장
-  const saveProfileSettings = () => {
-    alert('프로필 정보가 저장되었습니다!');
+  const saveProfileSettings = async () => {
+    try {
+      const updateData = {
+        self_description: profile.bio,
+        tech_stack: profile.techStack,
+        education_status: profile.status,
+        github_username: profile.github,
+        portfolio_link: profile.portfolio
+      };
+
+      await apiPatch('/api/v1/mypage/profile', updateData);
+      alert('프로필 정보가 저장되었습니다!');
+    } catch (err) {
+      console.error('프로필 저장 실패:', err);
+      alert('프로필 저장에 실패했습니다.');
+    }
   };
+
+  if (loading) return <div className="text-center py-10 text-white">Loading...</div>;
+  if (error) return <div className="text-center py-10 text-red-500">{error}</div>;
 
   return (
     <div className="container mx-auto max-w-7xl">
@@ -232,14 +283,19 @@ function Profile() {
           <div className="lg:col-span-1">
             <div className="widget-card p-6 rounded-xl text-center">
               <div
-                className="profile-photo-container mx-auto mb-4"
+                className="profile-photo-container mx-auto mb-4 cursor-pointer hover:opacity-80 transition-opacity"
                 onClick={openPhotoModal}
+                title="프로필 사진 변경"
               >
                 <img
                   src={profile.photo}
                   alt="프로필 사진"
                   className="w-full h-full object-cover"
+                  onError={(e) => { e.target.src = 'https://via.placeholder.com/150/555/FFF?text=Error'; }}
                 />
+                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 hover:opacity-100 transition-opacity rounded-full">
+                  <FontAwesomeIcon icon={faCloudUploadAlt} className="text-white text-2xl" />
+                </div>
               </div>
               <div className="mb-4">
                 <h4 className="orbitron text-xl font-bold mb-2 text-white">
@@ -251,22 +307,26 @@ function Profile() {
                 <p className="text-sm text-gray-400">{profile.role}</p>
               </div>
               <div className="flex justify-center space-x-4">
-                <a
-                  href={profile.github}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-blue-400 text-xl"
-                >
-                  <FontAwesomeIcon icon={faGithub} />
-                </a>
-                <a
-                  href={profile.portfolio}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-purple-400 text-xl"
-                >
-                  <FontAwesomeIcon icon={faLink} />
-                </a>
+                {profile.github && (
+                  <a
+                    href={profile.github}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gray-400 hover:text-blue-400 text-xl"
+                  >
+                    <FontAwesomeIcon icon={faGithub} />
+                  </a>
+                )}
+                {profile.portfolio && (
+                  <a
+                    href={profile.portfolio}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gray-400 hover:text-purple-400 text-xl"
+                  >
+                    <FontAwesomeIcon icon={faLink} />
+                  </a>
+                )}
               </div>
             </div>
           </div>
@@ -280,14 +340,14 @@ function Profile() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    닉네임
+                    닉네임 (변경 불가)
                   </label>
                   <input
                     type="text"
-                    className="editable form-input"
+                    className="editable form-input opacity-50 cursor-not-allowed"
                     name="nickname"
                     value={profile.nickname}
-                    onChange={handleProfileChange}
+                    readOnly
                   />
                 </div>
                 <div>
@@ -299,7 +359,6 @@ function Profile() {
                     className="editable form-input"
                     name="email"
                     value={profile.email}
-                    onChange={handleProfileChange}
                     readOnly
                   />
                 </div>
@@ -327,34 +386,21 @@ function Profile() {
                       </span>
                     ))}
                   </div>
-                  <input
-                    type="text"
-                    className="editable form-input"
-                    name="techStack"
-                    value={profile.techStack.join(', ')}
-                    onChange={(e) =>
-                      setProfile((prev) => ({
-                        ...prev,
-                        techStack: e.target.value
-                          .split(',')
-                          .map((s) => s.trim()),
-                      }))
-                    }
-                  />
+                  {/* 기술 스택 직접 입력 필드 제거 또는 숨김, 태그 선택으로 유도 */}
                 </div>
                 {/* 기술 스택 태그 버튼 추가 */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     추천 기술 스택
                   </label>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-2 border border-gray-700 rounded-lg">
                     {allTechTags.map((tag) => (
                       <button
                         key={tag}
                         type="button"
                         className={`px-3 py-1 rounded-full text-xs font-medium hover:opacity-80 transition-colors 
                                     ${getTagBgClass(tag)} 
-                                    ${profile.techStack.includes(tag) ? 'ring-2 ring-offset-2 ring-offset-gray-900 ring-white' : ''}`}
+                                    ${profile.techStack.includes(tag) ? 'ring-2 ring-offset-2 ring-offset-gray-900 ring-white' : 'opacity-60'}`}
                         onClick={() => handleTagButtonClick(tag)}
                       >
                         {tag}
@@ -372,28 +418,31 @@ function Profile() {
                     value={profile.status}
                     onChange={handleProfileChange}
                   >
-                    <option value="student">재학생</option>
-                    <option value="intern">인턴</option>
-                    <option value="employee">취업</option>
-                    <option value="graduate">대학원</option>
-                    <option value="other">기타</option>
+                    <option value="Enrolled">재학생 (Enrolled)</option>
+                    <option value="Absence">휴학생 (Absence)</option>
+                    <option value="Graduated">졸업생 (Graduated)</option>
+                    <option value="Completion">수료생 (Completion)</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    GitHub
+                    GitHub 사용자명
                   </label>
                   <input
-                    type="url"
+                    type="text"
                     className="editable form-input"
                     name="github"
                     value={profile.github}
                     onChange={handleProfileChange}
+                    placeholder="예: kimtcp"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    https://github.com/<strong>{profile.github || 'username'}</strong>
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    포트폴리오/블로그
+                    포트폴리오 링크
                   </label>
                   <input
                     type="url"
@@ -401,12 +450,13 @@ function Profile() {
                     name="portfolio"
                     value={profile.portfolio}
                     onChange={handleProfileChange}
+                    placeholder="https://..."
                   />
                 </div>
               </div>
               <div className="mt-6 flex space-x-4">
                 <button onClick={saveProfileSettings} className="btn-primary">
-                  수정하기
+                  정보 수정 저장
                 </button>
               </div>
             </div>
@@ -538,34 +588,15 @@ function Profile() {
 
             <div className="mb-6">
               <h4 className="font-semibold text-white mb-4">
-                프리셋 이미지 선택
+                새 프로필 이미지 선택
               </h4>
-              <div className="grid grid-cols-4 gap-4">
-                {[
-                  'https://via.placeholder.com/80/A8C5E6/FFFFFF?text=1',
-                  'https://via.placeholder.com/80/C5A8E6/FFFFFF?text=2',
-                  'https://via.placeholder.com/80/A8E6C5/FFFFFF?text=3',
-                  'https://via.placeholder.com/80/E6A8C5/FFFFFF?text=4',
-                ].map((src, index) => (
-                  <img
-                    key={index}
-                    src={src}
-                    alt={`Preset ${index + 1}`}
-                    className="preset-photo"
-                    style={{
-                      borderColor:
-                        selectedPhotoSrc === src.replace('80', '150')
-                          ? 'var(--accent-blue)'
-                          : 'transparent',
-                    }}
-                    onClick={() => selectPresetPhoto(src.replace('80', '150'))}
-                  />
-                ))}
-              </div>
-            </div>
 
-            <div className="mb-6">
-              <h4 className="font-semibold text-white mb-4">파일 업로드</h4>
+              <div className="flex justify-center mb-4">
+                <div className="w-32 h-32 rounded-full overflow-hidden border-2 border-slate-600">
+                  <img src={previewPhotoSrc} alt="Preview" className="w-full h-full object-cover" />
+                </div>
+              </div>
+
               <div className="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center">
                 <FontAwesomeIcon
                   icon={faCloudUploadAlt}
@@ -594,9 +625,10 @@ function Profile() {
             <div className="flex space-x-4">
               <button
                 onClick={savePhotoChange}
-                className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-colors"
+                disabled={!selectedPhotoFile}
+                className={`flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg transition-colors ${!selectedPhotoFile ? 'opacity-50 cursor-not-allowed' : 'hover:from-blue-600 hover:to-purple-600'}`}
               >
-                저장
+                변경 사항 저장
               </button>
               <button
                 onClick={closePhotoModal}
