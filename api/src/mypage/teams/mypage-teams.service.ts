@@ -17,24 +17,28 @@ export class MyPageTeamsService {
 
   async findMyTeams(userId: string) {
     // 내가 모집중인 팀 (내가 리더인 팀)
-    const recruitingTeams = await this.teamRepository.find({
-      where: {
-        leader: { id: userId },
-        status: TeamStatus.OPEN,
-      },
-      relations: ['leader', 'roles'],
-      order: { createdAt: 'DESC' },
-    });
+    const recruitingTeams = await this.teamRepository
+      .createQueryBuilder('team')
+      .leftJoinAndSelect('team.roles', 'roles')
+      .leftJoin('team.leader', 'leader')
+      .addSelect(['leader.name', 'leader.profile_image'])
+      .where('leader.id = :userId', { userId })
+      .andWhere('team.status = :status', { status: TeamStatus.OPEN })
+      .orderBy('team.createdAt', 'DESC')
+      .getMany();
 
     // 내가 지원한 팀 (나를 제외한 모든 팀)
-    const appliedTeamMembers = await this.teamMemberRepository.find({
-      where: {
-        user: { id: userId },
-        isLeader: false,
-      },
-      relations: ['team', 'team.leader', 'team.roles', 'role'],
-      order: { team: { createdAt: 'DESC' } },
-    });
+    const appliedTeamMembers = await this.teamMemberRepository
+      .createQueryBuilder('member')
+      .leftJoinAndSelect('member.team', 'team')
+      .leftJoinAndSelect('team.roles', 'roles')
+      .leftJoin('team.leader', 'leader')
+      .addSelect(['leader.name', 'leader.profile_image'])
+      .leftJoinAndSelect('member.role', 'role')
+      .where('member.user.id = :userId', { userId })
+      .andWhere('member.isLeader = :isLeader', { isLeader: false })
+      .orderBy('team.createdAt', 'DESC')
+      .getMany();
 
     const appliedTeams = appliedTeamMembers.map((member) => ({
       ...member.team,
@@ -42,14 +46,17 @@ export class MyPageTeamsService {
     }));
 
     // 내가 속해있으면서 모집 완료된 팀
-    const completedTeamMembers = await this.teamMemberRepository.find({
-      where: {
-        user: { id: userId },
-        team: { status: TeamStatus.CLOSED },
-      },
-      relations: ['team', 'team.leader', 'team.roles', 'role'],
-      order: { team: { createdAt: 'DESC' } },
-    });
+    const completedTeamMembers = await this.teamMemberRepository
+      .createQueryBuilder('member')
+      .leftJoinAndSelect('member.team', 'team')
+      .leftJoinAndSelect('team.roles', 'roles')
+      .leftJoin('team.leader', 'leader')
+      .addSelect(['leader.name', 'leader.profile_image'])
+      .leftJoinAndSelect('member.role', 'role')
+      .where('member.user.id = :userId', { userId })
+      .andWhere('team.status = :status', { status: TeamStatus.CLOSED })
+      .orderBy('team.createdAt', 'DESC')
+      .getMany();
 
     const completedTeams = completedTeamMembers.map((member) => ({
       ...member.team,
@@ -65,10 +72,17 @@ export class MyPageTeamsService {
   }
 
   async findMyTeamDetail(userId: string, teamId: number) {
-    const team = await this.teamRepository.findOne({
-      where: { id: teamId },
-      relations: ['leader', 'roles', 'members', 'members.user', 'members.role'],
-    });
+    const team = await this.teamRepository
+      .createQueryBuilder('team')
+      .leftJoinAndSelect('team.roles', 'roles')
+      .leftJoin('team.leader', 'leader')
+      .addSelect(['leader.id', 'leader.name', 'leader.profile_image'])
+      .leftJoinAndSelect('team.members', 'members')
+      .leftJoinAndSelect('members.user', 'user')
+      .addSelect(['user.name', 'user.phone_number', 'user.email']) 
+      .leftJoinAndSelect('members.role', 'role')
+      .where('team.id = :teamId', { teamId })
+      .getOne();
 
     if (!team) {
       throw new NotFoundException(`Team with id ${teamId} not found`);
@@ -106,7 +120,7 @@ export class MyPageTeamsService {
       isLeader,
     };
 
-    // 내가 리더인 경우 지원자 정보 추가
+    // 내가 리더인 경우 지원자 정보 추가 (연락처 포함)
     if (isLeader) {
       const applicants = team.members
         .filter((member) => !member.isLeader)
@@ -124,6 +138,17 @@ export class MyPageTeamsService {
       };
     }
 
-    return teamDetail;
+    // 내가 리더가 아닌 경우, 다른 멤버의 연락처 정보 제거
+    const membersWithoutContact = team.members.map((member) => ({
+      id: member.id,
+      name: member.user.name,
+      role: member.role,
+      isLeader: member.isLeader,
+    }));
+
+    return {
+      ...teamDetail,
+      members: membersWithoutContact,
+    };
   }
 }
