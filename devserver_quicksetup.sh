@@ -42,6 +42,14 @@ echo "✅ Frontend build completed"
 echo
 
 ### =========================
+### 3.5. Set vm.max_map_count=262144 for Elasticsearch
+### =========================
+echo "⚙️  Setting vm.max_map_count for Elasticsearch..."
+sudo sysctl -w vm.max_map_count=262144
+echo "✅ vm.max_map_count set to 262144"
+echo
+
+### =========================
 ### 4. Docker Compose 실행
 ### =========================
 echo "🐳 Starting docker compose..."
