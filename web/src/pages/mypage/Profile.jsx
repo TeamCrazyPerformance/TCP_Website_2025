@@ -19,45 +19,6 @@ function Profile() {
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  // 통계 상태 (데모 데이터)
-  const [stats] = useState({
-    joinPeriod: '2년 3개월',
-    joinDate: '2022년 3월',
-    studies: 8,
-    studiesOngoing: 2,
-    studiesCompleted: 6,
-    teams: 3,
-    teamsLeader: 1,
-    teamsMember: 2,
-    competitions: 2,
-    competitionsAwards: 1,
-  });
-
-  // 최근 활동 상태 (데모 데이터)
-  const [activities] = useState([
-    {
-      title: 'React 심화 스터디',
-      desc: '새로운 스터디에 참여했습니다',
-      time: '2시간 전',
-      icon: faBook,
-      color: 'text-blue-400',
-    },
-    {
-      title: '해커톤 팀 모집',
-      desc: '새로운 팀 모집 글을 작성했습니다',
-      time: '1일 전',
-      icon: faUsers,
-      color: 'text-green-400',
-    },
-    {
-      title: '알고리즘 대회 참가',
-      desc: 'ICPC 대회에 참가 신청했습니다',
-      time: '3일 전',
-      icon: faTrophy,
-      color: 'text-yellow-400',
-    },
-  ]);
-
   // 모달 관련 상태
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [selectedPhotoSrc, setSelectedPhotoSrc] = useState('');
@@ -168,15 +129,15 @@ function Profile() {
         const data = await apiGet('/api/v1/mypage/profile');
         // Map backend fields to frontend format
         setProfile({
-          photo: data.profile_image || 'https://via.placeholder.com/150/A8C5E6/FFFFFF?text=' + (data.name?.[0] || 'U'),
+          photo: data.profile_image || '',
           nickname: data.username || '',
           major: data.major || '',
           studentId: data.student_number || '',
-          role: data.current_company || 'Student',
+          role: data.current_company || '',
           email: data.email || '',
           bio: data.self_description || '',
           techStack: data.tech_stack || [],
-          status: data.education_status?.toLowerCase() || 'student',
+          status: data.education_status?.toLowerCase() || '',
           github: data.github_username ? `https://github.com/${data.github_username}` : '',
           portfolio: data.portfolio_link || '',
         });
@@ -208,11 +169,6 @@ function Profile() {
   };
   const closePhotoModal = () => {
     setIsPhotoModalOpen(false);
-  };
-
-  // 프리셋 사진 선택
-  const selectPresetPhoto = (src) => {
-    setSelectedPhotoSrc(src);
   };
 
   // 파일 업로드 처리
@@ -298,6 +254,8 @@ function Profile() {
   // No profile loaded
   if (!profile) return null;
 
+  const profileInitial = (profile.nickname || profile.email || 'U')[0].toUpperCase();
+
   return (
     <div className="container mx-auto max-w-7xl">
       {/* Profile Section */}
@@ -314,11 +272,17 @@ function Profile() {
                 className="profile-photo-container mx-auto mb-4"
                 onClick={openPhotoModal}
               >
-                <img
-                  src={profile.photo}
-                  alt="프로필 사진"
-                  className="w-full h-full object-cover"
-                />
+                {profile.photo ? (
+                  <img
+                    src={profile.photo}
+                    alt="프로필 이미지"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full rounded-full bg-gray-700 flex items-center justify-center text-white text-xl">
+                    {profileInitial}
+                  </div>
+                )}
               </div>
               <div className="mb-4">
                 <h4 className="orbitron text-xl font-bold mb-2 text-white">
@@ -497,111 +461,7 @@ function Profile() {
         </div>
       </section>
 
-      {/* Activity Statistics */}
-      <section className="mb-8">
-        <h3 className="orbitron text-2xl font-bold gradient-text mb-6">
-          활동 통계
-        </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="stat-card p-6 rounded-xl">
-            <div className="flex items-center justify-between mb-4">
-              <FontAwesomeIcon
-                icon={faCalendarAlt}
-                className="text-blue-400 text-2xl"
-              />
-              <span className="text-2xl font-bold gradient-text">
-                {stats.joinPeriod}
-              </span>
-            </div>
-            <h4 className="font-semibold text-white mb-1">가입 기간</h4>
-            <p className="text-sm text-gray-400">{stats.joinDate}부터</p>
-          </div>
-
-          <div className="stat-card p-6 rounded-xl">
-            <div className="flex items-center justify-between mb-4">
-              <FontAwesomeIcon
-                icon={faBook}
-                className="text-purple-400 text-2xl"
-              />
-              <span className="text-2xl font-bold gradient-text">
-                {stats.studies}
-              </span>
-            </div>
-            <h4 className="font-semibold text-white mb-1">참여 스터디</h4>
-            <p className="text-sm text-gray-400">
-              완료: {stats.studiesCompleted}개, 진행 중: {stats.studiesOngoing}
-              개
-            </p>
-          </div>
-
-          <div className="stat-card p-6 rounded-xl">
-            <div className="flex items-center justify-between mb-4">
-              <FontAwesomeIcon
-                icon={faUsers}
-                className="text-green-400 text-2xl"
-              />
-              <span className="text-2xl font-bold gradient-text">
-                {stats.teams}
-              </span>
-            </div>
-            <h4 className="font-semibold text-white mb-1">팀 프로젝트</h4>
-            <p className="text-sm text-gray-400">
-              리더: {stats.teamsLeader}개, 멤버: {stats.teamsMember}개
-            </p>
-          </div>
-
-          <div className="stat-card p-6 rounded-xl">
-            <div className="flex items-center justify-between mb-4">
-              <FontAwesomeIcon
-                icon={faTrophy}
-                className="text-yellow-400 text-2xl"
-              />
-              <span className="text-2xl font-bold gradient-text">
-                {stats.competitions}
-              </span>
-            </div>
-            <h4 className="font-semibold text-white mb-1">대회 참가</h4>
-            <p className="text-sm text-gray-400">
-              수상: {stats.competitionsAwards}회
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Recent Activities */}
-      <section className="mb-8">
-        <h3 className="orbitron text-2xl font-bold gradient-text mb-6">
-          최근 활동
-        </h3>
-
-        <div className="widget-card rounded-xl overflow-hidden">
-          <div className="divide-y divide-gray-700">
-            {activities.map((activity, index) => (
-              <div
-                key={index}
-                className="p-4 hover:bg-gray-800 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <FontAwesomeIcon
-                      icon={activity.icon}
-                      className={activity.color}
-                    />
-                    <div>
-                      <h5 className="font-semibold text-white">
-                        {activity.title}
-                      </h5>
-                      <p className="text-sm text-gray-400">{activity.desc}</p>
-                    </div>
-                  </div>
-                  <span className="text-xs text-gray-500">{activity.time}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* Profile Photo Modal */}
       {isPhotoModalOpen && (
@@ -619,33 +479,6 @@ function Profile() {
               </button>
             </div>
 
-            <div className="mb-6">
-              <h4 className="font-semibold text-white mb-4">
-                프리셋 이미지 선택
-              </h4>
-              <div className="grid grid-cols-4 gap-4">
-                {[
-                  'https://via.placeholder.com/80/A8C5E6/FFFFFF?text=1',
-                  'https://via.placeholder.com/80/C5A8E6/FFFFFF?text=2',
-                  'https://via.placeholder.com/80/A8E6C5/FFFFFF?text=3',
-                  'https://via.placeholder.com/80/E6A8C5/FFFFFF?text=4',
-                ].map((src, index) => (
-                  <img
-                    key={index}
-                    src={src}
-                    alt={`Preset ${index + 1}`}
-                    className="preset-photo"
-                    style={{
-                      borderColor:
-                        selectedPhotoSrc === src.replace('80', '150')
-                          ? 'var(--accent-blue)'
-                          : 'transparent',
-                    }}
-                    onClick={() => selectPresetPhoto(src.replace('80', '150'))}
-                  />
-                ))}
-              </div>
-            </div>
 
             <div className="mb-6">
               <h4 className="font-semibold text-white mb-4">파일 업로드</h4>

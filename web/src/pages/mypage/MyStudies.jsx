@@ -1,6 +1,54 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { apiGet } from '../../api/client';
 
+const toArray = (value) => (Array.isArray(value) ? value : []);
+
+const normalizeStudy = (study, overrides = {}) => {
+    const status = overrides.status ?? study.status ?? 'ongoing';
+    const techStack = toArray(study.techStack);
+    const tags = techStack.length
+        ? techStack
+        : toArray(study.tag).length
+            ? toArray(study.tag)
+            : study.tag
+                ? [study.tag]
+                : [];
+
+    return {
+        id: study.id,
+        title: study.title ?? study.study_name ?? 'Untitled Study',
+        status,
+        period: study.period ?? '',
+        schedule: study.schedule ?? '',
+        location: study.location ?? study.place ?? study.way ?? '',
+        members:
+            typeof study.memberCount === 'number'
+                ? study.memberCount
+                : typeof study.members === 'number'
+                    ? study.members
+                    : toArray(study.members).length,
+        description: study.description ?? study.study_description ?? '',
+        techStack: tags,
+        progress: typeof study.progress === 'number' ? study.progress : 0,
+        assignments: toArray(study.assignments),
+        links: toArray(study.links),
+    };
+};
+
+const normalizeStudiesResponse = (data) => {
+    if (Array.isArray(data)) {
+        return data.map((study) => normalizeStudy(study));
+    }
+
+    const ongoing = toArray(data?.ongoingStudies).map((study) =>
+        normalizeStudy(study, { status: 'ongoing' })
+    );
+    const completed = toArray(data?.completedStudies).map((study) =>
+        normalizeStudy(study, { status: 'completed' })
+    );
+    return [...ongoing, ...completed];
+};
+
 const studyData = {
     study1: { id: 'study1', title: 'React 심화 스터디', status: 'ongoing', period: '2024.03 - 2024.06', schedule: '매주 화, 목 오후 7시', location: '온라인 (Zoom)', members: 8, description: 'React의 고급 패턴과 성능 최적화, 상태 관리 라이브러리 등을 학습하는 심화 스터디입니다.', techStack: ['React', 'TypeScript', 'Next.js', 'Redux Toolkit'], progress: 65, assignments: ['Hook 패턴 연구', 'Context API 활용', '성능 최적화 실습'], links: ['https://github.com/tcp-react-study'] },
     study2: { id: 'study2', title: '알고리즘 문제 해결', status: 'ongoing', period: '2024.02 - 2024.05', schedule: '매주 월, 수, 금 오후 8시', location: '온라인 (Discord)', members: 6, description: '코딩 테스트 대비를 위한 알고리즘 문제 해결 스터디입니다.', techStack: ['Python', 'C++', 'Algorithm'], progress: 80, assignments: ['백준 문제 풀이', 'LeetCode 도전'], links: ['https://github.com/tcp-algorithm'] },
@@ -23,7 +71,7 @@ const MyStudies = () => {
             try {
                 setLoading(true);
                 const data = await apiGet('/api/v1/mypage/study');
-                setStudies(data || []);
+                setStudies(normalizeStudiesResponse(data));
             } catch (err) {
                 console.error('Failed to fetch studies:', err);
                 // Use empty array on error
@@ -36,8 +84,14 @@ const MyStudies = () => {
         fetchStudies();
     }, []);
 
-    const ongoingStudies = useMemo(() => studies.filter(s => s.status === 'ongoing'), [studies]);
-    const completedStudies = useMemo(() => studies.filter(s => s.status === 'completed'), [studies]);
+    const ongoingStudies = useMemo(
+        () => (Array.isArray(studies) ? studies.filter((s) => s.status === 'ongoing') : []),
+        [studies]
+    );
+    const completedStudies = useMemo(
+        () => (Array.isArray(studies) ? studies.filter((s) => s.status === 'completed') : []),
+        [studies]
+    );
 
     const handleFilterClick = (newFilter) => {
         setFilter(newFilter);
@@ -133,7 +187,7 @@ const StudyCard = ({ study, onClick }) => (
                 <div className="progress-bar"><div className="progress-fill" style={{ width: `${study.progress}%` }}></div></div>
             </div>
         )}
-        <div className="flex flex-wrap">{study.techStack.map(tech => <span key={tech} className="tech-tag">{tech}</span>)}</div>
+        <div className="flex flex-wrap">{toArray(study.techStack).map(tech => <span key={tech} className="tech-tag">{tech}</span>)}</div>
     </div>
 );
 
@@ -164,7 +218,7 @@ const StudyDetailModal = ({ study, onClose }) => (
                     </div>
                     <div>
                         <h4 class="font-semibold text-white mb-2">기술 스택</h4>
-                        <div class="flex flex-wrap">{study.techStack.map(tech => <span key={tech} className="tech-tag">{tech}</span>)}</div>
+                        <div class="flex flex-wrap">{toArray(study.techStack).map(tech => <span key={tech} className="tech-tag">{tech}</span>)}</div>
                     </div>
                 </div>
                 <div class="mb-6">
@@ -180,12 +234,12 @@ const StudyDetailModal = ({ study, onClose }) => (
                 }
                 <div class="mb-6">
                     <h4 class="font-semibold text-white mb-2">주요 과제/활동</h4>
-                    <ul class="list-disc list-inside text-gray-300 space-y-1">{study.assignments.map(a => <li key={a}>{a}</li>)}</ul>
+                    <ul class="list-disc list-inside text-gray-300 space-y-1">{toArray(study.assignments).map(a => <li key={a}>{a}</li>)}</ul>
                 </div>
                 {study.links &&
                     <div class="mb-6">
                         <h4 class="font-semibold text-white mb-2">관련 링크</h4>
-                        <div class="space-y-2">{study.links.map(l => <a key={l} href={l} target="_blank" rel="noopener noreferrer" className="block text-blue-400 hover:text-blue-300 text-sm transition-colors"><i class="fas fa-external-link-alt mr-2"></i>{l}</a>)}</div>
+                        <div class="space-y-2">{toArray(study.links).map(l => <a key={l} href={l} target="_blank" rel="noopener noreferrer" className="block text-blue-400 hover:text-blue-300 text-sm transition-colors"><i class="fas fa-external-link-alt mr-2"></i>{l}</a>)}</div>
                     </div>
                 }
             </div>

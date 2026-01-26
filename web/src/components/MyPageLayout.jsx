@@ -1,12 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import { useLocation, Outlet } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation, Outlet, useNavigate } from 'react-router-dom';
 import MyPageSidebar from './MyPageSidebar';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBars, faBell } from '@fortawesome/free-solid-svg-icons';
+import { useAuth } from '../context/AuthContext';
 
 function MyPageLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const displayName = useMemo(
+    () => user?.name || user?.username || '사용자',
+    [user]
+  );
+  const avatarInitial = displayName ? displayName[0].toUpperCase() : 'U';
 
   const toggleSidebar = () => {
     setIsSidebarOpen((prev) => !prev);
@@ -49,6 +58,11 @@ function MyPageLayout() {
     return '마이페이지';
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   return (
     <div className="flex h-screen">
       <div
@@ -81,14 +95,24 @@ function MyPageLayout() {
                   <FontAwesomeIcon icon={faBell} />
                 </button>
                 <div className="flex items-center space-x-2">
-                  <img
-                    src="https://via.placeholder.com/40/A8C5E6/FFFFFF?text=User"
-                    alt="Profile"
-                    className="w-8 h-8 rounded-full"
-                  />
-                  <span className="text-sm font-medium">김TCP</span>
+                  {user?.profile_image ? (
+                    <img
+                      src={user.profile_image}
+                      alt={displayName}
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs text-white">
+                      {avatarInitial}
+                    </div>
+                  )}
+                  <span className="text-sm font-medium">{displayName}</span>
                 </div>
-                <button className="px-4 py-2 text-sm border border-gray-600 rounded-lg hover:border-gray-400 transition-colors">
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="px-4 py-2 text-sm border border-gray-600 rounded-lg hover:border-gray-400 transition-colors"
+                >
                   로그아웃
                 </button>
               </div>

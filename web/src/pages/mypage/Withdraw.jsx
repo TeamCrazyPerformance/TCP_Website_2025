@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { apiDelete, apiGet, apiPost } from '../../api/client';
+import { useAuth } from '../../context/AuthContext';
 
 const StepIndicator = ({ currentStep }) => (
     <div className="step-indicator">
@@ -15,6 +17,8 @@ const Withdraw = () => {
     const [currentStep, setCurrentStep] = useState(1);
     const [password, setPassword] = useState('');
     const [passwordError, setPasswordError] = useState('');
+    const [profile, setProfile] = useState(null);
+    const [profileLoading, setProfileLoading] = useState(true);
     const [confirmations, setConfirmations] = useState({
         dataLoss: false,
         reregisterLimit: false,
@@ -23,8 +27,11 @@ const Withdraw = () => {
     });
     const [isProcessing, setIsProcessing] = useState(false);
     const navigate = useNavigate();
+    const { user, logout } = useAuth();
 
     const allChecked = Object.values(confirmations).every(Boolean);
+    const displayName = profile?.name || user?.name || user?.username || '?ъ슜?먮뱾';
+    const displayEmail = profile?.email || user?.email || '';
 
     useEffect(() => {
         // Reset state if component unmounts or step changes to 1
@@ -36,23 +43,47 @@ const Withdraw = () => {
         };
     }, []);
 
+    useEffect(() => {
+        let mounted = true;
+
+        const fetchProfile = async () => {
+            try {
+                setProfileLoading(true);
+                const data = await apiGet('/api/v1/mypage/profile');
+                if (!mounted) return;
+                setProfile(data || {});
+            } catch (err) {
+                console.error('Failed to fetch profile:', err);
+                if (mounted) setProfile({});
+            } finally {
+                if (mounted) setProfileLoading(false);
+            }
+        };
+
+        fetchProfile();
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
     const handleConfirmationChange = (e) => {
         const { name, checked } = e.target;
         setConfirmations(prev => ({ ...prev, [name]: checked }));
     };
 
-    const verifyPassword = () => {
+    const verifyPassword = async () => {
         if (!password) {
             setPasswordError('비밀번호를 입력해주세요.');
             return;
         }
-        // This is a mock verification. In a real app, you'd call an API.
-        if (password === 'wrongpassword') {
-            setPasswordError('비밀번호가 일치하지 않습니다.');
-            return;
+        try {
+            await apiPost('/api/v1/mypage/withdraw/verify-password', { password });
+            setPasswordError('');
+            setCurrentStep(3);
+        } catch (err) {
+            console.error('Password verification failed:', err);
+            setPasswordError('비밀번호가 올바르지 않습니다.');
         }
-        setPasswordError('');
-        setCurrentStep(3);
     };
 
     const handlePasswordKeyPress = (e) => {
@@ -61,14 +92,20 @@ const Withdraw = () => {
         }
     };
 
-    const finalWithdraw = () => {
-        if (!allChecked) return;
+    const finalWithdraw = async () => {
+        if (!allChecked || isProcessing) return;
         setIsProcessing(true);
-        setTimeout(() => {
+        try {
+            await apiDelete('/api/v1/mypage/withdraw');
+            logout();
+            setCurrentStep(4);
+            setTimeout(() => navigate('/'), 5000);
+        } catch (err) {
+            console.error('Withdraw failed:', err);
+            alert('탈퇴 처리에 실패했습니다.');
+        } finally {
             setIsProcessing(false);
-            setCurrentStep(4); // Move to success step
-            setTimeout(() => navigate('/'), 5000); // Redirect to home after 5s
-        }, 2000);
+        }
     };
 
     const renderStepContent = () => {
@@ -198,11 +235,10 @@ const Withdraw = () => {
                                         탈퇴 계정 정보
                                     </h4>
                                     <div className="grid grid-cols-2 gap-4 text-sm">
-                                        <div><span className="text-gray-400">닉네임:</span><span className="text-white ml-2 font-medium">Admin Kim</span></div>
-                                        <div><span className="text-gray-400">이메일:</span><span className="text-white ml-2 font-medium">kimtcp@seoultech.ac.kr</span></div>
-                                        <div><span className="text-gray-400">가입일:</span><span className="text-white ml-2 font-medium">2022년 3월 15일</span></div>
-                                        <div><span className="text-gray-400">활동 기간:</span><span className="text-white ml-2 font-medium">2년 3개월</span></div>
+                                        <div><span className="text-gray-400">이름:</span><span className="text-white ml-2 font-medium">{displayName}</span></div>
+                                        <div><span className="text-gray-400">이메일:</span><span className="text-white ml-2 font-medium">{displayEmail || '-'}</span></div>
                                     </div>
+                                </div>
                                 </div>
 
                                 <div className="space-y-4 mb-8">
@@ -256,8 +292,8 @@ const Withdraw = () => {
                             </div>
                             <h3 className="text-3xl font-bold text-green-400 mb-4">탈퇴가 완료되었습니다</h3>
                             <p className="text-gray-300 text-lg mb-8">
-                                김TCP님의 <span className="orbitron">TCP</span> 홈페이지 계정이 성공적으로 삭제되었습니다.<br />
-                                그동안 <span className="orbitron">TCP</span>와 함께해 주셔서 감사했습니다.
+                                {displayName}님, <span className="orbitron">TCP</span> 탈퇴 신청이 정상적으로 처리되었습니다.<br />
+                                잠시 후 <span className="orbitron">TCP</span> 메인 페이지로 이동합니다.
                             </p>
                             <div className="bg-green-900 bg-opacity-30 border border-green-500 border-opacity-50 rounded-xl p-6 mb-8 max-w-md mx-auto">
                                 <h4 className="text-green-300 font-bold mb-3">처리 완료된 작업</h4>

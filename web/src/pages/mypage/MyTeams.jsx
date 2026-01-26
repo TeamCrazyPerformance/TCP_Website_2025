@@ -11,6 +11,77 @@ import {
   faInfoCircle,
 } from '@fortawesome/free-solid-svg-icons';
 
+const toArray = (value) => (Array.isArray(value) ? value : []);
+
+const normalizeMember = (member) => ({
+  name: member?.user?.name ?? member?.name ?? '',
+  role: member?.role?.name ?? member?.role ?? '',
+  avatar: member?.user?.profile_image ?? member?.avatar ?? '',
+});
+
+const buildPeriod = (team) => {
+  if (team.period) return team.period;
+  const start = team.periodStart ?? team.startDate;
+  const end = team.periodEnd ?? team.endDate;
+  if (start && end) return `${start} ~ ${end}`;
+  return start || end || '';
+};
+
+const normalizeTeam = (team, overrides = {}) => {
+  const status =
+    overrides.status ??
+    (team.status === 'CLOSED' ? 'completed' : 'ongoing');
+  const techStack = toArray(team.techStack);
+  const tags = techStack.length
+    ? techStack
+    : toArray(team.tag).length
+      ? toArray(team.tag)
+      : team.tag
+        ? [team.tag]
+        : [];
+  const roleName =
+    overrides.role ??
+    team.role ??
+    team.appliedRole?.name ??
+    team.myRole?.name ??
+    team.role?.name ??
+    (team.isLeader ? '리더' : '');
+
+  return {
+    id: team.id,
+    title: team.title ?? team.team_name ?? '',
+    period: buildPeriod(team),
+    event: team.category ?? team.tag ?? '',
+    role: String(roleName || ''),
+    members: toArray(team.members).map(normalizeMember),
+    techStack: tags,
+    status,
+    recruiting: team.recruiting ?? '',
+    achievement: team.achievement ?? '',
+    description: team.description ?? '',
+    goals: toArray(team.goals),
+    links: toArray(team.links).length ? toArray(team.links) : team.link ? [team.link] : [],
+  };
+};
+
+const normalizeTeamsResponse = (data) => {
+  if (Array.isArray(data)) {
+    return data.map((team) => normalizeTeam(team));
+  }
+
+  const recruiting = toArray(data?.recruitingTeams).map((team) =>
+    normalizeTeam(team, { status: 'ongoing', role: '리더', recruiting: '모집 중' })
+  );
+  const applied = toArray(data?.appliedTeams).map((team) =>
+    normalizeTeam(team, { status: 'ongoing' })
+  );
+  const completed = toArray(data?.completedTeams).map((team) =>
+    normalizeTeam(team, { status: 'completed' })
+  );
+
+  return [...recruiting, ...applied, ...completed];
+};
+
 function MyTeams() {
   // 팀 목록 데모 데이터
   const [teams, setTeams] = useState([]);
@@ -25,7 +96,7 @@ function MyTeams() {
       try {
         setLoading(true);
         const data = await apiGet('/api/v1/mypage/teams');
-        setTeams(data || []);
+        setTeams(normalizeTeamsResponse(data));
       } catch (err) {
         console.error('Failed to fetch teams:', err);
         // Use empty array on error
@@ -38,13 +109,14 @@ function MyTeams() {
     fetchTeams();
   }, []);
 
-  const filteredTeams = teams.filter((team) => {
+  const safeTeams = Array.isArray(teams) ? teams : [];
+  const filteredTeams = safeTeams.filter((team) => {
     if (filter === 'all') return true;
     return team.status === filter;
   });
 
   const openTeamModal = (teamId) => {
-    const team = teams.find((t) => t.id === teamId);
+    const team = safeTeams.find((t) => t.id === teamId);
     setSelectedTeam(team);
     setIsModalOpen(true);
     document.body.style.overflow = 'hidden';
@@ -79,29 +151,29 @@ function MyTeams() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="stat-card p-4 rounded-lg text-center">
             <div className="text-2xl font-bold gradient-text">
-              {teams.length}
+              {safeTeams.length}
             </div>
             <div className="text-sm text-gray-400">총 참여 팀</div>
           </div>
           <div className="stat-card p-4 rounded-lg text-center">
             <div className="text-2xl font-bold text-blue-400">
-              {teams.filter((t) => t.status === 'ongoing').length}
+              {safeTeams.filter((t) => t.status === 'ongoing').length}
             </div>
             <div className="text-sm text-gray-400">팀 구성중</div>
           </div>
           <div className="stat-card p-4 rounded-lg text-center">
             <div className="text-2xl font-bold text-green-400">
-              {teams.filter((t) => t.status === 'completed').length}
+              {safeTeams.filter((t) => t.status === 'completed').length}
             </div>
             <div className="text-sm text-gray-400">구성 완료</div>
           </div>
           <div className="stat-card p-4 rounded-lg text-center">
             <div className="text-2xl font-bold text-purple-400">
-              {
-                teams.filter(
-                  (t) => t.role.includes('리더') || t.role.includes('팀장')
-                ).length
-              }
+              {safeTeams.filter(
+                (t) =>
+                  String(t.role || '').includes('??') ||
+                  String(t.role || '').includes('??')
+              ).length}
             </div>
             <div className="text-sm text-gray-400">팀 리더 경험</div>
           </div>
