@@ -5,9 +5,6 @@ import { UpdateTeamDto } from './dto/update-team.dto';
 import { UpdateTeamStatusDto } from './dto/update-team-status.dto';
 import { ApplyTeamDto } from './dto/apply-team.dto';
 import { AuthGuard } from '@nestjs/passport';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from '../members/entities/enums/user-role.enum';
 
 @Controller('api/v1/teams')
 export class TeamsController {
@@ -15,8 +12,7 @@ export class TeamsController {
 
     // 모집글 생성
     @Post()
-    @UseGuards(AuthGuard('jwt'), RolesGuard)
-    @Roles(UserRole.MEMBER, UserRole.ADMIN)
+    @UseGuards(AuthGuard('jwt'))
     create(@Req() req: any, @Body() dto: CreateTeamDto) {
         const userId = req.user.userId;
         return this.teamsService.create(userId, dto);
@@ -36,8 +32,7 @@ export class TeamsController {
 
     // 모집글 수정
     @Patch(':id')
-    @UseGuards(AuthGuard('jwt'), RolesGuard)
-    @Roles(UserRole.MEMBER, UserRole.ADMIN)
+    @UseGuards(AuthGuard('jwt'))
     update(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: UpdateTeamDto) {
         const userId = req.user.userId;
         return this.teamsService.update(userId, id, dto);
@@ -46,8 +41,7 @@ export class TeamsController {
     // 모집글 삭제
     @Delete(':id')
     @HttpCode(204)
-    @UseGuards(AuthGuard('jwt'), RolesGuard)
-    @Roles(UserRole.MEMBER, UserRole.ADMIN)
+    @UseGuards(AuthGuard('jwt'))
     remove(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
         const userId = req.user.userId;
         return this.teamsService.remove(userId, id);
@@ -55,8 +49,7 @@ export class TeamsController {
 
     // 모집 상태 변경
     @Patch(':id/status')
-    @UseGuards(AuthGuard('jwt'), RolesGuard)
-    @Roles(UserRole.MEMBER, UserRole.ADMIN)
+    @UseGuards(AuthGuard('jwt'))
     changeStatus(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: UpdateTeamStatusDto,) {
         const userId = req.user.userId;
         return this.teamsService.changeStatus(userId, id, dto.status);
@@ -64,8 +57,7 @@ export class TeamsController {
 
     // 팀 지원
     @Post(':id/apply')
-    @UseGuards(AuthGuard('jwt'), RolesGuard)
-    @Roles(UserRole.MEMBER, UserRole.ADMIN)
+    @UseGuards(AuthGuard('jwt'))
     apply(@Req() req: any, @Param('id', ParseIntPipe) teamId: number, @Body() dto: ApplyTeamDto,) {
         const userId = req.user.userId;
         return this.teamsService.apply(userId, teamId, dto);
@@ -73,8 +65,7 @@ export class TeamsController {
 
     // 팀 지원 취소
     @Delete(':id/apply')
-    @UseGuards(AuthGuard('jwt'), RolesGuard)
-    @Roles(UserRole.MEMBER, UserRole.ADMIN)
+    @UseGuards(AuthGuard('jwt'))
     cancelApplication(@Req() req: any, @Param('id', ParseIntPipe) teamId: number) {
         const userId = req.user.userId;
         return this.teamsService.cancelApply(userId, teamId);
