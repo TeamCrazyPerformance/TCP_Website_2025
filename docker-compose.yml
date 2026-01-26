@@ -102,7 +102,7 @@
     volumes:
       - ./elk/logstash:/usr/share/logstash/pipeline:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9600/_node/pipelines || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9600/_node/pipelines || exit 1"]
       interval: 20s
       timeout: 5s
       retries: 10
@@ -129,7 +129,7 @@
       - es-data:/usr/share/elasticsearch/data
       - ./elk/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- --user=elastic --password=\"$ELASTIC_PASSWORD\" http://localhost:9200/_cluster/health || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS -u elastic:$$ELASTIC_PASSWORD http://localhost:9200/_cluster/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -149,7 +149,7 @@
     volumes:
       - ./elk/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:5601/api/status || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5601/api/status || exit 1"]
       interval: 20s
       timeout: 5s
       retries: 10

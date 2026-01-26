@@ -86,4 +86,8 @@ services:
     environment:
       - xpack.security.enabled=false
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9200/_cluster/health || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health || exit 1"]
+
+  # Filebeat (dev: relax config ownership check)
+  filebeat:
+    command: ["-e", "-strict.perms=false"]
