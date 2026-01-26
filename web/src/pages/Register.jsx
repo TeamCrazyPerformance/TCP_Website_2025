@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import logo from '../logo.svg';
 import { apiPost } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 
 const existingUsernames = ['admin', 'tcp_member', 'user123', 'developer'];
 const existingEmails = [
@@ -17,6 +18,7 @@ const tcpMembers = [
 
 function Register() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   // 폼 입력 필드 상태 관리
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -188,8 +190,7 @@ function Register() {
       setIsSubmitting(true);
       setSignupButtonEnabled(false);
       const data = await apiPost('/api/v1/auth/register', payload);
-      localStorage.setItem('access_token', data.access_token);
-      localStorage.setItem('auth_user', JSON.stringify(data.user));
+      login(data.user, data.access_token);
       alert('회원가입이 완료되었습니다!');
       navigate('/');
     } catch (error) {
