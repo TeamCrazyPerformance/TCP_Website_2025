@@ -60,7 +60,7 @@ function Profile() {
 
   // 모달 관련 상태
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
-  const [selectedPhotoSrc, setSelectedPhotoSrc] = useState(profile.photo);
+  const [selectedPhotoSrc, setSelectedPhotoSrc] = useState('');
   const fileInputRef = useRef(null);
 
   // textarea 자동 높이 조절을 위한 ref
@@ -202,8 +202,9 @@ function Profile() {
 
   // 모달 열기/닫기
   const openPhotoModal = () => {
+    if (!profile) return;
     setIsPhotoModalOpen(true);
-    setSelectedPhotoSrc(profile.photo);
+    setSelectedPhotoSrc(profile.photo || '');
   };
   const closePhotoModal = () => {
     setIsPhotoModalOpen(false);
