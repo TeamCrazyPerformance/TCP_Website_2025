@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { apiGet } from '../../api/client';
 
 const studyData = {
     study1: { id: 'study1', title: 'React 심화 스터디', status: 'ongoing', period: '2024.03 - 2024.06', schedule: '매주 화, 목 오후 7시', location: '온라인 (Zoom)', members: 8, description: 'React의 고급 패턴과 성능 최적화, 상태 관리 라이브러리 등을 학습하는 심화 스터디입니다.', techStack: ['React', 'TypeScript', 'Next.js', 'Redux Toolkit'], progress: 65, assignments: ['Hook 패턴 연구', 'Context API 활용', '성능 최적화 실습'], links: ['https://github.com/tcp-react-study'] },
@@ -12,10 +13,29 @@ const studyData = {
 };
 
 const MyStudies = () => {
+    const [studies, setStudies] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all'); // all, ongoing, completed
     const [selectedStudy, setSelectedStudy] = useState(null);
 
-    const studies = Object.values(studyData);
+    useEffect(() => {
+        const fetchStudies = async () => {
+            try {
+                setLoading(true);
+                const data = await apiGet('/api/v1/mypage/study');
+                setStudies(data || []);
+            } catch (err) {
+                console.error('Failed to fetch studies:', err);
+                // Use empty array on error
+                setStudies([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchStudies();
+    }, []);
+
     const ongoingStudies = useMemo(() => studies.filter(s => s.status === 'ongoing'), [studies]);
     const completedStudies = useMemo(() => studies.filter(s => s.status === 'completed'), [studies]);
 
@@ -24,12 +44,21 @@ const MyStudies = () => {
     };
 
     const openModal = (studyId) => {
-        setSelectedStudy(studyData[studyId]);
+        const study = studies.find(s => s.id === studyId);
+        setSelectedStudy(study);
     };
 
     const closeModal = () => {
         setSelectedStudy(null);
     };
+
+    if (loading) {
+        return (
+            <div className="container mx-auto max-w-7xl p-6">
+                <div className="text-center text-gray-400">스터디 목록을 불러오는 중...</div>
+            </div>
+        );
+    }
 
     return (
         <div className="container mx-auto max-w-7xl">
@@ -54,7 +83,7 @@ const MyStudies = () => {
 
             {(filter === 'all' || filter === 'ongoing') && <StudySection title="진행 중인 스터디" studies={ongoingStudies} onCardClick={openModal} icon="fa-play-circle text-blue-400" />}
             {(filter === 'all' || filter === 'completed') && <StudySection title="완료된 스터디" studies={completedStudies} onCardClick={openModal} icon="fa-check-circle text-green-400" />}
-            
+
             {selectedStudy && <StudyDetailModal study={selectedStudy} onClose={closeModal} />}
         </div>
     );

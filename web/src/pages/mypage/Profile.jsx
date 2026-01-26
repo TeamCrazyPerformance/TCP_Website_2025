@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { apiGet, apiPatch } from '../../api/client';
 import {
   faLink,
   faCloudUploadAlt,
@@ -13,19 +14,10 @@ import { faGithub } from '@fortawesome/free-brands-svg-icons';
 
 function Profile() {
   // 프로필 정보 상태 관리
-  const [profile, setProfile] = useState({
-    photo: 'https://via.placeholder.com/150/A8C5E6/FFFFFF?text=김TCP',
-    nickname: '김TCP',
-    major: '컴퓨터공학과',
-    studentId: '20학번',
-    role: 'Full-Stack Developer',
-    email: 'kimtcp@seoultech.ac.kr',
-    bio: '안녕하세요! TCP에서 활동 중인 김TCP입니다. 웹 개발과 알고리즘에 관심이 많고, 새로운 기술을 배우는 것을 좋아합니다.',
-    techStack: ['JavaScript', 'React', 'Node.js', 'Python', 'MySQL'],
-    status: 'student',
-    github: 'https://github.com/kimtcp',
-    portfolio: 'https://portfolio.kimtcp.com',
-  });
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   // 통계 상태 (데모 데이터)
   const [stats] = useState({
@@ -168,13 +160,45 @@ function Profile() {
     });
   };
 
+  // Fetch profile data on mount
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setLoading(true);
+        const data = await apiGet('/api/v1/mypage/profile');
+        // Map backend fields to frontend format
+        setProfile({
+          photo: data.profile_image || 'https://via.placeholder.com/150/A8C5E6/FFFFFF?text=' + (data.name?.[0] || 'U'),
+          nickname: data.username || '',
+          major: data.major || '',
+          studentId: data.student_number || '',
+          role: data.current_company || 'Student',
+          email: data.email || '',
+          bio: data.self_description || '',
+          techStack: data.tech_stack || [],
+          status: data.education_status?.toLowerCase() || 'student',
+          github: data.github_username ? `https://github.com/${data.github_username}` : '',
+          portfolio: data.portfolio_link || '',
+        });
+        setError(null);
+      } catch (err) {
+        console.error('Failed to fetch profile:', err);
+        setError('프로필을 불러오는데 실패했습니다.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
   // textarea 높이 조절
   useEffect(() => {
-    if (bioRef.current) {
+    if (bioRef.current && profile?.bio) {
       bioRef.current.style.height = 'auto';
       bioRef.current.style.height = bioRef.current.scrollHeight + 'px';
     }
-  }, [profile.bio]);
+  }, [profile?.bio]);
 
   // 모달 열기/닫기
   const openPhotoModal = () => {
@@ -215,9 +239,63 @@ function Profile() {
   };
 
   // 프로필 정보 저장
-  const saveProfileSettings = () => {
-    alert('프로필 정보가 저장되었습니다!');
+  const saveProfileSettings = async () => {
+    if (!profile) return;
+
+    try {
+      setSaving(true);
+      // Map frontend fields back to backend format
+      const updateData = {
+        username: profile.nickname,
+        major: profile.major,
+        self_description: profile.bio,
+        tech_stack: profile.techStack,
+        education_status: profile.status.toUpperCase(),
+        github_username: profile.github.replace('https://github.com/', ''),
+        portfolio_link: profile.portfolio,
+        current_company: profile.role,
+      };
+
+      await apiPatch('/api/v1/mypage/profile', updateData);
+      alert('프로필 정보가 저장되었습니다!');
+    } catch (err) {
+      console.error('Failed to save profile:', err);
+      alert('프로필 저장에 실패했습니다: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="container mx-auto max-w-7xl p-6">
+        <div className="text-center py-12">
+          <div className="text-xl text-gray-400">프로필을 불러오는 중...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="container mx-auto max-w-7xl p-6">
+        <div className="text-center py-12">
+          <div className="text-xl text-red-400 mb-4">{error}</div>
+          <button
+            onClick={() => window.location.reload()}
+            className="btn-primary"
+          >
+            다시 시도
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // No profile loaded
+  if (!profile) return null;
 
   return (
     <div className="container mx-auto max-w-7xl">
@@ -405,8 +483,12 @@ function Profile() {
                 </div>
               </div>
               <div className="mt-6 flex space-x-4">
-                <button onClick={saveProfileSettings} className="btn-primary">
-                  수정하기
+                <button
+                  onClick={saveProfileSettings}
+                  className="btn-primary"
+                  disabled={saving}
+                >
+                  {saving ? '저장 중...' : '수정하기'}
                 </button>
               </div>
             </div>

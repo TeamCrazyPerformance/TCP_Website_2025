@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { apiGet } from '../../api/client';
 import {
   faCalendarAlt,
   faTrophy,
@@ -12,196 +13,30 @@ import {
 
 function MyTeams() {
   // 팀 목록 데모 데이터
-  const [teams] = useState([
-    {
-      id: 'team1',
-      title: 'AI 해커톤 팀',
-      event: 'AI Creativity Hackathon',
-      role: '팀 리더',
-      period: '2024.07.14 - 2024.07.18',
-      members: [
-        {
-          name: '김TCP',
-          role: '팀 리더',
-          avatar: 'https://via.placeholder.com/32/A8C5E6/FFFFFF?text=김',
-        },
-        {
-          name: '이Performance',
-          role: '기획',
-          avatar: 'https://via.placeholder.com/32/C5A8E6/FFFFFF?text=이',
-        },
-        {
-          name: '박Developer',
-          role: '프론트엔드',
-          avatar: 'https://via.placeholder.com/32/A8E6C5/FFFFFF?text=박',
-        },
-      ],
-      status: 'ongoing',
-      recruiting: '백엔드 개발자 1명 모집 중',
-      techStack: ['AI', '기획', '프론트엔드'],
-      description:
-        'AI 모델을 활용해 사회 문제를 해결하는 창의적인 솔루션을 개발하는 해커톤 팀입니다.',
-      goals: ['AI 모델 개발', '웹 서비스 구현', '사회 문제 해결 방안 제시'],
-      links: [
-        'https://github.com/ai-hackathon-team',
-        'https://notion.so/ai-hackathon',
-      ],
-    },
-    {
-      id: 'team2',
-      title: '캠퍼스 앱 개발팀',
-      event: '대학생 연합 프로젝트',
-      role: '프론트엔드 개발자',
-      period: '2024.09.01 - 2024.12.15',
-      members: [
-        {
-          name: '최Leader',
-          role: '팀장',
-          avatar: 'https://via.placeholder.com/32/E6A8C5/FFFFFF?text=최',
-        },
-        {
-          name: '김TCP',
-          role: '프론트엔드',
-          avatar: 'https://via.placeholder.com/32/A8C5E6/FFFFFF?text=김',
-        },
-        {
-          name: '정Designer',
-          role: '디자인',
-          avatar: 'https://via.placeholder.com/32/C5A8E6/FFFFFF?text=정',
-        },
-        {
-          name: '강Backend',
-          role: '백엔드',
-          avatar: 'https://via.placeholder.com/32/A8E6C5/FFFFFF?text=강',
-        },
-      ],
-      status: 'ongoing',
-      recruiting: '프론트엔드 개발자 1명 추가 모집 중',
-      techStack: ['React', 'React Native', 'UI/UX'],
-      description:
-        '대학생들의 캠퍼스 생활을 편리하게 만들어 줄 모바일 앱을 개발하는 프로젝트입니다.',
-      goals: ['모바일 앱 개발', '사용자 경험 최적화', '실제 서비스 배포'],
-      links: ['https://github.com/campus-app-team'],
-    },
-    {
-      id: 'team3',
-      title: 'Software Maestro 팀',
-      event: 'Software Maestro 14기',
-      role: '백엔드 개발자',
-      period: '2024.01.15 - 2024.04.30',
-      members: [
-        {
-          name: '이Captain',
-          role: '팀장',
-          avatar: 'https://via.placeholder.com/32/A8C5E6/FFFFFF?text=이',
-        },
-        {
-          name: '김TCP',
-          role: '백엔드',
-          avatar: 'https://via.placeholder.com/32/C5A8E6/FFFFFF?text=김',
-        },
-        {
-          name: '박Frontend',
-          role: '프론트엔드',
-          avatar: 'https://via.placeholder.com/32/A8E6C5/FFFFFF?text=박',
-        },
-        {
-          name: '최Designer',
-          role: '디자인',
-          avatar: 'https://via.placeholder.com/32/E6A8C5/FFFFFF?text=최',
-        },
-      ],
-      status: 'completed',
-      achievement: '우수 프로젝트 선정',
-      techStack: ['Spring Boot', 'React', 'AWS'],
-      description:
-        '실제 사용자들이 사용할 수 있는 웹 서비스를 개발하여 Software Maestro 과정을 수료했습니다.',
-      goals: ['실서비스 개발', '사용자 피드백 수집', '비즈니스 모델 검증'],
-      links: [
-        'https://github.com/software-maestro-team',
-        'https://project-demo.com',
-      ],
-    },
-    {
-      id: 'team4',
-      title: 'ICPC 대회 팀',
-      event: 'ACM-ICPC 대회',
-      role: '팀원',
-      period: '2023.09.01 - 2023.11.10',
-      members: [
-        {
-          name: '알고리즘마스터',
-          role: '팀장',
-          avatar: 'https://via.placeholder.com/32/A8C5E6/FFFFFF?text=알',
-        },
-        {
-          name: '김TCP',
-          role: '팀원',
-          avatar: 'https://via.placeholder.com/32/C5A8E6/FFFFFF?text=김',
-        },
-        {
-          name: '코딩천재',
-          role: '팀원',
-          avatar: 'https://via.placeholder.com/32/A8E6C5/FFFFFF?text=코',
-        },
-      ],
-      status: 'completed',
-      achievement: '지역 예선 통과',
-      techStack: ['C++', 'Algorithm', 'Data Structure'],
-      description:
-        'ACM-ICPC 프로그래밍 대회에 참가하여 알고리즘 문제 해결 능력을 겨뤘습니다.',
-      goals: ['알고리즘 실력 향상', '팀워크 향상', '대회 입상'],
-      links: ['https://github.com/icpc-team'],
-    },
-    {
-      id: 'team5',
-      title: '게임 개발 팀',
-      event: '인디 게임 개발',
-      role: '게임 프로그래머',
-      period: '2023.03.01 - 2023.06.30',
-      members: [
-        {
-          name: '게임기획자',
-          role: '팀장',
-          avatar: 'https://via.placeholder.com/32/A8C5E6/FFFFFF?text=게',
-        },
-        {
-          name: '김TCP',
-          role: '프로그래머',
-          avatar: 'https://via.placeholder.com/32/C5A8E6/FFFFFF?text=김',
-        },
-        {
-          name: '아티스트',
-          role: '아트',
-          avatar: 'https://via.placeholder.com/32/A8E6C5/FFFFFF?text=아',
-        },
-        {
-          name: '사운드마스터',
-          role: '사운드',
-          avatar: 'https://via.placeholder.com/32/E6A8C5/FFFFFF?text=사',
-        },
-        {
-          name: '테스터',
-          role: 'QA',
-          avatar: 'https://via.placeholder.com/32/A8C5E6/FFFFFF?text=테',
-        },
-      ],
-      status: 'completed',
-      achievement: 'Steam 출시 완료',
-      techStack: ['Unity', 'C#', '2D Graphics'],
-      description:
-        '2D 플랫폼 게임을 개발하여 Steam에 출시한 인디 게임 개발 팀입니다.',
-      goals: ['게임 개발', '플레이 테스트', 'Steam 출시'],
-      links: [
-        'https://github.com/game-dev-team',
-        'https://store.steampowered.com/app/game',
-      ],
-    },
-  ]);
+  const [teams, setTeams] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const [filter, setFilter] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState(null);
+
+  useEffect(() => {
+    const fetchTeams = async () => {
+      try {
+        setLoading(true);
+        const data = await apiGet('/api/v1/mypage/teams');
+        setTeams(data || []);
+      } catch (err) {
+        console.error('Failed to fetch teams:', err);
+        // Use empty array on error
+        setTeams([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTeams();
+  }, []);
 
   const filteredTeams = teams.filter((team) => {
     if (filter === 'all') return true;
@@ -220,6 +55,14 @@ function MyTeams() {
     setSelectedTeam(null);
     document.body.style.overflow = 'auto';
   };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto max-w-7xl p-6">
+        <div className="text-center text-gray-400">팀 목록을 불러오는 중...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto max-w-7xl">
