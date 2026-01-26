@@ -16,7 +16,7 @@ elasticsearch.hosts: ["http://elasticsearch:9200"]
 
 # Elasticsearch 인증 정보 (xpack.security.enabled: true 시 필요)
 elasticsearch.username: "kibana_system"
-elasticsearch.password: "password12345"
+elasticsearch.password: "${KIBANA_SYSTEM_PASSWORD}"
 
 # 세션 암호화 키 (32자 이상, 프로덕션에서 필수)
 # xpack.security.encryptionKey: "something_at_least_32_characters"
