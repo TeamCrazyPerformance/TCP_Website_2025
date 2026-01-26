@@ -14,19 +14,24 @@ export class AnnouncementService {
 
   // 게시일이 지난 모든 공지사항 목록 조회
   async findAll(): Promise<Announcement[]> {
-    return this.announcementRepository.find({
-      where: { publishAt: LessThanOrEqual(new Date()) },
-      order: { publishAt: 'DESC' }, // 최신순
-      relations: ['author'], // 작성자 정보 포함
-    });
+    return this.announcementRepository
+      .createQueryBuilder('announcement')
+      .leftJoin('announcement.author', 'author')
+      .addSelect(['author.name']) 
+      .where('announcement.publishAt <= :now', { now: new Date() })
+      .orderBy('announcement.publishAt', 'DESC')
+      .getMany();
   }
 
   // 공지사항 상세 조회
   async findOne(id: number): Promise<Announcement> {
-    const announcement = await this.announcementRepository.findOne({
-      where: { id, publishAt: LessThanOrEqual(new Date()) },
-      relations: ['author'], // 작성자 정보 포함
-    });
+    const announcement = await this.announcementRepository
+      .createQueryBuilder('announcement')
+      .leftJoin('announcement.author', 'author')
+      .addSelect(['author.name']) 
+      .where('announcement.id = :id', { id })
+      .andWhere('announcement.publishAt <= :now', { now: new Date() })
+      .getOne();
 
     if (!announcement) {
       throw new NotFoundException(`Announcement with ID ${id} not found`);
@@ -42,7 +47,7 @@ export class AnnouncementService {
     const announcement = this.announcementRepository.create({
       ...createDto,
       publishAt: createDto.publishAt ? new Date(createDto.publishAt) : new Date(), // publishAt이 지정되지 않으면 현재 시각으로 자동 설정
-      author: { id: userId }, // 작성자 연결
+      author: { id: userId }, 
     });
     return this.announcementRepository.save(announcement);
   }

@@ -90,24 +90,24 @@ export class TeamsService {
 
     // 모집글 조회
     async findAll(): Promise<Team[]> {
-        return this.teamRepository.find({
-            relations: [
-                'leader',
-                'roles',
-            ],
-            order: { createdAt: 'DESC' },
-        });
+        return this.teamRepository
+            .createQueryBuilder('team')
+            .leftJoinAndSelect('team.roles', 'roles')
+            .leftJoin('team.leader', 'leader')
+            .addSelect(['leader.name', 'leader.profile_image']) 
+            .orderBy('team.createdAt', 'DESC')
+            .getMany();
     }
 
     // 모집글 상세 조회
     async findOne(id: number): Promise<Team> {
-        const team = await this.teamRepository.findOne({
-            where: { id },
-            relations: [
-                'leader',
-                'roles',
-            ],
-        });
+        const team = await this.teamRepository
+            .createQueryBuilder('team')
+            .leftJoinAndSelect('team.roles', 'roles')
+            .leftJoin('team.leader', 'leader')
+            .addSelect(['leader.name', 'leader.profile_image']) 
+            .where('team.id = :id', { id })
+            .getOne();
 
         if (!team) {
             throw new NotFoundException(`Team with id ${id} not found`);
@@ -160,11 +160,20 @@ export class TeamsService {
 
             await manager.save(team);
 
-            // 모든 변경사항을 반영한 후 업데이트된 팀 정보를 반환
-            return manager.findOneOrFail(Team, {
-                where: { id: teamId },
-                relations: ['leader', 'roles'],
-            });
+            // 모든 변경사항을 반영한 후 업데이트된 팀 정보를 반환 (리더 이름과 프로필 이미지만 노출)
+            const updatedTeam = await manager
+                .createQueryBuilder(Team, 'team')
+                .leftJoinAndSelect('team.roles', 'roles')
+                .leftJoin('team.leader', 'leader')
+                .addSelect(['leader.name', 'leader.profile_image'])
+                .where('team.id = :teamId', { teamId })
+                .getOne();
+            
+            if (!updatedTeam) {
+                throw new NotFoundException(`Team ${teamId} not found after update`);
+            }
+            
+            return updatedTeam;
         });
     }
 
@@ -255,10 +264,13 @@ export class TeamsService {
 
     // 모집 상태 변경
     async changeStatus(userId: string, id: number, status: TeamStatus): Promise<Team> {
-        const team = await this.teamRepository.findOne({
-            where: { id },
-            relations: ['leader'],
-        });
+        const team = await this.teamRepository
+            .createQueryBuilder('team')
+            .leftJoinAndSelect('team.roles', 'roles')
+            .leftJoin('team.leader', 'leader')
+            .addSelect(['leader.id', 'leader.name', 'leader.profile_image'])
+            .where('team.id = :id', { id })
+            .getOne();
 
         if (!team) {
             throw new NotFoundException(`Team with id ${id} not found`);
