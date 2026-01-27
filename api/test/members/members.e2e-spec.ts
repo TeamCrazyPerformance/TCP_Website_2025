@@ -7,6 +7,7 @@ import { Repository } from 'typeorm';
 import { User } from '../../src/members/entities/user.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { UserGender } from '../../src/members/entities/enums/user-gender.enum';
+import { UserRole } from '../../src/members/entities/enums/user-role.enum';
 import { EducationStatus } from '../../src/members/entities/enums/education-status.enum';
 
 describe('MembersController (e2e)', () => {
@@ -52,6 +53,7 @@ describe('MembersController (e2e)', () => {
       join_year: 2025,
       birth_date: new Date('2000-02-02'),
       gender: UserGender.Male,
+      role: UserRole.MEMBER,
       education_status: EducationStatus.Enrolled,
       is_public_email: true,
     });
@@ -78,6 +80,7 @@ describe('MembersController (e2e)', () => {
       join_year: 2025,
       birth_date: new Date('2000-02-02'),
       gender: UserGender.Male,
+      role: UserRole.MEMBER,
       education_status: EducationStatus.Enrolled,
       is_public_email: false,
     });

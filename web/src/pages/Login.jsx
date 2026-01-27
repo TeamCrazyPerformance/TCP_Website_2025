@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom'; // React Router Link 임포트
 import logo from '../logo.svg'; // src 폴더에 있는 logo.svg를 상대 경로로 임포트
 import { apiPost } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 
 function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   // 아이디, 비밀번호, 로그인 상태 유지 체크박스 상태 관리
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -23,13 +25,7 @@ function Login() {
     try {
       setIsSubmitting(true);
       const data = await apiPost('/api/v1/auth/login', { username, password });
-      localStorage.setItem('access_token', data.access_token);
-      localStorage.setItem('auth_user', JSON.stringify(data.user));
-      if (keepLoggedIn) {
-        localStorage.setItem('keep_logged_in', 'true');
-      } else {
-        localStorage.removeItem('keep_logged_in');
-      }
+      login(data.user, data.access_token, keepLoggedIn);
       alert('로그인 되었습니다.');
       navigate('/');
     } catch (error) {

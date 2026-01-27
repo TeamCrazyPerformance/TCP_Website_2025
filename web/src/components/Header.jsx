@@ -1,8 +1,11 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import logo from '../logo.svg';
+import { useAuth } from '../context/AuthContext';
 
 function Header({ isScrolled }) {
+  const navigate = useNavigate();
+  const { isAuthenticated, logout } = useAuth();
   const getNavLinkClass = ({ isActive }) =>
     `nav-link orbitron text-sm font-medium ${
       isActive ? 'active' : 'text-gray-300'
@@ -20,6 +23,13 @@ function Header({ isScrolled }) {
         : 'bg-gradient-to-r from-blue-500 to-purple-500'
     } hover:from-blue-600 hover:to-purple-600 text-white`;
 
+  const logoutButtonClass =
+    'px-4 py-2 text-sm border border-gray-600 text-gray-300 rounded-lg hover:border-gray-400 transition-colors';
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
   return (
     <header
@@ -72,12 +82,29 @@ function Header({ isScrolled }) {
 
           {/* Login/Sign Up Links */}
           <div className="flex space-x-3">
-            <NavLink to="/login" className={getLoginLinkClass}>
-              Login
-            </NavLink>
-            <NavLink to="/register" className={getRegisterLinkClass}>
-              Sign Up
-            </NavLink>
+            {isAuthenticated ? (
+              <>
+                <NavLink to="/mypage" className={getRegisterLinkClass}>
+                  My Page
+                </NavLink>
+                <button
+                  type="button"
+                  className={logoutButtonClass}
+                  onClick={handleLogout}
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <NavLink to="/login" className={getLoginLinkClass}>
+                  Login
+                </NavLink>
+                <NavLink to="/register" className={getRegisterLinkClass}>
+                  Sign Up
+                </NavLink>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}

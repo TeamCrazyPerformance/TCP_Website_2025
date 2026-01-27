@@ -1,16 +1,35 @@
 import React, { useState, useEffect } from 'react';
+import { apiGet, apiPatch } from '../../api/client';
 
 const MyPageAccountSettings = () => {
     const [formData, setFormData] = useState({ name: '', birthday: '', phone: '', email: '' });
     const [initialData, setInitialData] = useState({});
     const [isDirty, setIsDirty] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Mock fetching initial data
-        const fetchedData = { name: 'Admin Kim', birthday: '2002-03-01', phone: '010-1234-5678', email: 'kimtcp@seoultech.ac.kr' };
-        setFormData(fetchedData);
-        setInitialData(fetchedData);
+        const fetchAccountData = async () => {
+            try {
+                setLoading(true);
+                const data = await apiGet('/api/v1/mypage/account');
+                const accountData = {
+                    name: data.name || '',
+                    birthday: data.birthday || '',
+                    phone: data.phone_number || '',
+                    email: data.email || ''
+                };
+                setFormData(accountData);
+                setInitialData(accountData);
+            } catch (err) {
+                console.error('Failed to fetch account data:', err);
+                alert('계정 정보를 불러오는데 실패했습니다.');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchAccountData();
     }, []);
 
     useEffect(() => {
@@ -22,13 +41,33 @@ const MyPageAccountSettings = () => {
         setFormData(prev => ({ ...prev, [id]: value }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (!isDirty) return;
-        // Mock saving data
-        alert('저장되었습니다!');
-        setInitialData(formData);
+
+        try {
+            const updateData = {
+                name: formData.name,
+                birthday: formData.birthday,
+                phone_number: formData.phone,
+                email: formData.email
+            };
+            await apiPatch('/api/v1/mypage/account', updateData);
+            alert('저장되었습니다!');
+            setInitialData(formData);
+        } catch (err) {
+            console.error('Failed to update account:', err);
+            alert('저장에 실패했습니다: ' + err.message);
+        }
     };
+
+    if (loading) {
+        return (
+            <div className="container mx-auto max-w-4xl p-6">
+                <div className="text-center text-gray-400">계정 정보를 불러오는 중...</div>
+            </div>
+        );
+    }
 
     return (
         <div className="container mx-auto max-w-4xl">
@@ -83,12 +122,51 @@ const MyPageAccountSettings = () => {
 };
 
 const PasswordChangeModal = ({ isOpen, onClose }) => {
+    const [passwordData, setPasswordData] = useState({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+        verificationCode: ''
+    });
+    const [submitting, setSubmitting] = useState(false);
+
     if (!isOpen) return null;
 
-    const handleSubmit = (e) => {
+    const handlePasswordChange = (e) => {
+        const { id, value } = e.target;
+        const field = id.replace('pw-', '').replace('-', '');
+        setPasswordData(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        alert('비밀번호가 변경되었습니다. (This is a mock action)');
-        onClose();
+
+        // Validation
+        if (passwordData.newPassword !== passwordData.confirmPassword) {
+            alert('새 비밀번호가 일치하지 않습니다.');
+            return;
+        }
+
+        if (passwordData.newPassword.length < 8) {
+            alert('비밀번호는 최소 8자 이상이어야 합니다.');
+            return;
+        }
+
+        try {
+            setSubmitting(true);
+            await apiPatch('/api/v1/mypage/account/password', {
+                currentPassword: passwordData.currentPassword,
+                newPassword: passwordData.newPassword
+            });
+            alert('비밀번호가 변경되었습니다.');
+            setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '', verificationCode: '' });
+            onClose();
+        } catch (err) {
+            console.error('Password change failed:', err);
+            alert('비밀번호 변경에 실패했습니다: ' + err.message);
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -102,16 +180,37 @@ const PasswordChangeModal = ({ isOpen, onClose }) => {
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label htmlFor="pw-current" className="label">현재 비밀번호</label>
-                        <input id="pw-current" type="password" className="input" required />
+                        <input
+                            id="pw-current"
+                            type="password"
+                            className="input"
+                            value={passwordData.currentPassword}
+                            onChange={handlePasswordChange}
+                            required
+                        />
                     </div>
                     <div>
                         <label htmlFor="pw-new" className="label">새 비밀번호</label>
-                        <input id="pw-new" type="password" className="input" required />
+                        <input
+                            id="pw-new"
+                            type="password"
+                            className="input"
+                            value={passwordData.newPassword}
+                            onChange={handlePasswordChange}
+                            required
+                        />
                         <div className="strength-rail mt-2"><div className="strength-bar"></div></div>
                     </div>
                     <div>
                         <label htmlFor="pw-confirm" className="label">새 비밀번호 확인</label>
-                        <input id="pw-confirm" type="password" className="input" required />
+                        <input
+                            id="pw-confirm"
+                            type="password"
+                            className="input"
+                            value={passwordData.confirmPassword}
+                            onChange={handlePasswordChange}
+                            required
+                        />
                     </div>
                     <div>
                         <div className="flex items-end gap-3">
@@ -124,7 +223,13 @@ const PasswordChangeModal = ({ isOpen, onClose }) => {
                     </div>
                     <div className="flex items-center justify-end gap-3 mt-6">
                         <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg btn-outline hover:bg-gray-800">취소</button>
-                        <button type="submit" className="px-4 py-2 rounded-lg btn-primary">변경</button>
+                        <button
+                            type="submit"
+                            className="px-4 py-2 rounded-lg btn-primary"
+                            disabled={submitting}
+                        >
+                            {submitting ? '변경 중...' : '변경'}
+                        </button>
                     </div>
                 </form>
             </div>

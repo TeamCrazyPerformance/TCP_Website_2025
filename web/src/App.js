@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   BrowserRouter as Router,
   Routes,
@@ -11,6 +11,7 @@ import './index.css';
 // 공통 컴포넌트 임포트
 import Header from './components/Header';
 import Footer from './components/Footer';
+import { AuthProvider } from './context/AuthContext';
 
 // 페이지 컴포넌트 임포트
 import Home from './pages/Home';
@@ -52,7 +53,6 @@ import AdminStudy from './pages/admin/AdminStudy';
 import AdminTeam from './pages/admin/AdminTeam';
 import AdminServer from './pages/admin/AdminServer';
 
-import { useState } from 'react';
 
 // 모든 로직을 AppContent 컴포넌트로 이동
 function AppContent() {
@@ -132,9 +132,11 @@ function AppContent() {
 // App 컴포넌트는 Router만 렌더링
 function App() {
   return (
-    <Router>
-      <AppContent />
-    </Router>
+    <AuthProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </AuthProvider>
   );
 }
 

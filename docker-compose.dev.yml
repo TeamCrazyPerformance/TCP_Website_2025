@@ -54,7 +54,7 @@ services:
       - ./api:/var/app
       - /var/app/node_modules
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health/live || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/health/live || exit 1"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -80,3 +80,14 @@ services:
     # dev에서는 아래 dev용 conf로 덮어쓰는 걸 권장.
     volumes:
       - ./reverse-proxy/default.dev.conf:/etc/nginx/conf.d/default.conf:ro
+
+  # Elasticsearch (dev: disable security for simpler healthcheck)
+  elasticsearch:
+    environment:
+      - xpack.security.enabled=false
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health || exit 1"]
+
+  # Filebeat (dev: relax config ownership check)
+  filebeat:
+    command: ["-e", "-strict.perms=false"]
