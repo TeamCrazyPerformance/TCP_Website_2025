@@ -83,7 +83,7 @@
       - db-data:/var/lib/postgresql/data
       - ./db/backups:/backups
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h localhost -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\" || exit 1"]
+      test: ["CMD-SHELL", "pg_isready -h localhost -U $$POSTGRES_USER -d $$POSTGRES_DB || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 20

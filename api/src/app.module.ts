@@ -39,7 +39,7 @@ import { HealthModule } from './health/health.module';
         password: config.get<string>('DB_PASSWORD') || 'password',
         database: config.get<string>('DB_NAME') || 'mydb',
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true, // 개발 중에만 true
+        synchronize: false, // 프로덕션에서는 반드시 false
         logging: true,
       }),
     }),

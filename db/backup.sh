@@ -6,10 +6,19 @@
 set -e
 
 # 설정
-BACKUP_DIR="$(dirname "$0")/backups"
+SCRIPT_DIR="$(dirname "$0")"
+BACKUP_DIR="$SCRIPT_DIR/backups"
 CONTAINER_NAME="db"
-DB_USER="user"
-DB_NAME="mydb"
+
+# 환경변수 파일에서 DB 정보 로드 (prod 우선, 없으면 dev)
+if [ -f "$SCRIPT_DIR/../envs/db_prod.env" ]; then
+    source "$SCRIPT_DIR/../envs/db_prod.env"
+elif [ -f "$SCRIPT_DIR/../envs/db_dev.env" ]; then
+    source "$SCRIPT_DIR/../envs/db_dev.env"
+else
+    echo "Error: No env file found!"
+    exit 1
+fi
 DATE=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="backup_${DATE}.sql"
 KEEP_DAYS=30  # 30일 이상 된 백업 삭제

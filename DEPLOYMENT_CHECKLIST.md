@@ -194,12 +194,21 @@ docker-compose build
 # 3. 서비스 시작
 docker-compose up -d
 
-# 4. 로그 확인
+# 4. DB ready 대기 (약 10초)
+sleep 10
+
+# 5. 초기 Admin 계정 생성 (최초 배포 시 1회만)
+docker-compose exec api npm run seed
+
+# 6. 로그 확인
 docker-compose logs -f
 
-# 5. 헬스체크
-curl http://localhost/api/health
+# 7. 헬스체크
+curl http://localhost/api/health/live
 ```
+
+> [!NOTE]
+> `seed` 명령어는 최초 배포 시 1회만 실행합니다. 이미 Admin 계정이 존재하면 스킵됩니다.
 
 ---
 
