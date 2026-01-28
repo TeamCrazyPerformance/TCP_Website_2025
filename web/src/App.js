@@ -24,6 +24,7 @@ import AnnouncementArticle from './pages/AnnouncementArticle';
 import Study from './pages/Study';
 import StudyWrite from './pages/StudyWrite';
 import StudyDetail from './pages/StudyDetail';
+import StudyManagement from './pages/StudyManagement';
 import Team from './pages/Team';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -93,6 +94,7 @@ function AppContent() {
         <Route path="/study" element={<Study />} />
         <Route path="/study/write" element={<StudyWrite />} />
         <Route path="/study/:id" element={<StudyDetail />} />
+        <Route path="/study/:id/manage" element={<StudyManagement />} />
         <Route path="/team" element={<Team />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
