@@ -21,12 +21,12 @@ export class MemberCleanupJob {
     this.logger.log('만료된 회원 영구 삭제 작업 시작');
 
     try {
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const twoDaysAgo = new Date();
+      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
 
       const expiredUsers = await this.userRepository.find({
         where: {
-          deleted_at: LessThan(thirtyDaysAgo),
+          deleted_at: LessThan(twoDaysAgo),
         },
         withDeleted: true,
       });
