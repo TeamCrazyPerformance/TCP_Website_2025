@@ -147,8 +147,8 @@ const Withdraw = () => {
                                 </h4>
                                 <div className="warning-list">
                                     <ul>
-                                        <li><i className="fas fa-clock"></i><span><strong>재가입 제한:</strong> 탈퇴 후 30일간 동일한 이메일로 재가입이 불가능합니다</span></li>
-                                        <li><i className="fas fa-database"></i><span><strong>데이터 복구 불가:</strong> 삭제된 모든 데이터는 복구할 수 없으며, 백업도 제공되지 않습니다</span></li>
+                                        <li><i className="fas fa-clock"></i><span><strong>재가입 제한:</strong> 탈퇴 후 2일간 동일한 아이디/이메일/학번으로 재가입이 불가능합니다</span></li>
+                                        <li><i className="fas fa-database"></i><span><strong>데이터 복구 불가:</strong> 삭제된 모든 데이터는 복구할 수 없습니다</span></li>
                                         <li><i className="fas fa-users"></i><span><strong>팀 활동 중단:</strong> 현재 참여 중인 모든 팀 활동에서 자동으로 제외됩니다</span></li>
                                         <li><i className="fas fa-link"></i><span><strong>외부 연동 해제:</strong> GitHub, 포트폴리오 등 연동된 모든 외부 서비스 연결이 해제됩니다</span></li>
                                     </ul>
