@@ -24,8 +24,15 @@ export async function apiGet(path, options = {}) {
   });
 
   if (!response.ok) {
-    const message = `API 요청 실패: ${response.status} ${response.statusText}`;
-    throw new Error(message);
+    let errorData;
+    try {
+      errorData = await response.json();
+    } catch {
+      errorData = { message: response.statusText };
+    }
+    const error = new Error(errorData.message || `API 요청 실패: ${response.status}`);
+    error.response = { data: errorData, status: response.status };
+    throw error;
   }
 
   return response.json();
@@ -46,11 +53,15 @@ export async function apiPost(path, body, options = {}) {
   });
 
   if (!response.ok) {
-    const fallback = await response.text();
-    const message = fallback
-      ? `API 요청 실패: ${response.status} ${response.statusText} - ${fallback}`
-      : `API 요청 실패: ${response.status} ${response.statusText}`;
-    throw new Error(message);
+    let errorData;
+    try {
+      errorData = await response.json();
+    } catch {
+      errorData = { message: response.statusText };
+    }
+    const error = new Error(errorData.message || `API 요청 실패: ${response.status}`);
+    error.response = { data: errorData, status: response.status };
+    throw error;
   }
 
   if (response.status === 204) {
@@ -75,11 +86,15 @@ export async function apiPatch(path, body, options = {}) {
   });
 
   if (!response.ok) {
-    const fallback = await response.text();
-    const message = fallback
-      ? `API 요청 실패: ${response.status} ${response.statusText} - ${fallback}`
-      : `API 요청 실패: ${response.status} ${response.statusText}`;
-    throw new Error(message);
+    let errorData;
+    try {
+      errorData = await response.json();
+    } catch {
+      errorData = { message: response.statusText };
+    }
+    const error = new Error(errorData.message || `API 요청 실패: ${response.status}`);
+    error.response = { data: errorData, status: response.status };
+    throw error;
   }
 
   if (response.status === 204) {
@@ -102,8 +117,15 @@ export async function apiDelete(path, options = {}) {
   });
 
   if (!response.ok) {
-    const message = `API 요청 실패: ${response.status} ${response.statusText}`;
-    throw new Error(message);
+    let errorData;
+    try {
+      errorData = await response.json();
+    } catch {
+      errorData = { message: response.statusText };
+    }
+    const error = new Error(errorData.message || `API 요청 실패: ${response.status}`);
+    error.response = { data: errorData, status: response.status };
+    throw error;
   }
 
   if (response.status === 204) {

@@ -48,5 +48,7 @@ export class WithdrawService {
     }
 
     await this.userRepository.softRemove(user);
+    
+    return { success: true, message: '회원탈퇴가 완료되었습니다.' };
   }
 }

@@ -96,14 +96,17 @@ const Withdraw = () => {
         if (!allChecked || isProcessing) return;
         setIsProcessing(true);
         try {
-            await apiDelete('/api/v1/mypage/withdraw');
-            logout();
-            setCurrentStep(4);
-            setTimeout(() => navigate('/'), 5000);
+            const response = await apiDelete('/api/v1/mypage/withdraw');
+            if (response && response.success) {
+                logout();
+                setCurrentStep(4);
+                setTimeout(() => navigate('/'), 5000);
+            } else {
+                throw new Error('탈퇴 처리에 실패했습니다.');
+            }
         } catch (err) {
             console.error('Withdraw failed:', err);
-            alert('탈퇴 처리에 실패했습니다.');
-        } finally {
+            alert(err.response?.data?.message || err.message || '탈퇴 처리에 실패했습니다.');
             setIsProcessing(false);
         }
     };
