@@ -62,9 +62,9 @@ export class AuthService {
   async register(dto: RegisterDto) {
     // username / email / student_number 중복검사
     const [byUsername, byEmail, byStdNo] = await Promise.all([
-      this.usersRepo.findOne({ where: { username: dto.username } }),
-      this.usersRepo.findOne({ where: { email: dto.email } }),
-      this.usersRepo.findOne({ where: { student_number: dto.student_number } }),
+      this.usersRepo.findOne({ where: { username: dto.username }, withDeleted: true }),
+      this.usersRepo.findOne({ where: { email: dto.email }, withDeleted: true }),
+      this.usersRepo.findOne({ where: { student_number: dto.student_number }, withDeleted: true }),
     ]);
 
     if (byUsername) throw new ConflictException('이미 있는 아이디입니다.');

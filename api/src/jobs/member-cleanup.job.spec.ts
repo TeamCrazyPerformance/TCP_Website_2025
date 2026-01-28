@@ -41,7 +41,7 @@ describe('MemberCleanupJob (unit)', () => {
     dataSource = module.get(DataSource);
   });
 
-  it('30일 지난 soft delete 유저를 hard delete 한다', async () => {
+  it('2일 지난 soft delete 유저를 hard delete 한다', async () => {
     const expiredUser = { id: 'test-uuid-1' } as User;
     mockFind.mockResolvedValue([expiredUser]);
     mockRemove.mockResolvedValue([expiredUser]);

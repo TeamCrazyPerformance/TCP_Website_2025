@@ -38,6 +38,7 @@ export class AccountService {
       birthDate: user.birth_date,
       phoneNumber: user.phone_number,
       email: user.email,
+      studentNumber: user.student_number,
     };
   }
 
@@ -70,6 +71,17 @@ export class AccountService {
         }
       }
 
+      // 학번 중복 체크 (실제로 변경될 때만)
+      if (dto.student_number !== undefined && dto.student_number !== user.student_number) {
+        const existingUser = await queryRunner.manager.findOne(User, {
+          where: { student_number: dto.student_number },
+        });
+
+        if (existingUser) {
+          throw new BadRequestException('Student number already in use');
+        }
+      }
+
       if (dto.name !== undefined && dto.name !== user.name) {
         user.name = dto.name;
         changedFields.push('name');
@@ -92,6 +104,11 @@ export class AccountService {
       if (dto.email !== undefined && dto.email !== user.email) {
         user.email = dto.email;
         changedFields.push('email');
+      }
+
+      if (dto.student_number !== undefined && dto.student_number !== user.student_number) {
+        user.student_number = dto.student_number;
+        changedFields.push('student_number');
       }
 
       await queryRunner.manager.save(user);
