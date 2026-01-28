@@ -24,4 +24,11 @@ export class UpdateAccountDto {
   @IsOptional()
   @IsEmail()
   email?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{8}$/, {
+    message: 'Invalid student number format (required: 8 digits)',
+  })
+  student_number?: string;
 }
