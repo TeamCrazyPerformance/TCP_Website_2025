@@ -63,6 +63,16 @@ sudo docker compose \
 echo "✅ Docker services are up"
 echo
 
+
+### =========================
+### 5. 초기화 작업
+### =========================
+# 1. 테이블 생성
+sudo docker compose exec api npm run migration:run
+# 2. 관리자 계정 생성
+sudo docker compose exec api npm run seed
+
+
 ### =========================
 ### 완료
 ### =========================
