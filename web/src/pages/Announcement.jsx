@@ -9,6 +9,8 @@ function Announcement() {
   const [announcements, setAnnouncements] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 4;
 
   useEffect(() => {
     let isMounted = true;
@@ -21,11 +23,26 @@ function Announcement() {
           id: item.id,
           title: item.title,
           date: item.publishAt || item.createdAt,
+          createdAt: item.createdAt,
+          publishAt: item.publishAt,
           summary: item.summary,
           author: item.author?.name || '관리자',
         }));
+        // publishAt 먼저, 같으면 createdAt 기준으로 정렬 (내림차순)
+        const sorted = mapped.sort((a, b) => {
+          const dateA = new Date(a.publishAt || a.createdAt);
+          const dateB = new Date(b.publishAt || b.createdAt);
+          
+          // publishAt 비교
+          if (dateB.getTime() !== dateA.getTime()) {
+            return dateB - dateA;
+          }
+          
+          // publishAt이 같으면 createdAt으로 비교
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        });
         if (isMounted) {
-          setAnnouncements(mapped);
+          setAnnouncements(sorted);
           setErrorMessage('');
         }
       } catch (error) {
@@ -45,6 +62,12 @@ function Announcement() {
       isMounted = false;
     };
   }, []);
+
+  // 페이지네이션 계산
+  const totalPages = Math.ceil(announcements.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentAnnouncements = announcements.slice(startIndex, endIndex);
 
   useEffect(() => {
     // IntersectionObserver를 사용하여 스크롤 시 요소가 보일 때 애니메이션 추가
@@ -70,10 +93,36 @@ function Announcement() {
     return () => {
       observer.disconnect(); // IntersectionObserver 연결 해제
     };
-  }, [announcements]);
+  }, [currentPage, currentAnnouncements]);
 
   const handleWriteClick = () => {
-    navigate('/announcement/write'); // AnnouncementWrite 페이지로 이동
+    navigate('/announcement/write');
+  };
+
+  const scrollToAnnouncements = () => {
+    const section = document.getElementById('announcements');
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    scrollToAnnouncements();
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+      scrollToAnnouncements();
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+      scrollToAnnouncements();
+    }
   };
 
   return (
@@ -135,7 +184,7 @@ function Announcement() {
             )}
             {!isLoading &&
               !errorMessage &&
-              announcements.map((announcement) => (
+              currentAnnouncements.map((announcement) => (
                 <Link
                   to={`/announcement/${announcement.id}`}
                   key={announcement.id}
@@ -164,23 +213,40 @@ function Announcement() {
               ))}
           </div>
 
-          <div className="flex justify-center mt-12 space-x-2">
-            <button className="px-4 py-2 rounded-lg bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors">
-              이전
-            </button>
-            <button className="px-4 py-2 rounded-lg bg-purple-600 text-white font-bold">
-              1
-            </button>
-            <button className="px-4 py-2 rounded-lg bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors">
-              2
-            </button>
-            <button className="px-4 py-2 rounded-lg bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors">
-              3
-            </button>
-            <button className="px-4 py-2 rounded-lg bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors">
-              다음
-            </button>
-          </div>
+          {announcements.length > 0 && (
+            <div className="flex justify-center mt-12 space-x-2">
+              <button
+                className="px-4 py-2 rounded-lg bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handlePrevPage}
+                disabled={currentPage === 1}
+              >
+                이전
+              </button>
+              {[...Array(totalPages)].map((_, index) => {
+                const page = index + 1;
+                return (
+                  <button
+                    key={page}
+                    className={`px-4 py-2 rounded-lg font-bold transition-colors ${
+                      currentPage === page
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                    onClick={() => handlePageChange(page)}
+                  >
+                    {page}
+                  </button>
+                );
+              })}
+              <button
+                className="px-4 py-2 rounded-lg bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleNextPage}
+                disabled={currentPage === totalPages}
+              >
+                다음
+              </button>
+            </div>
+          )}
         </div>
       </section>
     </>
