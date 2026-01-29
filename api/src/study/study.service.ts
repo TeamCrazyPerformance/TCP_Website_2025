@@ -149,12 +149,14 @@ export class StudyService {
         name: member.user.name,
         role: member.role,
       })),
-      resources: study.resources.map((r) => ({
-        id: r.id,
-        name: r.name,
-        format: r.format,
-        dir_path: r.dir_path,
-      })),
+      resources: study.resources
+        .filter((r) => r.deleted_at === null)
+        .map((r) => ({
+          id: r.id,
+          name: r.name,
+          format: r.format,
+          dir_path: r.dir_path,
+        })),
       progress: study.progress.map((p) => ({
         id: p.id,
         title: p.title,

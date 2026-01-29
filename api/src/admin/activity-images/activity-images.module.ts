@@ -5,5 +5,6 @@ import { ActivityImagesService } from './activity-images.service';
 @Module({
   controllers: [ActivityImagesController],
   providers: [ActivityImagesService],
+  exports: [ActivityImagesService],
 })
-export class ActivityImagesModule {}
+export class ActivityImagesModule { }

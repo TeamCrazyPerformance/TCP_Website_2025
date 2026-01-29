@@ -90,6 +90,29 @@ function MyPageSidebar() {
           </Link>
         </div>
 
+        {/* Admin Section - Only visible for ADMIN users */}
+        {(() => {
+          const user = localStorage.getItem('auth_user');
+          const userData = user ? JSON.parse(user) : null;
+          if (userData?.role === 'ADMIN') {
+            return (
+              <div className="pt-4 border-t border-gray-700">
+                <h3 className="px-4 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  관리자
+                </h3>
+                <Link
+                  to="/admin"
+                  className="sidebar-link text-purple-400 hover:text-purple-300 border border-purple-500/30 rounded-lg"
+                >
+                  <i className="fas fa-shield-alt"></i>
+                  <span className="ml-2">관리자 페이지</span>
+                </Link>
+              </div>
+            );
+          }
+          return null;
+        })()}
+
         <div className="pt-4 border-t border-gray-700">
           <Link to="/" className="sidebar-link">
             <FontAwesomeIcon icon={faHome} />
