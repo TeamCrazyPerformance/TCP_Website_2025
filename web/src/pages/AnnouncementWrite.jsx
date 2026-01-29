@@ -11,7 +11,7 @@ function AnnouncementWrite() {
 
   // 폼 상태 관리
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('');
+  const [summary, setSummary] = useState('');
   const [date, setDate] = useState('');
   const [content, setContent] = useState('');
   const [author] = useState('관리자');
@@ -35,7 +35,7 @@ function AnnouncementWrite() {
       if (window.confirm('임시저장된 글이 있습니다. 불러오시겠습니까?')) {
         const draftData = JSON.parse(savedDraft);
         setTitle(draftData.title || '');
-        setCategory(draftData.category || '');
+        setSummary(draftData.summary || '');
         setDate(draftData.date || today);
         setContent(draftData.content || '');
       }
@@ -55,11 +55,6 @@ function AnnouncementWrite() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [title, content]);
-
-  // 카테고리 선택 핸들러
-  const handleCategoryClick = (categoryName) => {
-    setCategory(categoryName);
-  };
 
   // 텍스트 포맷팅 (마크다운)
   const formatText = (command) => {
@@ -117,8 +112,8 @@ function AnnouncementWrite() {
 
   // 미리보기 모달 열기
   const handlePreview = () => {
-    if (!title || !content || !category) {
-      alert('제목, 내용, 카테고리를 모두 입력해주세요.');
+    if (!title || !content || !summary) {
+      alert('제목, 내용, 한줄요약을 모두 입력해주세요.');
       return;
     }
     setIsPreviewModalOpen(true);
@@ -129,7 +124,7 @@ function AnnouncementWrite() {
     const formData = {
       title,
       content,
-      category,
+      summary,
       date,
       timestamp: new Date().toISOString(),
     };
@@ -141,7 +136,7 @@ function AnnouncementWrite() {
   // 게시하기 (폼 제출)
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!title.trim() || !category || !content.trim() || !date) {
+    if (!title.trim() || !summary.trim() || !content.trim() || !date) {
       alert('모든 필수 항목을 입력해주세요.');
       return;
     }
@@ -151,11 +146,6 @@ function AnnouncementWrite() {
       alert('로그인 후 공지사항을 작성할 수 있습니다.');
       return;
     }
-
-    const summary = content
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 120);
 
     const payload = {
       title,
@@ -180,41 +170,17 @@ function AnnouncementWrite() {
     }
   };
 
-  const getCategoryName = (cat) => {
-    const names = {
-      general: '일반공지',
-      event: '행사안내',
-      recruitment: '모집공고',
-      rule: '규정안내',
-      urgent: '긴급공지',
-    };
-    return names[cat] || '카테고리';
-  };
-
-  const getCategoryColor = (cat) => {
-    const colors = {
-      general: 'blue',
-      event: 'green',
-      recruitment: 'purple',
-      rule: 'pink',
-      urgent: 'red',
-    };
-    return colors[cat] || 'gray';
-  };
-
   const renderPreviewContent = () => {
     const safeHtml = DOMPurify.sanitize(md.render(content));
     return (
       <>
         <header className="mb-8">
-          <span
-            className={`inline-block px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-${getCategoryColor(category)}-400 to-${getCategoryColor(category)}-500 text-black`}
-          >
-            {getCategoryName(category)}
-          </span>
-          <h1 className="orbitron text-4xl font-bold mt-4 gradient-text">
+          <h1 className="orbitron text-4xl font-bold gradient-text">
             {title}
           </h1>
+          <p className="text-xl text-gray-300 mt-3 font-medium">
+            {summary}
+          </p>
           <div className="bg-gray-800 rounded-lg p-4 mt-4 text-sm text-gray-300">
             <div className="flex items-center space-x-6">
               <div className="flex items-center space-x-2">
@@ -299,34 +265,35 @@ function AnnouncementWrite() {
             </div>
           </div>
 
-          {/* 카테고리 선택 */}
+          {/* 한줄요약 입력 */}
           <div className="mb-8">
-            <label className="block text-lg font-semibold mb-3 text-white text-left">
-              <i className="fas fa-tags text-purple-400 mr-2"></i>카테고리
+            <label
+              htmlFor="summary"
+              className="block text-lg font-semibold mb-3 text-white text-left"
+            >
+              <i className="fas fa-align-center text-purple-400 mr-2"></i>한줄요약
             </label>
-            <div className="flex flex-wrap gap-3">
-              {['general', 'event', 'recruitment', 'rule', 'urgent'].map(
-                (cat) => (
-                  <div
-                    key={cat}
-                    className={`category-chip px-4 py-2 rounded-full text-sm font-medium ${category === cat ? 'selected' : ''}`}
-                    onClick={() => handleCategoryClick(cat)}
-                    data-category={cat}
-                  >
-                    <i
-                      className={`mr-1 fas ${cat === 'general' ? 'fa-bullhorn' : cat === 'event' ? 'fa-calendar-alt' : cat === 'recruitment' ? 'fa-user-plus' : cat === 'rule' ? 'fa-gavel' : 'fa-exclamation-triangle'}`}
-                    ></i>
-                    {getCategoryName(cat)}
-                  </div>
-                )
-              )}
-            </div>
             <input
-              type="hidden"
-              id="selectedCategory"
-              name="category"
-              value={category}
+              type="text"
+              id="summary"
+              name="summary"
+              className="form-input w-full px-4 py-3 rounded-lg"
+              placeholder="공지사항의 핵심 내용을 한 줄로 요약해주세요..."
+              maxLength="120"
+              required
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
             />
+            <div className="flex justify-between items-center mt-2">
+              <p className="text-sm text-gray-400">
+                공지사항 목록에 표시될 요약 문구입니다.
+              </p>
+              <span
+                className={`char-counter ${summary.length > 110 ? 'warning' : ''}`}
+              >
+                {summary.length}/120
+              </span>
+            </div>
           </div>
 
           {/* 날짜 설정 */}
@@ -345,6 +312,14 @@ function AnnouncementWrite() {
               required
               value={date}
               onChange={(e) => setDate(e.target.value)}
+              min={new Date().toISOString().split('T')[0]}
+              max={`${new Date().getFullYear() + 10}-12-31`}
+              onInvalid={(e) => {
+                e.target.setCustomValidity('게시일은 오늘 날짜 이후로만 선택할 수 있습니다.');
+              }}
+              onInput={(e) => {
+                e.target.setCustomValidity('');
+              }}
             />
             <p className="text-sm text-gray-400 mt-2 text-left">
               공지사항이 게시될 날짜를 선택해주세요.
