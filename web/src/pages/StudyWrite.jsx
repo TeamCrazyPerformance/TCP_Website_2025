@@ -7,10 +7,11 @@ export default function StudyWrite() {
   const [study, setStudy] = useState({
     title: '',
     tags: '',
-    category: '스터디',
     deadline: '',
     members: 2,
     period: '',
+    way: '',
+    place: '',
     content: '',
     startYear: new Date().getFullYear(),
   });
@@ -40,6 +41,12 @@ export default function StudyWrite() {
       start_year: Number(study.startYear),
       study_description: study.content,
       leader_id: parsedUser.id,
+      apply_deadline: study.deadline,
+      recruit_count: Number(study.members),
+      period: study.period,
+      way: study.way,
+      place: study.place,
+      tag: study.tags,
     };
 
     try {
@@ -94,47 +101,22 @@ export default function StudyWrite() {
             />
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 mb-6">
-            {/* Category */}
-            <div>
-              <label
-                htmlFor="category"
-                className="block text-lg font-semibold text-gray-100 mb-3"
-              >
-                카테고리
-              </label>
-              <select
-                id="category"
-                name="category"
-                value={study.category}
-                onChange={handleChange}
-                className="w-full bg-gray-800 border-gray-700 rounded-lg py-3 px-4 text-base focus:ring-2 focus:ring-accent-blue focus:outline-none"
-              >
-                <option value="스터디">스터디</option>
-                <option value="프로젝트">프로젝트</option>
-                <option value="공모전">공모전</option>
-                <option value="해커톤">해커톤</option>
-              </select>
-            </div>
-
-            {/* Tags */}
-            <div>
-              <label
-                htmlFor="tags"
-                className="block text-lg font-semibold text-gray-100 mb-3"
-              >
-                태그
-              </label>
-              <input
-                type="text"
-                id="tags"
-                name="tags"
-                value={study.tags}
-                onChange={handleChange}
-                className="w-full bg-gray-800 border-gray-700 rounded-lg py-3 px-4 text-base focus:ring-2 focus:ring-accent-blue focus:outline-none"
-                placeholder="예: #React, #JavaScript, #초보환영 (쉼표로 구분)"
-              />
-            </div>
+          <div className="mb-6">
+            <label
+              htmlFor="tags"
+              className="block text-lg font-semibold text-gray-100 mb-3"
+            >
+              태그
+            </label>
+            <input
+              type="text"
+              id="tags"
+              name="tags"
+              value={study.tags}
+              onChange={handleChange}
+              className="w-full bg-gray-800 border-gray-700 rounded-lg py-3 px-4 text-base focus:ring-2 focus:ring-accent-blue focus:outline-none"
+              placeholder="예: #React, #JavaScript, #초보환영 (쉼표로 구분)"
+            />
           </div>
 
           <div className="grid md:grid-cols-2 gap-8 mb-6">
@@ -152,6 +134,27 @@ export default function StudyWrite() {
                 value={study.startYear}
                 onChange={handleChange}
                 className="w-full bg-gray-800 border-gray-700 rounded-lg py-3 px-4 text-base focus:ring-2 focus:ring-accent-blue focus:outline-none"
+                required
+              />
+            </div>
+
+            {/* Member Count */}
+            <div>
+              <label
+                htmlFor="members"
+                className="block text-lg font-semibold text-gray-100 mb-3"
+              >
+                모집 인원
+              </label>
+              <input
+                type="number"
+                id="members"
+                name="members"
+                min="1"
+                value={study.members}
+                onChange={handleChange}
+                className="w-full bg-gray-800 border-gray-700 rounded-lg py-3 px-4 text-base focus:ring-2 focus:ring-accent-blue focus:outline-none"
+                placeholder="예: 5"
                 required
               />
             </div>
@@ -198,30 +201,47 @@ export default function StudyWrite() {
             </div>
           </div>
 
-          {/* Member Count */}
-          <div className="mb-8">
-            <label
-              htmlFor="members"
-              className="block text-lg font-semibold text-gray-100 mb-3"
-            >
-              모집 인원: {' '}
-              <span className="font-bold text-accent-blue">{study.members}</span>명
-            </label>
-            <input
-              type="range"
-              id="members"
-              name="members"
-              min="2"
-              max="10"
-              value={study.members}
-              onChange={handleSliderChange}
-              className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-            />
-            <div className="flex justify-between text-sm text-gray-400 mt-2">
-              <span>2명</span>
-              <span>10명</span>
+          <div className="grid md:grid-cols-2 gap-8 mb-6">
+            {/* Study Method */}
+            <div>
+              <label
+                htmlFor="way"
+                className="block text-lg font-semibold text-gray-100 mb-3"
+              >
+                진행 방식
+              </label>
+              <input
+                type="text"
+                id="way"
+                name="way"
+                value={study.way}
+                onChange={handleChange}
+                className="w-full bg-gray-800 border-gray-700 rounded-lg py-3 px-4 text-base focus:ring-2 focus:ring-accent-blue focus:outline-none"
+                placeholder="예: 온라인, 오프라인, 혼합"
+              />
+            </div>
+
+            {/* Study Place */}
+            <div>
+              <label
+                htmlFor="place"
+                className="block text-lg font-semibold text-gray-100 mb-3"
+              >
+                장소
+              </label>
+              <input
+                type="text"
+                id="place"
+                name="place"
+                value={study.place}
+                onChange={handleChange}
+                className="w-full bg-gray-800 border-gray-700 rounded-lg py-3 px-4 text-base focus:ring-2 focus:ring-accent-blue focus:outline-none"
+                placeholder="예: 디스코드, 학교 도서관 3층"
+              />
             </div>
           </div>
+
+
 
           {/* Content */}
           <div className="mb-8">

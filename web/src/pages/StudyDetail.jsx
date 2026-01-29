@@ -1,20 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { apiGet } from '../api/client';
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { apiGet, apiPost, apiDelete } from '../api/client';
 
 export default function StudyDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [study, setStudy] = useState(null);
   const [members, setMembers] = useState([]);
+  const [progress, setProgress] = useState([]);
+  const [resources, setResources] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // TODO: 실제 사용자 인증 정보를 바탕으로 역할을 결정해야 함
+  // userRole is dynamically determined based on API response
   const [userRole, setUserRole] = useState('guest'); // 'guest', 'member', 'leader'
+
+  // Progress form state
+  const [showProgressForm, setShowProgressForm] = useState(false);
+  const [progressTitle, setProgressTitle] = useState('');
+  const [progressContent, setProgressContent] = useState('');
+  const [isSubmittingProgress, setIsSubmittingProgress] = useState(false);
+
+  // Resource upload state
+  const fileInputRef = useRef(null);
+  const [isUploadingResource, setIsUploadingResource] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
     const token = localStorage.getItem('access_token');
+    const user = localStorage.getItem('auth_user');
+    const currentUser = user ? JSON.parse(user) : null;
 
     if (!token) {
       setIsLoading(false);
@@ -30,28 +45,80 @@ export default function StudyDetail() {
             Authorization: `Bearer ${token}`,
           },
         });
+
+        // Determine user role based on API response
+        // PENDING users are still treated as guests until approved
+        let role = 'guest';
+        if (currentUser?.id) {
+          if (data.leader?.user_id === currentUser.id) {
+            role = 'leader';
+          } else if (data.members?.some((m) => m.user_id === currentUser.id && m.role === 'MEMBER')) {
+            role = 'member';
+          }
+        }
+
         const mappedStudy = {
           id: data.id,
           year: data.start_year,
           title: data.study_name,
-          period: `${data.start_year}년`,
-          method: '정보 없음',
-          location: '정보 없음',
-          members: `${data.members?.length || 0}명`,
+          period: data.period || `${data.start_year}년`,
+          method: data.way || '정보 없음',
+          location: data.place || '정보 없음',
+          recruitCount: data.recruit_count || 0,
+          // Count only MEMBER role (exclude PENDING)
+          memberCount: (data.members || []).filter(m => m.role === 'MEMBER').length + (data.leader ? 1 : 0),
           description: data.study_description,
-          tags: ['스터디'],
+          tags: data.tag ? data.tag.split(',').map((t) => t.trim()) : ['스터디'],
         };
-        const mappedMembers = (data.members || []).map((member) => ({
+        // Filter out PENDING members, only show MEMBER role
+        const approvedMembers = (data.members || []).filter(m => m.role === 'MEMBER');
+        const mappedMembers = approvedMembers.map((member) => ({
           id: member.user_id,
           name: member.name,
-          role: member.role_name,
+          role: '스터디원',
           avatar: 'https://via.placeholder.com/40',
         }));
+        // Add leader to the members list for display
+        if (data.leader) {
+          mappedMembers.unshift({
+            id: data.leader.user_id,
+            name: data.leader.name,
+            role: '스터디장',
+            avatar: 'https://via.placeholder.com/40',
+          });
+        }
 
         if (isMounted) {
           setStudy(mappedStudy);
           setMembers(mappedMembers);
+          setUserRole(role);
           setErrorMessage('');
+
+          // Fetch progress if user is member or leader
+          if (role === 'member' || role === 'leader') {
+            try {
+              const progressData = await apiGet(`/api/v1/study/${id}/progress`, {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              });
+              setProgress(progressData || []);
+            } catch {
+              setProgress([]);
+            }
+
+            // Fetch resources
+            try {
+              const resourceData = await apiGet(`/api/v1/study/${id}/resources`, {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              });
+              setResources(resourceData || []);
+            } catch {
+              setResources([]);
+            }
+          }
         }
       } catch (error) {
         if (isMounted) {
@@ -102,12 +169,153 @@ export default function StudyDetail() {
     );
   }
 
-  const handleJoin = () => alert('스터디 가입 신청이 완료되었습니다.');
-  const handleLeave = () => alert('스터디를 탈퇴했습니다.');
-  const handleDelete = () => {
-    if (window.confirm('정말로 이 스터디를 삭제하시겠습니까?')) {
-      alert('스터디가 삭제되었습니다.');
-      // TODO: navigate to /study
+  const handleJoin = async () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      alert('로그인 후 신청할 수 있습니다.');
+      return;
+    }
+    try {
+      await apiPost(`/api/v1/study/${id}/apply`, {}, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      alert('스터디 가입 신청이 완료되었습니다. 스터디장의 승인을 기다려주세요.');
+      window.location.reload();
+    } catch (error) {
+      alert(error.message || '가입 신청에 실패했습니다.');
+    }
+  };
+
+  const handleLeave = async () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+    if (!window.confirm('정말로 스터디를 탈퇴하시겠습니까?')) return;
+    try {
+      await apiDelete(`/api/v1/study/${id}/leave`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      alert('스터디를 탈퇴했습니다.');
+      navigate('/study');
+    } catch (error) {
+      alert(error.message || '탈퇴에 실패했습니다.');
+    }
+  };
+
+  const handleProgressSubmit = async (e) => {
+    e.preventDefault();
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    if (!progressTitle.trim() || !progressContent.trim()) {
+      alert('제목과 내용을 모두 입력해주세요.');
+      return;
+    }
+
+    try {
+      setIsSubmittingProgress(true);
+      await apiPost(`/api/v1/study/${id}/progress`, {
+        title: progressTitle,
+        content: progressContent,
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      alert('진행사항이 등록되었습니다.');
+      setProgressTitle('');
+      setProgressContent('');
+      setShowProgressForm(false);
+      window.location.reload();
+    } catch (error) {
+      alert(error.message || '진행사항 등록에 실패했습니다.');
+    } finally {
+      setIsSubmittingProgress(false);
+    }
+  };
+
+  const handleResourceUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    // Check file type
+    const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'];
+    const allowedExtensions = ['pdf', 'docx', 'pptx'];
+    const fileExtension = file.name.split('.').pop().toLowerCase();
+
+    if (!allowedExtensions.includes(fileExtension)) {
+      alert('PDF, DOCX, PPTX 파일만 업로드 가능합니다.');
+      return;
+    }
+
+    // Check file size (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('파일 크기는 10MB를 초과할 수 없습니다.');
+      return;
+    }
+
+    try {
+      setIsUploadingResource(true);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(`/api/v1/study/${id}/resources`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || '업로드 실패');
+      }
+
+      alert('자료가 업로드되었습니다.');
+      window.location.reload();
+    } catch (error) {
+      alert(error.message || '자료 업로드에 실패했습니다.');
+    } finally {
+      setIsUploadingResource(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleDownload = async (resourceId, fileName) => {
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    try {
+      const response = await fetch(`/api/v1/study/${id}/resources/${resourceId}/download`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('다운로드 실패');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      alert(error.message || '다운로드에 실패했습니다.');
     }
   };
 
@@ -116,18 +324,9 @@ export default function StudyDetail() {
       case 'leader':
         return (
           <div className="flex items-center gap-2">
-            <button className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+            <Link to={`/study/${id}/manage`} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
               <i className="fas fa-cog mr-2"></i>스터디 관리
-            </button>
-            <button className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
-              <i className="fas fa-pen mr-2"></i>글 수정
-            </button>
-            <button
-              onClick={handleDelete}
-              className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
-            >
-              <i className="fas fa-trash mr-2"></i>글 삭제
-            </button>
+            </Link>
           </div>
         );
       case 'member':
@@ -154,20 +353,6 @@ export default function StudyDetail() {
 
   return (
     <main className="container mx-auto px-4 py-24">
-      {/* 역할 변경 테스트용 버튼 */}
-      <div className="fixed top-24 right-4 bg-gray-800 p-2 rounded-lg shadow-lg z-50 text-sm">
-        <p className="text-white mb-2">[테스트용 역할 전환]</p>
-        <select
-          value={userRole}
-          onChange={(e) => setUserRole(e.target.value)}
-          className="bg-gray-700 text-white rounded p-1"
-        >
-          <option value="guest">Guest</option>
-          <option value="member">Member</option>
-          <option value="leader">Leader</option>
-        </select>
-      </div>
-
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -194,7 +379,7 @@ export default function StudyDetail() {
               <strong className="text-white">방식:</strong> {study.method}
             </p>
             <p>
-              <strong className="text-white">인원:</strong> {study.members}
+              <strong className="text-white">현재 인원:</strong> {study.memberCount}명 / {study.recruitCount}명
             </p>
             <p>
               <strong className="text-white">장소:</strong> {study.location}
@@ -205,42 +390,170 @@ export default function StudyDetail() {
           </div>
         </div>
 
-        {/* Main Content */}
+        {/* Main Content - visible to everyone */}
         <article className="prose prose-invert max-w-none bg-gray-900 border border-gray-800 rounded-xl p-8 mb-10">
           <h2 className="text-2xl font-bold text-white mb-4">스터디 소개</h2>
           <p>{study.description}</p>
-          {/* 여기에 마크다운 렌더링이 필요하다면 추가 */}
         </article>
 
-        {/* Member List */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-8">
-          <h2 className="text-2xl font-bold text-white mb-6">참여중인 스터디원</h2>
-          <ul className="space-y-4">
-            {members.map((member) => (
-              <li
-                key={member.id}
-                className="flex items-center justify-between bg-gray-800 p-4 rounded-lg"
-              >
-                <div className="flex items-center">
-                  <img
-                    src={member.avatar}
-                    alt={member.name}
-                    className="w-10 h-10 rounded-full mr-4"
+        {/* Progress Section - visible to members and leaders only */}
+        {userRole !== 'guest' && (
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 mb-10">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-white">진행사항</h2>
+              {userRole === 'leader' && (
+                <button
+                  onClick={() => setShowProgressForm(!showProgressForm)}
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+                >
+                  <i className="fas fa-plus mr-2"></i>
+                  {showProgressForm ? '취소' : '진행사항 작성'}
+                </button>
+              )}
+            </div>
+
+            {/* Progress Form - only for leaders */}
+            {showProgressForm && userRole === 'leader' && (
+              <form onSubmit={handleProgressSubmit} className="mb-6 bg-gray-800 p-6 rounded-lg">
+                <div className="mb-4">
+                  <label htmlFor="progressTitle" className="block text-sm font-semibold text-gray-100 mb-2">
+                    제목
+                  </label>
+                  <input
+                    type="text"
+                    id="progressTitle"
+                    value={progressTitle}
+                    onChange={(e) => setProgressTitle(e.target.value)}
+                    className="w-full bg-gray-700 border-gray-600 rounded-lg py-2 px-4 text-white focus:ring-2 focus:ring-accent-blue focus:outline-none"
+                    placeholder="진행사항 제목"
+                    required
                   />
-                  <div>
-                    <p className="font-bold text-white">{member.name}</p>
-                    <p className="text-sm text-gray-400">{member.role}</p>
-                  </div>
                 </div>
-                {userRole === 'leader' && member.role !== '스터디장' && (
-                  <button className="text-sm text-red-500 hover:text-red-400">
-                    내보내기
+                <div className="mb-4">
+                  <label htmlFor="progressContent" className="block text-sm font-semibold text-gray-100 mb-2">
+                    내용
+                  </label>
+                  <textarea
+                    id="progressContent"
+                    value={progressContent}
+                    onChange={(e) => setProgressContent(e.target.value)}
+                    rows="4"
+                    className="w-full bg-gray-700 border-gray-600 rounded-lg py-2 px-4 text-white focus:ring-2 focus:ring-accent-blue focus:outline-none"
+                    placeholder="진행사항 내용을 작성하세요"
+                    required
+                  ></textarea>
+                </div>
+                <button
+                  type="submit"
+                  disabled={isSubmittingProgress}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {isSubmittingProgress ? '등록 중...' : '등록하기'}
+                </button>
+              </form>
+            )}
+
+            {/* Progress List */}
+            {progress.length > 0 ? (
+              <ul className="space-y-4">
+                {progress.map((item) => (
+                  <li key={item.id} className="bg-gray-800 p-4 rounded-lg">
+                    <h3 className="font-bold text-white text-lg mb-2">{item.title}</h3>
+                    <p className="text-gray-300">{item.content}</p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-gray-400 text-center py-4">아직 등록된 진행사항이 없습니다.</p>
+            )}
+          </div>
+        )}
+
+        {/* Resources Section - visible to members and leaders only */}
+        {userRole !== 'guest' && (
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 mb-10">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-white">자료실</h2>
+              {userRole === 'leader' && (
+                <>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleResourceUpload}
+                    accept=".pdf,.docx,.pptx"
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingResource}
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <i className="fas fa-upload mr-2"></i>
+                    {isUploadingResource ? '업로드 중...' : '자료 업로드'}
                   </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
+                </>
+              )}
+            </div>
+            <p className="text-sm text-gray-400 mb-4">PDF, DOCX, PPTX 파일만 업로드 가능 (최대 10MB)</p>
+
+            {/* Resource List */}
+            {resources.length > 0 ? (
+              <ul className="space-y-3">
+                {resources.map((resource) => (
+                  <li key={resource.id} className="flex items-center justify-between bg-gray-800 p-4 rounded-lg">
+                    <div className="flex items-center">
+                      <i className={`fas ${resource.format === 'pdf' ? 'fa-file-pdf text-red-400' : resource.format === 'docx' ? 'fa-file-word text-blue-400' : 'fa-file-powerpoint text-orange-400'} text-2xl mr-4`}></i>
+                      <div>
+                        <p className="font-semibold text-white">{resource.name}</p>
+                        <p className="text-sm text-gray-400 uppercase">{resource.format}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDownload(resource.id, resource.name)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+                    >
+                      <i className="fas fa-download mr-2"></i>다운로드
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-gray-400 text-center py-4">아직 업로드된 자료가 없습니다.</p>
+            )}
+          </div>
+        )}
+
+        {/* Member List - hidden for guests */}
+        {userRole !== 'guest' && (
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-8">
+            <h2 className="text-2xl font-bold text-white mb-6">참여중인 스터디원</h2>
+            <ul className="space-y-4">
+              {members.map((member) => (
+                <li
+                  key={member.id}
+                  className="flex items-center justify-between bg-gray-800 p-4 rounded-lg"
+                >
+                  <div className="flex items-center">
+                    <img
+                      src={member.avatar}
+                      alt={member.name}
+                      className="w-10 h-10 rounded-full mr-4"
+                    />
+                    <div>
+                      <p className="font-bold text-white">{member.name}</p>
+                      <p className="text-sm text-gray-400">{member.role}</p>
+                    </div>
+                  </div>
+                  {userRole === 'leader' && member.role !== '스터디장' && (
+                    <button className="text-sm text-red-500 hover:text-red-400">
+                      내보내기
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </main>
   );

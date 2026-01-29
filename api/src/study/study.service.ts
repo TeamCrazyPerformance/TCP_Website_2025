@@ -12,6 +12,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, LessThan } from 'typeorm';
 import { Study } from './entities/study.entity';
 import { User } from '../members/entities/user.entity';
+import { UserRole } from '../members/entities/enums/user-role.enum';
 import { StudyMember } from './entities/study-member.entity';
 import { StudyMemberRole } from './entities/enums/study-member-role.enum';
 import { Progress } from './entities/progress.entity';
@@ -369,6 +370,11 @@ export class StudyService {
     if (!userToAdd)
       throw new NotFoundException('User not found');
 
+    // Check if user is GUEST
+    if (userToAdd.role === UserRole.GUEST) {
+      throw new BadRequestException('Guest users cannot be added to a study. Please approve the user to MEMBER first.');
+    }
+
     // 2. Check if a member linking this user and study already exists to prevent duplicates.
     const existingMember = await this.studyMemberRepository.findOne({
       where: { study: { id: studyId }, user: { id: userId } },
@@ -709,9 +715,12 @@ export class StudyService {
       { studyId },
     );
 
+    // 3. Exclude GUEST users - only MEMBER and ADMIN can be added to studies
+    queryBuilder.andWhere('user.role != :guestRole', { guestRole: 'GUEST' });
+
     const users = await queryBuilder.getMany();
 
-    // 3. Map the results to the response DTO
+    // 4. Map the results to the response DTO
     return users.map((user) => ({
       user_id: user.id,
       name: user.name,
@@ -739,6 +748,10 @@ export class StudyService {
     const user = await this.userRepository.findOneBy({ id: userId });
     if (!user) {
       throw new NotFoundException(`User with ID "${userId}" not found`);
+    }
+
+    if (user.role === UserRole.GUEST) {
+      throw new BadRequestException('Guest users cannot apply to a study. Please request approval to MEMBER first.');
     }
 
     // 3. Check if the user is already a member of the study (in any role)
@@ -770,7 +783,17 @@ export class StudyService {
     studyId: number,
     userId: string,
   ): Promise<SuccessResponseDto> {
-    // 1. Find the study member entry
+    // 1. Find the study with its members
+    const study = await this.studyRepository.findOne({
+      where: { id: studyId },
+      relations: ['studyMembers'],
+    });
+
+    if (!study) {
+      throw new NotFoundException(`Study with ID "${studyId}" not found`);
+    }
+
+    // 2. Find the study member entry
     const studyMember = await this.studyMemberRepository.findOne({
       where: { study: { id: studyId }, user: { id: userId } },
     });
@@ -781,14 +804,25 @@ export class StudyService {
       );
     }
 
-    // 2. Verify the member is in PENDING status
+    // 3. Verify the member is in PENDING status
     if (studyMember.role !== StudyMemberRole.PENDING) {
       throw new BadRequestException(
         'Only pending applicants can be approved',
       );
     }
 
-    // 3. Update the role to MEMBER
+    // 4. Check if recruit_count limit is reached (only count LEADER + MEMBER, not PENDING)
+    const currentMemberCount = study.studyMembers.filter(
+      (m) => m.role === StudyMemberRole.LEADER || m.role === StudyMemberRole.MEMBER,
+    ).length;
+
+    if (study.recruit_count && currentMemberCount >= study.recruit_count) {
+      throw new BadRequestException(
+        `모집 인원(${study.recruit_count}명)이 이미 꽉 찼습니다.`,
+      );
+    }
+
+    // 5. Update the role to MEMBER
     studyMember.role = StudyMemberRole.MEMBER;
     await this.studyMemberRepository.save(studyMember);
 

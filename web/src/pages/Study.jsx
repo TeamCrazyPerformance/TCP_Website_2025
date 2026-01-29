@@ -11,6 +11,18 @@ function Study() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
 
+  // Check if current user is admin
+  const isAdmin = useMemo(() => {
+    const user = localStorage.getItem('auth_user');
+    if (!user) return false;
+    try {
+      const parsed = JSON.parse(user);
+      return parsed.role === 'ADMIN';
+    } catch {
+      return false;
+    }
+  }, []);
+
   const handleYearChange = (event) => {
     setSelectedYear(event.target.value);
   };
@@ -179,13 +191,15 @@ function Study() {
               스터디 목록
             </h2>
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => navigate('/study/write')}
-                className="cta-button px-6 py-2 rounded-lg text-sm font-bold text-white"
-              >
-                <i className="fas fa-plus mr-2" />
-                스터디 개설하기
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={() => navigate('/study/write')}
+                  className="cta-button px-6 py-2 rounded-lg text-sm font-bold text-white"
+                >
+                  <i className="fas fa-plus mr-2" />
+                  스터디 개설하기
+                </button>
+              )}
               <div className="relative w-full md:w-auto">
                 <label htmlFor="year-select" className="sr-only">
                   년도 선택
