@@ -15,13 +15,30 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { UserRole } from '../../members/entities/enums/user-role.enum';
-import { ActivityImagesService } from './activity-images.service';
+import { ActivityImagesService, TagsData } from './activity-images.service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN)
 @Controller('/api/v1/admin/activity-images')
 export class ActivityImagesController {
   constructor(private readonly service: ActivityImagesService) { }
+
+  @Post('tags')
+  async saveTags(@Body() tags: TagsData) {
+    this.service.saveTags(tags);
+    return { message: 'Tags saved successfully' };
+  }
+
+  @Delete('reset')
+  async resetAll() {
+    this.service.resetAll();
+    return { message: 'All photos and tags reset successfully.' };
+  }
+
+  @Get('tags/export')
+  async exportTags() {
+    return this.service.getTags();
+  }
 
   @Get()
   getAll() {

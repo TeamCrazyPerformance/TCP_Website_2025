@@ -1,9 +1,25 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import logo from '../logo.svg';
-import { stats } from '../data/stats';
 
 function Home() {
+  const [stats, setStats] = useState({
+    totalMembers: 0,
+    projects: 0,
+    awards: 0,
+    employmentRate: 0,
+  });
+  const [activityImages, setActivityImages] = useState({
+    competition: null,
+    study: null,
+    mt: null,
+  });
+  const [tags, setTags] = useState({
+    competition: [],
+    study: [],
+    mt: [],
+  });
+
   useEffect(() => {
     // 스크롤 애니메이션
     const observerOptions = {
@@ -25,14 +41,119 @@ function Home() {
       observer.observe(el);
     });
 
+    // 데이터 가져오기
+    const fetchData = async () => {
+      try {
+        const [statRes, imgRes] = await Promise.all([
+          fetch('/api/v1/main/statistics'),
+          fetch('/api/v1/main/activity-images')
+        ]);
+
+        if (statRes.ok) {
+          const data = await statRes.json();
+          setStats(data);
+        }
+
+        if (imgRes.ok) {
+          const data = await imgRes.json();
+          setActivityImages({
+            competition: data.competition,
+            study: data.study,
+            mt: data.mt
+          });
+          if (data.tags) setTags(data.tags);
+        }
+      } catch (error) {
+        console.error('Failed to fetch main page data:', error);
+      }
+    };
+    fetchData();
+
     // 컴포넌트 언마운트 시 클린업
     return () => {
       observer.disconnect(); // 옵저버 연결 해제
     };
   }, []);
 
+  // 모달 상태 관리
+  const [modalData, setModalData] = useState(null);
+
+  const openModal = (type) => {
+    if (!activityImages[type]) return;
+    setModalData({
+      image: activityImages[type],
+      tags: tags[type] || [],
+      title: type === 'competition' ? '대회 참가' : type === 'study' ? '스터디 세션' : '멤버십 트레이닝',
+      engTitle: type === 'competition' ? 'Competition Participation' : type === 'study' ? 'Study Sessions' : 'MT Events'
+    });
+  };
+
+  const closeModal = () => {
+    setModalData(null);
+  };
+
   return (
     <>
+      {/* 이미지 모달 */}
+      {modalData && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm transition-opacity duration-300"
+          onClick={closeModal}
+        >
+          <div
+            className="bg-gray-900 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-gray-700 shadow-2xl transform transition-all duration-300 scale-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-1">
+              <div className="relative w-full h-[60vh] rounded-t-xl bg-black group">
+                <button
+                  onClick={closeModal}
+                  className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 w-10 h-10 flex items-center justify-center transition-colors backdrop-blur-sm"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+                <div className="w-full h-full overflow-y-auto custom-scrollbar rounded-t-xl">
+                  <img
+                    src={modalData.image}
+                    alt={modalData.title}
+                    className="w-full h-auto block"
+                  />
+                </div>
+              </div>
+
+              <div className="p-6 md:p-8">
+                <div className="mb-6">
+                  <h3 className="orbitron text-2xl md:text-3xl font-bold text-white mb-2">
+                    {modalData.title}
+                  </h3>
+                  <p className="text-gray-400 font-medium">
+                    {modalData.engTitle}
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="text-gray-300 font-semibold mb-3 flex items-center">
+                    <i className="fas fa-tags mr-2 text-blue-400"></i>
+                    관련 태그
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {modalData.tags && modalData.tags.length > 0 ? (
+                      modalData.tags.map((tag, idx) => (
+                        <span key={idx} className="px-4 py-2 bg-gray-800 border border-gray-700 text-gray-200 rounded-full text-sm">
+                          #{tag}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-gray-500">등록된 태그가 없습니다.</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {' '}
       {/* React Fragment 요소 묶기 */}
       {/* Hero Section */}
@@ -215,17 +336,33 @@ function Home() {
             {/* Competition Participation */}
             <div className="scroll-fade">
               <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl overflow-hidden card-hover">
-                <div className="promo-placeholder">
-                  <div className="text-center">
-                    <i className="fas fa-trophy text-4xl text-yellow-400 mb-4"></i>
-                    <h3 className="orbitron text-lg font-bold text-yellow-300">
-                      대회 참가
-                    </h3>
-                    <p className="text-sm text-gray-400 mt-2">
-                      Competition Participation
-                    </p>
+                {activityImages.competition ? (
+                  <div
+                    className="h-56 w-full relative cursor-pointer group"
+                    onClick={() => openModal('competition')}
+                  >
+                    <img
+                      src={activityImages.competition}
+                      alt="Competition"
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                      <i className="fas fa-search-plus text-white opacity-0 group-hover:opacity-100 text-3xl transition-opacity"></i>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="promo-placeholder">
+                    <div className="text-center">
+                      <i className="fas fa-trophy text-4xl text-yellow-400 mb-4"></i>
+                      <h3 className="orbitron text-lg font-bold text-yellow-300">
+                        대회 참가
+                      </h3>
+                      <p className="text-sm text-gray-400 mt-2">
+                        Competition Participation
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <div className="p-6">
                   <h3 className="orbitron text-xl font-bold mb-3 text-yellow-300">
                     대회 참가
@@ -236,15 +373,15 @@ function Home() {
                     참가하여 실력을 겨루고 경험을 쌓습니다.
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    <span className="px-3 py-1 bg-yellow-900 text-yellow-300 rounded-full text-xs">
-                      ICPC
-                    </span>
-                    <span className="px-3 py-1 bg-yellow-900 text-yellow-300 rounded-full text-xs">
-                      해커톤
-                    </span>
-                    <span className="px-3 py-1 bg-yellow-900 text-yellow-300 rounded-full text-xs">
-                      창업경진대회
-                    </span>
+                    {tags.competition && tags.competition.length > 0 ? (
+                      tags.competition.map((tag, idx) => (
+                        <span key={idx} className="px-3 py-1 bg-yellow-900 text-yellow-300 rounded-full text-xs">
+                          {tag}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-gray-500 text-xs">태그 없음</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -253,15 +390,31 @@ function Home() {
             {/* 스터디 소개 세션 */}
             <div className="scroll-fade">
               <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl overflow-hidden card-hover">
-                <div className="promo-placeholder">
-                  <div className="text-center">
-                    <i className="fas fa-book-open text-4xl text-blue-400 mb-4"></i>
-                    <h3 className="orbitron text-lg font-bold text-blue-300">
-                      스터디 세션
-                    </h3>
-                    <p className="text-sm text-gray-400 mt-2">Study Sessions</p>
+                {activityImages.study ? (
+                  <div
+                    className="h-56 w-full relative cursor-pointer group"
+                    onClick={() => openModal('study')}
+                  >
+                    <img
+                      src={activityImages.study}
+                      alt="Study"
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                      <i className="fas fa-search-plus text-white opacity-0 group-hover:opacity-100 text-3xl transition-opacity"></i>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="promo-placeholder">
+                    <div className="text-center">
+                      <i className="fas fa-book-open text-4xl text-blue-400 mb-4"></i>
+                      <h3 className="orbitron text-lg font-bold text-blue-300">
+                        스터디 세션
+                      </h3>
+                      <p className="text-sm text-gray-400 mt-2">Study Sessions</p>
+                    </div>
+                  </div>
+                )}
                 <div className="p-6">
                   <h3 className="orbitron text-xl font-bold mb-3 text-blue-300">
                     스터디 세션
@@ -272,15 +425,15 @@ function Home() {
                     통해 체계적으로 학습합니다.
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    <span className="px-3 py-1 bg-blue-900 text-blue-300 rounded-full text-xs">
-                      알고리즘
-                    </span>
-                    <span className="px-3 py-1 bg-blue-900 text-blue-300 rounded-full text-xs">
-                      웹개발
-                    </span>
-                    <span className="px-3 py-1 bg-blue-900 text-blue-300 rounded-full text-xs">
-                      AI/ML
-                    </span>
+                    {tags.study && tags.study.length > 0 ? (
+                      tags.study.map((tag, idx) => (
+                        <span key={idx} className="px-3 py-1 bg-blue-900 text-blue-300 rounded-full text-xs">
+                          {tag}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-gray-500 text-xs">태그 없음</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -289,15 +442,31 @@ function Home() {
             {/* MT 세션 */}
             <div className="scroll-fade">
               <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl overflow-hidden card-hover">
-                <div className="promo-placeholder">
-                  <div className="text-center">
-                    <i className="fas fa-users text-4xl text-green-400 mb-4"></i>
-                    <h3 className="orbitron text-lg font-bold text-green-300">
-                      멤버십 트레이닝
-                    </h3>
-                    <p className="text-sm text-gray-400 mt-2">MT Events</p>
+                {activityImages.mt ? (
+                  <div
+                    className="h-56 w-full relative cursor-pointer group"
+                    onClick={() => openModal('mt')}
+                  >
+                    <img
+                      src={activityImages.mt}
+                      alt="MT"
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                      <i className="fas fa-search-plus text-white opacity-0 group-hover:opacity-100 text-3xl transition-opacity"></i>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="promo-placeholder">
+                    <div className="text-center">
+                      <i className="fas fa-users text-4xl text-green-400 mb-4"></i>
+                      <h3 className="orbitron text-lg font-bold text-green-300">
+                        멤버십 트레이닝
+                      </h3>
+                      <p className="text-sm text-gray-400 mt-2">MT Events</p>
+                    </div>
+                  </div>
+                )}
                 <div className="p-6">
                   <h3 className="orbitron text-xl font-bold mb-3 text-green-300">
                     멤버십 트레이닝
@@ -308,15 +477,15 @@ function Home() {
                     구성원들과의 유대감을 형성합니다.
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    <span className="px-3 py-1 bg-green-900 text-green-300 rounded-full text-xs">
-                      팀빌딩
-                    </span>
-                    <span className="px-3 py-1 bg-green-900 text-green-300 rounded-full text-xs">
-                      네트워킹
-                    </span>
-                    <span className="px-3 py-1 bg-green-900 text-green-300 rounded-full text-xs">
-                      코딩캠프
-                    </span>
+                    {tags.mt && tags.mt.length > 0 ? (
+                      tags.mt.map((tag, idx) => (
+                        <span key={idx} className="px-3 py-1 bg-green-900 text-green-300 rounded-full text-xs">
+                          {tag}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-gray-500 text-xs">태그 없음</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -335,7 +504,7 @@ function Home() {
               뛰어난 동료들과 함께 성장하고, 실무 경험을 쌓으며, 개발자로서의
               꿈을 현실로 만들어보세요.
             </p>
-            {}
+            {/* 지원하기 버튼 수정: /recruitment 경로가 맞음 */}
             <Link
               to="/recruitment"
               className="cta-button px-12 py-4 rounded-full text-lg font-bold orbitron text-white hover:text-black transition-colors"

@@ -54,6 +54,7 @@
     volumes:
       - ./api/uploads:/var/app/uploads
       - ./logs/app:/var/app/logs
+      - ./api/json:/var/app/json
     depends_on:
       db:
         condition: service_healthy

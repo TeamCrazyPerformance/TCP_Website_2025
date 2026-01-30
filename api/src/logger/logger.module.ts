@@ -103,7 +103,21 @@ class LogstashTcpTransport extends winston.transports.Stream {
                 }
 
                 // File transport (로그 파일 저장)
-                const logDir = isProduction ? '/var/app/logs' : 'logs';
+                // File transport (로그 파일 저장)
+                let logDir = isProduction ? '/var/app/logs' : 'logs';
+
+                // Ensure log directory exists and is writable (Development/Local Production safety check)
+                try {
+                    // eslint-disable-next-line @typescript-eslint/no-require-imports
+                    const fs = require('fs');
+                    if (!fs.existsSync(logDir)) {
+                        fs.mkdirSync(logDir, { recursive: true });
+                    }
+                    fs.accessSync(logDir, fs.constants.W_OK);
+                } catch (error) {
+                    console.warn(`[LoggerModule] Cannot write to ${logDir}, falling back to local 'logs' directory.`);
+                    logDir = 'logs';
+                }
 
                 // 에러 로그: logs/error.log
                 transports.push(

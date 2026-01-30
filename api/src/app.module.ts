@@ -1,5 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { MembersModule } from './members/members.module';
@@ -21,12 +23,18 @@ import { LoggerModule } from './logger/logger.module';
 import { HttpLoggerMiddleware } from './logger/http-logger.middleware';
 import { RecruitmentModule } from './recruitment/recruitment.module';
 import { HealthModule } from './health/health.module';
+import { AdminStatisticsModule } from './admin/statistics/admin-statistics.module';
+import { MainPageModule } from './main-page/main-page.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env', '../envs/api.env'],
+    }),
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'uploads'),
+      serveRoot: '/',
     }),
     ScheduleModule.forRoot(),
     TypeOrmModule.forRootAsync({
@@ -61,6 +69,8 @@ import { HealthModule } from './health/health.module';
     AccountModule,
     RecruitmentModule,
     HealthModule,
+    AdminStatisticsModule,
+    MainPageModule,
   ],
 })
 export class AppModule implements NestModule {

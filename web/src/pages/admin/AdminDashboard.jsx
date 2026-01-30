@@ -11,42 +11,139 @@ import {
   faUsers,
   faArrowUp,
   faArrowDown,
+  faSpinner,
+  faExclamationTriangle,
 } from '@fortawesome/free-solid-svg-icons';
 
 function AdminDashboard() {
-  // 가짜(mock) 통계 데이터 상태
-  const [stats] = useState({
-    members: 185,
-    studies: 35,
-    server: {
-      cpu: 42,
-      ram: 6.8, // GB 단위
-      ramTotal: 16,
-      temp: 58, // °C
-      disk: 75, // %
-      networkTx: 15.2, // Mbps
-      networkRx: 88.4, // Mbps
-      uptime: '42d 11h 5m',
-    },
-  });
-
+  const [dashboardStats, setDashboardStats] = useState(null);
+  const [serverStats, setServerStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [serverTime, setServerTime] = useState('');
 
-  // 실시간 서버 시간 업데이트
+  const [serverTimeOffset, setServerTimeOffset] = useState(0);
+  const [serverUptime, setServerUptime] = useState(0);
+
+  // Fetch dashboard and server stats
+  const fetchStats = async () => {
+    const token = localStorage.getItem('access_token');
+    try {
+      const [dashboardRes, serverRes] = await Promise.all([
+        fetch('/api/v1/admin/system/dashboard', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch('/api/v1/admin/system/stats', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+
+      if (!dashboardRes.ok || !serverRes.ok) {
+        throw new Error('Failed to fetch stats');
+      }
+
+      const dashboardData = await dashboardRes.json();
+      const serverData = await serverRes.json();
+
+      setDashboardStats(dashboardData);
+      setServerStats(serverData);
+
+      // Calculate time offset (Server Time - Client Time)
+      if (serverData.serverTime) {
+        const serverDate = new Date(serverData.serverTime);
+        const clientDate = new Date();
+        const offset = serverDate.getTime() - clientDate.getTime();
+        setServerTimeOffset(offset);
+      }
+
+      // Initialize uptime
+      if (serverData.uptime) {
+        setServerUptime(serverData.uptime);
+      }
+      setError(null); // Clear error on success
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial fetch and 10-second refresh interval for stats
   useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      setServerTime(now.toLocaleTimeString('ko-KR'));
-    };
-    updateTime();
-    const intervalId = setInterval(updateTime, 1000);
+    fetchStats();
+    const intervalId = setInterval(fetchStats, 10000); // Refresh stats every 10 seconds
     return () => clearInterval(intervalId);
   }, []);
+
+  // 1-second timer for real-time clock
+  useEffect(() => {
+    const updateRealTime = () => {
+      const now = new Date(new Date().getTime() + serverTimeOffset);
+      setServerTime(now.toLocaleTimeString('ko-KR'));
+      setServerUptime((prev) => prev + 1);
+    };
+
+    updateRealTime();
+    const timerId = setInterval(updateRealTime, 1000);
+    return () => clearInterval(timerId);
+  }, [serverTimeOffset]);
 
   const getProgressBarColor = (percentage) => {
     if (percentage > 80) return 'bg-red-500';
     if (percentage > 60) return 'bg-yellow-500';
     return 'bg-blue-500';
+  };
+
+  // Helper function to format bytes to GB
+  const bytesToGB = (bytes) => (bytes / (1024 * 1024 * 1024)).toFixed(1);
+
+  // Helper function to format uptime seconds to readable string
+  const formatUptime = (seconds) => {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    return `${days}d ${hours}h ${mins}m`;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <FontAwesomeIcon icon={faSpinner} spin className="text-4xl text-purple-500" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col justify-center items-center min-h-96 text-red-400">
+        <FontAwesomeIcon icon={faExclamationTriangle} className="text-4xl mb-4" />
+        <p className="text-xl font-bold">데이터를 불러오는데 실패했습니다: {error}</p>
+        <button
+          className="mt-4 px-4 py-2 bg-red-900 bg-opacity-50 hover:bg-opacity-70 rounded-lg transition-colors"
+          onClick={() => window.location.reload()}
+        >
+          재시도
+        </button>
+      </div>
+    );
+  }
+
+  // Prepare stats object for display
+  const stats = {
+    members: dashboardStats?.members?.total || 0,
+    studies: dashboardStats?.studies?.total || 0,
+    memberDetails: dashboardStats?.members || {},
+    studyDetails: dashboardStats?.studies || {},
+    server: serverStats ? {
+      cpu: serverStats.cpu?.usagePercentage || 0,
+      ram: parseFloat(bytesToGB(serverStats.memory?.active || 0)),
+      ramTotal: parseFloat(bytesToGB(serverStats.memory?.total || 1)),
+      temp: serverStats.cpu?.temperature || null, // May be null in Docker containers
+      disk: serverStats.disk?.usagePercentage || 0,
+      networkTx: serverStats.network?.txPerSecond || 0, // MB/s
+      networkRx: serverStats.network?.rxPerSecond || 0, // MB/s
+      uptime: formatUptime(serverUptime),
+    } : {},
   };
 
   return (
@@ -65,27 +162,19 @@ function AdminDashboard() {
             <ul className="text-sm text-gray-300 space-y-2">
               <li className="flex justify-between">
                 <span>재학생</span>
-                <span className="font-semibold text-white">52</span>
+                <span className="font-semibold text-white">{stats.memberDetails.enrolled || 0}</span>
               </li>
               <li className="flex justify-between">
                 <span>휴학생</span>
-                <span className="font-semibold text-white">5</span>
+                <span className="font-semibold text-white">{stats.memberDetails.onLeave || 0}</span>
               </li>
               <li className="flex justify-between">
                 <span>졸업생</span>
-                <span className="font-semibold text-white">120</span>
-              </li>
-              <li className="flex justify-between">
-                <span>탈퇴</span>
-                <span className="font-semibold text-white">4</span>
-              </li>
-              <li className="flex justify-between">
-                <span>재적</span>
-                <span className="font-semibold text-white">3</span>
+                <span className="font-semibold text-white">{stats.memberDetails.graduated || 0}</span>
               </li>
               <li className="flex justify-between">
                 <span>기타</span>
-                <span className="font-semibold text-white">1</span>
+                <span className="font-semibold text-white">{stats.memberDetails.other || 0}</span>
               </li>
             </ul>
           </div>
@@ -99,19 +188,11 @@ function AdminDashboard() {
             <ul className="text-sm text-gray-300 space-y-2">
               <li className="flex justify-between">
                 <span>진행중</span>
-                <span className="font-semibold text-white">10</span>
+                <span className="font-semibold text-white">{stats.studyDetails.inProgress || 0}</span>
               </li>
               <li className="flex justify-between">
                 <span>완료</span>
-                <span className="font-semibold text-white">22</span>
-              </li>
-              <li className="flex justify-between">
-                <span>취소</span>
-                <span className="font-semibold text-white">3</span>
-              </li>
-              <li className="flex justify-between">
-                <span>기타</span>
-                <span className="font-semibold text-white">0</span>
+                <span className="font-semibold text-white">{stats.studyDetails.completed || 0}</span>
               </li>
             </ul>
           </div>
@@ -170,7 +251,7 @@ function AdminDashboard() {
               <h5 className="font-semibold text-gray-300">CPU Temp</h5>
             </div>
             <span className="text-lg font-bold text-white">
-              {stats.server.temp}°C
+              {stats.server.temp ? `${stats.server.temp}°C` : 'N/A'}
             </span>
           </div>
           <div className="widget-card p-4 rounded-xl">
@@ -201,11 +282,11 @@ function AdminDashboard() {
             <div className="text-right">
               <div className="text-sm font-bold text-white">
                 <FontAwesomeIcon icon={faArrowUp} /> TX:{' '}
-                {stats.server.networkTx} Mbps
+                {stats.server.networkTx} MB/s
               </div>
               <div className="text-sm font-bold text-white">
                 <FontAwesomeIcon icon={faArrowDown} /> RX:{' '}
-                {stats.server.networkRx} Mbps
+                {stats.server.networkRx} MB/s
               </div>
             </div>
           </div>
@@ -232,10 +313,7 @@ function AdminDashboard() {
               <FontAwesomeIcon icon={faUsers} className="text-indigo-400" />
               <h5 className="font-semibold text-gray-300">Current Users</h5>
             </div>
-            <div className="text-right">
-              <div className="text-sm font-bold text-white">Logged-in: 4</div>
-              <div className="text-sm font-bold text-white">Guests: 12</div>
-            </div>
+            <span className="text-sm font-bold text-gray-500">N/A</span>
           </div>
         </div>
       </section>

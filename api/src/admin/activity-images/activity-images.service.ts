@@ -2,6 +2,12 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 
+export interface TagsData {
+  competition: string[];
+  study: string[];
+  mt: string[];
+}
+
 @Injectable()
 export class ActivityImagesService {
   private readonly basePath = path.join(
@@ -9,6 +15,8 @@ export class ActivityImagesService {
     'uploads',
     'activities',
   );
+  private readonly jsonPath = path.join(process.cwd(), 'json');
+  private readonly tagsFilePath = path.join(this.jsonPath, 'photos.json');
 
   async save(
     files: {
@@ -47,11 +55,13 @@ export class ActivityImagesService {
     competition: string | null;
     study: string | null;
     mt: string | null;
+    tags: TagsData;
   } {
     return {
       competition: this.getImageUrl('competition.jpg'),
       study: this.getImageUrl('study.jpg'),
       mt: this.getImageUrl('mt.jpg'),
+      tags: this.getTags(),
     };
   }
 
@@ -72,9 +82,42 @@ export class ActivityImagesService {
     }
   }
 
+  // Tag management methods
+  getTags(): TagsData {
+    this.ensureJsonDir();
+    if (fs.existsSync(this.tagsFilePath)) {
+      try {
+        const content = fs.readFileSync(this.tagsFilePath, 'utf-8');
+        return JSON.parse(content);
+      } catch {
+        return this.getDefaultTags();
+      }
+    }
+    return this.getDefaultTags();
+  }
+
+  saveTags(tags: TagsData): void {
+    this.ensureJsonDir();
+    fs.writeFileSync(this.tagsFilePath, JSON.stringify(tags, null, 2), 'utf-8');
+  }
+
+  private getDefaultTags(): TagsData {
+    return {
+      competition: [], // Empty default
+      study: [],      // Empty default
+      mt: [],         // Empty default
+    };
+  }
+
   private ensureDir() {
     if (!fs.existsSync(this.basePath)) {
       fs.mkdirSync(this.basePath, { recursive: true });
+    }
+  }
+
+  private ensureJsonDir() {
+    if (!fs.existsSync(this.jsonPath)) {
+      fs.mkdirSync(this.jsonPath, { recursive: true });
     }
   }
 
@@ -101,5 +144,24 @@ export class ActivityImagesService {
 
       fs.writeFileSync(filePath, file.buffer);
     }
+  }
+
+  resetAll() {
+    this.delete('competition');
+    this.delete('study');
+    this.delete('mt');
+    this.saveTags({ competition: [], study: [], mt: [] });
+  }
+
+  validateTags(data: any): boolean {
+    if (!data || typeof data !== 'object') return false;
+    // Check structure
+    const keys = ['competition', 'study', 'mt'];
+    for (const key of keys) {
+      if (!Array.isArray(data[key])) return false;
+      // Check if all elements are strings
+      if (!data[key].every((item: any) => typeof item === 'string')) return false;
+    }
+    return true;
   }
 }

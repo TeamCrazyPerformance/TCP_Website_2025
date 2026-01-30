@@ -16,7 +16,6 @@ import {
   UploadedFile,
   ParseFilePipe,
   MaxFileSizeValidator,
-  FileTypeValidator,
   UseGuards,
   Req,
   Res,
@@ -311,8 +310,7 @@ export class StudyController {
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }), // 10MB limit
-          new FileTypeValidator({ fileType: /(pdf|docx|pptx)$/ }), // pdf, docx, pptx allowed
+          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }), // 10MB limit (backup check)
         ],
       }),
     )
