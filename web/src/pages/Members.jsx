@@ -11,7 +11,6 @@ function Members() {
 
   // 필터링 상태 관리
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterRole, setFilterRole] = useState('');
   const [activeTag, setActiveTag] = useState('');
 
   // 스크롤 애니메이션 효과
@@ -27,20 +26,41 @@ function Members() {
             user.profile_image?.startsWith('http')
               ? user.profile_image
               : placeholderAvatar;
+
+          // education_status가 공개된 경우에만 확인, 아니면 기본값 'current'
           const status =
             user.education_status === '졸업' ? 'alumni' : 'current';
+
+          // 포트폴리오 링크가 절대 URL인지 확인 (http:// 또는 https://로 시작)
+          const portfolioUrl = user.portfolio_link &&
+            (user.portfolio_link.startsWith('http://') || user.portfolio_link.startsWith('https://'))
+            ? user.portfolio_link
+            : user.portfolio_link
+              ? `https://${user.portfolio_link}`
+              : null;
+
           return {
+            // 항상 공개되는 필드
             name: user.name,
             profileImageUrl: image,
             description: user.self_description || 'TCP 멤버',
-            role: '멤버',
-            tags: user.tech_stack || [],
-            status,
-            educationStatus: user.education_status,
-            githubUrl: user.github_username
-              ? `https://github.com/${user.github_username}`
-              : '',
-            portfolioUrl: user.portfolio_link || '',
+
+            // 공개 여부에 따라 조건부로 포함되는 필드
+            ...(user.email && { email: user.email }),
+            ...(user.tech_stack && { tags: user.tech_stack }),
+            ...(user.education_status && {
+              status,
+              educationStatus: user.education_status
+            }),
+            ...(user.github_username && {
+              githubUrl: `https://github.com/${user.github_username}`
+            }),
+            ...(portfolioUrl && { portfolioUrl }),
+
+            // tech_stack이 없으면 빈 배열로 설정 (필터링 로직을 위해)
+            ...(!user.tech_stack && { tags: [] }),
+            // education_status가 없으면 기본값 설정
+            ...(!user.education_status && { status: 'current' }),
           };
         });
         if (isMounted) {
@@ -88,7 +108,7 @@ function Members() {
     return () => {
       observer.disconnect();
     };
-  }, [searchTerm, filterRole, activeTag, members]);
+  }, [searchTerm, activeTag, members]);
 
   // 필터링된 멤버 목록 계산
   const filteredMembers = useMemo(() => {
@@ -99,15 +119,14 @@ function Members() {
       const tagsMatch = (member.tags || []).some((tag) =>
         tag.toLowerCase().includes(searchTerm.toLowerCase())
       );
-    const searchCombined = nameMatch || tagsMatch;
+      const searchCombined = nameMatch || tagsMatch;
 
-    const roleMatch = !filterRole || member.role === filterRole;
-    const tagButtonMatch =
-      !activeTag || (member.tags || []).includes(activeTag);
+      const tagButtonMatch =
+        !activeTag || (member.tags || []).includes(activeTag);
 
-      return searchCombined && roleMatch && tagButtonMatch;
+      return searchCombined && tagButtonMatch;
     });
-  }, [members, searchTerm, filterRole, activeTag]);
+  }, [members, searchTerm, activeTag]);
 
   const currentMembers = filteredMembers.filter(
     (member) => member.status === 'current'
@@ -186,47 +205,23 @@ function Members() {
       <section className="py-8 bg-gradient-to-b from-transparent to-gray-900">
         <div className="container mx-auto px-4">
           <div className="mb-10 p-6 bg-gray-900 rounded-xl border border-gray-800">
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <label
-                  htmlFor="search"
-                  className="block text-sm font-medium text-gray-300 mb-2"
-                >
-                  Search
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    id="search"
-                    placeholder="이름 또는 기술 스택으로 검색"
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg py-2 px-4 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                  <i className="fas fa-search absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
-                </div>
-              </div>
-              <div>
-                <label
-                  htmlFor="filter-role"
-                  className="block text-sm font-medium text-gray-300 mb-2"
-                >
-                  Role
-                </label>
-                <select
-                  id="filter-role"
+            <div>
+              <label
+                htmlFor="search"
+                className="block text-sm font-medium text-gray-300 mb-2"
+              >
+                Search
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  id="search"
+                  placeholder="이름 또는 기술 스택으로 검색"
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg py-2 px-4 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  value={filterRole}
-                  onChange={(e) => setFilterRole(e.target.value)}
-                >
-                  <option value="">모든 역할</option>
-                  <option value="팀장">팀장</option>
-                  <option value="프론트엔드">프론트엔드</option>
-                  <option value="백엔드">백엔드</option>
-                  <option value="모바일">모바일</option>
-                  <option value="AI">AI</option>
-                  <option value="멤버">멤버</option>
-                </select>
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <i className="fas fa-search absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
               </div>
             </div>
             <div className="mt-6">
@@ -304,12 +299,19 @@ function Members() {
                   <h3 className="orbitron text-xl font-bold mb-2 text-white">
                     {member.name}
                   </h3>
-                  <p
-                    className={`${member.role === '팀장' ? 'text-blue-300' : member.role === 'AI' ? 'text-purple-300' : member.role === '백엔드' ? 'text-green-300' : 'text-pink-300'} mb-2`}
-                  >
-                    {member.role}
-                  </p>
-                  <p className="text-sm text-gray-400">{member.description}</p>
+                  <p className="text-sm text-gray-400 mb-2">{member.description}</p>
+                  {member.email && (
+                    <p className="text-xs text-gray-500 mb-1">
+                      <i className="fas fa-envelope mr-1"></i>
+                      {member.email}
+                    </p>
+                  )}
+                  {member.educationStatus && (
+                    <p className="text-xs text-blue-400 mb-2">
+                      <i className="fas fa-graduation-cap mr-1"></i>
+                      {member.educationStatus}
+                    </p>
+                  )}
                   <div className="flex flex-wrap justify-center gap-1 mt-3 mb-4">
                     {member.tags.slice(0, 3).map((tag, tagIndex) => (
                       <span
@@ -394,12 +396,19 @@ function Members() {
                   <h3 className="orbitron text-xl font-bold mb-2 text-white">
                     {member.name}
                   </h3>
-                  <p className="text-gray-400 mb-2">{member.description}</p>
-                  <p className="text-sm text-gray-400">
-                    {member.educationStatus
-                      ? `현재 ${member.educationStatus}`
-                      : '졸업 멤버'}
-                  </p>
+                  <p className="text-sm text-gray-400 mb-2">{member.description}</p>
+                  {member.email && (
+                    <p className="text-xs text-gray-500 mb-1">
+                      <i className="fas fa-envelope mr-1"></i>
+                      {member.email}
+                    </p>
+                  )}
+                  {member.educationStatus && (
+                    <p className="text-xs text-blue-400 mb-2">
+                      <i className="fas fa-graduation-cap mr-1"></i>
+                      {member.educationStatus}
+                    </p>
+                  )}
                   <div className="flex flex-wrap justify-center gap-1 mt-3 mb-4">
                     {member.tags.slice(0, 3).map((tag, tagIndex) => (
                       <span
