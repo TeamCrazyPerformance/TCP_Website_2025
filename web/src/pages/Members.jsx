@@ -313,7 +313,7 @@ function Members() {
                     </p>
                   )}
                   <div className="flex flex-wrap justify-center gap-1 mt-3 mb-4">
-                    {member.tags.slice(0, 3).map((tag, tagIndex) => (
+                    {member.tags.map((tag, tagIndex) => (
                       <span
                         key={tagIndex}
                         className={`px-2 py-1 rounded-full text-xs ${getTagBgClass(tag)}`}
@@ -410,7 +410,7 @@ function Members() {
                     </p>
                   )}
                   <div className="flex flex-wrap justify-center gap-1 mt-3 mb-4">
-                    {member.tags.slice(0, 3).map((tag, tagIndex) => (
+                    {member.tags.map((tag, tagIndex) => (
                       <span
                         key={tagIndex}
                         className={`px-2 py-1 rounded-full text-xs ${getTagBgClass(tag)}`}
