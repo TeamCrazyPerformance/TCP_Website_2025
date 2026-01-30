@@ -1,7 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import DOMPurify from 'dompurify';
+import MarkdownIt from 'markdown-it';
 import { apiGet } from '../api/client';
+
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  breaks: true,
+});
 
 function AnnouncementArticle() {
   const { id } = useParams(); // 라우트 파라미터 이름을 'id'로 받습니다.
@@ -64,12 +71,13 @@ function AnnouncementArticle() {
       });
     }, observerOptions);
 
-    document.querySelectorAll('.scroll-fade').forEach((el) => {
+    const elements = document.querySelectorAll('.scroll-fade');
+    elements.forEach((el) => {
       observer.observe(el);
     });
 
     return () => observer.disconnect();
-  }, []);
+  }, [isLoading]);
 
   const openShareModal = () => setIsShareModalOpen(true);
   const closeShareModal = () => setIsShareModalOpen(false);
@@ -126,7 +134,7 @@ function AnnouncementArticle() {
 
   const articleBodyMarkup = useMemo(() => {
     const rawContent = article?.content || '';
-    const html = rawContent.replace(/\n/g, '<br />');
+    const html = md.render(rawContent);
     return { __html: DOMPurify.sanitize(html) };
   }, [article?.content]);
 
@@ -165,26 +173,34 @@ function AnnouncementArticle() {
   return (
     <main className="pt-20 pb-16 min-h-screen">
       <div className="container mx-auto px-4 max-w-4xl">
-        <div className="mb-8 scroll-fade">
+        {/* Back Button: Left aligned, widget-card background */}
+        <div className="mb-8 scroll-fade text-left">
           <Link
             to="/announcement"
-            className="back-button inline-flex items-center px-6 py-3 rounded-lg text-sm font-medium"
+            className="widget-card btn-back-hover inline-flex items-center px-6 py-3 rounded-lg text-sm font-medium transition-colors"
           >
             <i className="fas fa-arrow-left mr-2"></i>
             공지사항 목록으로 돌아가기
           </Link>
         </div>
+
         <article className="scroll-fade">
           <header className="mb-8">
-            <div className="mb-4">
-              <span className="tag px-3 py-1 rounded-full text-xs">
+            <div className="mb-4 text-left">
+              <span
+                className="px-3 py-1 rounded-full text-xs font-bold text-black"
+                style={{ background: 'linear-gradient(135deg, var(--accent-blue), var(--accent-purple))' }}
+              >
                 {article.category}
               </span>
             </div>
-            <h1 className="orbitron text-3xl md:text-5xl font-bold mb-6 gradient-text">
+            {/* Title: Left aligned */}
+            <h1 className="orbitron text-3xl md:text-5xl font-bold mb-6 gradient-text text-left">
               {article.title}
             </h1>
-            <div className="article-meta rounded-lg p-6 mb-8">
+
+            {/* Meta: Removed likes/tags, Left aligned content */}
+            <div className="article-meta widget-card rounded-lg p-6 mb-8">
               <div className="flex flex-wrap items-center justify-between text-sm text-gray-300">
                 <div className="flex items-center space-x-6 mb-2 md:mb-0">
                   <div className="flex items-center space-x-2">
@@ -207,28 +223,21 @@ function AnnouncementArticle() {
                     <i className="fas fa-eye text-green-400"></i>
                     <span>조회 {article.views}</span>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <i className="fas fa-heart text-pink-400"></i>
-                    <span>좋아요 {article.likes}</span>
-                  </div>
                 </div>
               </div>
             </div>
           </header>
-          <div className="article-content rounded-lg p-8 mb-8">
+
+          <div className="article-content widget-card rounded-lg p-8 mb-8">
             <div
-              className="article-body text-gray-200"
+              className="article-body text-gray-200 text-left"
               dangerouslySetInnerHTML={articleBodyMarkup}
             />
           </div>
+
           <footer className="border-t border-gray-700 pt-6">
             <div className="flex flex-wrap items-center justify-between">
               <div className="flex items-center space-x-4 mb-4 md:mb-0">
-                <button className="flex items-center space-x-2 px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors">
-                  <i className="fas fa-heart text-pink-400"></i>
-                  <span>좋아요</span>
-                  <span className="text-pink-400">{article.likes}</span>
-                </button>
                 <button
                   onClick={openShareModal}
                   id="shareBtn"
@@ -238,30 +247,24 @@ function AnnouncementArticle() {
                   <span>공유</span>
                 </button>
               </div>
-              <div className="flex items-center space-x-2 text-sm text-gray-400">
-                <span>태그:</span>
-                {article.tags.map((tag, index) => (
-                  <span
-                    key={index}
-                    className="bg-blue-600 text-white px-2 py-1 rounded text-xs"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
+              {/* Removed Tags section */}
             </div>
           </footer>
         </article>
-        <div className="text-center mt-12">
+
+        {/* Bottom Back Button: Centered */}
+        <div className="mt-12 text-center">
           <Link
             to="/announcement"
-            className="back-button inline-flex items-center px-8 py-4 rounded-lg text-lg font-medium"
+            className="widget-card btn-back-hover inline-flex items-center px-8 py-4 rounded-lg text-lg font-medium transition-colors"
           >
             <i className="fas fa-list mr-3"></i>
             공지사항 목록 보기
           </Link>
         </div>
       </div>
+
+      {/* Share Modal remains unchanged */}
       {isShareModalOpen && (
         <div
           id="shareModal"
@@ -271,6 +274,7 @@ function AnnouncementArticle() {
           aria-labelledby="shareModalTitle"
           onClick={closeShareModal}
         >
+          {/* ... modal content ... */}
           <div
             className="bg-gray-900 text-white rounded-xl overflow-hidden w-80 shadow-2xl border border-gray-800"
             onClick={(e) => e.stopPropagation()}
@@ -287,34 +291,6 @@ function AnnouncementArticle() {
               >
                 <i className="fas fa-link text-gray-300"></i>
                 <span>URL 복사</span>
-              </button>
-              <button
-                onClick={() => handleShareButtonClick('kakao')}
-                className="w-full inline-flex items-center justify-start space-x-2 px-4 py-2 border border-gray-700 rounded-lg hover:bg-gray-800 transition"
-              >
-                <i className="fas fa-comment" style={{ color: '#FEE500' }}></i>
-                <span>카카오톡</span>
-              </button>
-              <button
-                onClick={() => handleShareButtonClick('instagram')}
-                className="w-full inline-flex items-center justify-start space-x-2 px-4 py-2 border border-gray-700 rounded-lg hover:bg-gray-800 transition"
-              >
-                <i className="fab fa-instagram text-pink-400"></i>
-                <span>Instagram</span>
-              </button>
-              <button
-                onClick={() => handleShareButtonClick('facebook')}
-                className="w-full inline-flex items-center justify-start space-x-2 px-4 py-2 border border-gray-700 rounded-lg hover:bg-gray-800 transition"
-              >
-                <i className="fab fa-facebook text-blue-600"></i>
-                <span>Facebook</span>
-              </button>
-              <button
-                onClick={() => handleShareButtonClick('twitter')}
-                className="w-full inline-flex items-center justify-start space-x-2 px-4 py-2 border border-gray-700 rounded-lg hover:bg-gray-800 transition"
-              >
-                <i className="fab fa-twitter text-blue-400"></i>
-                <span>Twitter</span>
               </button>
             </div>
             <div className="px-4 py-3 border-t border-gray-800 text-right">

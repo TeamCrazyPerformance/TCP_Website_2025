@@ -129,7 +129,8 @@ body {
 }
 
 .accordion-content.active {
-  max-height: 1000px; /* 충분히 큰 값으로 설정하여 내용이 잘리지 않도록 합니다. */
+  max-height: 1000px;
+  /* 충분히 큰 값으로 설정하여 내용이 잘리지 않도록 합니다. */
 }
 
 .accordion-body {
@@ -240,7 +241,8 @@ body {
 
 /* Modal Styles */
 .modal {
-  display: none; /* 기본적으로 숨김. React에서 isModalOpen 상태로 제어 */
+  display: none;
+  /* 기본적으로 숨김. React에서 isModalOpen 상태로 제어 */
   position: fixed;
   z-index: 1000;
   left: 0;
@@ -249,8 +251,10 @@ body {
   height: 100%;
   background-color: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(5px);
-  justify-content: center; /* Flexbox 속성으로 중앙 정렬 */
-  align-items: center; /* Flexbox 속성으로 중앙 정렬 */
+  justify-content: center;
+  /* Flexbox 속성으로 중앙 정렬 */
+  align-items: center;
+  /* Flexbox 속성으로 중앙 정렬 */
 }
 
 /* React에서 isModalOpen이 true일 때 'active' 클래스를 조건부로 추가하여 display: flex를 만듭니다. */
@@ -264,10 +268,13 @@ body {
   border-radius: 1rem;
   width: 90%;
   max-width: 600px;
-  max-height: 90vh; /* 모달이 화면을 넘지 않도록 최대 높이 설정 */
-  overflow-y: auto; /* 내용이 넘칠 경우 스크롤 허용 */
+  max-height: 90vh;
+  /* 모달이 화면을 넘지 않도록 최대 높이 설정 */
+  overflow-y: auto;
+  /* 내용이 넘칠 경우 스크롤 허용 */
   position: relative;
-  animation: fadeInScale 0.3s ease-out; /* 모달 열릴 때 애니메이션 */
+  animation: fadeInScale 0.3s ease-out;
+  /* 모달 열릴 때 애니메이션 */
 }
 
 /* Modal Open Animation */
@@ -276,6 +283,7 @@ body {
     opacity: 0;
     transform: scale(0.9);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -310,12 +318,38 @@ body {
 }
 
 .form-input::placeholder {
-  color: #9ca3af; /* placeholder 색상 추가 */
+  color: #9ca3af;
+  /* placeholder 색상 추가 */
 }
 
 .form-textarea {
   min-height: 100px;
   resize: vertical;
+}
+
+/* Article Content Styles */
+.article-body {
+  color: #e5e7eb;
+  /* Tailwind gray-200 */
+  line-height: 1.7;
+}
+
+.article-body * {
+  color: inherit;
+}
+
+/* Back Button Hover Effect */
+.btn-back-hover {
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  /* Ensure border exists like widget-card */
+}
+
+.btn-back-hover:hover {
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(168, 197, 230, 0.4);
+  border-color: transparent;
 }
 
 .checkbox-container {
@@ -328,12 +362,14 @@ body {
 .checkbox-container input[type='checkbox'] {
   width: 1.25rem;
   height: 1.25rem;
-  accent-color: var(--accent-blue); /* 체크박스 색상 */
+  accent-color: var(--accent-blue);
+  /* 체크박스 색상 */
 }
 
 .required::after {
   content: ' *';
-  color: #ef4444; /* Tailwind red-500 */
+  color: #ef4444;
+  /* Tailwind red-500 */
 }
 
 .close-modal {
@@ -353,11 +389,9 @@ body {
 }
 
 .achievement-card {
-  background: linear-gradient(
-    135deg,
-    rgba(168, 197, 230, 0.1),
-    rgba(197, 168, 230, 0.1)
-  );
+  background: linear-gradient(135deg,
+      rgba(168, 197, 230, 0.1),
+      rgba(197, 168, 230, 0.1));
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 1rem;
   padding: 1.5rem;
@@ -382,7 +416,8 @@ body {
   background: var(--secondary-gray);
   border: 1px solid rgba(255, 255, 255, 0.1);
   transition: all 0.3s ease;
-  cursor: pointer; /* 클릭 가능하도록 커서 변경 */
+  cursor: pointer;
+  /* 클릭 가능하도록 커서 변경 */
 }
 
 .study-item:hover {
@@ -395,8 +430,10 @@ body {
 .tag {
   display: inline-block;
   padding: 4px 8px;
-  border-radius: 9999px; /* Tailwind's rounded-full */
-  font-size: 0.75rem; /* Tailwind's text-xs */
+  border-radius: 9999px;
+  /* Tailwind's rounded-full */
+  font-size: 0.75rem;
+  /* Tailwind's text-xs */
   font-weight: 500;
   margin-right: 0.5rem;
   margin-bottom: 0.5rem;
@@ -407,18 +444,22 @@ body {
   background-color: rgba(59, 130, 246, 0.2);
   color: #93c5fd;
 }
+
 .tag-purple {
   background-color: rgba(168, 85, 247, 0.2);
   color: #d8b4fe;
 }
+
 .tag-green {
   background-color: rgba(34, 197, 94, 0.2);
   color: #86efac;
 }
+
 .tag-yellow {
   background-color: rgba(245, 158, 11, 0.2);
   color: #fde68a;
 }
+
 .tag-red {
   background-color: rgba(239, 68, 68, 0.2);
   color: #fca5a5;
@@ -430,6 +471,7 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1);
   transition: all 0.3s ease;
 }
+
 .recruitment-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 10px 25px rgba(168, 197, 230, 0.2);
@@ -439,11 +481,13 @@ body {
 .login-card {
   background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
   border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px); /* 로그인 카드 뒷 배경 블러 효과 */
+  backdrop-filter: blur(10px);
+  /* 로그인 카드 뒷 배경 블러 효과 */
 }
 
 .input-field {
-  background: rgba(42, 42, 42, 0.5); /* light-gray의 50% 투명도 */
+  background: rgba(42, 42, 42, 0.5);
+  /* light-gray의 50% 투명도 */
   border: 1px solid rgba(255, 255, 255, 0.1);
   transition: all 0.3s ease;
 }
@@ -455,7 +499,8 @@ body {
 }
 
 .input-field::placeholder {
-  color: #9ca3af; /* Tailwind gray-400 */
+  color: #9ca3af;
+  /* Tailwind gray-400 */
 }
 
 .login-button {
@@ -469,7 +514,8 @@ body {
 }
 
 .secondary-link {
-  color: #9ca3af; /* Tailwind gray-400 */
+  color: #9ca3af;
+  /* Tailwind gray-400 */
   transition: color 0.3s ease;
 }
 
@@ -502,16 +548,20 @@ body {
 .input-group {
   position: relative;
 }
+
 .password-toggle {
   position: absolute;
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
   cursor: pointer;
-  color: #9ca3af; /* gray-400 */
+  color: #9ca3af;
+  /* gray-400 */
 }
+
 .password-toggle:hover {
-  color: #d1d5db; /* gray-300 */
+  color: #d1d5db;
+  /* gray-300 */
 }
 
 .validation-icon {
@@ -526,14 +576,17 @@ body {
   overflow: hidden;
   transition: max-height 0.3s ease-out;
 }
+
 .slide-down.show {
-  max-height: 300px; /* 충분히 큰 값으로 설정 */
+  max-height: 300px;
+  /* 충분히 큰 값으로 설정 */
 }
 
 .btn-disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
 .btn-enabled {
   opacity: 1;
   cursor: pointer;
@@ -541,23 +594,31 @@ body {
 
 .success-icon {
   color: #10b981;
-} /* Tailwind green-500 */
+}
+
+/* Tailwind green-500 */
 .error-icon {
   color: #ef4444;
-} /* Tailwind red-500 */
+}
+
+/* Tailwind red-500 */
 
 .loading-spinner {
-  border: 2px solid #374151; /* gray-700 */
-  border-top: 2px solid var(--accent-purple); /* accent-purple */
+  border: 2px solid #374151;
+  /* gray-700 */
+  border-top: 2px solid var(--accent-purple);
+  /* accent-purple */
   border-radius: 50%;
   width: 16px;
   height: 16px;
   animation: spin 1s linear infinite;
 }
+
 @keyframes spin {
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
@@ -567,14 +628,13 @@ body {
 /* AdminDashboard */
 .sidebar {
   width: 260px;
-  background: linear-gradient(
-    180deg,
-    var(--secondary-gray),
-    var(--primary-black)
-  );
+  background: linear-gradient(180deg,
+      var(--secondary-gray),
+      var(--primary-black));
   border-right: 1px solid rgba(255, 255, 255, 0.1);
   transition: transform 0.3s ease-in-out;
 }
+
 @media (max-width: 768px) {
   .sidebar {
     transform: translateX(-100%);
@@ -582,27 +642,33 @@ body {
     z-index: 100;
     height: 100%;
   }
+
   .sidebar.open {
     transform: translateX(0);
   }
 }
+
 .sidebar-link {
   display: flex;
   align-items: center;
   padding: 10px 16px;
   font-size: 0.875rem;
-  color: #cbd5e1; /* gray-300 */
+  color: #cbd5e1;
+  /* gray-300 */
   border-radius: 0.5rem;
   transition:
     background-color 0.2s,
     color 0.2s;
 }
+
 .sidebar-link:hover {
   background-color: rgba(168, 197, 230, 0.1);
   color: #ffffff;
 }
+
 .sidebar-link i {
-  width: 1.5rem; /* w-6 */
+  width: 1.5rem;
+  /* w-6 */
   text-align: center;
 }
 
@@ -611,11 +677,13 @@ body {
   background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
 .progress-bar {
   background-color: var(--light-gray);
   border-radius: 9999px;
   overflow: hidden;
 }
+
 .progress-bar-inner {
   height: 100%;
   background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
@@ -625,39 +693,39 @@ body {
 /* About Page Specific Styles */
 /* Custom Gradients for About Page Accordion Years */
 .gradient-blue-purple {
-  background: linear-gradient(
-    135deg,
-    #60a5fa,
-    #a78bfa
-  ); /* from-blue-500 to-purple-500 */
+  background: linear-gradient(135deg,
+      #60a5fa,
+      #a78bfa);
+  /* from-blue-500 to-purple-500 */
 }
+
 .gradient-green-blue {
-  background: linear-gradient(
-    135deg,
-    #34d399,
-    #60a5fa
-  ); /* from-green-500 to-blue-500 */
+  background: linear-gradient(135deg,
+      #34d399,
+      #60a5fa);
+  /* from-green-500 to-blue-500 */
 }
+
 .gradient-yellow-red {
-  background: linear-gradient(
-    135deg,
-    #facc15,
-    #ef4444
-  ); /* from-yellow-500 to-red-500 */
+  background: linear-gradient(135deg,
+      #facc15,
+      #ef4444);
+  /* from-yellow-500 to-red-500 */
 }
+
 .gradient-purple-pink {
-  background: linear-gradient(
-    135deg,
-    #a78bfa,
-    #ec4899
-  ); /* from-purple-500 to-pink-500 */
+  background: linear-gradient(135deg,
+      #a78bfa,
+      #ec4899);
+  /* from-purple-500 to-pink-500 */
 }
 
 /* 기존 .nav-link 스타일 아래에 추가 */
 
 /* New active state for nav-link */
 .nav-link.active {
-  color: #ffffff; /* 텍스트를 흰색으로 */
+  color: #ffffff;
+  /* 텍스트를 흰색으로 */
 }
 
 /* 활성 상태일 때 밑줄도 100% 나오도록 설정 */
