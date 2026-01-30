@@ -7,8 +7,21 @@ import { UserRole } from './members/entities/enums/user-role.enum';
 import { UserGender } from './members/entities/enums/user-gender.enum';
 import { EducationStatus } from './members/entities/enums/education-status.enum';
 
-// envs/db_prod.env 파일 로드 (DB 정보 + ADMIN 정보)
-dotenv.config({ path: path.join(__dirname, '../../envs/db_prod.env') });
+// 환경에 따라 올바른 env 파일 로드
+const isDev = process.env.NODE_ENV === 'development';
+const envFileName = isDev ? 'db_dev.env' : 'db_prod.env';
+const envPath = path.join(__dirname, '../../envs', envFileName);
+
+console.log('🌍 Environment:', process.env.NODE_ENV || 'not set');
+console.log('📁 Loading env from:', envPath);
+
+const result = dotenv.config({ path: envPath });
+if (result.error) {
+    console.error('❌ Error loading .env file:', result.error);
+    console.log('⚠️  Using default values instead');
+} else {
+    console.log('✅ Loaded env variables:', Object.keys(result.parsed || {}).length);
+}
 
 const AppDataSource = new DataSource({
     type: 'postgres',
@@ -33,6 +46,11 @@ async function seed() {
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@tcp.com';
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin1234!';
     const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+
+    console.log('🔑 Admin credentials from env:');
+    console.log(`   Email: ${adminEmail}`);
+    console.log(`   Username: ${adminUsername}`);
+    console.log(`   Password: ${adminPassword ? '***' : 'NOT SET'}`);
 
     // 이미 존재하는지 확인
     const existingAdmin = await userRepository.findOne({
