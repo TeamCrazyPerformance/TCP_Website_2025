@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import FormInput from '../ui/FormInput';
 import FormTextarea from '../ui/FormTextarea';
 import FormSelect from '../ui/FormSelect';
-import { apiPost } from '../../api/client';
+import { apiPost, apiPatch } from '../../api/client';
 
-export default function RecruitTeamModal({ isOpen, onClose, onAddTeam }) {
+export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateTeam, initialData }) {
   const [form, setForm] = useState({
     title: '',
     category: '',
@@ -21,15 +21,56 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam }) {
     contact: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isEditMode = !!initialData;
+
+  useEffect(() => {
+    if (isOpen && initialData) {
+      setForm({
+        title: initialData.title || '',
+        category: initialData.category || '',
+        periodStart: initialData.periodStart || '',
+        periodEnd: initialData.periodEnd || '',
+        deadline: initialData.deadline || '',
+        description: initialData.description || '',
+        neededRoles: initialData.neededRoles || '',
+        techStack: Array.isArray(initialData.techStack) ? initialData.techStack.join(', ') : initialData.techStack || '',
+        tags: Array.isArray(initialData.tags) ? initialData.tags.join(', ') : initialData.tags || '',
+        links: Array.isArray(initialData.links) ? initialData.links.join(', ') : initialData.links || '',
+        executionType: initialData.executionType || 'online',
+        selectionProcess: initialData.selectionProcess || '',
+        contact: initialData.contact || '',
+      });
+    } else if (isOpen && !initialData) {
+      // Reset form when opening in create mode
+      setForm({
+        title: '',
+        category: '',
+        periodStart: '',
+        periodEnd: '',
+        deadline: '',
+        description: '',
+        neededRoles: '',
+        techStack: '',
+        tags: '',
+        links: '',
+        executionType: 'online',
+        selectionProcess: '',
+        contact: '',
+      });
+    }
+  }, [isOpen, initialData]);
 
   const onForm = (e) =>
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
-  const splitCsv = (s) =>
-    s
+  const splitCsv = (s) => {
+    if (!s) return [];
+    if (Array.isArray(s)) return s;
+    return s
       .split(',')
       .map((v) => v.trim())
       .filter(Boolean);
+  };
 
   const parseRoles = (value) =>
     value
@@ -62,6 +103,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam }) {
 
   const mapResponseTeam = (team) => ({
     id: team.id,
+    leaderId: team.leader?.id,
     title: team.title,
     category: team.category,
     leader: {
@@ -71,12 +113,16 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam }) {
     },
     status: team.status === 'open' ? '모집중' : '모집완료',
     period: `${formatDate(team.periodStart)} – ${formatDate(team.periodEnd)}`,
+    periodStart: team.periodStart,
+    periodEnd: team.periodEnd,
     deadline: team.deadline ? formatDate(team.deadline, '-') : '',
+    deadlineDate: team.deadline,
     description: team.description,
     fullDescription: team.description,
     neededRoles: (team.roles || [])
       .map((role) => `${role.roleName} ${role.recruitCount}명`)
       .join(', '),
+    rolesRaw: team.roles,
     participants: [
       {
         name: team.leader?.name || team.leader?.username || '팀 리더',
@@ -85,19 +131,23 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam }) {
       },
     ],
     techStack: splitCsv(team.techStack || ''),
+    techStackRaw: team.techStack,
     tags: splitCsv(team.tag || ''),
+    tagsRaw: team.tag,
     images: team.projectImage
       ? [team.projectImage]
       : [
-          'https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=2020&auto=format&fit=crop',
-        ],
+        'https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=2020&auto=format&fit=crop',
+      ],
     links: team.link ? [team.link] : [],
+    linksRaw: team.link,
     location:
       team.executionType === 'offline'
         ? '오프라인'
         : team.executionType === 'hybrid'
           ? '온/오프라인 혼합'
           : '온라인',
+    executionTypeRaw: team.executionType,
     selectionProcess: team.selectionProc || '지원서 검토 후 안내',
     contact: team.contact || '연락처 없음',
     goals: splitCsv(team.goals || '') || ['프로젝트 완수'],
@@ -109,7 +159,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam }) {
     e.preventDefault();
     const token = localStorage.getItem('access_token');
     if (!token) {
-      alert('로그인 후 팀 모집글을 등록할 수 있습니다.');
+      alert('로그인 후 팀 모집글을 등록/수정할 수 있습니다.');
       return;
     }
 
@@ -133,13 +183,22 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam }) {
 
     try {
       setIsSubmitting(true);
-      const team = await apiPost('/api/v1/teams', payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      onAddTeam(mapResponseTeam(team));
-      // Reset form
+      let team;
+
+      if (isEditMode) {
+        team = await apiPatch(`/api/v1/teams/${initialData.id}`, payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (onUpdateTeam) onUpdateTeam(mapResponseTeam(team));
+        alert('팀 모집글이 성공적으로 수정되었습니다!');
+      } else {
+        team = await apiPost('/api/v1/teams', payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (onAddTeam) onAddTeam(mapResponseTeam(team));
+        alert('팀 모집이 성공적으로 등록되었습니다!');
+      }
+
       setForm({
         title: '',
         category: '',
@@ -156,9 +215,8 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam }) {
         contact: '',
       });
       onClose();
-      alert('팀 모집이 성공적으로 등록되었습니다!');
     } catch (error) {
-      alert(error.message || '팀 모집 등록에 실패했습니다.');
+      alert(error.message || `팀 모집 ${isEditMode ? '수정' : '등록'}에 실패했습니다.`);
     } finally {
       setIsSubmitting(false);
     }
@@ -181,7 +239,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam }) {
       >
         <div className="flex items-center justify-between mb-6">
           <h3 className="orbitron text-2xl font-bold gradient-text">
-            팀 모집 시작하기
+            {isEditMode ? '팀 모집 수정하기' : '팀 모집 시작하기'}
           </h3>
           <button
             onClick={onClose}
@@ -308,7 +366,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam }) {
               className="cta-button px-6 py-2 rounded-lg font-medium text-white"
               disabled={isSubmitting}
             >
-              {isSubmitting ? '등록 중...' : '모집 시작하기'}
+              {isSubmitting ? (isEditMode ? '수정 중...' : '등록 중...') : (isEditMode ? '수정완료' : '모집 시작하기')}
             </button>
           </div>
         </form>

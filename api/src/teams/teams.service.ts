@@ -94,7 +94,7 @@ export class TeamsService {
             .createQueryBuilder('team')
             .leftJoinAndSelect('team.roles', 'roles')
             .leftJoin('team.leader', 'leader')
-            .addSelect(['leader.name', 'leader.profile_image']) 
+            .addSelect(['leader.id', 'leader.name', 'leader.profile_image'])
             .orderBy('team.createdAt', 'DESC')
             .getMany();
     }
@@ -105,7 +105,7 @@ export class TeamsService {
             .createQueryBuilder('team')
             .leftJoinAndSelect('team.roles', 'roles')
             .leftJoin('team.leader', 'leader')
-            .addSelect(['leader.name', 'leader.profile_image']) 
+            .addSelect(['leader.id', 'leader.name', 'leader.profile_image'])
             .where('team.id = :id', { id })
             .getOne();
 
@@ -165,14 +165,14 @@ export class TeamsService {
                 .createQueryBuilder(Team, 'team')
                 .leftJoinAndSelect('team.roles', 'roles')
                 .leftJoin('team.leader', 'leader')
-                .addSelect(['leader.name', 'leader.profile_image'])
+                .addSelect(['leader.id', 'leader.name', 'leader.profile_image'])
                 .where('team.id = :teamId', { teamId })
                 .getOne();
-            
+
             if (!updatedTeam) {
                 throw new NotFoundException(`Team ${teamId} not found after update`);
             }
-            
+
             return updatedTeam;
         });
     }

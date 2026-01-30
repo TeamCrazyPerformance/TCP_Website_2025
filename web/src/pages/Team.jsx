@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import RecruitTeamModal from '../components/modals/RecruitTeamModal';
 import TeamDetailModal from '../components/modals/TeamDetailModal';
 import TeamCard from '../components/TeamCard';
 import { tagColorClass } from '../utils/helpers';
-import { apiGet } from '../api/client';
+import { apiGet, apiPatch, apiDelete } from '../api/client';
 
 const TAGS = [
   'AI',
@@ -17,13 +18,14 @@ const TAGS = [
 ];
 
 export default function Team() {
+  const { user } = useAuth();
   const [teams, setTeams] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
 
   // ---- Filters ----
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterRole, setFilterRole] = useState('');
+
   const [filterStatus, setFilterStatus] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [activeTag, setActiveTag] = useState('');
@@ -33,16 +35,10 @@ export default function Team() {
   const [isRecruitModalOpen, setIsRecruitModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState(null);
+  const [recruitModalInitialData, setRecruitModalInitialData] = useState(null);
 
   // ---- Handlers ----
-  const handleClearFilters = () => {
-    setSearchTerm('');
-    setFilterRole('');
-    setFilterStatus('');
-    setFilterCategory('');
-    setActiveTag('');
-    setSortBy('latest');
-  };
+
 
   const filteredTeams = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -51,15 +47,14 @@ export default function Team() {
       const tagsMatch = t.tags?.some((tg) => tg.toLowerCase().includes(term));
       const searchMatch = !term || titleMatch || tagsMatch;
 
-      const roleMatch =
-        !filterRole || (t.neededRoles || '').includes(filterRole);
+
       const statusMatch = !filterStatus || t.status === filterStatus;
       const categoryMatch = !filterCategory || t.category === filterCategory;
       const tagButtonMatch = !activeTag || t.tags?.includes(activeTag);
 
       return (
         searchMatch &&
-        roleMatch &&
+
         statusMatch &&
         categoryMatch &&
         tagButtonMatch
@@ -77,7 +72,7 @@ export default function Team() {
   }, [
     teams,
     searchTerm,
-    filterRole,
+
     filterStatus,
     filterCategory,
     activeTag,
@@ -119,8 +114,8 @@ export default function Team() {
     const roles = team.roles || [];
     const neededRoles = roles.length
       ? roles
-          .map((role) => `${role.roleName} ${role.recruitCount}명`)
-          .join(', ')
+        .map((role) => `${role.roleName} ${role.recruitCount}명`)
+        .join(', ')
       : '모집 역할 미정';
     const tags = [
       ...new Set([...splitTags(team.tag), ...splitTags(team.techStack)]),
@@ -141,11 +136,12 @@ export default function Team() {
     const images = team.projectImage
       ? [team.projectImage]
       : [
-          'https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=2020&auto=format&fit=crop',
-        ];
+        'https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=2020&auto=format&fit=crop',
+      ];
 
     return {
       id: team.id,
+      leaderId: team.leader?.id,
       title: team.title,
       category: team.category,
       leader: {
@@ -155,10 +151,14 @@ export default function Team() {
       },
       status: normalizeStatus(team.status),
       period,
+      periodStart: team.periodStart,
+      periodEnd: team.periodEnd,
       deadline,
+      deadlineDate: team.deadline,
       description: team.description,
       fullDescription: team.description,
       neededRoles,
+      rolesRaw: team.roles,
       participants: [
         {
           name: leaderName,
@@ -167,10 +167,14 @@ export default function Team() {
         },
       ],
       techStack,
+      techStackRaw: team.techStack,
       tags,
+      tagsRaw: team.tag,
       images,
       links,
+      linksRaw: team.link,
       location: normalizeExecutionType(team.executionType),
+      executionTypeRaw: team.executionType,
       selectionProcess,
       contact: team.contact || '연락처 없음',
       goals,
@@ -195,7 +199,7 @@ export default function Team() {
 
     const elements = document.querySelectorAll('.recruitment-card');
     elements.forEach((el) => observer.observe(el));
-    
+
     // 클린업 함수에서 모든 관찰을 중단하도록 수정
     return () => {
       elements.forEach((el) => {
@@ -260,17 +264,73 @@ export default function Team() {
   };
 
   const handleOpenRecruit = () => {
+    setRecruitModalInitialData(null);
     setIsRecruitModalOpen(true);
     document.body.style.overflow = 'hidden';
   };
 
   const handleCloseRecruit = () => {
     setIsRecruitModalOpen(false);
+    setRecruitModalInitialData(null);
     document.body.style.overflow = 'auto';
   };
 
   const handleAddTeam = (newTeam) => {
     setTeams((prevTeams) => [newTeam, ...prevTeams]);
+  };
+
+  const handleUpdateTeam = (updatedTeam) => {
+    setTeams((prevTeams) =>
+      prevTeams.map((t) => (t.id === updatedTeam.id ? updatedTeam : t))
+    );
+  };
+
+  const handleEditTeam = (team) => {
+    const initialData = {
+      id: team.id,
+      title: team.title,
+      category: team.category,
+      periodStart: team.periodStart ? new Date(team.periodStart).toISOString().split('T')[0] : '',
+      periodEnd: team.periodEnd ? new Date(team.periodEnd).toISOString().split('T')[0] : '',
+      deadline: team.deadlineDate ? new Date(team.deadlineDate).toISOString().split('T')[0] : '',
+      description: team.description,
+      neededRoles: team.rolesRaw.map(r => `${r.roleName} ${r.recruitCount}`).join(', '),
+      techStack: team.techStackRaw,
+      tags: team.tagsRaw,
+      links: team.linksRaw,
+      executionType: team.executionTypeRaw,
+      selectionProcess: team.selectionProcess,
+      contact: team.contact,
+    };
+    setRecruitModalInitialData(initialData);
+    setIsRecruitModalOpen(true);
+  };
+
+  const handleDeleteTeam = async (teamId) => {
+    if (!window.confirm('정말로 이 팀 모집글을 삭제하시겠습니까?')) return;
+    try {
+      await apiDelete(`/api/v1/teams/${teamId}`);
+      setTeams((prev) => prev.filter((t) => t.id !== teamId));
+      alert('삭제되었습니다.');
+    } catch (err) {
+      alert(err.message || '삭제 실패');
+    }
+  };
+
+  const handleToggleStatus = async (team) => {
+    const newStatus = team.status === '모집중' ? 'closed' : 'open';
+    const newStatusText = newStatus === 'open' ? '모집중' : '모집완료';
+
+    try {
+      await apiPatch(`/api/v1/teams/${team.id}/status`, { status: newStatus });
+      setTeams((prev) =>
+        prev.map((t) =>
+          t.id === team.id ? { ...t, status: newStatusText } : t
+        )
+      );
+    } catch (err) {
+      alert(err.message || '상태 변경 실패');
+    }
   };
 
   // ---- UI ----
@@ -296,7 +356,7 @@ export default function Team() {
       <div className="mb-10 p-6 bg-gray-900 rounded-xl border border-gray-800 shadow-lg">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Search */}
-          <div className="lg:col-span-2">
+          <div>
             <label htmlFor="search" className="block text-sm font-medium text-gray-300 mb-2">
               Search
             </label>
@@ -311,25 +371,6 @@ export default function Team() {
               />
               <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
             </div>
-          </div>
-          {/* Role */}
-          <div>
-            <label htmlFor="filter-role" className="block text-sm font-medium text-gray-300 mb-2">
-              Role
-            </label>
-            <select
-              id="filter-role"
-              className="w-full bg-gray-800 border-gray-700 rounded-lg py-2 px-4 focus:ring-2 focus:ring-accent-blue focus:outline-none"
-              value={filterRole}
-              onChange={(e) => setFilterRole(e.target.value)}
-            >
-              <option value="">모든 역할</option>
-              <option value="기획">기획</option>
-              <option value="디자인">디자인</option>
-              <option value="프론트엔드">프론트엔드</option>
-              <option value="백엔드">백엔드</option>
-              <option value="AI">AI</option>
-            </select>
           </div>
           {/* Status */}
           <div>
@@ -347,10 +388,8 @@ export default function Team() {
               <option value="모집완료">모집완료</option>
             </select>
           </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-4">
           {/* Category */}
-          <div className="lg:col-span-2">
+          <div>
             <label htmlFor="filter-category" className="block text-sm font-medium text-gray-300 mb-2">
               Category
             </label>
@@ -382,19 +421,6 @@ export default function Team() {
               <option value="oldest">오래된순</option>
             </select>
           </div>
-          {/* Clear Filters */}
-          <div>
-            <label className="block text-sm font-medium text-transparent mb-2">
-              Clear
-            </label>
-            <button
-              onClick={handleClearFilters}
-              className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-colors"
-            >
-              <i className="fas fa-times mr-2" />
-              필터 초기화
-            </button>
-          </div>
         </div>
         <div className="mt-6 pt-4 border-t border-gray-800">
           <div id="tag-cloud" className="flex flex-wrap gap-2">
@@ -403,11 +429,10 @@ export default function Team() {
                 key={tag}
                 className={`tag-btn px-3 py-1 rounded-full text-sm transition-all duration-200 ${tagColorClass(
                   tag
-                )} ${
-                  activeTag === tag
-                    ? 'ring-2 ring-offset-2 ring-offset-gray-900 ring-accent-blue scale-110'
-                    : 'hover:opacity-80'
-                }`}
+                )} ${activeTag === tag
+                  ? 'ring-2 ring-offset-2 ring-offset-gray-900 ring-accent-blue scale-110'
+                  : 'hover:opacity-80'
+                  }`}
                 onClick={() => setActiveTag((t) => (t === tag ? '' : tag))}
               >
                 {tag}
@@ -439,7 +464,11 @@ export default function Team() {
             <TeamCard
               key={team.id}
               team={team}
+              currentUser={user}
               onOpenDetail={handleOpenDetail}
+              onEdit={handleEditTeam}
+              onDelete={handleDeleteTeam}
+              onStatusChange={handleToggleStatus}
             />
           ))}
       </div>
@@ -448,6 +477,8 @@ export default function Team() {
         isOpen={isRecruitModalOpen}
         onClose={handleCloseRecruit}
         onAddTeam={handleAddTeam}
+        onUpdateTeam={handleUpdateTeam}
+        initialData={recruitModalInitialData}
       />
 
       <TeamDetailModal
