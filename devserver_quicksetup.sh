@@ -49,6 +49,10 @@ sudo sysctl -w vm.max_map_count=262144
 echo "✅ vm.max_map_count set to 262144"
 echo
 
+### 3.7. Set filebeat owner and permission
+sudo chown root:root elk/filebeat/filebeat.yml
+sudo chmod 600 elk/filebeat/filebeat.yml
+
 ### =========================
 ### 4. Docker Compose 실행
 ### =========================
