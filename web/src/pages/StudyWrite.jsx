@@ -17,9 +17,28 @@ export default function StudyWrite() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // 기간 자동 포맷팅 (202501202512 -> 2025.01-2025.12)
+  const formatPeriod = (value) => {
+    const numbers = value.replace(/[^\d]/g, '');
+    if (numbers.length <= 4) {
+      return numbers;
+    } else if (numbers.length <= 6) {
+      return `${numbers.slice(0, 4)}.${numbers.slice(4)}`;
+    } else if (numbers.length <= 10) {
+      return `${numbers.slice(0, 4)}.${numbers.slice(4, 6)}-${numbers.slice(6, 10)}${numbers.length > 10 ? '.' + numbers.slice(10) : ''}`;
+    } else {
+      return `${numbers.slice(0, 4)}.${numbers.slice(4, 6)}-${numbers.slice(6, 10)}.${numbers.slice(10, 12)}`;
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setStudy((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handlePeriodChange = (e) => {
+    const formatted = formatPeriod(e.target.value);
+    setStudy((prev) => ({ ...prev, period: formatted }));
   };
 
   const handleSliderChange = (e) => {
@@ -193,9 +212,12 @@ export default function StudyWrite() {
                 id="period"
                 name="period"
                 value={study.period}
-                onChange={handleChange}
+                onChange={handlePeriodChange}
+                maxLength={15}
+                pattern="^\d{4}\.\d{2}-\d{4}\.\d{2}$"
+                title="YYYY.MM-YYYY.MM 형식으로 입력해주세요 (예: 2025.01-2025.12)"
                 className="w-full bg-gray-800 border-gray-700 rounded-lg py-3 px-4 text-base focus:ring-2 focus:ring-accent-blue focus:outline-none"
-                placeholder="예: 3개월, 12월까지"
+                placeholder="예: 2025.01-2025.12"
                 required
               />
             </div>
