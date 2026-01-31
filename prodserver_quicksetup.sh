@@ -39,6 +39,7 @@ npm install
 npm run build
 
 echo "✅ Frontend build completed"
+cd ..
 echo
 
 ### =========================
@@ -52,6 +53,8 @@ echo
 ### 3.7. Set filebeat owner and permission
 sudo chown root:root elk/filebeat/filebeat.yml
 sudo chmod 600 elk/filebeat/filebeat.yml
+echo "✅ Filebeat owner and permission set"
+echo
 
 ### =========================
 ### 4. Docker Compose 실행
