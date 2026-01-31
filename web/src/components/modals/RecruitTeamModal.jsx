@@ -327,27 +327,27 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
                 <label className="block text-sm font-medium text-gray-300 mb-2">진행 기간 (시작 ~ 종료) *</label>
                 <div className="flex gap-2 items-center">
                   <input
-                    type="text"
+                    type="date"
                     name="periodStart"
                     value={form.periodStart}
                     onChange={onForm}
                     required
                     className="form-input"
                     style={{ maxWidth: '45%' }}
-                    placeholder="YYYY-MM-DD"
-                    pattern="\d{4}-\d{2}-\d{2}"
+                    min="0000-01-01"
+                    max="9999-12-31"
                   />
                   <span className="text-gray-400">~</span>
                   <input
-                    type="text"
+                    type="date"
                     name="periodEnd"
                     value={form.periodEnd}
                     onChange={onForm}
                     required
                     className="form-input"
                     style={{ maxWidth: '45%' }}
-                    placeholder="YYYY-MM-DD"
-                    pattern="\d{4}-\d{2}-\d{2}"
+                    min="0000-01-01"
+                    max="9999-12-31"
                   />
                 </div>
               </div>
