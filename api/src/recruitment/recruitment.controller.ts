@@ -37,6 +37,12 @@ export class RecruitmentController {
     return this.recruitmentService.findAll();
   }
 
+  // 현재 모집 상태 조회 (공개) - 반드시 :id 라우트보다 위에 위치해야 함
+  @Get('status')
+  getRecruitmentStatus() {
+    return this.recruitmentService.getRecruitmentStatus();
+  }
+
   // 특정 지원서 조회 (관리자 전용)
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)

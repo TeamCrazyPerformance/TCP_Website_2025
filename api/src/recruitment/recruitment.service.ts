@@ -3,6 +3,7 @@ import {
   InternalServerErrorException,
   Logger,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -11,6 +12,7 @@ import { UpdateRecruitmentDto } from './dto/update-recruitment.dto';
 import { Resume } from './entities/resume.entity';
 import { Award } from './entities/award.entity';
 import { Project } from './entities/project.entity';
+import { RecruitmentSettingsService } from './recruitment-settings.service';
 
 @Injectable()
 export class RecruitmentService {
@@ -24,9 +26,20 @@ export class RecruitmentService {
     @InjectRepository(Project)
     private readonly projectRepository: Repository<Project>,
     private readonly dataSource: DataSource,
+    private readonly settingsService: RecruitmentSettingsService,
   ) { }
 
+  async getRecruitmentStatus() {
+    return this.settingsService.getPublicStatus();
+  }
+
   async create(createRecruitmentDto: CreateRecruitmentDto) {
+    // Check if recruitment is active
+    const settings = await this.settingsService.getOrCreateSettings();
+    if (!settings.is_application_enabled) {
+      throw new ForbiddenException('현재 지원 기간이 아니거나 접수가 마감되었습니다.');
+    }
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -185,7 +198,14 @@ export class RecruitmentService {
         self_introduction: updateRecruitmentDto.self_introduction ?? existingResume.self_introduction,
         club_expectation: updateRecruitmentDto.club_expectation ?? existingResume.club_expectation,
         submit_year: updateRecruitmentDto.submit_year ?? existingResume.submit_year,
+        review_status: updateRecruitmentDto.review_status ?? existingResume.review_status,
+        review_comment: updateRecruitmentDto.review_comment ?? existingResume.review_comment,
       });
+
+      // review_status가 변경되면 reviewed_at 시간 업데이트
+      if (updateRecruitmentDto.review_status && updateRecruitmentDto.review_status !== existingResume.review_status) {
+        existingResume.reviewed_at = new Date();
+      }
 
       await queryRunner.manager.save(Resume, existingResume);
 

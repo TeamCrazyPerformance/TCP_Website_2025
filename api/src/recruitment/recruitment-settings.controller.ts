@@ -64,14 +64,5 @@ export class RecruitmentSettingsController {
     stopNow() {
         return this.settingsService.stopNow();
     }
-
-    // ===== Public Endpoint =====
-
-    /**
-     * 현재 모집 상태 조회 (프론트엔드용, 인증 불필요)
-     */
-    @Get('recruitment/status')
-    getPublicStatus() {
-        return this.settingsService.getPublicStatus();
-    }
 }
+
