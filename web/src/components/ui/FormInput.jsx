@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function FormInput({ label, name, value, onChange, type = 'text', required = false, placeholder = '' }) {
+export default function FormInput({ label, name, value, onChange, type = 'text', required = false, placeholder = '', min, max }) {
   return (
     <div>
       <label htmlFor={name} className="block text-sm font-medium text-gray-300 mb-2">
@@ -14,7 +14,9 @@ export default function FormInput({ label, name, value, onChange, type = 'text',
         onChange={onChange}
         required={required}
         placeholder={placeholder}
-        className="form-input w-full bg-gray-800 border border-gray-700 rounded-lg py-2 px-4 focus:ring-2 focus:ring-accent-blue focus:outline-none"
+        min={min}
+        max={max}
+        className="form-input"
       />
     </div>
   );

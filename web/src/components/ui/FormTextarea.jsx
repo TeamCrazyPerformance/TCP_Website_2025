@@ -14,7 +14,7 @@ export default function FormTextarea({ label, name, value, onChange, required = 
         required={required}
         placeholder={placeholder}
         rows={4}
-        className="form-textarea w-full bg-gray-800 border border-gray-700 rounded-lg py-2 px-4 focus:ring-2 focus:ring-accent-blue focus:outline-none"
+        className="form-textarea"
       />
     </div>
   );

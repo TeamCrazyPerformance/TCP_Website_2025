@@ -12,9 +12,8 @@ export default function FormSelect({ label, name, value, onChange, options = [],
         value={value}
         onChange={onChange}
         required={required}
-        className="form-select w-full bg-gray-800 border border-gray-700 rounded-lg py-2 px-4 focus:ring-2 focus:ring-accent-blue focus:outline-none"
+        className="form-select"
       >
-        <option value="">선택하세요</option>
         {options.map((op) => (
           <option key={op} value={op}>
             {op}
