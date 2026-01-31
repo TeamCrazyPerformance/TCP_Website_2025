@@ -63,9 +63,7 @@ echo "🐳 Starting docker compose..."
 cd "$PROJECT_DIR"
 
 sudo docker compose \
-  -f docker-compose.yml \
-  -f docker-compose.dev.yml \
-  up -d --build
+  up -d
 
 echo "✅ Docker services are up"
 echo
