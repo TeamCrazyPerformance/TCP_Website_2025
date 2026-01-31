@@ -101,22 +101,32 @@ function Home() {
           onClick={closeModal}
         >
           <div
-            className="bg-gray-900 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-gray-700 shadow-2xl transform transition-all duration-300 scale-100"
+            className="bg-gray-900 rounded-2xl max-w-[95vw] overflow-y-auto border border-gray-700 shadow-2xl transform transition-all duration-300 scale-100"
+            style={{ width: '1000px' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-1">
-              <div className="relative w-full h-[60vh] rounded-t-xl bg-black group">
+              <div
+                className="relative w-full rounded-t-xl bg-black group"
+                style={{ height: '500px' }}
+              >
                 <button
                   onClick={closeModal}
                   className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 w-10 h-10 flex items-center justify-center transition-colors backdrop-blur-sm"
                 >
                   <i className="fas fa-times"></i>
                 </button>
-                <div className="w-full h-full overflow-y-auto custom-scrollbar rounded-t-xl">
+                <div className="w-full h-full overflow-auto custom-scrollbar rounded-t-xl bg-black flex">
                   <img
                     src={modalData.image}
                     alt={modalData.title}
-                    className="w-full h-auto block"
+                    className="block m-auto"
+                    style={{
+                      maxWidth: 'none',
+                      maxHeight: 'none',
+                      width: 'auto',
+                      height: 'auto'
+                    }}
                   />
                 </div>
               </div>
