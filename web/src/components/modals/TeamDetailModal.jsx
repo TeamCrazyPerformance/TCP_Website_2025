@@ -79,7 +79,7 @@ export default function TeamDetailModal({ isOpen, onClose, team }) {
               <div className="space-y-3 text-sm text-gray-300">
                 <InfoRow label="상태">
                   <span
-                    className={`px-2 py-1 rounded text-xs font-semibold ${team.status === '모집중' ? 'bg-green-900 text-green-300' : 'bg-gray-700 text-gray-300'}`}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold ${team.status === '모집중' ? 'status-badge-recruiting' : 'bg-gray-700 text-gray-300'}`}
                   >
                     {team.status}
                   </span>
@@ -101,7 +101,7 @@ export default function TeamDetailModal({ isOpen, onClose, team }) {
               <h4 className="font-semibold text-white mb-3 flex items-center">
                 <i className="fas fa-user-crown text-yellow-400 mr-2" />팀 리더
               </h4>
-              <div className="flex items-center p-3 bg-gray-800/50 rounded-lg">
+              <div className="flex items-center p-3 bg-gray-800 bg-opacity-50 rounded-lg">
                 <div className="relative">
                   <img
                     src={team.leader.avatar}
@@ -130,7 +130,7 @@ export default function TeamDetailModal({ isOpen, onClose, team }) {
               <i className="fas fa-file-alt text-green-400 mr-2" />
               프로젝트 상세 설명
             </h4>
-            <div className="bg-gray-800/50 rounded-lg p-4">
+            <div className="bg-gray-800 bg-opacity-50 rounded-lg p-4">
               <p className="text-gray-300 whitespace-pre-line">
                 {team.fullDescription}
               </p>
@@ -146,8 +146,14 @@ export default function TeamDetailModal({ isOpen, onClose, team }) {
               <i className="fas fa-user-plus text-red-400 mr-2" />
               모집 중인 역할
             </h4>
-            <div className="bg-red-900/20 border border-red-800 rounded-lg p-4">
-              <p className="text-red-300">{team.neededRoles}</p>
+            <div className="bg-red-500 bg-opacity-10 border border-red-500 border-opacity-50 rounded-lg p-4">
+              <div className="flex flex-col space-y-1">
+                {team.neededRoles.split(',').map((role, idx) => (
+                  <span key={idx} className="text-red-300">
+                    {role.trim()}
+                  </span>
+                ))}
+              </div>
             </div>
           </section>
 
@@ -189,7 +195,7 @@ export default function TeamDetailModal({ isOpen, onClose, team }) {
               <i className="fas fa-clipboard-check text-indigo-400 mr-2" />
               선발 과정
             </h4>
-            <div className="bg-indigo-900/20 border border-indigo-800 rounded-lg p-4">
+            <div className="bg-indigo-500 bg-opacity-10 border border-indigo-500 border-opacity-50 rounded-lg p-4">
               <p className="text-indigo-300">
                 {team.selectionProcess}
               </p>
@@ -226,7 +232,7 @@ export default function TeamDetailModal({ isOpen, onClose, team }) {
               <i className="fas fa-envelope text-green-400 mr-2" />
               연락처
             </h4>
-            <div className="bg-green-900/20 border border-green-800 rounded-lg p-4">
+            <div className="bg-green-500 bg-opacity-10 border border-green-500 border-opacity-50 rounded-lg p-4">
               <p className="text-green-300">{team.contact}</p>
             </div>
           </section>

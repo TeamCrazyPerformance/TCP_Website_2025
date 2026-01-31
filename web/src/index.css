@@ -601,6 +601,12 @@ body {
   color: #ef4444;
 }
 
+.status-badge-recruiting {
+  background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
+  color: white;
+  border: none;
+}
+
 /* Tailwind red-500 */
 
 .loading-spinner {
