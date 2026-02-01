@@ -74,8 +74,7 @@ export class StudyController {
    * @returns A promise that resolves to a detailed DTO of the study.
    */
   @Get(':id')
-  @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
-  @StudyRoles(StudyMemberRole.LEADER, StudyMemberRole.MEMBER)
+  @UseGuards(AuthGuard('jwt'))
   async findById(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<StudyDetailResponseDto> {
@@ -420,5 +419,49 @@ export class StudyController {
   ): Promise<SuccessResponseDto> {
     const userId = req.user.userId;
     return this.studyService.leaveStudy(id, userId);
+  }
+
+  /**
+   * @description Nominates a member to become a leader. (Admin/Leader only)
+   */
+  @Post(':id/members/:userId/nominate')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
+  @StudyRoles(StudyMemberRole.LEADER)
+  async nominateLeader(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('userId', ParseUUIDPipe) userId: string,
+  ): Promise<SuccessResponseDto> {
+    return this.studyService.nominateLeader(id, userId);
+  }
+
+  /**
+   * @description Accepts the leadership nomination.
+   */
+  @Post(':id/accept-leadership')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
+  @StudyRoles(StudyMemberRole.NOMINEE)
+  async acceptLeaderNomination(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: any,
+  ): Promise<SuccessResponseDto> {
+    const userId = req.user.userId;
+    return this.studyService.acceptLeaderNomination(id, userId);
+  }
+
+  /**
+   * @description Declines the leadership nomination.
+   */
+  @Post(':id/decline-leadership')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
+  @StudyRoles(StudyMemberRole.NOMINEE)
+  async declineLeaderNomination(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: any,
+  ): Promise<SuccessResponseDto> {
+    const userId = req.user.userId;
+    return this.studyService.declineLeaderNomination(id, userId);
   }
 }

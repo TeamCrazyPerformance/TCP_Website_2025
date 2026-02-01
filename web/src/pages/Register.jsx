@@ -49,7 +49,43 @@ function Register() {
   const [signupButtonEnabled, setSignupButtonEnabled] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  
+  // 전화번호 자동 형식화 함수
+  const formatPhoneNumber = (value) => {
+    // 숫자만 추출
+    const numbers = value.replace(/[^0-9]/g, '');
+    
+    // 최대 11자리까지만 허용
+    const limited = numbers.slice(0, 11);
+    
+    // 서울 지역번호 (02)인 경우
+    if (limited.startsWith('02')) {
+      if (limited.length <= 2) {
+        return limited;
+      } else if (limited.length <= 5) {
+        return `${limited.slice(0, 2)}-${limited.slice(2)}`;
+      } else if (limited.length <= 9) {
+        return `${limited.slice(0, 2)}-${limited.slice(2, 5)}-${limited.slice(5)}`;
+      } else {
+        return `${limited.slice(0, 2)}-${limited.slice(2, 6)}-${limited.slice(6, 10)}`;
+      }
+    }
+    
+    // 일반 전화번호 (010, 011, 031 등 3자리 지역/통신사 번호)
+    if (limited.length <= 3) {
+      return limited;
+    } else if (limited.length <= 6) {
+      return `${limited.slice(0, 3)}-${limited.slice(3)}`;
+    } else if (limited.length <= 10) {
+      return `${limited.slice(0, 3)}-${limited.slice(3, 6)}-${limited.slice(6)}`;
+    } else {
+      return `${limited.slice(0, 3)}-${limited.slice(3, 7)}-${limited.slice(7)}`;
+    }
+  };
+
+  const handlePhoneChange = (e) => {
+    const formatted = formatPhoneNumber(e.target.value);
+    setPhoneNumber(formatted);
+  };
   
 
   // 사용자명 중복 확인 로직
@@ -443,7 +479,8 @@ function Register() {
                     className="w-full px-3 py-2 bg-transparent border border-gray-600 rounded-md placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     placeholder="010-1234-5678"
                     value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    onChange={handlePhoneChange}
+                    maxLength={13}
                   />
                 </div>
                 <div>

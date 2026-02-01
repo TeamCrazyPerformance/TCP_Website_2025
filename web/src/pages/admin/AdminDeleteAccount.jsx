@@ -1,22 +1,48 @@
 
-import React, { useState, useMemo } from 'react';
-
-const sampleUsers = [
-    { id: 1, name: '김민준', nickname: 'kimminjun', role: 'Admin', position: 'Frontend', techStacks: ['React', 'JavaScript', 'Node.js'], profileImage: 'https://via.placeholder.com/40/A8C5E6/FFFFFF?text=김', joinDate: '2023-03-15', lastActive: '2024-01-15' },
-    { id: 2, name: '이서연', nickname: 'leeseoyeon', role: 'Study Leader', position: 'AI', techStacks: ['Python', 'AI/ML', 'TensorFlow'], profileImage: 'https://via.placeholder.com/40/C5A8E6/FFFFFF?text=이', joinDate: '2023-05-20', lastActive: '2024-01-14' },
-    { id: 3, name: '박지훈', nickname: 'parkjihun', role: 'Study Leader', position: 'Backend', techStacks: ['Java', 'Spring', 'MySQL'], profileImage: 'https://via.placeholder.com/40/A8E6C5/FFFFFF?text=박', joinDate: '2023-04-10', lastActive: '2024-01-13' },
-    { id: 4, name: '최예원', nickname: 'choiyewon', role: 'Member', position: 'Mobile', techStacks: ['Swift', 'Flutter', 'Kotlin'], profileImage: 'https://via.placeholder.com/40/E6A8C5/FFFFFF?text=최', joinDate: '2023-06-01', lastActive: '2024-01-12' },
-    { id: 5, name: '정수현', nickname: 'jeongsuhyun', role: 'Member', position: 'Frontend', techStacks: ['Vue.js', 'JavaScript', 'TypeScript'], profileImage: 'https://via.placeholder.com/40/A8C5E6/FFFFFF?text=정', joinDate: '2023-07-15', lastActive: '2024-01-11' },
-];
-
-const allTechStacks = ['React', 'Vue.js', 'Angular', 'Node.js', 'Python', 'Java', 'JavaScript', 'TypeScript', 'Spring', 'Django', 'Flutter', 'Swift', 'Kotlin', 'AI/ML', 'TensorFlow', 'PyTorch'];
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 
 const AdminDeleteAccount = () => {
-    const [users, setUsers] = useState(sampleUsers);
-    const [filters, setFilters] = useState({ search: '', role: '', position: '', tech: [] });
+    const [users, setUsers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [filters, setFilters] = useState({ search: '', role: '', tech: [] });
     const [sort, setSort] = useState({ by: 'name', order: 'asc' });
     const [isDropdownOpen, setDropdownOpen] = useState(false);
     const [userToDelete, setUserToDelete] = useState(null);
+    const [deleteLoading, setDeleteLoading] = useState(false);
+
+    // Get all unique tech stacks from users
+    const allTechStacks = useMemo(() => {
+        const stacks = new Set();
+        users.forEach(u => {
+            if (u.tech_stack && Array.isArray(u.tech_stack)) {
+                u.tech_stack.forEach(t => stacks.add(t));
+            }
+        });
+        return Array.from(stacks).sort();
+    }, [users]);
+
+    const fetchUsers = useCallback(async () => {
+        setLoading(true);
+        try {
+            const token = localStorage.getItem('access_token');
+            const res = await fetch('/api/v1/admin/members', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!res.ok) throw new Error('Failed to fetch members');
+            const data = await res.json();
+            setUsers(Array.isArray(data) ? data : []);
+            setError(null);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchUsers();
+    }, [fetchUsers]);
 
     const handleFilterChange = (e) => {
         const { name, value } = e.target;
@@ -38,23 +64,23 @@ const AdminDeleteAccount = () => {
     };
 
     const clearFilters = () => {
-        setFilters({ search: '', role: '', position: '', tech: [] });
+        setFilters({ search: '', role: '', tech: [] });
     };
 
     const filteredUsers = useMemo(() => {
         return users
             .filter(u => {
                 const searchLower = filters.search.toLowerCase();
-                const nameMatch = u.name.toLowerCase().includes(searchLower);
-                const nickMatch = u.nickname.toLowerCase().includes(searchLower);
+                const nameMatch = u.name?.toLowerCase().includes(searchLower) || false;
+                const usernameMatch = u.username?.toLowerCase().includes(searchLower) || false;
                 const roleMatch = !filters.role || u.role === filters.role;
-                const posMatch = !filters.position || u.position === filters.position;
-                const techMatch = filters.tech.length === 0 || filters.tech.every(t => u.techStacks.includes(t));
-                return (nameMatch || nickMatch) && roleMatch && posMatch && techMatch;
+                const userTechStacks = u.tech_stack || [];
+                const techMatch = filters.tech.length === 0 || filters.tech.every(t => userTechStacks.includes(t));
+                return (nameMatch || usernameMatch) && roleMatch && techMatch;
             })
             .sort((a, b) => {
-                const aVal = a[sort.by];
-                const bVal = b[sort.by];
+                const aVal = a[sort.by] || '';
+                const bVal = b[sort.by] || '';
                 if (aVal < bVal) return sort.order === 'asc' ? -1 : 1;
                 if (aVal > bVal) return sort.order === 'asc' ? 1 : -1;
                 return 0;
@@ -71,27 +97,69 @@ const AdminDeleteAccount = () => {
         setUserToDelete(user);
     };
 
-    const confirmDelete = () => {
+    const confirmDelete = async () => {
         if (!userToDelete) return;
-        setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
-        setUserToDelete(null);
+        
+        setDeleteLoading(true);
+        try {
+            const token = localStorage.getItem('access_token');
+            const res = await fetch(`/api/v1/admin/members/${userToDelete.id}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!res.ok) throw new Error('계정 삭제에 실패했습니다');
+            
+            setUserToDelete(null);
+            await fetchUsers();
+            alert('계정이 삭제되었습니다.');
+        } catch (err) {
+            alert(err.message);
+        } finally {
+            setDeleteLoading(false);
+        }
+    };
+
+    const getRoleBadgeClass = (role) => {
+        switch (role) {
+            case 'ADMIN': return 'permission-admin';
+            case 'MEMBER': return 'permission-member';
+            case 'GUEST': return 'permission-guest';
+            default: return 'permission-member';
+        }
+    };
+
+    const getRoleDisplayName = (role) => {
+        switch (role) {
+            case 'ADMIN': return '관리자';
+            case 'MEMBER': return '멤버';
+            case 'GUEST': return '게스트';
+            default: return role;
+        }
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return '-';
+        return new Date(dateString).toLocaleDateString('ko-KR');
     };
 
     const TechStackDropdown = () => (
         <div className={`multiselect-dropdown ${isDropdownOpen ? 'show' : ''}`}>
-            {allTechStacks.map(tech => (
-                <div key={tech} 
-                     className={`multiselect-option ${filters.tech.includes(tech) ? 'selected' : ''}`}
-                     onClick={() => handleTechStackSelect(tech)}>
-                    {tech}
-                </div>
-            ))}
+            {allTechStacks.length === 0 ? (
+                <div className="multiselect-option text-gray-400">기술 스택 없음</div>
+            ) : (
+                allTechStacks.map(tech => (
+                    <div key={tech} 
+                         className={`multiselect-option ${filters.tech.includes(tech) ? 'selected' : ''}`}
+                         onClick={() => handleTechStackSelect(tech)}>
+                        {tech}
+                    </div>
+                ))
+            )}
         </div>
     );
 
     const DeleteModal = () => {
         if (!userToDelete) return null;
-        const roleClass = `permission-${userToDelete.role === 'Admin' ? 'admin' : userToDelete.role === 'Study Leader' ? 'leader' : 'member'}`;
         return (
             <div className="modal show">
                 <div className="modal-content">
@@ -109,45 +177,81 @@ const AdminDeleteAccount = () => {
                         </div>
                         <div className="mt-4 p-4 bg-gray-800 rounded-lg">
                             <div className="flex items-center space-x-3">
-                                <img src={userToDelete.profileImage} alt={userToDelete.name} className="w-12 h-12 rounded-full" />
+                                <img 
+                                    src={userToDelete.profile_image || `https://via.placeholder.com/48/A8C5E6/FFFFFF?text=${(userToDelete.name || 'U').charAt(0)}`} 
+                                    alt={userToDelete.name} 
+                                    className="w-12 h-12 rounded-full object-cover" 
+                                />
                                 <div>
-                                    <div className="text-white font-semibold">{userToDelete.name}</div>
-                                    <div className="text-gray-400 text-sm">@{userToDelete.nickname}</div>
-                                    <span className={`permission-badge ${roleClass}`}>{userToDelete.role}</span>
+                                    <div className="text-white font-semibold">{userToDelete.name || '-'}</div>
+                                    <div className="text-gray-400 text-sm">@{userToDelete.username}</div>
+                                    <span className={`permission-badge ${getRoleBadgeClass(userToDelete.role)}`}>
+                                        {getRoleDisplayName(userToDelete.role)}
+                                    </span>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div className="flex justify-end space-x-3">
-                        <button className="btn-secondary" onClick={() => setUserToDelete(null)}>취소</button>
-                        <button className="btn-danger" onClick={confirmDelete}><i className="fas fa-trash mr-2"></i>삭제</button>
+                        <button className="btn-secondary" onClick={() => setUserToDelete(null)} disabled={deleteLoading}>취소</button>
+                        <button className="btn-danger" onClick={confirmDelete} disabled={deleteLoading}>
+                            {deleteLoading ? <i className="fas fa-spinner fa-spin mr-2"></i> : <i className="fas fa-trash mr-2"></i>}
+                            삭제
+                        </button>
                     </div>
                 </div>
             </div>
         );
     };
 
+    if (loading) {
+        return (
+            <div className="container mx-auto max-w-7xl p-6">
+                <div className="text-center py-12">
+                    <i className="fas fa-spinner fa-spin text-4xl text-blue-400 mb-4"></i>
+                    <p className="text-gray-400">데이터를 불러오는 중...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="container mx-auto max-w-7xl p-6">
+                <div className="text-center py-12">
+                    <i className="fas fa-exclamation-triangle text-4xl text-red-400 mb-4"></i>
+                    <p className="text-red-400">{error}</p>
+                    <button onClick={fetchUsers} className="btn-primary mt-4">다시 시도</button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="container mx-auto max-w-7xl">
             <section className="mb-8">
                 <h3 className="text-3xl font-bold gradient-text mb-6">계정 검색 및 삭제</h3>
                 <div className="search-filter-card p-6 rounded-xl">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">이름/닉네임 검색</label>
-                            <div className="relative"><i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i><input type="text" name="search" value={filters.search} onChange={handleFilterChange} className="form-input pl-10" placeholder="이름 또는 닉네임 입력..." /></div>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">이름/아이디 검색</label>
+                            <input type="text" name="search" value={filters.search} onChange={handleFilterChange} className="form-input" placeholder="이름 또는 아이디 입력..." />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">권한 역할</label>
-                            <select name="role" value={filters.role} onChange={handleFilterChange} className="form-input"><option value="">전체 권한</option><option value="Admin">관리자</option><option value="Study Leader">스터디 리더</option><option value="Member">일반 멤버</option></select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">포지션</label>
-                            <select name="position" value={filters.position} onChange={handleFilterChange} className="form-input"><option value="">전체 포지션</option><option value="Frontend">Frontend</option><option value="Backend">Backend</option><option value="AI">AI</option><option value="Mobile">Mobile</option><option value="DevOps">DevOps</option><option value="Design">Design</option></select>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">권한 필터</label>
+                            <select name="role" value={filters.role} onChange={handleFilterChange} className="form-input">
+                                <option value="">전체 권한</option>
+                                <option value="ADMIN">관리자</option>
+                                <option value="MEMBER">일반 멤버</option>
+                                <option value="GUEST">게스트</option>
+                            </select>
                         </div>
                         <div className="multiselect">
                             <label className="block text-sm font-medium text-gray-300 mb-2">기술 스택</label>
-                            <div className="form-input cursor-pointer" onClick={() => setDropdownOpen(!isDropdownOpen)}><span>{techStackDisplay}</span><i className="fas fa-chevron-down float-right mt-1"></i></div>
+                            <div className="form-input cursor-pointer" onClick={() => setDropdownOpen(!isDropdownOpen)}>
+                                <span>{techStackDisplay}</span>
+                                <i className="fas fa-chevron-down float-right mt-1"></i>
+                            </div>
                             <TechStackDropdown />
                         </div>
                     </div>
@@ -167,28 +271,66 @@ const AdminDeleteAccount = () => {
                         <table className="w-full">
                             <thead className="bg-gray-800">
                                 <tr>
-                                    <th className="p-4 text-left sort-header" onClick={() => handleSort('name')}><div className="flex items-center">프로필<i className="fas fa-sort ml-2 text-gray-400"></i></div></th>
-                                    <th className="p-4 text-left sort-header" onClick={() => handleSort('name')}><div className="flex items-center">이름/닉네임<i className="fas fa-sort ml-2 text-gray-400"></i></div></th>
-                                    <th className="p-4 text-left sort-header" onClick={() => handleSort('role')}><div className="flex items-center">권한 역할<i className="fas fa-sort ml-2 text-gray-400"></i></div></th>
-                                    <th className="p-4 text-left">포지션</th>
+                                    <th className="p-4 text-left">프로필</th>
+                                    <th className="p-4 text-left sort-header" onClick={() => handleSort('name')}>
+                                        <div className="flex items-center">이름/아이디<i className="fas fa-sort ml-2 text-gray-400"></i></div>
+                                    </th>
+                                    <th className="p-4 text-left sort-header" onClick={() => handleSort('role')}>
+                                        <div className="flex items-center">권한<i className="fas fa-sort ml-2 text-gray-400"></i></div>
+                                    </th>
+                                    <th className="p-4 text-left">학번</th>
                                     <th className="p-4 text-left">기술 스택</th>
                                     <th className="p-4 text-center">작업</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredUsers.map(user => {
-                                    const roleClass = `permission-${user.role === 'Admin' ? 'admin' : user.role === 'Study Leader' ? 'leader' : 'member'}`;
-                                    return (
-                                        <tr key={user.id} className="table-row">
-                                            <td className="p-4"><img src={user.profileImage} alt={user.name} className="w-12 h-12 rounded-full" /></td>
-                                            <td className="p-4"><div className="font-semibold text-white">{user.name}</div><div className="text-sm text-gray-400">@{user.nickname}</div><div className="text-xs text-gray-500 mt-1">가입일: {user.joinDate}</div></td>
-                                            <td className="p-4"><span className={`permission-badge ${roleClass}`}>{user.role}</span><div className="text-xs text-gray-500 mt-1">최종 활동: {user.lastActive}</div></td>
-                                            <td className="p-4"><div className="text-white font-medium">{user.position}</div></td>
-                                            <td className="p-4"><div className="flex flex-wrap">{user.techStacks.slice(0, 3).map(t => <span key={t} className="tech-tag">{t}</span>)}{user.techStacks.length > 3 && <span className="text-xs text-gray-400 ml-1">+{user.techStacks.length - 3}</span>}</div></td>
-                                            <td className="p-4 text-center"><button className="btn-danger btn-small" onClick={() => handleDeleteClick(user)}><i className="fas fa-trash mr-1"></i>삭제</button></td>
+                                {filteredUsers.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="6" className="p-8 text-center text-gray-400">
+                                            사용자가 없습니다.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredUsers.map(user => (
+                                        <tr key={user.id} className="table-row border-b border-gray-700 hover:bg-gray-800/50">
+                                            <td className="p-4">
+                                                <img 
+                                                    src={user.profile_image || `https://via.placeholder.com/48/A8C5E6/FFFFFF?text=${(user.name || 'U').charAt(0)}`} 
+                                                    alt={user.name} 
+                                                    className="w-12 h-12 rounded-full object-cover" 
+                                                />
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="font-semibold text-white">{user.name || '-'}</div>
+                                                <div className="text-sm text-gray-400">@{user.username}</div>
+                                                <div className="text-xs text-gray-500 mt-1">가입일: {formatDate(user.created_at)}</div>
+                                            </td>
+                                            <td className="p-4">
+                                                <span className={`permission-badge ${getRoleBadgeClass(user.role)}`}>
+                                                    {getRoleDisplayName(user.role)}
+                                                </span>
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="text-white">{user.student_number || '-'}</div>
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="flex flex-wrap gap-1">
+                                                    {(user.tech_stack || []).slice(0, 3).map(t => (
+                                                        <span key={t} className="tech-tag text-xs px-2 py-1 bg-gray-700 rounded">{t}</span>
+                                                    ))}
+                                                    {(user.tech_stack || []).length > 3 && (
+                                                        <span className="text-xs text-gray-400 ml-1">+{user.tech_stack.length - 3}</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="p-4 text-center">
+                                                <button className="btn-danger btn-small" onClick={() => handleDeleteClick(user)}>
+                                                    <i className="fas fa-trash mr-1"></i>삭제
+                                                </button>
+                                            </td>
                                         </tr>
-                                    );
-                                })}
+                                    ))
+                                )}
                             </tbody>
                         </table>
                     </div>

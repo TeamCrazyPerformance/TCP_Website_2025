@@ -22,7 +22,10 @@ export class RegisterDto {
   @IsOptional() @IsString() @MaxLength(255)
   profile_image?: string;
 
-  @IsString() @Length(1, 20)
+  @IsString()
+  @Matches(/^0\d{1,2}-\d{3,4}-\d{4}$/, {
+    message: '전화번호 형식이 올바르지 않습니다. (예: 010-1234-5678, 02-123-4567)',
+  })
   phone_number: string;
 
   @IsEmail() @MaxLength(255)
