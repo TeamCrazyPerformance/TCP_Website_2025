@@ -21,9 +21,9 @@ export class AccountService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
-  
+
   async getMyAccount(userId: string) {
     const user = await this.userRepository.findOne({
       where: { id: userId },
@@ -89,8 +89,8 @@ export class AccountService {
 
       if (dto.birth_date !== undefined) {
         const newBirthDate = new Date(dto.birth_date);
-        const currentBirthDate = new Date(user.birth_date);
-        if (newBirthDate.getTime() !== currentBirthDate.getTime()) {
+        const currentBirthDate = user.birth_date ? new Date(user.birth_date) : null;
+        if (!currentBirthDate || newBirthDate.getTime() !== currentBirthDate.getTime()) {
           user.birth_date = newBirthDate;
           changedFields.push('birth_date');
         }
