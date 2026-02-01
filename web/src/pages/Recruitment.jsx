@@ -26,10 +26,10 @@ import { apiPost, apiGet } from '../api/client';
 const formatPhoneNumber = (value) => {
   // 숫자만 추출
   const numbers = value.replace(/[^0-9]/g, '');
-  
+
   // 최대 11자리까지만 허용
   const limited = numbers.slice(0, 11);
-  
+
   // 서울 지역번호 (02)인 경우
   if (limited.startsWith('02')) {
     if (limited.length <= 2) {
@@ -42,7 +42,7 @@ const formatPhoneNumber = (value) => {
       return `${limited.slice(0, 2)}-${limited.slice(2, 6)}-${limited.slice(6, 10)}`;
     }
   }
-  
+
   // 일반 전화번호 (010, 011, 031 등 3자리 지역/통신사 번호)
   if (limited.length <= 3) {
     return limited;
@@ -69,6 +69,8 @@ function Recruitment() {
   const [isRecruitmentActive, setIsRecruitmentActive] = useState(false); // New state
   const [phoneNumber, setPhoneNumber] = useState('');
   const [phoneError, setPhoneError] = useState('');
+  const [studentNumber, setStudentNumber] = useState('');
+  const [studentNumberError, setStudentNumberError] = useState('');
 
   useEffect(() => {
     // Check Recruitment Status
@@ -176,7 +178,7 @@ function Recruitment() {
 
     // Add other form fields
     data.name = formData.get('name');
-    data.studentId = formData.get('studentId');
+    data.studentId = studentNumber; // Use state value with validated student number
     data.major = formData.get('major');
     data.phone = phoneNumber; // Use state value with formatted phone number
     data.techStack = formData.get('techStack');
@@ -222,6 +224,20 @@ function Recruitment() {
       })),
     };
 
+    // Validate student number before submission
+    if (studentNumberError || !studentNumber || studentNumber.length !== 8) {
+      alert('8자리 학번을 정확히 입력해주세요.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Validate phone number before submission
+    if (phoneError || !phoneNumber) {
+      alert('올바른 전화번호를 입력해주세요.');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       await apiPost('/api/v1/recruitment', payload);
@@ -229,6 +245,8 @@ function Recruitment() {
       e.target.reset();
       setPhoneNumber('');
       setPhoneError('');
+      setStudentNumber('');
+      setStudentNumberError('');
       closeModal();
     } catch (error) {
       alert(error.message || '지원서 제출에 실패했습니다.');
@@ -580,9 +598,21 @@ function Recruitment() {
                     type="text"
                     id="studentId"
                     name="studentId"
-                    className="form-input"
+                    className={`form-input ${studentNumberError ? 'border-red-500' : ''}`}
+                    placeholder="8자리 숫자"
+                    value={studentNumber}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 8);
+                      setStudentNumber(value);
+                      if (value && value.length !== 8) {
+                        setStudentNumberError('학번은 8자리 숫자여야 합니다.');
+                      } else {
+                        setStudentNumberError('');
+                      }
+                    }}
                     required
                   />
+                  {studentNumberError && <p className="text-red-500 text-sm mt-1">{studentNumberError}</p>}
                 </div>
 
                 <div className="form-group">
@@ -858,9 +888,10 @@ function Recruitment() {
                 </button>
               </form>
             </div>
-          </div>
-        </div>
-      )}
+          </div >
+        </div >
+      )
+      }
     </>
   );
 }

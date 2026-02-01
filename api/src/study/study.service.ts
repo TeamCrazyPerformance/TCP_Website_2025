@@ -122,8 +122,10 @@ export class StudyService {
     }
 
     // 3. Process the 'studyMembers' array.
-    const leaderMember = study.studyMembers.find((member) => member.role === StudyMemberRole.LEADER);
-    const visibleMembers = study.studyMembers;
+    // Ensure we only work with members that have a valid user relation
+    const validMembers = study.studyMembers.filter((m) => m && m.user);
+    const leaderMember = validMembers.find((member) => member.role === StudyMemberRole.LEADER);
+    const visibleMembers = validMembers;
 
     // 4. Map the entity data to the shape required by the API response DTO.
     return {
@@ -148,6 +150,7 @@ export class StudyService {
         user_id: member.user.id,
         name: member.user.name,
         role: member.role,
+        profile_image: member.user.profile_image,
       })),
       resources: study.resources
         .filter((r) => r.deleted_at === null)
