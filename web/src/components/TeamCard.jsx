@@ -2,10 +2,11 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { tagColorClass, isExpired } from '../utils/helpers';
 
-const TeamCard = React.memo(({ team, currentUser, onOpenDetail, onEdit, onDelete, onStatusChange }) => {
+const TeamCard = React.memo(({ team, currentUser, applicationStatus, onOpenDetail, onEdit, onDelete, onStatusChange }) => {
   const expired = isExpired(team.deadline);
   const disabled = team.status !== '모집중' || expired;
   const isLeader = currentUser?.id && team.leaderId && currentUser.id === team.leaderId;
+  const hasApplied = applicationStatus?.hasApplied || false;
 
   return (
     <div
@@ -127,14 +128,14 @@ const TeamCard = React.memo(({ team, currentUser, onOpenDetail, onEdit, onDelete
             </div>
           ) : (
             <button
-              className={`${disabled ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'cta-button text-white'} px-4 py-2 rounded-lg text-sm font-bold`}
+              className={`${disabled ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : hasApplied ? 'bg-green-600 text-white hover:bg-green-700' : 'cta-button text-white'} px-4 py-2 rounded-lg text-sm font-bold transition-colors`}
               disabled={disabled}
               onClick={(e) => {
                 e.stopPropagation();
                 if (!disabled) onOpenDetail(team);
               }}
             >
-              {disabled ? '마감' : '지원하기'}
+              {disabled ? '마감' : hasApplied ? '지원완료' : '지원하기'}
             </button>
           )}
         </div>

@@ -1,14 +1,50 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import InfoRow from '../ui/InfoRow';
 import { isExpired } from '../../utils/helpers';
+import { apiGet, apiPost, apiDelete } from '../../api/client';
 
 export default function TeamDetailModal({ isOpen, onClose, team }) {
+  const { user } = useAuth();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [selectedRoleId, setSelectedRoleId] = useState(null);
+  const [applicationStatus, setApplicationStatus] = useState(null);
+  const [isLoadingStatus, setIsLoadingStatus] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isLeader = user?.id && team?.leaderId && user.id === team.leaderId;
 
   useEffect(() => {
     // Reset image index when team changes
     setCurrentImageIndex(0);
+    setSelectedRoleId(null);
+    setApplicationStatus(null);
   }, [team]);
+
+  // 지원 상태 조회
+  useEffect(() => {
+    const fetchApplicationStatus = async () => {
+      if (!user || !team?.id) return;
+      
+      setIsLoadingStatus(true);
+      try {
+        const data = await apiGet(`/api/v1/teams/${team.id}/application-status`);
+        setApplicationStatus(data);
+        if (data.hasApplied && data.applicationInfo?.appliedRole) {
+          setSelectedRoleId(data.applicationInfo.appliedRole.id);
+        }
+      } catch (error) {
+        // 401 에러는 무시 (비로그인 상태)
+        if (error.response?.status !== 401) {
+          console.error('Failed to fetch application status:', error);
+        }
+      } finally {
+        setIsLoadingStatus(false);
+      }
+    };
+
+    fetchApplicationStatus();
+  }, [user, team?.id]);
 
   const changeImage = (dir) => {
     if (!team || (team.images?.length || 0) <= 1) return;
@@ -16,6 +52,64 @@ export default function TeamDetailModal({ isOpen, onClose, team }) {
       const len = team.images.length;
       return (prev + dir + len) % len;
     });
+  };
+
+  // 지원하기 핸들러
+  const handleApply = async () => {
+    if (!user) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+
+    if (!selectedRoleId) {
+      alert('지원할 역할을 선택해주세요.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await apiPost(`/api/v1/teams/${team.id}/apply`, { roleId: selectedRoleId });
+      
+      // 상태 업데이트
+      const roleInfo = team.rolesRaw?.find(r => r.id === selectedRoleId);
+      setApplicationStatus({
+        hasApplied: true,
+        applicationInfo: {
+          appliedRole: roleInfo ? {
+            id: roleInfo.id,
+            roleName: roleInfo.roleName,
+          } : null,
+        },
+      });
+      
+      alert('지원이 완료되었습니다! 팀 리더가 연락드릴 예정입니다.');
+    } catch (error) {
+      alert(error.message || '지원에 실패했습니다.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // 지원 취소 핸들러
+  const handleCancelApplication = async () => {
+    if (!window.confirm('정말 지원을 취소하시겠습니까?')) return;
+
+    setIsSubmitting(true);
+    try {
+      await apiDelete(`/api/v1/teams/${team.id}/apply`);
+      
+      setApplicationStatus({
+        hasApplied: false,
+        applicationInfo: null,
+      });
+      setSelectedRoleId(null);
+      
+      alert('지원이 취소되었습니다.');
+    } catch (error) {
+      alert(error.message || '지원 취소에 실패했습니다.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen || !team) return null;
@@ -237,6 +331,44 @@ export default function TeamDetailModal({ isOpen, onClose, team }) {
             </div>
           </section>
 
+          {/* 역할 선택 - 로그인 사용자 & 리더 아님 & 지원하지 않은 경우만 표시 */}
+          {user && !isLeader && !applicationStatus?.hasApplied && team.status === '모집중' && !isExpired(team.deadline) && (
+            <section className="mb-6">
+              <h4 className="font-semibold text-white mb-3 flex items-center">
+                <i className="fas fa-user-tag text-purple-400 mr-2" />
+                지원 역할 선택
+              </h4>
+              <select
+                value={selectedRoleId || ''}
+                onChange={(e) => setSelectedRoleId(Number(e.target.value))}
+                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-accent-blue transition-colors"
+              >
+                <option value="">역할을 선택하세요</option>
+                {team.rolesRaw?.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {role.roleName}
+                  </option>
+                ))}
+              </select>
+            </section>
+          )}
+
+          {/* 이미 지원한 경우 정보 표시 */}
+          {applicationStatus?.hasApplied && applicationStatus.applicationInfo?.appliedRole && (
+            <section className="mb-6">
+              <h4 className="font-semibold text-white mb-3 flex items-center">
+                <i className="fas fa-check-circle text-green-400 mr-2" />
+                지원 상태
+              </h4>
+              <div className="bg-green-500 bg-opacity-10 border border-green-500 border-opacity-50 rounded-lg p-4">
+                <p className="text-green-300">
+                  <i className="fas fa-check mr-2" />
+                  <strong>{applicationStatus.applicationInfo.appliedRole.roleName}</strong> 역할로 지원하셨습니다.
+                </p>
+              </div>
+            </section>
+          )}
+
           <div className="flex justify-end gap-3">
             <button
               onClick={onClose}
@@ -244,13 +376,12 @@ export default function TeamDetailModal({ isOpen, onClose, team }) {
             >
               닫기
             </button>
-            {team.status === '모집중' &&
-              !isExpired(team.deadline) ? (
+
+            {/* 로그인하지 않은 경우 */}
+            {!user && team.status === '모집중' && !isExpired(team.deadline) && (
               <button
                 onClick={() => {
-                  alert(
-                    '지원이 완료되었습니다! 팀 리더가 연락드릴 예정입니다.'
-                  );
+                  alert('로그인이 필요합니다.');
                   onClose();
                 }}
                 className="cta-button px-6 py-2 rounded-lg font-medium text-white"
@@ -258,7 +389,47 @@ export default function TeamDetailModal({ isOpen, onClose, team }) {
                 <i className="fas fa-paper-plane mr-2" />
                 지원하기
               </button>
-            ) : (
+            )}
+
+            {/* 로그인한 경우 */}
+            {user && team.status === '모집중' && !isExpired(team.deadline) && (
+              <>
+                {isLeader ? (
+                  <a
+                    href="/mypage/teams"
+                    className="bg-gray-700 text-white px-6 py-2 rounded-lg font-medium hover:bg-gray-600 transition-colors inline-flex items-center"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      window.location.href = '/mypage/teams';
+                    }}
+                  >
+                    <i className="fas fa-users mr-2" />
+                    지원현황 보기
+                  </a>
+                ) : applicationStatus?.hasApplied ? (
+                  <button
+                    onClick={handleCancelApplication}
+                    disabled={isSubmitting}
+                    className="px-6 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-medium text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <i className="fas fa-times mr-2" />
+                    {isSubmitting ? '처리 중...' : '지원 취소'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleApply}
+                    disabled={isSubmitting || isLoadingStatus}
+                    className="cta-button px-6 py-2 rounded-lg font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <i className="fas fa-paper-plane mr-2" />
+                    {isSubmitting ? '처리 중...' : '지원하기'}
+                  </button>
+                )}
+              </>
+            )}
+
+            {/* 모집 마감 또는 기한 만료 */}
+            {(team.status !== '모집중' || isExpired(team.deadline)) && (
               <button
                 disabled
                 className="bg-gray-700 text-gray-500 cursor-not-allowed px-6 py-2 rounded-lg font-medium"

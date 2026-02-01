@@ -14,7 +14,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
     description: '',
     techStack: '',
     goals: '',
-    executionType: 'online',
+    executionType: '온라인',
     selectionProcess: '',
     contact: '',
     link: '',
@@ -23,10 +23,20 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
 
   const [roles, setRoles] = useState([{ id: null, roleName: '', recruitCount: 1, isDeleted: false }]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const isEditMode = !!initialData;
 
   useEffect(() => {
     if (isOpen && initialData) {
+      // executionType 변환: 영어 -> 한글 (수정 모드용)
+      const executionTypeReverseMap = {
+        'online': '온라인',
+        'offline': '오프라인',
+        'hybrid': '온라인+오프라인'
+      };
+      
       setForm({
         title: initialData.title || '',
         category: initialData.category || '',
@@ -36,12 +46,17 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
         description: initialData.description || '',
         techStack: Array.isArray(initialData.techStackRaw) ? initialData.techStackRaw.join(', ') : initialData.techStackRaw || '',
         goals: Array.isArray(initialData.goals) ? initialData.goals.join(', ') : initialData.goals || '',
-        executionType: initialData.executionTypeRaw || 'online',
+        executionType: executionTypeReverseMap[initialData.executionTypeRaw] || '온라인',
         selectionProcess: initialData.selectionProcess || '',
         contact: initialData.contact || '',
         link: Array.isArray(initialData.linksRaw) ? initialData.linksRaw.join(', ') : initialData.linksRaw || '',
-        projectImage: '', // Image URL logic if needed
+        projectImage: initialData.images?.[0] || '', // 기존 이미지 URL
       });
+
+      // 기존 이미지 미리보기 설정
+      if (initialData.images?.[0]) {
+        setImagePreview(initialData.images[0]);
+      }
 
       if (initialData.rolesRaw && initialData.rolesRaw.length > 0) {
         setRoles(
@@ -52,6 +67,10 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
             isDeleted: false,
           }))
         );
+        // 기존 이미지가 있으면 미리보기 설정
+        if (initialData.projectImage) {
+          setImagePreview(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001'}${initialData.projectImage}`);
+        }
       } else {
         setRoles([{ id: null, roleName: '', recruitCount: 1, isDeleted: false }]);
       }
@@ -67,18 +86,33 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
         description: '',
         techStack: '',
         goals: '',
-        executionType: 'online',
+        executionType: '온라인',
         selectionProcess: '',
         contact: '',
         link: '',
         projectImage: '',
       });
       setRoles([{ id: null, roleName: '', recruitCount: 1, isDeleted: false }]);
+      setImageFile(null);
+      setImagePreview('');
     }
   }, [isOpen, initialData]);
 
-  const onForm = (e) =>
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+  const onForm = (e) => {
+    let value = e.target.value;
+    
+    // executionType 변환: 한글 -> 영어
+    if (e.target.name === 'executionType') {
+      const executionTypeMap = {
+        '온라인': 'online',
+        '오프라인': 'offline',
+        '온라인+오프라인': 'hybrid'
+      };
+      value = executionTypeMap[value] || value;
+    }
+    
+    setForm((f) => ({ ...f, [e.target.name]: value }));
+  };
 
   // ---- Role Handlers ----
   const handleAddRole = () => {
@@ -105,6 +139,73 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
       newRoles[index][field] = value;
       return newRoles;
     });
+  };
+
+  // 이미지 파일 선택 핸들러
+  const handleImageChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 파일 타입 검증
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('이미지 파일만 업로드 가능합니다 (jpeg, jpg, png, gif, webp)');
+      return;
+    }
+
+    // 파일 크기 검증 (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('파일 크기는 5MB 이하여야 합니다');
+      return;
+    }
+
+    setImageFile(file);
+
+    // 미리보기 생성
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // 이미지 제거 핸들러
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreview('');
+    setForm((f) => ({ ...f, projectImage: '' }));
+  };
+
+  // 이미지 업로드 함수
+  const uploadImage = async () => {
+    if (!imageFile) return form.projectImage; // 기존 이미지 URL 반환
+
+    setIsUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', imageFile);
+
+      const token = localStorage.getItem('access_token');
+      const response = await fetch('/api/v1/teams/upload-image', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('이미지 업로드 실패');
+      }
+
+      const data = await response.json();
+      return data.imageUrl;
+    } catch (error) {
+      console.error('Image upload error:', error);
+      throw error;
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   // ---- Helper ----
@@ -184,6 +285,13 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
 
     try {
       setIsSubmitting(true);
+
+      // 이미지 업로드 먼저 처리
+      let projectImageUrl = form.projectImage;
+      if (imageFile) {
+        projectImageUrl = await uploadImage();
+      }
+
       let team;
 
       if (isEditMode) {
@@ -212,7 +320,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
           selectionProc: form.selectionProcess,
           contact: form.contact,
           link: form.link,
-          // projectImage: ... // Not implemented
+          projectImage: projectImageUrl,
           rolesToAdd: rolesToAdd.length > 0 ? rolesToAdd : undefined,
           rolesToUpdate: rolesToUpdate.length > 0 ? rolesToUpdate : undefined,
         };
@@ -249,6 +357,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
           selectionProc: form.selectionProcess,
           contact: form.contact,
           link: form.link,
+          projectImage: projectImageUrl,
           roles: validRoles,
         };
 
@@ -289,14 +398,49 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
         <div className="flex-1 min-h-0 overflow-y-auto pr-2 -mr-2">
           <form onSubmit={handleSubmit} className="space-y-6 pb-2">
 
-            {/* Project Image (Mock UI) */}
+            {/* Project Image */}
             <div className="text-left">
               <label className="block text-sm font-medium text-gray-300 mb-2 text-left">프로젝트 이미지</label>
-              <div className="flex items-center gap-3">
-                <button type="button" className="px-3 py-1.5 bg-white text-gray-800 rounded text-sm border border-gray-300">
-                  파일 선택
-                </button>
-                <span className="text-gray-300 text-sm">선택된 파일 없음</span>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="hidden"
+                    id="projectImageInput"
+                  />
+                  <label
+                    htmlFor="projectImageInput"
+                    className="px-3 py-1.5 bg-white text-gray-800 rounded text-sm border border-gray-300 cursor-pointer hover:bg-gray-100"
+                  >
+                    파일 선택
+                  </label>
+                  <span className="text-gray-300 text-sm">
+                    {imageFile ? imageFile.name : '선택된 파일 없음'}
+                  </span>
+                  {imageFile && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="text-red-400 hover:text-red-300 text-sm"
+                    >
+                      제거
+                    </button>
+                  )}
+                </div>
+                {imagePreview && (
+                  <div className="relative w-full max-w-md">
+                    <img
+                      src={imagePreview}
+                      alt="미리보기"
+                      className="w-full h-48 object-cover rounded border border-gray-600"
+                    />
+                  </div>
+                )}
+                {isUploadingImage && (
+                  <div className="text-sm text-blue-400">이미지 업로드 중...</div>
+                )}
               </div>
             </div>
 

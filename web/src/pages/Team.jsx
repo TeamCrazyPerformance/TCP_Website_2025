@@ -22,6 +22,7 @@ export default function Team() {
   const [teams, setTeams] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [applicationStatuses, setApplicationStatuses] = useState({});
 
   // ---- Filters ----
   const [searchTerm, setSearchTerm] = useState('');
@@ -238,6 +239,31 @@ export default function Team() {
       isMounted = false;
     };
   }, []);
+
+  // 지원 상태 조회
+  useEffect(() => {
+    if (!user || teams.length === 0) return;
+
+    const fetchApplicationStatuses = async () => {
+      const statusMap = {};
+      
+      await Promise.all(
+        teams.map(async (team) => {
+          try {
+            const data = await apiGet(`/api/v1/teams/${team.id}/application-status`);
+            statusMap[team.id] = data;
+          } catch (error) {
+            // 에러 무시 (401 등)
+            statusMap[team.id] = { hasApplied: false, applicationInfo: null };
+          }
+        })
+      );
+
+      setApplicationStatuses(statusMap);
+    };
+
+    fetchApplicationStatuses();
+  }, [user, teams]);
 
   // ---- Modal a11y (ESC & backdrop close) ----
   useEffect(() => {
@@ -465,6 +491,7 @@ export default function Team() {
               key={team.id}
               team={team}
               currentUser={user}
+              applicationStatus={applicationStatuses[team.id]}
               onOpenDetail={handleOpenDetail}
               onEdit={handleEditTeam}
               onDelete={handleDeleteTeam}

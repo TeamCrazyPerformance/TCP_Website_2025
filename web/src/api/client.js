@@ -128,8 +128,10 @@ export async function apiDelete(path, options = {}) {
     throw error;
   }
 
-  if (response.status === 204) {
-    return null;
+  if (response.status === 204 || response.status === 200) {
+    // 204 No Content 또는 200 OK with empty body
+    const text = await response.text();
+    return text ? JSON.parse(text) : null;
   }
 
   return response.json();

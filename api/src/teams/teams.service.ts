@@ -9,6 +9,8 @@ import { CreateTeamDto } from './dto/create-team.dto';
 import { TeamStatus } from './entities/enums/team-status.enum';
 import { ApplyTeamDto } from './dto/apply-team.dto';
 import { AddTeamRoleDto, UpdateTeamDto, UpdateTeamRoleDto } from './dto/update-team.dto';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class TeamsService {
@@ -346,5 +348,59 @@ export class TeamsService {
         }
 
         await this.teamMemberRepository.delete(member.id);
+    }
+
+    // 지원 상태 조회
+    async getApplicationStatus(userId: string, teamId: number) {
+        // 팀 존재 여부 확인
+        const team = await this.teamRepository.findOne({
+            where: { id: teamId },
+        });
+        if (!team) {
+            throw new NotFoundException(`Team with id ${teamId} not found`);
+        }
+
+        // 지원 내역 조회
+        const member = await this.teamMemberRepository.findOne({
+            where: { user: { id: userId }, team: { id: teamId } },
+            relations: ['role'],
+        });
+
+        if (!member || member.isLeader) {
+            // 지원하지 않았거나 팀장인 경우
+            return {
+                hasApplied: false,
+                applicationInfo: null,
+            };
+        }
+
+        // 지원한 경우
+        return {
+            hasApplied: true,
+            applicationInfo: {
+                appliedRole: member.role ? {
+                    id: member.role.id,
+                    roleName: member.role.roleName,
+                } : null,
+            },
+        };
+    }
+
+    // 팀 이미지 업로드
+    async uploadImage(file: Express.Multer.File): Promise<{ imageUrl: string }> {
+        if (!file) {
+            throw new BadRequestException('No file uploaded');
+        }
+
+        // 이미지 파일 타입 검증
+        const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedMimeTypes.includes(file.mimetype)) {
+            throw new BadRequestException('Only image files are allowed (jpeg, jpg, png, gif, webp)');
+        }
+
+        // diskStorage에서 이미 저장되었으므로 filename만 사용
+        // URL 반환
+        const imageUrl = `/teams/${file.filename}`;
+        return { imageUrl };
     }
 }

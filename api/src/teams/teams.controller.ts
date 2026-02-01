@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Patch, Post, Req, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { TeamsService } from './teams.service';
 import { CreateTeamDto } from './dto/create-team.dto';
 import { UpdateTeamDto } from './dto/update-team.dto';
@@ -16,6 +17,14 @@ export class TeamsController {
     create(@Req() req: any, @Body() dto: CreateTeamDto) {
         const userId = req.user.userId;
         return this.teamsService.create(userId, dto);
+    }
+
+    // 팀 이미지 업로드 (동적 라우트보다 먼저 정의)
+    @Post('upload-image')
+    @UseGuards(AuthGuard('jwt'))
+    @UseInterceptors(FileInterceptor('image'))
+    uploadImage(@UploadedFile() file: Express.Multer.File) {
+        return this.teamsService.uploadImage(file);
     }
 
     // 모집글 조회
@@ -65,9 +74,18 @@ export class TeamsController {
 
     // 팀 지원 취소
     @Delete(':id/apply')
+    @HttpCode(204)
     @UseGuards(AuthGuard('jwt'))
     cancelApplication(@Req() req: any, @Param('id', ParseIntPipe) teamId: number) {
         const userId = req.user.userId;
         return this.teamsService.cancelApply(userId, teamId);
+    }
+
+    // 지원 상태 조회
+    @Get(':id/application-status')
+    @UseGuards(AuthGuard('jwt'))
+    getApplicationStatus(@Req() req: any, @Param('id', ParseIntPipe) teamId: number) {
+        const userId = req.user.userId;
+        return this.teamsService.getApplicationStatus(userId, teamId);
     }
 }
