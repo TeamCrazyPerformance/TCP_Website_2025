@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function FormTextarea({ label, name, value, onChange, required = false, placeholder = '' }) {
+export default function FormTextarea({ label, name, value, onChange, required = false, placeholder = '', rows = 4 }) {
   return (
     <div>
       <label htmlFor={name} className="block text-sm font-medium text-gray-300 mb-2">
@@ -13,7 +13,7 @@ export default function FormTextarea({ label, name, value, onChange, required = 
         onChange={onChange}
         required={required}
         placeholder={placeholder}
-        rows={4}
+        rows={rows}
         className="form-textarea"
       />
     </div>

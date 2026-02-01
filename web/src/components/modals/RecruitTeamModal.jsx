@@ -14,10 +14,11 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
     description: '',
     techStack: '',
     goals: '',
-    executionType: '온라인',
+    executionType: 'online',
     selectionProcess: '',
     contact: '',
     link: '',
+    tags: '',
     projectImage: '',
   });
 
@@ -30,13 +31,6 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
 
   useEffect(() => {
     if (isOpen && initialData) {
-      // executionType 변환: 영어 -> 한글 (수정 모드용)
-      const executionTypeReverseMap = {
-        'online': '온라인',
-        'offline': '오프라인',
-        'hybrid': '온라인+오프라인'
-      };
-      
       setForm({
         title: initialData.title || '',
         category: initialData.category || '',
@@ -46,18 +40,20 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
         description: initialData.description || '',
         techStack: Array.isArray(initialData.techStackRaw) ? initialData.techStackRaw.join(', ') : initialData.techStackRaw || '',
         goals: Array.isArray(initialData.goals) ? initialData.goals.join(', ') : initialData.goals || '',
-        executionType: executionTypeReverseMap[initialData.executionTypeRaw] || '온라인',
+        executionType: initialData.executionTypeRaw || 'online',
         selectionProcess: initialData.selectionProcess || '',
         contact: initialData.contact || '',
         link: Array.isArray(initialData.linksRaw) ? initialData.linksRaw.join(', ') : initialData.linksRaw || '',
-        projectImage: initialData.images?.[0] || '', // 기존 이미지 URL
+        tags: Array.isArray(initialData.tagsRaw) ? initialData.tagsRaw.join(', ') : initialData.tagsRaw || '',
+        projectImage: initialData.projectImage || '',
       });
 
       // 기존 이미지 미리보기 설정
-      if (initialData.images?.[0]) {
-        setImagePreview(initialData.images[0]);
+      if (initialData.projectImage) {
+        setImagePreview(initialData.projectImage);
       }
 
+      // 역할 설정
       if (initialData.rolesRaw && initialData.rolesRaw.length > 0) {
         setRoles(
           initialData.rolesRaw.map((r) => ({
@@ -67,10 +63,6 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
             isDeleted: false,
           }))
         );
-        // 기존 이미지가 있으면 미리보기 설정
-        if (initialData.projectImage) {
-          setImagePreview(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001'}${initialData.projectImage}`);
-        }
       } else {
         setRoles([{ id: null, roleName: '', recruitCount: 1, isDeleted: false }]);
       }
@@ -86,10 +78,11 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
         description: '',
         techStack: '',
         goals: '',
-        executionType: '온라인',
+        executionType: 'online',
         selectionProcess: '',
         contact: '',
         link: '',
+        tags: '',
         projectImage: '',
       });
       setRoles([{ id: null, roleName: '', recruitCount: 1, isDeleted: false }]);
@@ -101,7 +94,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
   const onForm = (e) => {
     let value = e.target.value;
     
-    // executionType 변환: 한글 -> 영어
+    // executionType 변환: 한글 -> 영어 (데이터 저장용)
     if (e.target.name === 'executionType') {
       const executionTypeMap = {
         '온라인': 'online',
@@ -112,6 +105,16 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
     }
     
     setForm((f) => ({ ...f, [e.target.name]: value }));
+  };
+  
+  // executionType을 표시용 한글로 변환
+  const getExecutionTypeDisplay = () => {
+    const executionTypeReverseMap = {
+      'online': '온라인',
+      'offline': '오프라인',
+      'hybrid': '온라인+오프라인'
+    };
+    return executionTypeReverseMap[form.executionType] || '온라인';
   };
 
   // ---- Role Handlers ----
@@ -314,7 +317,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
           deadline: form.deadline,
           description: form.description,
           techStack: form.techStack,
-          tag: form.tags, // TODO: Add tags input if needed, mapping to same logic
+          tag: form.tags,
           goals: form.goals,
           executionType: form.executionType,
           selectionProc: form.selectionProcess,
@@ -595,7 +598,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
               <FormSelect
                 label="진행 방식"
                 name="executionType"
-                value={form.executionType}
+                value={getExecutionTypeDisplay()}
                 onChange={onForm}
                 options={['온라인', '오프라인', '온라인+오프라인']}
               />
