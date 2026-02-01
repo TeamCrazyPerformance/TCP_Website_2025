@@ -50,8 +50,15 @@ export default function StudyDetail() {
         // PENDING users are still treated as guests until approved
         let role = 'guest';
         if (currentUser?.id) {
+          // Check explicitly against the leader object first (safest)
           if (data.leader?.user_id === currentUser.id) {
             role = 'leader';
+          }
+          // Check members array
+          else if (data.members?.some((m) => m.user_id === currentUser.id && m.role === 'LEADER')) {
+            role = 'leader';
+          } else if (data.members?.some((m) => m.user_id === currentUser.id && m.role === 'NOMINEE')) {
+            role = 'leader_nominee';
           } else if (data.members?.some((m) => m.user_id === currentUser.id && m.role === 'MEMBER')) {
             role = 'member';
           }
@@ -65,28 +72,19 @@ export default function StudyDetail() {
           method: data.way || '정보 없음',
           location: data.place || '정보 없음',
           recruitCount: data.recruit_count || 0,
-          // Count only MEMBER role (exclude PENDING)
-          memberCount: (data.members || []).filter(m => m.role === 'MEMBER').length + (data.leader ? 1 : 0),
+          // Count only MEMBER and LEADER role
+          memberCount: (data.members || []).filter(m => m.role === 'MEMBER' || m.role === 'LEADER').length,
           description: data.study_description,
           tags: data.tag ? data.tag.split(',').map((t) => t.trim()) : ['스터디'],
         };
-        // Filter out PENDING members, only show MEMBER role
-        const approvedMembers = (data.members || []).filter(m => m.role === 'MEMBER');
+        // Filter out PENDING members, show MEMBER and LEADER
+        const approvedMembers = (data.members || []).filter(m => m.role === 'MEMBER' || m.role === 'LEADER');
         const mappedMembers = approvedMembers.map((member) => ({
           id: member.user_id,
           name: member.name,
-          role: '스터디원',
+          role: member.role === 'LEADER' ? '스터디장' : '스터디원',
           avatar: 'https://via.placeholder.com/40',
         }));
-        // Add leader to the members list for display
-        if (data.leader) {
-          mappedMembers.unshift({
-            id: data.leader.user_id,
-            name: data.leader.name,
-            role: '스터디장',
-            avatar: 'https://via.placeholder.com/40',
-          });
-        }
 
         if (isMounted) {
           setStudy(mappedStudy);
@@ -94,8 +92,8 @@ export default function StudyDetail() {
           setUserRole(role);
           setErrorMessage('');
 
-          // Fetch progress if user is member or leader
-          if (role === 'member' || role === 'leader') {
+          // Fetch progress if user is member, leader_nominee or leader
+          if (role !== 'guest') {
             try {
               const progressData = await apiGet(`/api/v1/study/${id}/progress`, {
                 headers: {
@@ -137,6 +135,29 @@ export default function StudyDetail() {
       isMounted = false;
     };
   }, [id]);
+
+  // Nomination Handlers
+  const handleAcceptNomination = async () => {
+    if (!window.confirm('스터디장직을 수락하시겠습니까?')) return;
+    try {
+      await apiPost(`/api/v1/study/${id}/accept-leadership`);
+      alert('스터디장이 되었습니다!');
+      window.location.reload();
+    } catch (error) {
+      alert(error.message || '수락에 실패했습니다.');
+    }
+  };
+
+  const handleDeclineNomination = async () => {
+    if (!window.confirm('스터디장 지명을 거절하시겠습니까?')) return;
+    try {
+      await apiPost(`/api/v1/study/${id}/decline-leadership`);
+      alert('지명을 거절했습니다.');
+      window.location.reload();
+    } catch (error) {
+      alert(error.message || '거절에 실패했습니다.');
+    }
+  };
 
   if (isLoading) {
     return (
@@ -319,36 +340,67 @@ export default function StudyDetail() {
     }
   };
 
+  /* Admin Delete Handler */
+  const handleDeleteStudy = async () => {
+    if (!window.confirm('정말로 이 스터디를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
+    const token = localStorage.getItem('access_token');
+    try {
+      await apiDelete(`/api/v1/study/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      alert('스터디가 삭제되었습니다.');
+      navigate('/study');
+    } catch (error) {
+      alert(error.message || '스터디 삭제에 실패했습니다.');
+    }
+  };
+
   const ActionButtons = () => {
-    switch (userRole) {
-      case 'leader':
-        return (
-          <div className="flex items-center gap-2">
-            <Link to={`/study/${id}/manage`} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
-              <i className="fas fa-cog mr-2"></i>스터디 관리
-            </Link>
-          </div>
-        );
-      case 'member':
-        return (
+    const user = localStorage.getItem('auth_user');
+    const currentUser = user ? JSON.parse(user) : null;
+    const isAdmin = currentUser?.role === 'ADMIN';
+
+    // If Admin, show Delete button regardless of role (unless they are leader, where they have manage button)
+    // Actually, user wants it next to "Apply" button if they are guest.
+    // Let's layout the buttons.
+
+    return (
+      <div className="flex gap-2 items-center">
+        {userRole === 'leader' && (
+          <Link to={`/study/${id}/manage`} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+            <i className="fas fa-cog mr-2"></i>스터디 관리
+          </Link>
+        )}
+
+        {userRole === 'member' && (
           <button
             onClick={handleLeave}
             className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
           >
             스터디 탈퇴하기
           </button>
-        );
-      case 'guest':
-      default:
-        return (
+        )}
+
+        {(userRole === 'guest' || userRole === 'leader_nominee') && (
           <button
             onClick={handleJoin}
             className="cta-button text-white font-bold py-3 px-6 rounded-lg text-lg"
           >
             가입 신청하기
           </button>
-        );
-    }
+        )}
+
+        {/* Admin Delete Button - Visible to Admin regardless of study membership */}
+        {isAdmin && (
+          <button
+            onClick={handleDeleteStudy}
+            className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+          >
+            <i className="fas fa-trash mr-2"></i>스터디 삭제
+          </button>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -356,6 +408,12 @@ export default function StudyDetail() {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
+          <div className="mb-8 text-left">
+            <Link to="/study" className="widget-card btn-back-hover inline-flex items-center px-6 py-3 rounded-lg text-sm font-medium transition-colors">
+              <i className="fas fa-arrow-left mr-2"></i>
+              목록으로 돌아가기
+            </Link>
+          </div>
           <p className="text-accent-blue font-semibold">TCP {study.year} 스터디</p>
           <h1 className="orbitron text-4xl md:text-5xl font-bold gradient-text my-3">
             {study.title}
@@ -368,6 +426,35 @@ export default function StudyDetail() {
             ))}
           </div>
         </div>
+
+        {/* Nomination Banner */}
+        {userRole === 'leader_nominee' && (
+          <div className="bg-yellow-900/50 border border-yellow-600 rounded-xl p-6 mb-10 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+              <h3 className="text-xl font-bold text-white mb-2">
+                <i className="fas fa-crown text-yellow-400 mr-2"></i>
+                스터디장 지명 알림
+              </h3>
+              <p className="text-gray-300">
+                이 스터디의 새로운 스터디장으로 지명되셨습니다. 수락하시겠습니까?
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={handleAcceptNomination}
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition-colors"
+              >
+                수락
+              </button>
+              <button
+                onClick={handleDeclineNomination}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition-colors"
+              >
+                거절
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Study Info & Action Buttons */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gray-900 border border-gray-800 rounded-xl p-6 mb-10">

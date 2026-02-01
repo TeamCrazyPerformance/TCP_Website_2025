@@ -5,11 +5,17 @@ import {
   IsDateString,
   IsEnum,
   IsEmail,
+  IsArray,
 } from 'class-validator';
 import { EducationStatus } from '../../../members/entities/enums/education-status.enum';
 import { UserGender } from '../../../members/entities/enums/user-gender.enum';
+import { UserRole } from '../../../members/entities/enums/user-role.enum';
 
 export class AdminUpdateMemberDto {
+  @IsOptional()
+  @IsEnum(UserRole)
+  role?: UserRole;
+
   @IsOptional()
   @IsString()
   name?: string;
@@ -49,4 +55,9 @@ export class AdminUpdateMemberDto {
   @IsOptional()
   @IsEnum(EducationStatus)
   education_status?: EducationStatus;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tech_stack?: string[];
 }

@@ -10,6 +10,7 @@ export default function StudyManagement() {
     const [study, setStudy] = useState(null);
     const [members, setMembers] = useState([]);
     const [pendingMembers, setPendingMembers] = useState([]);
+    const [leaderNominees, setLeaderNominees] = useState([]);
     const [progress, setProgress] = useState([]);
     const [resources, setResources] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -17,6 +18,7 @@ export default function StudyManagement() {
     const [activeTab, setActiveTab] = useState('info');
     const [isAuthorized, setIsAuthorized] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
+    const [currentUserRole, setCurrentUserRole] = useState(null);
 
     // Edit mode states
     const [isEditingInfo, setIsEditingInfo] = useState(false);
@@ -48,7 +50,9 @@ export default function StudyManagement() {
                 });
 
                 // Check authorization: must be leader or admin
-                const isLeader = data.leader?.user_id === currentUser.id;
+                // Multi-leader support: Check if current user is in the members list with LEADER role
+                const currentMember = (data.members || []).find(m => m.user_id === currentUser.id);
+                const isLeader = currentMember?.role === 'LEADER';
                 const isAdmin = currentUser.role === 'ADMIN';
 
                 if (!isLeader && !isAdmin) {
@@ -59,6 +63,7 @@ export default function StudyManagement() {
 
                 setIsAuthorized(true);
                 setIsAdmin(isAdmin);
+                setCurrentUserRole(isLeader ? 'LEADER' : (isAdmin ? 'ADMIN' : null));
                 setStudy(data);
                 setEditForm({
                     study_name: data.study_name || '',
@@ -72,11 +77,22 @@ export default function StudyManagement() {
                     way: data.way || '',
                 });
 
-                // Separate PENDING and MEMBER
-                const approved = (data.members || []).filter(m => m.role === 'MEMBER');
+                // Separate PENDING, MEMBER, LEADER_NOMINEE
+                // Note: Leaders are also in the members list but usually displayed separately or at top.
+                // For "Current Members" list, we might want to exclude the current user if they are leader?
+                // Or just show everyone. Let's show everyone except LEADER_NOMINEE and PENDING in the "Current Members" list.
+                // Actually, let's keep it simple:
+                // Members Tab: Shows LEADER and MEMBER.
+                // Nominees Section: Shows LEADER_NOMINEE.
+                // Pending Tab: Shows PENDING.
+
+                const approved = (data.members || []).filter(m => m.role === 'MEMBER' || m.role === 'LEADER');
                 const pending = (data.members || []).filter(m => m.role === 'PENDING');
+                const nominees = (data.members || []).filter(m => m.role === 'NOMINEE');
+
                 setMembers(approved);
                 setPendingMembers(pending);
+                setLeaderNominees(nominees);
                 setProgress(data.progress || []);
                 setResources(data.resources || []);
             } catch (error) {
@@ -114,10 +130,16 @@ export default function StudyManagement() {
     // Approve pending member
     const handleApproveMember = async (userId) => {
         try {
-            await fetch(`/api/v1/study/${id}/members/${userId}/approve`, {
+            const response = await fetch(`/api/v1/study/${id}/members/${userId}/approve`, {
                 method: 'PATCH',
                 headers: { Authorization: `Bearer ${token}` },
             });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || '승인에 실패했습니다.');
+            }
+
             alert('멤버가 승인되었습니다.');
             window.location.reload();
         } catch (error) {
@@ -138,6 +160,33 @@ export default function StudyManagement() {
             window.location.reload();
         } catch (error) {
             alert(error.message || '작업에 실패했습니다.');
+        }
+    };
+
+    // Nominate Leader
+    const handleNominateLeader = async (userId) => {
+        if (!window.confirm('이 멤버를 스터디장으로 지명하시겠습니까? 멤버가 수락하면 스터디장이 됩니다.')) return;
+        try {
+            await apiPost(`/api/v1/study/${id}/members/${userId}/nominate`);
+            alert('스터디장 지명이 완료되었습니다. 멤버가 수락하면 권한이 부여됩니다.');
+            window.location.reload();
+        } catch (error) {
+            alert(error.message || '지명에 실패했습니다.');
+        }
+    };
+
+    // Leave Study (Leader)
+    const handleLeaveStudy = async () => {
+        if (!window.confirm('정말로 스터디를 탈퇴하시겠습니까? 다른 스터디장이 최소 1명 이상 있어야 가능합니다.')) return;
+        try {
+            await fetch(`/api/v1/study/${id}/leave`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            alert('스터디를 성공적으로 탈퇴했습니다.');
+            navigate('/study');
+        } catch (error) {
+            alert(error.message || '탈퇴에 실패했습니다. 다른 스터디장이 있는지 확인해주세요.');
         }
     };
 
@@ -281,14 +330,24 @@ export default function StudyManagement() {
                         <h1 className="orbitron text-3xl md:text-4xl font-bold gradient-text">
                             스터디 관리: {study?.study_name}
                         </h1>
-                        {isAdmin && (
-                            <button
-                                onClick={handleDeleteStudy}
-                                className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
-                            >
-                                <i className="fas fa-trash mr-2"></i>스터디 삭제
-                            </button>
-                        )}
+                        <div className="flex gap-2">
+                            {currentUserRole === 'LEADER' && (
+                                <button
+                                    onClick={handleLeaveStudy}
+                                    className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+                                >
+                                    <i className="fas fa-sign-out-alt mr-2"></i>스터디 탈퇴
+                                </button>
+                            )}
+                            {isAdmin && (
+                                <button
+                                    onClick={handleDeleteStudy}
+                                    className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+                                >
+                                    <i className="fas fa-trash mr-2"></i>스터디 삭제
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -474,22 +533,63 @@ export default function StudyManagement() {
 
                             {/* Current Members */}
                             <h3 className="font-semibold text-white mb-3">현재 멤버 ({members.length}명)</h3>
+                            {/* Tips for management */}
+                            <p className="text-sm text-gray-400 mb-4">
+                                <i className="fas fa-info-circle mr-1"></i>
+                                리더 지명은 'MEMBER' 등급의 사용자만 가능합니다. (이미 리더인 사용자는 제외)
+                            </p>
+
                             {members.length > 0 ? (
-                                <ul className="space-y-2">
+                                <ul className="space-y-2 mb-6">
                                     {members.map((member) => (
                                         <li key={member.user_id} className="flex justify-between items-center bg-gray-800 p-4 rounded-lg">
-                                            <span className="text-white">{member.name}</span>
-                                            <button
-                                                onClick={() => handleRemoveMember(member.user_id)}
-                                                className="text-red-500 hover:text-red-400"
-                                            >
-                                                <i className="fas fa-user-minus mr-1"></i>추방
-                                            </button>
+                                            <span className="text-white">
+                                                {member.name}
+                                                <span className={`ml-2 text-xs px-2 py-0.5 rounded ${member.role === 'LEADER' ? 'bg-yellow-600 text-white' : 'bg-gray-600'}`}>
+                                                    {member.role}
+                                                </span>
+                                            </span>
+                                            <div className="flex gap-2">
+                                                {member.role === 'MEMBER' && (
+                                                    <button
+                                                        onClick={() => handleNominateLeader(member.user_id)}
+                                                        className="text-yellow-400 hover:text-yellow-300 mr-2"
+                                                    >
+                                                        <i className="fas fa-crown mr-1"></i>리더 지명
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={() => handleRemoveMember(member.user_id)}
+                                                    className="text-red-500 hover:text-red-400"
+                                                >
+                                                    <i className="fas fa-user-minus mr-1"></i>추방
+                                                </button>
+                                            </div>
                                         </li>
                                     ))}
                                 </ul>
                             ) : (
-                                <p className="text-gray-400">아직 멤버가 없습니다.</p>
+                                <p className="text-gray-400 mb-6">아직 멤버가 없습니다.</p>
+                            )}
+
+                            {/* Leader Nominees */}
+                            {leaderNominees.length > 0 && (
+                                <>
+                                    <h3 className="font-semibold text-white mb-3">리더 지명 대기 ({leaderNominees.length}명)</h3>
+                                    <ul className="space-y-2 mb-6">
+                                        {leaderNominees.map((member) => (
+                                            <li key={member.user_id} className="flex justify-between items-center bg-gray-800 p-4 rounded-lg border border-yellow-600">
+                                                <span className="text-white">{member.name} (수락 대기중)</span>
+                                                <button
+                                                    onClick={() => handleRemoveMember(member.user_id)}
+                                                    className="text-red-500 hover:text-red-400"
+                                                >
+                                                    <i className="fas fa-times mr-1"></i>지명 취소 (추방)
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </>
                             )}
                         </div>
                     )}
