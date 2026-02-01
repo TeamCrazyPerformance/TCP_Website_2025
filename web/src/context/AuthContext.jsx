@@ -53,7 +53,25 @@ export function AuthProvider({ children }) {
     });
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    // 백엔드 로그아웃 API 호출 (refresh_token 무효화)
+    const accessToken = localStorage.getItem('access_token');
+    if (accessToken) {
+      try {
+        await fetch('/api/v1/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+      } catch (error) {
+        // 백엔드 호출 실패해도 로컬 로그아웃은 진행
+        console.error('Backend logout failed:', error);
+      }
+    }
+
+    // 로컬 스토리지 정리
     localStorage.removeItem('access_token');
     localStorage.removeItem('auth_user');
     localStorage.removeItem('keep_logged_in');

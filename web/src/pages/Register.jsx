@@ -4,18 +4,6 @@ import logo from '../logo.svg';
 import { apiPost } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 
-const existingUsernames = ['admin', 'tcp_member', 'user123', 'developer'];
-const existingEmails = [
-  'admin@tcp.club',
-  'member@tcp.club',
-  'user@example.com',
-];
-const tcpMembers = [
-  { name: '김TCP', phone: '010-1234-5678' },
-  { name: '이Performance', phone: '010-2345-6789' },
-  { name: '박Developer', phone: '010-3456-7890' },
-];
-
 function Register() {
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -32,20 +20,31 @@ function Register() {
   const [gender, setGender] = useState('Male');
   const [educationStatus, setEducationStatus] = useState('재학');
   const [techStack, setTechStack] = useState('');
-  // const [userFullName, setUserFullName] = useState(''); // 일반 사용자용 '이름' 상태 제거
-  const [tcpMemberFullName, setTcpMemberFullName] = useState(''); // TCP 부원용 이름
-  const [phoneNumber, setPhoneNumber] = useState(''); // TCP 부원용 전화번호
+  const [phoneNumber, setPhoneNumber] = useState('');
 
   // 비밀번호 가시성 상태
   const [showPassword, setShowPassword] = useState(false);
 
   // 체크박스 상태
-  const [isTcpMember, setIsTcpMember] = useState(false); // 현재 TCP 부원입니다
   const [termsAgreed, setTermsAgreed] = useState(false); // 이용약관 동의
+
+  // 추가 정보 입력 펼침 상태
+  const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
 
   // 유효성 검사 관련 상태
   const [usernameAvailability, setUsernameAvailability] = useState(null); // 'available', 'taken', 'checking'
   const [usernameMessage, setUsernameMessage] = useState('');
+  const [emailAvailability, setEmailAvailability] = useState(null); // 'available', 'taken', 'checking'
+  const [emailMessage, setEmailMessage] = useState('');
+  const [studentNumberValid, setStudentNumberValid] = useState(null); // true, false, null
+  const [passwordStrength, setPasswordStrength] = useState({
+    minLength: false,
+    hasLowercase: false,
+    hasUppercase: false,
+    hasNumber: false,
+    hasSpecial: false,
+  });
+  const [passwordMatch, setPasswordMatch] = useState(null); // true, false, null
   const [signupButtonEnabled, setSignupButtonEnabled] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -53,10 +52,10 @@ function Register() {
   const formatPhoneNumber = (value) => {
     // 숫자만 추출
     const numbers = value.replace(/[^0-9]/g, '');
-    
+
     // 최대 11자리까지만 허용
     const limited = numbers.slice(0, 11);
-    
+
     // 서울 지역번호 (02)인 경우
     if (limited.startsWith('02')) {
       if (limited.length <= 2) {
@@ -69,7 +68,7 @@ function Register() {
         return `${limited.slice(0, 2)}-${limited.slice(2, 6)}-${limited.slice(6, 10)}`;
       }
     }
-    
+
     // 일반 전화번호 (010, 011, 031 등 3자리 지역/통신사 번호)
     if (limited.length <= 3) {
       return limited;
@@ -86,9 +85,31 @@ function Register() {
     const formatted = formatPhoneNumber(e.target.value);
     setPhoneNumber(formatted);
   };
-  
 
-  // 사용자명 중복 확인 로직
+  // 생년월일 자동 형식화 함수 (YYYY.MM.DD)
+  const formatBirthDate = (value) => {
+    // 숫자만 추출
+    const numbers = value.replace(/[^0-9]/g, '');
+
+    // 최대 8자리까지만 허용 (YYYYMMDD)
+    const limited = numbers.slice(0, 8);
+
+    if (limited.length <= 4) {
+      return limited;
+    } else if (limited.length <= 6) {
+      return `${limited.slice(0, 4)}.${limited.slice(4)}`;
+    } else {
+      return `${limited.slice(0, 4)}.${limited.slice(4, 6)}.${limited.slice(6)}`;
+    }
+  };
+
+  const handleBirthDateChange = (e) => {
+    const formatted = formatBirthDate(e.target.value);
+    setBirthDate(formatted);
+  };
+
+
+  // 아이디 중복 확인 로직 (API 호출)
   useEffect(() => {
     if (username.length === 0) {
       setUsernameAvailability(null);
@@ -96,22 +117,103 @@ function Register() {
       return;
     }
 
+    if (username.length < 3) {
+      setUsernameAvailability(null);
+      setUsernameMessage('아이디는 3자 이상이어야 합니다.');
+      return;
+    }
+
     setUsernameAvailability('checking');
     setUsernameMessage('');
 
-    const timeoutId = setTimeout(() => {
-      const isTaken = existingUsernames.includes(username.toLowerCase());
-      if (isTaken) {
-        setUsernameAvailability('taken');
-        setUsernameMessage('이미 사용중인 사용자명입니다.');
-      } else {
-        setUsernameAvailability('available');
-        setUsernameMessage('사용 가능한 사용자명입니다.');
+    const timeoutId = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/v1/auth/check-username/${username}`);
+        const data = await res.json();
+        if (data.available) {
+          setUsernameAvailability('available');
+          setUsernameMessage('사용 가능한 아이디입니다.');
+        } else {
+          setUsernameAvailability('taken');
+          setUsernameMessage('이미 사용중인 아이디입니다.');
+        }
+      } catch (err) {
+        setUsernameAvailability(null);
+        setUsernameMessage('중복 확인 실패. 네트워크를 확인해주세요.');
       }
-    }, 500); // 500ms 딜레이 시뮬레이션
+    }, 500); // 500ms debounce
 
-    return () => clearTimeout(timeoutId); // 클린업 함수
+    return () => clearTimeout(timeoutId);
   }, [username]);
+
+  // 이메일 중복 확인 로직 (API 호출)
+  useEffect(() => {
+    if (email.length === 0) {
+      setEmailAvailability(null);
+      setEmailMessage('');
+      return;
+    }
+
+    // 이메일 형식 검증 (영문, 숫자, 허용된 특수문자만)
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email)) {
+      setEmailAvailability(null);
+      setEmailMessage('올바른 이메일 형식이 아닙니다. (영문, 숫자만 허용)');
+      return;
+    }
+
+    setEmailAvailability('checking');
+    setEmailMessage('');
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/v1/auth/check-email/${encodeURIComponent(email)}`);
+        const data = await res.json();
+        if (data.available) {
+          setEmailAvailability('available');
+          setEmailMessage('사용 가능한 이메일입니다.');
+        } else {
+          setEmailAvailability('taken');
+          setEmailMessage('이미 사용중인 이메일입니다.');
+        }
+      } catch (err) {
+        setEmailAvailability(null);
+        setEmailMessage('중복 확인 실패. 네트워크를 확인해주세요.');
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [email]);
+
+  // 학번 유효성 검사 (8자리 숫자)
+  useEffect(() => {
+    if (studentNumber.length === 0) {
+      setStudentNumberValid(null);
+      return;
+    }
+    const isValid = /^\d{8}$/.test(studentNumber);
+    setStudentNumberValid(isValid);
+  }, [studentNumber]);
+
+  // 비밀번호 강도 검사 (각 조건별 체크)
+  useEffect(() => {
+    setPasswordStrength({
+      minLength: password.length >= 8,
+      hasLowercase: /[a-z]/.test(password),
+      hasUppercase: /[A-Z]/.test(password),
+      hasNumber: /\d/.test(password),
+      hasSpecial: /[@$!%*?&]/.test(password),
+    });
+  }, [password]);
+
+  // 비밀번호 일치 확인
+  useEffect(() => {
+    if (confirmPassword.length === 0) {
+      setPasswordMatch(null);
+      return;
+    }
+    setPasswordMatch(password === confirmPassword);
+  }, [password, confirmPassword]);
 
   // 회원가입 버튼 활성화/비활성화 로직 (termsAgreed에 따라)
   useEffect(() => {
@@ -127,19 +229,13 @@ function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 필수 항목 검사 (일반 사용자 '이름' 필드 제거에 따라 수정)
+    // 필수 항목 검사 (아이디, 비밀번호, 이메일, 이름, 전화번호만 필수)
     if (
       !username ||
       !password ||
       !confirmPassword ||
       !email ||
       !realName ||
-      !studentNumber ||
-      !major ||
-      !joinYear ||
-      !birthDate ||
-      !gender ||
-      !educationStatus ||
       !phoneNumber
     ) {
       alert('모든 필수 항목을 입력해주세요.');
@@ -147,23 +243,19 @@ function Register() {
     }
 
     if (usernameAvailability === 'checking') {
-      alert('사용자명 중복 확인 중입니다. 잠시 기다려주세요.');
+      alert('아이디 중복 확인 중입니다. 잠시 기다려주세요.');
       return;
     }
     if (usernameAvailability === 'taken') {
-      alert('이미 사용중인 사용자명입니다. 다른 이름을 선택해주세요.');
-      return;
-    }
-    if (existingEmails.includes(email.toLowerCase())) {
-      alert('이미 사용중인 이메일입니다.');
+      alert('이미 사용중인 아이디입니다. 다른 아이디를 선택해주세요.');
       return;
     }
 
-    // 비밀번호 강도 검사 (원본 HTML 로직)
+    // 비밀번호 강도 검사
     const passwordRegex =
-      /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(password)) {
-      alert('비밀번호는 8자 이상이며, 영문, 숫자, 특수문자를 포함해야 합니다.');
+      alert('비밀번호는 8자 이상이며, 대소문자, 숫자, 특수문자를 포함해야 합니다.');
       return;
     }
 
@@ -172,62 +264,41 @@ function Register() {
       return;
     }
 
-    // TCP 부원 정보 유효성 검사 (원본 HTML 로직)
-    if (isTcpMember) {
-      const memberName = tcpMemberFullName || realName;
-      if (!memberName || !phoneNumber) {
-        alert('TCP 회원 정보를 모두 입력해주세요.');
-        return;
-      }
-      const memberExists = tcpMembers.some(
-        (member) =>
-          member.name === memberName && member.phone === phoneNumber
-      );
-      if (!memberExists) {
-        alert(
-          '입력하신 정보와 일치하는 TCP 회원을 찾을 수 없습니다. 정보를 다시 확인해주세요.'
-        );
-        return;
-      }
-    } else {
-      // TCP 부원이 아니라면, tcpMemberFullName과 phoneNumber는 필수가 아님
-      // 일반 회원가입 시에는 이름과 전화번호가 필수가 아니므로,
-      // 이 부분에 대한 별도 유효성 검사는 필요 없습니다.
-      // 만약 일반 회원도 이름이 필수라면, 별도의 userFullName 상태를 유지해야 합니다.
-      // 현재는 TCP 부원일 때만 이름/전화번호를 받으므로 이대로 진행합니다.
-    }
-
     if (!termsAgreed) {
       alert('이용약관 및 개인정보처리방침에 동의해야 합니다.');
       return;
     }
 
+    // 필수 필드
     const payload = {
       username,
       password,
       name: realName,
-      student_number: studentNumber,
       phone_number: phoneNumber,
       email,
-      major,
-      join_year: Number(joinYear),
-      birth_date: birthDate,
-      gender,
-      education_status: educationStatus,
-      tech_stack: techStack
-        ? techStack
-            .split(',')
-            .map((item) => item.trim())
-            .filter(Boolean)
-        : undefined,
     };
+
+    // 선택 필드 (값이 있을 때만 추가)
+    if (studentNumber) payload.student_number = studentNumber;
+    if (major) payload.major = major;
+    if (joinYear) payload.join_year = Number(joinYear);
+    if (birthDate) payload.birth_date = birthDate.replace(/\./g, '-');
+    if (gender) payload.gender = gender;
+    if (educationStatus) payload.education_status = educationStatus;
+    if (techStack) {
+      payload.tech_stack = techStack
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
 
     try {
       setIsSubmitting(true);
       setSignupButtonEnabled(false);
       const data = await apiPost('/api/v1/auth/register', payload);
       login(data.user, data.access_token);
-      alert('회원가입이 완료되었습니다!');
+      // 환영 모달을 위한 플래그 설정
+      sessionStorage.setItem('showWelcomeModal', 'true');
       navigate('/');
     } catch (error) {
       alert(error.message || '회원가입에 실패했습니다.');
@@ -268,7 +339,7 @@ function Register() {
                   htmlFor="username"
                   className="block text-sm font-medium text-gray-300 mb-1 text-left"
                 >
-                  사용자명
+                  아이디 <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <input
@@ -277,9 +348,9 @@ function Register() {
                     name="username"
                     required
                     className="w-full px-3 py-2 bg-transparent border border-gray-600 rounded-md placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-10"
-                    placeholder="사용자명을 입력하세요"
+                    placeholder="아이디를 입력하세요"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
                   />
                   <div id="usernameValidation" className="validation-icon">
                     {usernameAvailability === 'checking' && (
@@ -309,7 +380,7 @@ function Register() {
                   htmlFor="password"
                   className="block text-sm font-medium text-gray-300 mb-1 text-left"
                 >
-                  비밀번호
+                  비밀번호 <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <input
@@ -327,9 +398,30 @@ function Register() {
                     onClick={togglePasswordVisibility}
                   ></i>
                 </div>
-                <div className="text-sm text-gray-500 mt-1 text-left">
-                  8자 이상, 영문, 숫자, 특수문자를 포함해야 합니다
-                </div>
+                {password.length > 0 && (
+                  <div className="mt-2 space-y-1 text-left text-sm">
+                    <div className={passwordStrength.minLength ? 'text-green-400' : 'text-red-400'}>
+                      <i className={`fas ${passwordStrength.minLength ? 'fa-check' : 'fa-times'} mr-2`}></i>
+                      8자 이상
+                    </div>
+                    <div className={passwordStrength.hasLowercase ? 'text-green-400' : 'text-red-400'}>
+                      <i className={`fas ${passwordStrength.hasLowercase ? 'fa-check' : 'fa-times'} mr-2`}></i>
+                      영문 소문자 포함
+                    </div>
+                    <div className={passwordStrength.hasUppercase ? 'text-green-400' : 'text-red-400'}>
+                      <i className={`fas ${passwordStrength.hasUppercase ? 'fa-check' : 'fa-times'} mr-2`}></i>
+                      영문 대문자 포함
+                    </div>
+                    <div className={passwordStrength.hasNumber ? 'text-green-400' : 'text-red-400'}>
+                      <i className={`fas ${passwordStrength.hasNumber ? 'fa-check' : 'fa-times'} mr-2`}></i>
+                      숫자 포함
+                    </div>
+                    <div className={passwordStrength.hasSpecial ? 'text-green-400' : 'text-red-400'}>
+                      <i className={`fas ${passwordStrength.hasSpecial ? 'fa-check' : 'fa-times'} mr-2`}></i>
+                      특수문자 포함 (@$!%*?&)
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Confirm Password Input */}
@@ -338,7 +430,7 @@ function Register() {
                   className="block text-sm font-medium text-gray-300 mb-2 text-left"
                   htmlFor="reg-confirm-password"
                 >
-                  비밀번호 확인
+                  비밀번호 확인 <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <input
@@ -350,37 +442,69 @@ function Register() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                   />
-                  <i className="fas fa-lock absolute right-3 top-3.5 text-gray-400"></i>
+                  {passwordMatch !== null && (
+                    <div className="validation-icon">
+                      {passwordMatch ? (
+                        <i className="fas fa-check success-icon"></i>
+                      ) : (
+                        <i className="fas fa-times error-icon"></i>
+                      )}
+                    </div>
+                  )}
                 </div>
+                {passwordMatch !== null && (
+                  <div className={`text-sm mt-1 text-left ${passwordMatch ? 'text-green-400' : 'text-red-500'}`}>
+                    {passwordMatch ? '비밀번호가 일치합니다.' : '비밀번호가 일치하지 않습니다.'}
+                  </div>
+                )}
               </div>
 
               {/* Email Input */}
-              <div>
+              <div className="input-group">
                 <label
                   className="block text-sm font-medium text-gray-300 mb-2 text-left"
                   htmlFor="reg-email"
                 >
-                  이메일
+                  이메일 <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="email"
-                  id="reg-email"
-                  name="email"
-                  required
-                  className="w-full px-3 py-2 bg-transparent border border-gray-600 rounded-md placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="이메일을 입력하세요"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
+                <div className="relative">
+                  <input
+                    type="email"
+                    id="reg-email"
+                    name="email"
+                    required
+                    className="w-full px-3 py-2 bg-transparent border border-gray-600 rounded-md placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-10"
+                    placeholder="이메일을 입력하세요"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                  <div className="validation-icon">
+                    {emailAvailability === 'checking' && (
+                      <div className="loading-spinner"></div>
+                    )}
+                    {emailAvailability === 'available' && (
+                      <i className="fas fa-check success-icon"></i>
+                    )}
+                    {emailAvailability === 'taken' && (
+                      <i className="fas fa-times error-icon"></i>
+                    )}
+                  </div>
+                </div>
+                {emailMessage && (
+                  <div className={`text-sm mt-1 text-left ${emailAvailability === 'available' ? 'text-green-400' : 'text-red-500'}`}>
+                    {emailMessage}
+                  </div>
+                )}
               </div>
 
+              {/* Name and Phone - Required */}
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label
                     className="block text-sm font-medium text-gray-300 mb-2 text-left"
                     htmlFor="realName"
                   >
-                    이름
+                    이름 <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -396,80 +520,9 @@ function Register() {
                 <div>
                   <label
                     className="block text-sm font-medium text-gray-300 mb-2 text-left"
-                    htmlFor="studentNumber"
-                  >
-                    학번
-                  </label>
-                  <input
-                    type="text"
-                    id="studentNumber"
-                    name="studentNumber"
-                    required
-                    className="w-full px-3 py-2 bg-transparent border border-gray-600 rounded-md placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="학번 8자리"
-                    value={studentNumber}
-                    onChange={(e) => setStudentNumber(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label
-                    className="block text-sm font-medium text-gray-300 mb-2 text-left"
-                    htmlFor="major"
-                  >
-                    전공
-                  </label>
-                  <input
-                    type="text"
-                    id="major"
-                    name="major"
-                    required
-                    className="w-full px-3 py-2 bg-transparent border border-gray-600 rounded-md placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="예: 컴퓨터공학과"
-                    value={major}
-                    onChange={(e) => setMajor(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label
-                    className="block text-sm font-medium text-gray-300 mb-2 text-left"
-                    htmlFor="joinYear"
-                  >
-                    입학년도
-                  </label>
-                  <input
-                    type="number"
-                    id="joinYear"
-                    name="joinYear"
-                    required
-                    className="w-full px-3 py-2 bg-transparent border border-gray-600 rounded-md placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="예: 2024"
-                    value={joinYear}
-                    onChange={(e) => setJoinYear(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label
-                    className="block text-sm font-medium text-gray-300 mb-2 text-left"
-                    htmlFor="birthDate"
-                  >
-                    생년월일
-                  </label>
-                  <input
-                    type="date"
-                    id="birthDate"
-                    name="birthDate"
-                    required
-                    className="w-full px-3 py-2 bg-transparent border border-gray-600 rounded-md placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    value={birthDate}
-                    onChange={(e) => setBirthDate(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label
-                    className="block text-sm font-medium text-gray-300 mb-2 text-left"
                     htmlFor="phoneNumber"
                   >
-                    전화번호
+                    전화번호 <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="tel"
@@ -483,126 +536,167 @@ function Register() {
                     maxLength={13}
                   />
                 </div>
-                <div>
-                  <label
-                    className="block text-sm font-medium text-gray-300 mb-2 text-left"
-                    htmlFor="gender"
-                  >
-                    성별
-                  </label>
-                  <select
-                    id="gender"
-                    name="gender"
-                    required
-                    className="w-full px-3 py-2 bg-transparent border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    value={gender}
-                    onChange={(e) => setGender(e.target.value)}
-                  >
-                    <option value="Male">남성</option>
-                    <option value="Female">여성</option>
-                  </select>
-                </div>
-                <div>
-                  <label
-                    className="block text-sm font-medium text-gray-300 mb-2 text-left"
-                    htmlFor="educationStatus"
-                  >
-                    학적 상태
-                  </label>
-                  <select
-                    id="educationStatus"
-                    name="educationStatus"
-                    required
-                    className="w-full px-3 py-2 bg-transparent border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    value={educationStatus}
-                    onChange={(e) => setEducationStatus(e.target.value)}
-                  >
-                    <option value="재학">재학</option>
-                    <option value="휴학">휴학</option>
-                    <option value="졸업">졸업</option>
-                  </select>
-                </div>
               </div>
 
-              <div>
-                <label
-                  className="block text-sm font-medium text-gray-300 mb-2 text-left"
-                  htmlFor="techStack"
+              {/* Toggle Additional Info Button */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAdditionalInfo(!showAdditionalInfo)}
+                  className="flex items-center gap-2 text-purple-400 hover:text-purple-300 transition-colors text-sm font-medium"
                 >
-                  기술 스택 (선택)
-                </label>
-                <input
-                  type="text"
-                  id="techStack"
-                  name="techStack"
-                  className="w-full px-3 py-2 bg-transparent border border-gray-600 rounded-md placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="예: React, Node.js"
-                  value={techStack}
-                  onChange={(e) => setTechStack(e.target.value)}
-                />
+                  <i className={`fas fa-chevron-${showAdditionalInfo ? 'up' : 'down'}`}></i>
+                  추가 정보 입력 (선택)
+                </button>
               </div>
 
-              {/* General User Full Name Input (제거됨) */}
-              {/* <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2 text-left" htmlFor="userFullName">이름</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    id="userFullName"
-                    className="input-field w-full px-4 py-3 rounded-lg text-white placeholder-gray-400 pr-10"
-                    placeholder="실명을 입력하세요"
-                    value={userFullName}
-                    onChange={(e) => setUserFullName(e.target.value)}
-                    required
-                  />
-                  <i className="fas fa-signature absolute right-3 top-3.5 text-gray-400"></i>
-                </div>
-              </div> */}
-
-              {/* TCP Member Checkbox */}
-              <div>
-                <label className="flex items-center text-left">
-                  <input
-                    type="checkbox"
-                    id="tcpMember"
-                    name="tcpMember"
-                    className="h-4 w-4 text-purple-500 focus:ring-purple-500 border-gray-600 rounded bg-transparent"
-                    checked={isTcpMember}
-                    onChange={(e) => setIsTcpMember(e.target.checked)}
-                  />
-                  <span className="ml-2 text-sm text-gray-300">
-                    현재 TCP 부원입니다
-                  </span>
-                </label>
-              </div>
-
-              {/* Additional Fields (Conditional Rendering) */}
-              {isTcpMember && (
-                <div id="tcpMemberFields" className="slide-down show">
-                  <div className="space-y-4 pt-4 border-t border-gray-700">
+              {/* Additional Info Section - Collapsible */}
+              {showAdditionalInfo && (
+                <div className="space-y-4 pt-2 border-t border-gray-700 mt-4">
+                  <div className="grid md:grid-cols-2 gap-4">
                     <div>
                       <label
-                        htmlFor="tcpMemberFullName"
-                        className="block text-sm font-medium text-gray-300 mb-1 text-left"
+                        className="block text-sm font-medium text-gray-300 mb-2 text-left"
+                        htmlFor="studentNumber"
                       >
-                        이름
+                        학번 (선택)
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          id="studentNumber"
+                          name="studentNumber"
+                          maxLength={8}
+                          className="w-full px-3 py-2 bg-transparent border border-gray-600 rounded-md placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-10"
+                          placeholder="학번 8자리"
+                          value={studentNumber}
+                          onChange={(e) => setStudentNumber(e.target.value.replace(/[^0-9]/g, ''))}
+                        />
+                        {studentNumberValid !== null && (
+                          <div className="validation-icon">
+                            {studentNumberValid ? (
+                              <i className="fas fa-check success-icon"></i>
+                            ) : (
+                              <i className="fas fa-times error-icon"></i>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      {studentNumber.length > 0 && studentNumberValid === false && (
+                        <div className="text-sm mt-1 text-left text-red-500">
+                          학번은 8자리 숫자여야 합니다.
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label
+                        className="block text-sm font-medium text-gray-300 mb-2 text-left"
+                        htmlFor="major"
+                      >
+                        전공 (선택)
                       </label>
                       <input
                         type="text"
-                        id="tcpMemberFullName"
-                        name="tcpMemberFullName"
+                        id="major"
+                        name="major"
                         className="w-full px-3 py-2 bg-transparent border border-gray-600 rounded-md placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        placeholder="실명을 입력하세요"
-                        value={tcpMemberFullName}
-                        onChange={(e) => setTcpMemberFullName(e.target.value)}
+                        placeholder="예: 컴퓨터공학과"
+                        value={major}
+                        onChange={(e) => setMajor(e.target.value)}
                       />
                     </div>
-                    <div className="text-sm text-purple-400 flex items-center space-x-1 text-left">
-                      <i className="fas fa-info-circle"></i>
-                      <span>
-                        입력된 정보는 부원 목록과 대조하여 연동됩니다.
-                      </span>
+                    <div>
+                      <label
+                        className="block text-sm font-medium text-gray-300 mb-2 text-left"
+                        htmlFor="joinYear"
+                      >
+                        입학년도 (선택)
+                      </label>
+                      <input
+                        type="number"
+                        id="joinYear"
+                        name="joinYear"
+                        className="w-full px-3 py-2 bg-transparent border border-gray-600 rounded-md placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="예: 2024"
+                        value={joinYear}
+                        onChange={(e) => setJoinYear(e.target.value)}
+                      />
                     </div>
+                    <div>
+                      <label
+                        className="block text-sm font-medium text-gray-300 mb-2 text-left"
+                        htmlFor="birthDate"
+                      >
+                        생년월일 (선택)
+                      </label>
+                      <input
+                        type="text"
+                        id="birthDate"
+                        name="birthDate"
+                        maxLength={10}
+                        className="w-full px-3 py-2 bg-transparent border border-gray-600 rounded-md placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="예: 2000.01.01"
+                        value={birthDate}
+                        onChange={handleBirthDateChange}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className="block text-sm font-medium text-gray-300 mb-2 text-left"
+                        htmlFor="gender"
+                      >
+                        성별 (선택)
+                      </label>
+                      <select
+                        id="gender"
+                        name="gender"
+                        className="w-full px-3 py-2 bg-transparent border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        value={gender}
+                        onChange={(e) => setGender(e.target.value)}
+                      >
+                        <option value="">선택 안함</option>
+                        <option value="Male">남성</option>
+                        <option value="Female">여성</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label
+                        className="block text-sm font-medium text-gray-300 mb-2 text-left"
+                        htmlFor="educationStatus"
+                      >
+                        학적 상태 (선택)
+                      </label>
+                      <select
+                        id="educationStatus"
+                        name="educationStatus"
+                        className="w-full px-3 py-2 bg-transparent border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        value={educationStatus}
+                        onChange={(e) => setEducationStatus(e.target.value)}
+                      >
+                        <option value="">선택 안함</option>
+                        <option value="재학">재학</option>
+                        <option value="휴학">휴학</option>
+                        <option value="졸업">졸업</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label
+                      className="block text-sm font-medium text-gray-300 mb-2 text-left"
+                      htmlFor="techStack"
+                    >
+                      기술 스택 (선택)
+                    </label>
+                    <input
+                      type="text"
+                      id="techStack"
+                      name="techStack"
+                      className="w-full px-3 py-2 bg-transparent border border-gray-600 rounded-md placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      placeholder="예: React, Node.js"
+                      value={techStack}
+                      onChange={(e) => setTechStack(e.target.value)}
+                    />
                   </div>
                 </div>
               )}

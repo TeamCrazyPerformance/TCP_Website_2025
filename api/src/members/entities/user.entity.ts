@@ -28,8 +28,8 @@ export class User {
   @Column({ type: 'varchar', length: 50 })
   name: string;
 
-  @Column({ type: 'varchar', length: 20, unique: true })
-  student_number: string;
+  @Column({ type: 'varchar', length: 20, unique: true, nullable: true })
+  student_number: string | null;
 
   @Column({ type: 'varchar', length: 255, default: 'default_profile_image.png' }) // TODO 기본 프로필 이미지 추가해야 함
   profile_image: string;
@@ -40,21 +40,21 @@ export class User {
   @Column({ type: 'varchar', length: 255, unique: true })
   email: string;
 
-  @Column({ type: 'varchar', length: 100 })
-  major: string;
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  major: string | null;
 
-  @Column({ type: 'smallint' })
-  join_year: number;
+  @Column({ type: 'smallint', nullable: true })
+  join_year: number | null;
 
-  @Column({ type: 'date' })
-  birth_date: Date;
+  @Column({ type: 'date', nullable: true })
+  birth_date: Date | null;
 
   @Column({
     type: 'enum',
     enum: UserGender,
-    default: UserGender.Male,
+    nullable: true,
   })
-  gender: UserGender;
+  gender: UserGender | null;
 
   @Column({
     type: 'enum',
@@ -69,9 +69,9 @@ export class User {
   @Column({
     type: 'enum',
     enum: EducationStatus,
-    default: EducationStatus.Enrolled
+    nullable: true,
   })
-  education_status: EducationStatus;
+  education_status: EducationStatus | null;
 
   @Column({ type: 'varchar', nullable: true, length: 255 })
   current_company: string;

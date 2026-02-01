@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import logo from '../logo.svg';
 
 function Home() {
+  const navigate = useNavigate();
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [stats, setStats] = useState({
     totalMembers: 0,
     projects: 0,
@@ -74,6 +76,26 @@ function Home() {
       observer.disconnect(); // 옵저버 연결 해제
     };
   }, []);
+
+  // 회원가입 후 환영 모달 체크
+  useEffect(() => {
+    const shouldShow = sessionStorage.getItem('showWelcomeModal');
+    if (shouldShow === 'true') {
+      setShowWelcomeModal(true);
+      sessionStorage.removeItem('showWelcomeModal');
+    }
+  }, []);
+
+  // 환영 모달 닫기
+  const closeWelcomeModal = () => {
+    setShowWelcomeModal(false);
+  };
+
+  // 환영 모달에서 마이페이지로 이동
+  const goToMyPage = () => {
+    setShowWelcomeModal(false);
+    navigate('/mypage');
+  };
 
   // 모달 상태 관리
   const [modalData, setModalData] = useState(null);
@@ -158,6 +180,69 @@ function Home() {
                     )}
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 회원가입 환영 모달 */}
+      {showWelcomeModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          onClick={closeWelcomeModal}
+        >
+          <div
+            className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl max-w-lg w-full border border-purple-500/30 shadow-2xl shadow-purple-500/20 transform animate-pulse-once"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-8 text-center">
+              {/* 환영 아이콘 */}
+              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+                <i className="fas fa-user-check text-3xl text-white"></i>
+              </div>
+
+              {/* 환영 메시지 */}
+              <h2 className="orbitron text-2xl md:text-3xl font-bold text-white mb-4">
+                TCP에 오신 것을 환영합니다! 🎉
+              </h2>
+
+              <p className="text-gray-300 mb-6 leading-relaxed">
+                회원가입이 완료되었습니다.
+              </p>
+
+              {/* 추가 정보 안내 */}
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6 text-left">
+                <div className="flex items-start gap-3">
+                  <i className="fas fa-exclamation-triangle text-yellow-400 mt-1"></i>
+                  <div>
+                    <p className="text-yellow-200 font-semibold mb-1">
+                      추가 정보 입력 안내
+                    </p>
+                    <p className="text-gray-300 text-sm leading-relaxed">
+                      회원가입 시 추가 정보를 입력하지 않으신 분들은<br />
+                      <span className="text-yellow-300 font-medium">(서울과학기술대 학생 및 TCP 부원은 필수!!)</span><br />
+                      원활한 활동을 위해 <span className="text-purple-400 font-medium">마이페이지</span>에서 회원 정보를 추가로 입력해주세요.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 버튼들 */}
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button
+                  onClick={goToMyPage}
+                  className="px-6 py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg font-semibold hover:from-purple-600 hover:to-blue-600 transition-all"
+                >
+                  <i className="fas fa-user-edit mr-2"></i>
+                  마이페이지로 이동
+                </button>
+                <button
+                  onClick={closeWelcomeModal}
+                  className="px-6 py-3 bg-gray-700 text-gray-300 rounded-lg font-semibold hover:bg-gray-600 transition-all"
+                >
+                  나중에 할게요
+                </button>
               </div>
             </div>
           </div>

@@ -7,7 +7,7 @@ export type SanitizedUser = {
   username: string;
   name: string;
   email: string;
-  student_number: string;
+  student_number: string | null;
   profile_image: string;
   role: UserRole;
   created_at: Date;

@@ -69,7 +69,7 @@ export class AuthService {
 
     if (byUsername) throw new ConflictException('이미 있는 아이디입니다.');
     if (byEmail) throw new ConflictException('이미 있는 이메일입니다.');
-    if (byStdNo) throw new ConflictException('이미 있는 학번입니다.');
+    if (dto.student_number && byStdNo) throw new ConflictException('이미 있는 학번입니다.');
 
     const saltRounds = Number(this.config.get('BCRYPT_SALT_ROUNDS') ?? 12);
     const hashed = await bcrypt.hash(dto.password, saltRounds);
@@ -77,7 +77,7 @@ export class AuthService {
     const entity = this.usersRepo.create({
       ...dto,
       password: hashed,
-      birth_date: new Date(dto.birth_date),
+      birth_date: dto.birth_date ? new Date(dto.birth_date) : null,
       tech_stack: dto.tech_stack ?? null,
       profile_image: dto.profile_image ?? 'default_profile_image.png',
       is_public_github_username: dto.is_public_github_username ?? false,
@@ -91,6 +91,22 @@ export class AuthService {
       user: this.sanitize(saved),
       ...tokens,
     };
+  }
+
+  async checkUsernameAvailability(username: string): Promise<{ available: boolean }> {
+    const existing = await this.usersRepo.findOne({
+      where: { username },
+      withDeleted: true,
+    });
+    return { available: !existing };
+  }
+
+  async checkEmailAvailability(email: string): Promise<{ available: boolean }> {
+    const existing = await this.usersRepo.findOne({
+      where: { email },
+      withDeleted: true,
+    });
+    return { available: !existing };
   }
 
   async validateUser(username: string, password: string) {

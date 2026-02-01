@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards, Request, Req, Res, UsePipes, ValidationPipe, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards, Request, Req, Res, UsePipes, ValidationPipe, UnauthorizedException } from '@nestjs/common';
 import { Response, Request as ExpressRequest } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -17,6 +17,16 @@ const REFRESH_TOKEN_COOKIE_OPTIONS = {
 @Controller('api/v1/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) { }
+
+  @Get('check-username/:username')
+  checkUsername(@Param('username') username: string) {
+    return this.authService.checkUsernameAvailability(username);
+  }
+
+  @Get('check-email/:email')
+  checkEmail(@Param('email') email: string) {
+    return this.authService.checkEmailAvailability(email);
+  }
 
   @Post('register')
   @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
