@@ -135,6 +135,7 @@ function Register() {
     const timeoutId = setTimeout(async () => {
       try {
         const res = await fetch(`/api/v1/auth/check-username?username=${encodeURIComponent(username)}`);
+        if (!res.ok) throw new Error('Network response was not ok');
         const data = await res.json();
         if (data.available) {
           setUsernameAvailability('available');
@@ -180,6 +181,7 @@ function Register() {
     const timeoutId = setTimeout(async () => {
       try {
         const res = await fetch(`/api/v1/auth/check-email?email=${encodeURIComponent(email)}`);
+        if (!res.ok) throw new Error('Network response was not ok');
         const data = await res.json();
         if (data.available) {
           setEmailAvailability('available');
