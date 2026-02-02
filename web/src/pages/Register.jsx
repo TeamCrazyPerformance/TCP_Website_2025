@@ -128,7 +128,7 @@ function Register() {
 
     const timeoutId = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/v1/auth/check-username/${username}`);
+        const res = await fetch(`/api/v1/auth/check-username?username=${encodeURIComponent(username)}`);
         const data = await res.json();
         if (data.available) {
           setUsernameAvailability('available');
@@ -167,7 +167,7 @@ function Register() {
 
     const timeoutId = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/v1/auth/check-email/${encodeURIComponent(email)}`);
+        const res = await fetch(`/api/v1/auth/check-email?email=${encodeURIComponent(email)}`);
         const data = await res.json();
         if (data.available) {
           setEmailAvailability('available');
