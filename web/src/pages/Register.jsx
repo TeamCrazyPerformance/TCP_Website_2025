@@ -119,7 +119,13 @@ function Register() {
 
     if (username.length < 3) {
       setUsernameAvailability(null);
-      setUsernameMessage('아이디는 3자 이상이어야 합니다.');
+      setUsernameMessage('아이디는 3자 이상 50자 이하여야 합니다.');
+      return;
+    }
+
+    if (username.length > 50) {
+      setUsernameAvailability(null);
+      setUsernameMessage('아이디는 50자 이하여야 합니다.');
       return;
     }
 
@@ -151,6 +157,12 @@ function Register() {
     if (email.length === 0) {
       setEmailAvailability(null);
       setEmailMessage('');
+      return;
+    }
+
+    if (email.length > 255) {
+      setEmailAvailability(null);
+      setEmailMessage('이메일은 255자 이하여야 합니다.');
       return;
     }
 
@@ -351,6 +363,7 @@ function Register() {
                     placeholder="아이디를 입력하세요"
                     value={username}
                     onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
+                    maxLength={50}
                   />
                   <div id="usernameValidation" className="validation-icon">
                     {usernameAvailability === 'checking' && (
@@ -477,6 +490,7 @@ function Register() {
                     placeholder="이메일을 입력하세요"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    maxLength={255}
                   />
                   <div className="validation-icon">
                     {emailAvailability === 'checking' && (
@@ -515,6 +529,7 @@ function Register() {
                     placeholder="실명을 입력하세요"
                     value={realName}
                     onChange={(e) => setRealName(e.target.value)}
+                    maxLength={50}
                   />
                 </div>
                 <div>
