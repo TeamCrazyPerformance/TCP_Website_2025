@@ -28,7 +28,21 @@ export class TeamsService {
         private readonly userRepository: Repository<User>,
 
         private dataSource: DataSource,
-    ) { }
+    ) {
+        // 업로드 디렉토리 보장
+        this.ensureUploadDirectory();
+    }
+
+    /**
+     * 업로드 디렉토리가 존재하지 않으면 생성
+     */
+    private ensureUploadDirectory(): void {
+        const uploadPath = './uploads/teams';
+        if (!fs.existsSync(uploadPath)) {
+            fs.mkdirSync(uploadPath, { recursive: true });
+            console.log(`[TEAMS SERVICE] Created upload directory: ${uploadPath}`);
+        }
+    }
 
     // 모집글 생성
     async create(userId: string, dto: CreateTeamDto): Promise<Team> {
@@ -144,62 +158,82 @@ export class TeamsService {
 
     // 모집글 수정
     async update(userId: string, teamId: number, dto: UpdateTeamDto): Promise<Team> {
+        // 기존 팀 정보를 먼저 조회 (catch 블록에서 사용하기 위해)
+        const existingTeam = await this.teamRepository.findOne({
+            where: { id: teamId },
+            relations: ['leader'],
+        });
+
         return this.dataSource.transaction(async (manager) => {
-            const team = await manager.findOne(Team, {
-                where: { id: teamId },
-                relations: ['leader', 'roles'],
-            });
+            try {
+                const team = await manager.findOne(Team, {
+                    where: { id: teamId },
+                    relations: ['leader', 'roles'],
+                });
 
-            // 팀이 존재하는지, 그리고 요청자가 팀장인지 확인
-            if (!team) {
-                throw new NotFoundException(`Team ${teamId} not found`);
+                // 팀이 존재하는지, 그리고 요청자가 팀장인지 확인
+                if (!team) {
+                    throw new NotFoundException(`Team ${teamId} not found`);
+                }
+                if (!team.leader || team.leader.id !== userId) {
+                    throw new ForbiddenException('Only the team leader can update this team');
+                }
+
+                // 팀 기본 정보 업데이트
+                if (dto.title !== undefined) team.title = dto.title;
+                if (dto.category !== undefined) team.category = dto.category;
+                if (dto.periodStart !== undefined) team.periodStart = new Date(dto.periodStart);
+                if (dto.periodEnd !== undefined) team.periodEnd = new Date(dto.periodEnd);
+                if (dto.deadline !== undefined) team.deadline = new Date(dto.deadline);
+                if (dto.description !== undefined) team.description = dto.description;
+                if (dto.techStack !== undefined) team.techStack = dto.techStack;
+                if (dto.tag !== undefined) team.tag = dto.tag;
+                if (dto.goals !== undefined) team.goals = dto.goals;
+                if (dto.executionType !== undefined) team.executionType = dto.executionType;
+                if (dto.selectionProc !== undefined) team.selectionProc = dto.selectionProc;
+                if (dto.link !== undefined) team.link = dto.link;
+                if (dto.contact !== undefined) team.contact = dto.contact;
+                if (dto.projectImage !== undefined) team.projectImage = dto.projectImage;
+
+                // 기존 역할 수정 및 삭제를 처리
+                if (dto.rolesToUpdate) {
+                    await this.processRoleUpdates(manager, team, dto.rolesToUpdate);
+                }
+
+                // 새로운 역할 추가를 처리
+                if (dto.rolesToAdd) {
+                    await this.processRoleAdditions(manager, team, dto.rolesToAdd);
+                }
+
+                await manager.save(team);
+
+                // 모든 변경사항을 반영한 후 업데이트된 팀 정보를 반환 (리더 이름과 프로필 이미지만 노출)
+                const updatedTeam = await manager
+                    .createQueryBuilder(Team, 'team')
+                    .leftJoinAndSelect('team.roles', 'roles')
+                    .leftJoin('team.leader', 'leader')
+                    .addSelect(['leader.id', 'leader.name', 'leader.profile_image'])
+                    .where('team.id = :teamId', { teamId })
+                    .getOne();
+
+                if (!updatedTeam) {
+                    throw new NotFoundException(`Team ${teamId} not found after update`);
+                }
+
+                return updatedTeam;
+            } catch (error) {
+                // 트랜잭션 실패 시 새로 업로드된 이미지 정리
+                if (dto.projectImage && dto.projectImage !== existingTeam?.projectImage) {
+                    console.log(`[TEAM UPDATE ERROR] Transaction failed, cleaning up new image: ${dto.projectImage}`);
+                    try {
+                        await this.deleteImage(dto.projectImage);
+                        console.log(`[TEAM UPDATE ERROR] Successfully cleaned up new image: ${dto.projectImage}`);
+                    } catch (deleteError) {
+                        console.error('Failed to cleanup image after team update error:', deleteError);
+                    }
+                }
+                throw error; // 원본 에러 다시 던지기
             }
-            if (!team.leader || team.leader.id !== userId) {
-                throw new ForbiddenException('Only the team leader can update this team');
-            }
-
-            // 팀 기본 정보 업데이트
-            if (dto.title !== undefined) team.title = dto.title;
-            if (dto.category !== undefined) team.category = dto.category;
-            if (dto.periodStart !== undefined) team.periodStart = new Date(dto.periodStart);
-            if (dto.periodEnd !== undefined) team.periodEnd = new Date(dto.periodEnd);
-            if (dto.deadline !== undefined) team.deadline = new Date(dto.deadline);
-            if (dto.description !== undefined) team.description = dto.description;
-            if (dto.techStack !== undefined) team.techStack = dto.techStack;
-            if (dto.tag !== undefined) team.tag = dto.tag;
-            if (dto.goals !== undefined) team.goals = dto.goals;
-            if (dto.executionType !== undefined) team.executionType = dto.executionType;
-            if (dto.selectionProc !== undefined) team.selectionProc = dto.selectionProc;
-            if (dto.link !== undefined) team.link = dto.link;
-            if (dto.contact !== undefined) team.contact = dto.contact;
-            if (dto.projectImage !== undefined) team.projectImage = dto.projectImage;
-
-            // 기존 역할 수정 및 삭제를 처리
-            if (dto.rolesToUpdate) {
-                await this.processRoleUpdates(manager, team, dto.rolesToUpdate);
-            }
-
-            // 새로운 역할 추가를 처리
-            if (dto.rolesToAdd) {
-                await this.processRoleAdditions(manager, team, dto.rolesToAdd);
-            }
-
-            await manager.save(team);
-
-            // 모든 변경사항을 반영한 후 업데이트된 팀 정보를 반환 (리더 이름과 프로필 이미지만 노출)
-            const updatedTeam = await manager
-                .createQueryBuilder(Team, 'team')
-                .leftJoinAndSelect('team.roles', 'roles')
-                .leftJoin('team.leader', 'leader')
-                .addSelect(['leader.id', 'leader.name', 'leader.profile_image'])
-                .where('team.id = :teamId', { teamId })
-                .getOne();
-
-            if (!updatedTeam) {
-                throw new NotFoundException(`Team ${teamId} not found after update`);
-            }
-
-            return updatedTeam;
         });
     }
 
