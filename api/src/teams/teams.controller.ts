@@ -19,7 +19,7 @@ export class TeamsController {
         return this.teamsService.create(userId, dto);
     }
 
-    // 팀 이미지 업로드 (동적 라우트보다 먼저 정의)
+    // 팀 이미지 업로드 
     @Post('upload-image')
     @UseGuards(AuthGuard('jwt'))
     @UseInterceptors(FileInterceptor('image'))
