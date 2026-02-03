@@ -34,7 +34,7 @@ echo
 ### 1. Docker Compose 종료 (컨테이너 종료, 이미지 삭제, 볼륨 삭제, 네트워크 삭제, build 캐시 삭제)
 ### =========================
 echo "🐳 Stopping docker compose & removing volumes..."
-sudo docker system prune -a --volumes
+sudo docker compose down -v --rmi local
 echo "✅ Docker containers / networks / volumes removed"
 echo
 
