@@ -108,6 +108,12 @@ function handleSessionExpiry() {
   }
 }
 
+if (response.status === 204 || response.status === 200) {
+  // 204 No Content 또는 200 OK with empty body
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
+}
+
 // Export wrappers for compatibility
 export function apiGet(path, options = {}) {
   return request(path, 'GET', null, options);

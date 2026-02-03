@@ -601,6 +601,12 @@ body {
   color: #ef4444;
 }
 
+.status-badge-recruiting {
+  background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
+  color: white;
+  border: none;
+}
+
 /* Tailwind red-500 */
 
 .loading-spinner {
@@ -824,4 +830,115 @@ body {
 .toolbar-btn:hover {
   background: var(--accent-blue);
   color: var(--primary-black);
+}
+
+/* Modal Styles */
+.modal {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 50;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal.active {
+  display: flex;
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 64rem;
+  /* max-w-4xl - increased from 56rem */
+  border: 1px solid rgb(31, 41, 55);
+  /* border-gray-800 */
+  padding: 2rem;
+  /* p-8 - increased from 1.5rem */
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+  position: relative;
+  text-align: left;
+  border-radius: 1rem;
+  /* rounded-2xl */
+  display: flex;
+  flex-direction: column;
+  max-height: 95vh;
+  /* increased from 90vh */
+  background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
+}
+
+.close-modal {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: transparent;
+  border: none;
+  color: rgb(156, 163, 175);
+  /* text-gray-400 */
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: color 0.3s ease;
+  z-index: 10;
+}
+
+.close-modal:hover {
+  color: white;
+}
+
+/* Form Input Styles */
+.form-input,
+.form-textarea,
+.form-select {
+  background: rgba(42, 42, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  width: 100%;
+}
+
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(168, 197, 230, 0.2);
+}
+
+/* Hide calendar icon from date inputs */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  display: none;
+  -webkit-appearance: none;
+}
+
+input[type="date"]::-webkit-inner-spin-button,
+input[type="date"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Reduce font size for date inputs */
+input[type="date"] {
+  font-size: 0.875rem;
+  /* 14px - smaller than default */
+}
+
+/* Add Button Styles */
+.add-btn {
+  background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
+  border: none;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.add-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(168, 197, 230, 0.3);
 }

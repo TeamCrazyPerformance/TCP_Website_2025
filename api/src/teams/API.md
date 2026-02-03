@@ -457,6 +457,51 @@ Authorization: Bearer <access_token>
 
 ---
 
+### GET /api/v1/teams/:id/application-status
+
+현재 사용자의 팀 지원 상태를 조회합니다.
+
+**권한**: Member (인증 필요)
+
+**Request:**
+```
+GET /api/v1/teams/1/application-status
+Authorization: Bearer <access_token>
+```
+
+**Response (200 OK):**
+
+**지원하지 않은 경우:**
+```json
+{
+  "hasApplied": false,
+  "applicationInfo": null
+}
+```
+
+**지원한 경우:**
+```json
+{
+  "hasApplied": true,
+  "applicationInfo": {
+    "appliedRole": {
+      "id": 1,
+      "roleName": "백엔드 개발자"
+    }
+  }
+}
+```
+
+**Errors:**
+
+| Status | 설명 |
+|--------|------|
+| 404 | 팀이 존재하지 않음 |
+
+**참고:** 팀장인 경우에도 `hasApplied: false`를 반환합니다.
+
+---
+
 ## 공통 에러 응답
 
 ### 400 Bad Request

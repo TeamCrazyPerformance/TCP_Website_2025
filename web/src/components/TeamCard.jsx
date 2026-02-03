@@ -1,14 +1,17 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { tagColorClass, isExpired } from '../utils/helpers';
 
-const TeamCard = React.memo(({ team, onOpenDetail }) => {
+const TeamCard = React.memo(({ team, currentUser, applicationStatus, onOpenDetail, onEdit, onDelete, onStatusChange }) => {
   const expired = isExpired(team.deadline);
   const disabled = team.status !== '모집중' || expired;
+  const isLeader = currentUser?.id && team.leaderId && currentUser.id === team.leaderId;
+  const hasApplied = applicationStatus?.hasApplied || false;
 
   return (
     <div
       key={team.id}
-      className={`recruitment-card rounded-xl overflow-hidden transition-transform duration-300 hover:-translate-y-1 ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+      className={`recruitment-card rounded-xl overflow-hidden transition-transform duration-300 hover:-translate-y-1 ${disabled ? 'brightness-75' : ''} ${disabled && !isLeader ? 'opacity-60 cursor-not-allowed' : ''}`}
       onClick={() => !disabled && onOpenDetail(team)}
       role="button"
       tabIndex={0}
@@ -81,16 +84,60 @@ const TeamCard = React.memo(({ team, onOpenDetail }) => {
                 ? '마감됨'
                 : `마감: ${team.deadline}`}
           </span>
-          <button
-            className={`${disabled ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'cta-button text-white'} px-4 py-2 rounded-lg text-sm font-bold`}
-            disabled={disabled}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!disabled) onOpenDetail(team);
-            }}
-          >
-            {disabled ? '마감' : '지원하기'}
-          </button>
+
+          {isLeader ? (
+            <div className="flex items-center gap-0">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(team);
+                }}
+                disabled={disabled}
+                className={`${disabled ? 'text-gray-600 cursor-not-allowed' : 'text-gray-400 hover:text-blue-400'} transition-colors p-1.5`}
+                title={disabled ? "마감된 모집글은 수정할 수 없습니다" : "수정하기"}
+              >
+                <i className="fas fa-pencil-alt"></i>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onStatusChange(team);
+                }}
+                className={`transition-colors p-1.5 ${team.status === '모집중' ? 'text-green-400 hover:text-green-300' : 'text-gray-500 hover:text-gray-400'}`}
+                title={team.status === '모집중' ? '모집 마감하기' : '모집 재개하기'}
+              >
+                <i className={`fas ${team.status === '모집중' ? 'fa-toggle-on' : 'fa-toggle-off'}`}></i>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(team.id);
+                }}
+                className="text-gray-400 hover:text-red-400 transition-colors p-1.5"
+                title="삭제하기"
+              >
+                <i className="fas fa-trash-alt"></i>
+              </button>
+              <Link
+                to="/mypage/teams"
+                className="ml-2 bg-gray-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-600 transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                지원현황 보기
+              </Link>
+            </div>
+          ) : (
+            <button
+              className={`${disabled ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : hasApplied ? 'bg-green-600 text-white hover:bg-green-700' : 'cta-button text-white'} px-4 py-2 rounded-lg text-sm font-bold transition-colors`}
+              disabled={disabled}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!disabled) onOpenDetail(team);
+              }}
+            >
+              {disabled ? '마감' : hasApplied ? '지원완료' : '지원하기'}
+            </button>
+          )}
         </div>
       </div>
     </div>
