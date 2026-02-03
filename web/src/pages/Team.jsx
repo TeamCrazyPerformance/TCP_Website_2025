@@ -384,8 +384,8 @@ export default function Team() {
           Find Your Team
         </h1>
         <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-8">
-          함께 성장하고 도전할 최고의 팀원을 찾아보세요. TCP 동아리에서
-          프로젝트, 스터디, 해커톤 팀원을 쉽게 모집하고 지원할 수 있습니다.
+          함께 성장하고 도전할 최고의 팀원을 찾아보세요. TCP 동아리원뿐만 
+          아니라 누구나 프로젝트, 스터디, 해커톤 팀원을 쉽게 모집하고 지원할 수 있습니다.
         </p>
         <button
           onClick={handleOpenRecruit}
@@ -447,6 +447,7 @@ export default function Team() {
               <option value="공모전">공모전</option>
               <option value="프로젝트">프로젝트</option>
               <option value="스터디">스터디</option>
+              <option value="기타">기타</option>
             </select>
           </div>
           {/* Sort by */}

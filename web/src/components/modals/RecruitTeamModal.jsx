@@ -510,7 +510,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
                 value={form.category}
                 onChange={onForm}
                 required
-                options={['해커톤', '공모전', '프로젝트', '스터디']}
+                options={['해커톤', '공모전', '프로젝트', '스터디', '기타']}
                 placeholder="카테고리를 선택하세요"
               />
             </div>
