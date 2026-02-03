@@ -122,8 +122,8 @@ export default function Team() {
       ...new Set([...splitTags(team.tag), ...splitTags(team.techStack)]),
     ];
     const leaderName = team.leader?.name || team.leader?.username || '팀 리더';
-    const leaderAvatar =
-      'https://via.placeholder.com/40/A8C5E6/FFFFFF?text=팀';
+    const leaderAvatar = team.leader?.profile_image || 
+      'https://via.placeholder.com/40/A8C5E6/FFFFFF?text=L';
     const period = `${formatDate(team.periodStart)} – ${formatDate(
       team.periodEnd
     )}`;
@@ -134,7 +134,7 @@ export default function Team() {
       : ['프로젝트 완수'];
     const selectionProcess = team.selectionProc || '지원서 검토 후 안내';
     const techStack = splitTags(team.techStack);
-    const images = team.projectImage
+    const images = team.projectImage && team.projectImage.trim()
       ? [team.projectImage]
       : [
         'https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=2020&auto=format&fit=crop',
@@ -171,17 +171,22 @@ export default function Team() {
       techStackRaw: team.techStack,
       tags,
       tag: team.tag,
+      tagsRaw: team.tag, // tag 필드를 tagsRaw로도 매핑
       images,
+      projectImage: team.projectImage,
       links,
       link: team.link,
+      linksRaw: team.link, // link 필드를 linksRaw로도 매핑
       location: normalizeExecutionType(team.executionType),
       executionType: team.executionType,
+      executionTypeRaw: team.executionType, // executionType을 executionTypeRaw로도 매핑
       selectionProcess,
       selectionProc: team.selectionProc,
       contact: team.contact || '연락처 없음',
       goals,
       goalsRaw: team.goals,
-      benefits: ['협업 경험', '포트폴리오'],
+      roles: team.roles, // roles 추가
+      rolesRaw: team.roles, // rolesRaw로도 매핑
       createdAt: team.createdAt,
     };
   };
@@ -267,6 +272,14 @@ export default function Team() {
     fetchApplicationStatuses();
   }, [user, teams]);
 
+  // 지원 상태 변경 콜백
+  const handleApplicationStatusChange = (teamId, newStatus) => {
+    setApplicationStatuses(prev => ({
+      ...prev,
+      [teamId]: newStatus
+    }));
+  };
+
   // ---- Modal a11y (ESC & backdrop close) ----
   useEffect(() => {
     const onKey = (e) => {
@@ -320,17 +333,17 @@ export default function Team() {
       category: team.category,
       periodStart: team.periodStart,
       periodEnd: team.periodEnd,
-      deadlineDate: team.deadline,
+      deadlineDate: team.deadlineDate || team.deadline,
       description: team.description,
       techStackRaw: team.techStackRaw || team.techStack,
       goals: team.goalsRaw || team.goals,
-      executionTypeRaw: team.executionType,
-      selectionProcess: team.selectionProc,
+      executionTypeRaw: team.executionTypeRaw || team.executionType,
+      selectionProcess: team.selectionProcess,
       contact: team.contact,
-      linksRaw: team.link,
-      tagsRaw: team.tag,
-      projectImage: team.projectImage || '',
-      rolesRaw: team.roles || [],
+      linksRaw: team.linksRaw || team.link,
+      tagsRaw: team.tagsRaw || team.tag,
+      projectImage: team.images?.[0] || team.projectImage || '',
+      rolesRaw: team.rolesRaw || team.roles || [],
     };
     setRecruitModalInitialData(initialData);
     setIsRecruitModalOpen(true);
@@ -516,6 +529,7 @@ export default function Team() {
         isOpen={isDetailModalOpen}
         onClose={handleCloseDetail}
         team={selectedTeam}
+        onApplicationStatusChange={handleApplicationStatusChange}
       />
     </main>
   );

@@ -49,8 +49,11 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
       });
 
       // 기존 이미지 미리보기 설정
+      setImageFile(null);
       if (initialData.projectImage) {
         setImagePreview(initialData.projectImage);
+      } else {
+        setImagePreview('');
       }
 
       // 역할 설정
@@ -172,6 +175,37 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
     reader.readAsDataURL(file);
   };
 
+  // 기존 이미지 삭제 함수
+  const deleteOldImage = async (imageUrl) => {
+    if (!imageUrl) return;
+    
+    // 기본 이미지 URL은 삭제하지 않음
+    if (imageUrl.includes('unsplash.com') || imageUrl.includes('placeholder')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch('/api/v1/teams/delete-image', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ imageUrl }),
+      });
+      
+      if (response.ok) {
+        // Successfully deleted
+      } else {
+        console.error('Failed to delete image with status:', response.status);
+      }
+    } catch (error) {
+      console.error('Error deleting old image:', error);
+      // 삭제 실패해도 계속 진행
+    }
+  };
+
   // 이미지 제거 핸들러
   const handleRemoveImage = () => {
     setImageFile(null);
@@ -235,7 +269,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
     category: team.category,
     leader: {
       name: team.leader?.name || team.leader?.username || '팀 리더',
-      avatar: team.leader?.profile_image || 'https://via.placeholder.com/40/A8C5E6/FFFFFF?text=팀',
+      avatar: team.leader?.profile_image || 'https://via.placeholder.com/40/A8C5E6/FFFFFF?text=L',
       role: '팀 리더',
     },
     status: team.status === 'open' ? '모집중' : '모집완료',
@@ -254,14 +288,17 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
       {
         name: team.leader?.name || team.leader?.username || '팀 리더',
         role: '팀 리더',
-        avatar: team.leader?.profile_image || 'https://via.placeholder.com/40/A8C5E6/FFFFFF?text=팀',
+        avatar: team.leader?.profile_image || 'https://via.placeholder.com/40/A8C5E6/FFFFFF?text=L',
       },
     ],
     techStack: splitCsv(team.techStack || ''),
     techStackRaw: team.techStack,
     tags: splitCsv(team.tag || ''),
     tagsRaw: team.tag,
-    images: team.projectImage ? [team.projectImage] : [],
+    images: team.projectImage && team.projectImage.trim()
+      ? [team.projectImage]
+      : ['https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=2020&auto=format&fit=crop'],
+    projectImage: team.projectImage || '',
     links: team.link ? [team.link] : [],
     linksRaw: team.link,
     location:
@@ -289,10 +326,23 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
     try {
       setIsSubmitting(true);
 
-      // 이미지 업로드 먼저 처리
+      // 이미지 처리
       let projectImageUrl = form.projectImage;
+      const oldImageUrl = initialData?.projectImage || '';
+      
+      // 새 이미지가 선택된 경우
       if (imageFile) {
+        // 기존 이미지 삭제 (교체시)
+        if (oldImageUrl && isEditMode) {
+          await deleteOldImage(oldImageUrl);
+        }
+        // 새 이미지 업로드
         projectImageUrl = await uploadImage();
+      } 
+      // 이미지가 제거된 경우 (form.projectImage가 빈 문자열)
+      else if (!form.projectImage && oldImageUrl && isEditMode) {
+        await deleteOldImage(oldImageUrl);
+        projectImageUrl = '';
       }
 
       let team;
@@ -419,16 +469,13 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
                   >
                     파일 선택
                   </label>
-                  <span className="text-gray-300 text-sm">
-                    {imageFile ? imageFile.name : '선택된 파일 없음'}
-                  </span>
-                  {imageFile && (
+                  {(imageFile || imagePreview) && (
                     <button
                       type="button"
                       onClick={handleRemoveImage}
-                      className="text-red-400 hover:text-red-300 text-sm"
+                      className="px-3 py-1.5 bg-red-600 text-white rounded text-sm hover:bg-red-700"
                     >
-                      제거
+                      사진 제거
                     </button>
                   )}
                 </div>

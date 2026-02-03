@@ -45,48 +45,72 @@ export class TeamsService {
             (name, idx) => roleNames.indexOf(name) !== idx,
         );
         if (duplicates.length > 0) {
+            // 중복 역할 에러 시 이미지 정리
+            if (dto.projectImage) {
+                console.log(`[TEAM CREATE ERROR] Cleaning up image due to duplicate roles: ${dto.projectImage}`);
+                try {
+                    await this.deleteImage(dto.projectImage);
+                    console.log(`[TEAM CREATE ERROR] Successfully cleaned up image: ${dto.projectImage}`);
+                } catch (error) {
+                    console.error('Failed to cleanup image after role duplicate error:', error);
+                }
+            }
             throw new BadRequestException(
                 `Duplicate role names not allowed: ${[...new Set(duplicates)].join(', ')}`,
             );
         }
 
         return this.dataSource.transaction(async (manager) => {
-            // 팀 생성
-            const team = manager.create(Team, {
-                ...dto,
-                leader,
-                status: TeamStatus.OPEN,
-                periodStart: new Date(dto.periodStart),
-                periodEnd: new Date(dto.periodEnd),
-                deadline: new Date(dto.deadline),
-            });
-            const savedTeam = await manager.save(team);
+            try {
+                // 팀 생성
+                const team = manager.create(Team, {
+                    ...dto,
+                    leader,
+                    status: TeamStatus.OPEN,
+                    periodStart: new Date(dto.periodStart),
+                    periodEnd: new Date(dto.periodEnd),
+                    deadline: new Date(dto.deadline),
+                });
+                const savedTeam = await manager.save(team);
 
-            // 역할 생성
-            const roles = dto.roles.map((r) =>
-                manager.create(TeamRole, {
+                // 역할 생성
+                const roles = dto.roles.map((r) =>
+                    manager.create(TeamRole, {
+                        team: savedTeam,
+                        roleName: r.roleName,
+                        recruitCount: r.recruitCount,
+                        currentCount: 0,
+                    }),
+                );
+                await manager.save(roles);
+
+                // 팀장 TeamMember 생성 및 연결
+                const leaderMember = manager.create(TeamMember, {
+                    user: leader,
                     team: savedTeam,
-                    roleName: r.roleName,
-                    recruitCount: r.recruitCount,
-                    currentCount: 0,
-                }),
-            );
-            await manager.save(roles);
+                    role: null,
+                    isLeader: true,
+                });
+                await manager.save(leaderMember);
 
-            // 팀장 TeamMember 생성 및 연결
-            const leaderMember = manager.create(TeamMember, {
-                user: leader,
-                team: savedTeam,
-                role: null,
-                isLeader: true,
-            });
-            await manager.save(leaderMember);
-
-            // 최종 팀 정보 반환
-            return manager.findOneOrFail(Team, {
-                where: { id: savedTeam.id },
-                relations: ['leader', 'roles', 'members'],
-            });
+                // 최종 팀 정보 반환
+                return manager.findOneOrFail(Team, {
+                    where: { id: savedTeam.id },
+                    relations: ['leader', 'roles', 'members'],
+                });
+            } catch (error) {
+                // 트랜잭션 실패 시 업로드된 이미지 정리
+                console.log(`[TEAM CREATE ERROR] Transaction failed, cleaning up image: ${dto.projectImage}`);
+                if (dto.projectImage) {
+                    try {
+                        await this.deleteImage(dto.projectImage);
+                        console.log(`[TEAM CREATE ERROR] Successfully cleaned up image: ${dto.projectImage}`);
+                    } catch (deleteError) {
+                        console.error('Failed to cleanup image after team creation error:', deleteError);
+                    }
+                }
+                throw error; // 원본 에러 다시 던지기
+            }
         });
     }
 
@@ -259,6 +283,16 @@ export class TeamsService {
             throw new ForbiddenException('You are not allowed to delete this team');
         }
 
+        // 팀 이미지 삭제
+        if (team.projectImage) {
+            try {
+                await this.deleteImage(team.projectImage);
+            } catch (error) {
+                console.error('Failed to delete team image:', error);
+                // 이미지 삭제 실패해도 팀 삭제는 계속 진행
+            }
+        }
+
         await this.teamRoleRepository.delete({ team: { id } });
         await this.teamMemberRepository.delete({ team: { id } });
         await this.teamRepository.delete(id);
@@ -402,5 +436,66 @@ export class TeamsService {
         // URL 반환
         const imageUrl = `/teams/${file.filename}`;
         return { imageUrl };
+    }
+
+    // 팀 이미지 삭제
+    async deleteImage(imageUrl: string): Promise<void> {
+        if (!imageUrl) {
+            throw new BadRequestException('No image URL provided');
+        }
+
+        console.log(`[DELETE IMAGE] Starting deletion for: ${imageUrl}`);
+
+        try {
+            let filename: string;
+            
+            // URL 에서 파일명 추출 
+            if (imageUrl.startsWith('http')) {
+                // 전체 URL인 경우 (e.g., "http://localhost:3001/teams/filename.jpg")
+                const url = new URL(imageUrl);
+                const extractedFilename = url.pathname.split('/').pop();
+                if (!extractedFilename) {
+                    throw new BadRequestException('Invalid image URL - cannot extract filename from URL');
+                }
+                filename = extractedFilename;
+            } else if (imageUrl.startsWith('/teams/')) {
+                // 상대 경로인 경우 (e.g., "/teams/filename.jpg")
+                const extractedFilename = imageUrl.split('/').pop();
+                if (!extractedFilename) {
+                    throw new BadRequestException('Invalid image URL - cannot extract filename from path');
+                }
+                filename = extractedFilename;
+            } else if (imageUrl.includes('/')) {
+                // 일반적인 경로인 경우
+                const extractedFilename = imageUrl.split('/').pop();
+                if (!extractedFilename) {
+                    throw new BadRequestException('Invalid image URL - cannot extract filename from path');
+                }
+                filename = extractedFilename;
+            } else {
+                // 파일명만 있는 경우
+                filename = imageUrl;
+            }
+            
+            console.log(`[DELETE IMAGE] Extracted filename: ${filename}`);
+            
+            // Docker 개발/프로덕션 환경 모두 /var/app/uploads 사용
+            const filePath = path.join('/var/app', 'uploads', 'teams', filename);
+            console.log(`[DELETE IMAGE] Full path: ${filePath}`);
+            
+            // 파일이 존재하는지 확인하고 삭제
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+                console.log(`[DELETE IMAGE] Successfully deleted file: ${filePath}`);
+            } else {
+                console.log(`[DELETE IMAGE] File not found: ${filePath}`);
+            }
+        } catch (error) {
+            // 파일 삭제 실패는 치명적이지 않으므로 로그만 기록
+            console.error('[DELETE IMAGE] Failed to delete image file:', error);
+            // 예외를 던지지 않음 - 비즈니스 로직에 영향을 주지 않기 위해
+        }
+        
+        console.log(`[DELETE IMAGE] Finished processing: ${imageUrl}`);
     }
 }

@@ -132,7 +132,6 @@ function AdminRecruitment() {
   };
 
   const saveAllSettings = () => {
-    console.log('Saving all settings:', settings);
     alert('모든 설정이 저장되었습니다!');
   };
 

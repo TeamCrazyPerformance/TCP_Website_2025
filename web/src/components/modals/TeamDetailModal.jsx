@@ -4,7 +4,7 @@ import InfoRow from '../ui/InfoRow';
 import { isExpired } from '../../utils/helpers';
 import { apiGet, apiPost, apiDelete } from '../../api/client';
 
-export default function TeamDetailModal({ isOpen, onClose, team }) {
+export default function TeamDetailModal({ isOpen, onClose, team, onApplicationStatusChange }) {
   const { user } = useAuth();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [selectedRoleId, setSelectedRoleId] = useState(null);
@@ -72,7 +72,7 @@ export default function TeamDetailModal({ isOpen, onClose, team }) {
       
       // 상태 업데이트
       const roleInfo = team.rolesRaw?.find(r => r.id === selectedRoleId);
-      setApplicationStatus({
+      const newStatus = {
         hasApplied: true,
         applicationInfo: {
           appliedRole: roleInfo ? {
@@ -80,7 +80,13 @@ export default function TeamDetailModal({ isOpen, onClose, team }) {
             roleName: roleInfo.roleName,
           } : null,
         },
-      });
+      };
+      setApplicationStatus(newStatus);
+      
+      // 부모 컴포넌트에 상태 변경 알림
+      if (onApplicationStatusChange) {
+        onApplicationStatusChange(team.id, newStatus);
+      }
       
       alert('지원이 완료되었습니다! 팀 리더가 연락드릴 예정입니다.');
     } catch (error) {
@@ -98,11 +104,17 @@ export default function TeamDetailModal({ isOpen, onClose, team }) {
     try {
       await apiDelete(`/api/v1/teams/${team.id}/apply`);
       
-      setApplicationStatus({
+      const newStatus = {
         hasApplied: false,
         applicationInfo: null,
-      });
+      };
+      setApplicationStatus(newStatus);
       setSelectedRoleId(null);
+      
+      // 부모 컴포넌트에 상태 변경 알림
+      if (onApplicationStatusChange) {
+        onApplicationStatusChange(team.id, newStatus);
+      }
       
       alert('지원이 취소되었습니다.');
     } catch (error) {
@@ -201,6 +213,10 @@ export default function TeamDetailModal({ isOpen, onClose, team }) {
                     src={team.leader.avatar}
                     alt={team.leader.name}
                     className="w-12 h-12 rounded-full border-2 border-accent-blue"
+                    onError={(e) => {
+                      e.target.onerror = null; // 무한 루프 방지
+                      e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="48" height="48"%3E%3Crect width="48" height="48" fill="%23A8C5E6"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="20" fill="white"%3EL%3C/text%3E%3C/svg%3E';
+                    }}
                   />
                   <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-yellow-500 text-black rounded-full grid place-items-center text-xs">
                     <i className="fas fa-crown" />
@@ -276,11 +292,13 @@ export default function TeamDetailModal({ isOpen, onClose, team }) {
               <i className="fas fa-target text-green-400 mr-2" />
               프로젝트 목표
             </h4>
-            <ul className="list-disc list-inside text-gray-300 space-y-1">
-              {team.goals?.map((g, idx) => (
-                <li key={`goal-${idx}`}>{g}</li>
-              ))}
-            </ul>
+            <div className="bg-gray-800 bg-opacity-50 rounded-lg p-4">
+              <ul className="list-disc list-inside text-gray-300 space-y-1">
+                {team.goals?.map((g, idx) => (
+                  <li key={`goal-${idx}`}>{g}</li>
+                ))}
+              </ul>
+            </div>
           </section>
 
           {/* Selection Process */}
@@ -293,6 +311,24 @@ export default function TeamDetailModal({ isOpen, onClose, team }) {
               <p className="text-indigo-300">
                 {team.selectionProcess}
               </p>
+            </div>
+          </section>
+
+          {/* Tags */}
+          <section className="mb-6">
+            <h4 className="font-semibold text-white mb-3 flex items-center">
+              <i className="fas fa-tags text-purple-400 mr-2" />
+              태그
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {team.tags?.map((tag, idx) => (
+                <span
+                  key={`tag-${idx}`}
+                  className="px-2 py-1 bg-gray-800 rounded text-xs"
+                >
+                  {tag}
+                </span>
+              ))}
             </div>
           </section>
 

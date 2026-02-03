@@ -27,6 +27,14 @@ export class TeamsController {
         return this.teamsService.uploadImage(file);
     }
 
+    // 팀 이미지 삭제
+    @Delete('delete-image')
+    @HttpCode(204)
+    @UseGuards(AuthGuard('jwt'))
+    deleteImage(@Body() body: { imageUrl: string }) {
+        return this.teamsService.deleteImage(body.imageUrl);
+    }
+
     // 모집글 조회
     @Get()
     findAll() {
