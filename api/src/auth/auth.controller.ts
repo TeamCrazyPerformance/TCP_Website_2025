@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards, Request, Req, Res, UsePipes, ValidationPipe, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards, Request, Req, Res, UsePipes, ValidationPipe, UnauthorizedException, Query, BadRequestException, Header } from '@nestjs/common';
 import { Response, Request as ExpressRequest } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -17,6 +17,26 @@ const REFRESH_TOKEN_COOKIE_OPTIONS = {
 @Controller('api/v1/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) { }
+
+  @Get('check-username')
+  @Header('Cache-Control', 'no-store, no-cache, must-revalidate')
+  @Header('Pragma', 'no-cache')
+  checkUsername(@Query('username') username: string) {
+    if (!username) {
+      throw new BadRequestException('아이디를 입력해주세요.');
+    }
+    return this.authService.checkUsernameAvailability(username);
+  }
+
+  @Get('check-email')
+  @Header('Cache-Control', 'no-store, no-cache, must-revalidate')
+  @Header('Pragma', 'no-cache')
+  checkEmail(@Query('email') email: string) {
+    if (!email) {
+      throw new BadRequestException('이메일을 입력해주세요.');
+    }
+    return this.authService.checkEmailAvailability(email);
+  }
 
   @Post('register')
   @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))

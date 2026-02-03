@@ -7,35 +7,31 @@ function Header({ isScrolled }) {
   const navigate = useNavigate();
   const { isAuthenticated, logout } = useAuth();
   const getNavLinkClass = ({ isActive }) =>
-    `nav-link orbitron text-sm font-medium ${
-      isActive ? 'active' : 'text-gray-300'
+    `nav-link orbitron text-sm font-medium ${isActive ? 'active' : 'text-gray-300'
     } hover:text-white`;
 
   const getLoginLinkClass = ({ isActive }) =>
-    `px-4 py-2 text-sm border ${
-      isActive ? 'border-gray-400 text-white' : 'border-gray-600 text-gray-300'
+    `px-4 py-2 text-sm border ${isActive ? 'border-gray-400 text-white' : 'border-gray-600 text-gray-300'
     } rounded-lg hover:border-gray-400 transition-colors`;
 
   const getRegisterLinkClass = ({ isActive }) =>
-    `px-4 py-2 text-sm rounded-lg transition-colors ${
-      isActive
-        ? 'bg-gradient-to-r from-blue-600 to-purple-600'
-        : 'bg-gradient-to-r from-blue-500 to-purple-500'
+    `px-4 py-2 text-sm rounded-lg transition-colors ${isActive
+      ? 'bg-gradient-to-r from-blue-600 to-purple-600'
+      : 'bg-gradient-to-r from-blue-500 to-purple-500'
     } hover:from-blue-600 hover:to-purple-600 text-white`;
 
   const logoutButtonClass =
     'px-4 py-2 text-sm border border-gray-600 text-gray-300 rounded-lg hover:border-gray-400 transition-colors';
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
   };
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 ${
-        isScrolled ? 'bg-black' : 'bg-black'
-      } backdrop-blur-md border-b border-gray-800 transition-colors duration-300`}
+      className={`fixed top-0 left-0 right-0 z-50 ${isScrolled ? 'bg-black' : 'bg-black'
+        } backdrop-blur-md border-b border-gray-800 transition-colors duration-300`}
     >
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">

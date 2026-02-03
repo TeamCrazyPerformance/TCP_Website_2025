@@ -96,8 +96,10 @@ export class StudyService {
         way: study.way,
         // Safely get the leader's name. If no leader was found, this will be null.
         leader_name: leaderMember ? leaderMember.user.name : null,
-        // The total member count is the total number of studyMembers associated with the study.
-        members_count: study.studyMembers.length,
+        // The total member count is the total number of studyMembers associated with the study, excluding PENDING members.
+        members_count: study.studyMembers.filter(
+          (member) => member.role !== StudyMemberRole.PENDING,
+        ).length,
       };
     });
   }
@@ -119,11 +121,11 @@ export class StudyService {
       throw new NotFoundException('Study not found');
     }
 
-    // 3. Process the 'studyMembers' array to separate the leader from the members.
-    const leaderMember = study.studyMembers.find((member) => member.role === StudyMemberRole.LEADER);
-    const regularMembers = study.studyMembers.filter(
-      (member) => member.role === StudyMemberRole.MEMBER || member.role === StudyMemberRole.PENDING,
-    );
+    // 3. Process the 'studyMembers' array.
+    // Ensure we only work with members that have a valid user relation
+    const validMembers = study.studyMembers.filter((m) => m && m.user);
+    const leaderMember = validMembers.find((member) => member.role === StudyMemberRole.LEADER);
+    const visibleMembers = validMembers;
 
     // 4. Map the entity data to the shape required by the API response DTO.
     return {
@@ -144,10 +146,11 @@ export class StudyService {
           role: StudyMemberRole.LEADER,
         }
         : null,
-      members: regularMembers.map((member) => ({
+      members: visibleMembers.map((member) => ({
         user_id: member.user.id,
         name: member.user.name,
         role: member.role,
+        profile_image: member.user.profile_image,
       })),
       resources: study.resources
         .filter((r) => r.deleted_at === null)
@@ -844,6 +847,7 @@ export class StudyService {
     // 1. Find the study member entry
     const studyMember = await this.studyMemberRepository.findOne({
       where: { study: { id: studyId }, user: { id: userId } },
+      relations: ['study', 'study.studyMembers'],
     });
 
     if (!studyMember) {
@@ -852,15 +856,100 @@ export class StudyService {
       );
     }
 
-    // 2. Leaders cannot leave the study (they must transfer leadership first)
+    // 2. Leaders cannot leave if they are the last one
     if (studyMember.role === StudyMemberRole.LEADER) {
-      throw new BadRequestException(
-        'Leaders cannot leave the study. Please transfer leadership first.',
-      );
+      const leaderCount = studyMember.study.studyMembers.filter(
+        (m) => m.role === StudyMemberRole.LEADER
+      ).length;
+
+      if (leaderCount <= 1) {
+        throw new BadRequestException(
+          'Last leader cannot leave the study. Please promote another leader first.',
+        );
+      }
     }
 
     // 3. Delete the study member entry
     await this.studyMemberRepository.delete(studyMember.id);
+
+    return { success: true };
+  }
+
+  /**
+   * @description Nominates a member to become a leader. (Admin/Leader only)
+   */
+  async nominateLeader(
+    studyId: number,
+    userId: string,
+  ): Promise<SuccessResponseDto> {
+    const studyMember = await this.studyMemberRepository.findOne({
+      where: { study: { id: studyId }, user: { id: userId } },
+    });
+
+    if (!studyMember) {
+      throw new NotFoundException('Member not found');
+    }
+
+    if (studyMember.role === StudyMemberRole.LEADER) {
+      throw new BadRequestException('User is already a leader');
+    }
+
+    if (studyMember.role !== StudyMemberRole.MEMBER) {
+      throw new BadRequestException('Only active members can be nominated');
+    }
+
+    studyMember.role = StudyMemberRole.NOMINEE;
+    await this.studyMemberRepository.save(studyMember);
+
+    return { success: true };
+  }
+
+  /**
+   * @description Accepts the leadership nomination. (Nominee only)
+   */
+  async acceptLeaderNomination(
+    studyId: number,
+    userId: string,
+  ): Promise<SuccessResponseDto> {
+    const studyMember = await this.studyMemberRepository.findOne({
+      where: { study: { id: studyId }, user: { id: userId } },
+    });
+
+    if (!studyMember) {
+      throw new NotFoundException('Member not found');
+    }
+
+    if (studyMember.role !== StudyMemberRole.NOMINEE) {
+      throw new BadRequestException('You are not nominated for leadership');
+    }
+
+    studyMember.role = StudyMemberRole.LEADER;
+    await this.studyMemberRepository.save(studyMember);
+
+    return { success: true };
+  }
+
+  /**
+   * @description Declines the leadership nomination. (Nominee only)
+   */
+  async declineLeaderNomination(
+    studyId: number,
+    userId: string,
+  ): Promise<SuccessResponseDto> {
+    const studyMember = await this.studyMemberRepository.findOne({
+      where: { study: { id: studyId }, user: { id: userId } },
+    });
+
+    if (!studyMember) {
+      throw new NotFoundException('Member not found');
+    }
+
+    if (studyMember.role !== StudyMemberRole.NOMINEE) {
+      throw new BadRequestException('You are not nominated for leadership');
+    }
+
+    studyMember.role = StudyMemberRole.MEMBER;
+    await this.studyMemberRepository.save(studyMember);
 
     return { success: true };
   }

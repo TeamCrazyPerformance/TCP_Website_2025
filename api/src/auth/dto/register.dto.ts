@@ -3,7 +3,11 @@ import { EducationStatus } from '../../members/entities/enums/education-status.e
 import { UserGender } from '../../members/entities/enums/user-gender.enum';
 
 export class RegisterDto {
-  @IsString() @Length(3, 50)
+  @IsString()
+  @Length(3, 50)
+  @Matches(/^[a-zA-Z0-9_]+$/, {
+    message: '아이디는 영문, 숫자, 밑줄(_)만 사용할 수 있습니다.',
+  })
   username: string;
 
   @IsString()
@@ -16,35 +20,44 @@ export class RegisterDto {
   @IsString() @Length(1, 50)
   name: string;
 
+  @IsOptional()
   @IsString() @Length(1, 20)
-  student_number: string;
+  student_number?: string;
 
   @IsOptional() @IsString() @MaxLength(255)
   profile_image?: string;
 
-  @IsString() @Length(1, 20)
+  @IsString()
+  @Matches(/^0\d{1,2}-\d{3,4}-\d{4}$/, {
+    message: '전화번호 형식이 올바르지 않습니다. (예: 010-1234-5678, 02-123-4567)',
+  })
   phone_number: string;
 
   @IsEmail() @MaxLength(255)
   email: string;
 
+  @IsOptional()
   @IsString() @MaxLength(100)
-  major: string;
+  major?: string;
 
+  @IsOptional()
   @IsNumber()
-  join_year: number;
+  join_year?: number;
 
+  @IsOptional()
   @IsDateString()
-  birth_date: string; // "YYYY-MM-DD" 형식의 문자열로 받음 파싱해서 Date로 변환 후 DB에 저장
+  birth_date?: string; // "YYYY-MM-DD" 형식의 문자열로 받음 파싱해서 Date로 변환 후 DB에 저장
 
+  @IsOptional()
   @IsEnum(UserGender)
-  gender: UserGender;
+  gender?: UserGender;
 
   @IsOptional() @IsArray()
   tech_stack?: string[];
 
+  @IsOptional()
   @IsEnum(EducationStatus)
-  education_status: EducationStatus;
+  education_status?: EducationStatus;
 
   @IsOptional() @IsString() @MaxLength(255)
   current_company?: string;

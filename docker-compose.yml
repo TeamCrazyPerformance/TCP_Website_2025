@@ -13,7 +13,7 @@
       - ./reverse-proxy/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./reverse-proxy/certs:/etc/nginx/certs:ro # HTTPS용 SSL 인증서 매핑
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ || exit 1"]
+      test: ["CMD-SHELL", "wget -S -qO- http://127.0.0.1/ 2>&1 | head -n 1 | grep -q ' 301 ' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5

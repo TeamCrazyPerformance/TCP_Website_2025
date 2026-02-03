@@ -21,7 +21,7 @@ export class PublicUserDto {
 
   @IsString()
   @IsOptional()
-  education_status?: string;
+  education_status?: string | null;
 
   @IsString()
   @IsOptional()

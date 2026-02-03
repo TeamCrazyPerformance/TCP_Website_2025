@@ -58,8 +58,8 @@ function MyPageLayout() {
     return '마이페이지';
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 

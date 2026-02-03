@@ -77,27 +77,53 @@ export class RecruitmentSettingsService {
     }
 
     /**
-     * 즉시 모집 시작
+     * 즉시 모집 시작 (오늘부터 3주간)
      */
-    async startNow(): Promise<{ success: boolean; message: string }> {
+    async startNow(): Promise<{ success: boolean; message: string; start_date: Date; end_date: Date }> {
         const settings = await this.getOrCreateSettings();
+        
+        // 오늘 날짜 (시간은 00:00:00으로 설정)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // 3주 후 날짜
+        const threeWeeksLater = new Date(today);
+        threeWeeksLater.setDate(threeWeeksLater.getDate() + 21);
+        
+        settings.start_date = today;
+        settings.end_date = threeWeeksLater;
         settings.is_application_enabled = true;
         await this.settingsRepository.save(settings);
 
-        this.logger.log('Recruitment started immediately');
-        return { success: true, message: '모집이 시작되었습니다.' };
+        this.logger.log('Recruitment started immediately with 3-week period');
+        return { 
+            success: true, 
+            message: '모집이 시작되었습니다. (오늘부터 3주간)',
+            start_date: today,
+            end_date: threeWeeksLater
+        };
     }
 
     /**
-     * 즉시 모집 중단
+     * 즉시 모집 중단 (종료일을 오늘로 변경)
      */
-    async stopNow(): Promise<{ success: boolean; message: string }> {
+    async stopNow(): Promise<{ success: boolean; message: string; end_date: Date }> {
         const settings = await this.getOrCreateSettings();
+        
+        // 오늘 날짜 (시간은 00:00:00으로 설정)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        settings.end_date = today;
         settings.is_application_enabled = false;
         await this.settingsRepository.save(settings);
 
-        this.logger.log('Recruitment stopped immediately');
-        return { success: true, message: '모집이 중단되었습니다.' };
+        this.logger.log('Recruitment stopped immediately, end date set to today');
+        return { 
+            success: true, 
+            message: '모집이 중단되었습니다. (종료일: 오늘)',
+            end_date: today
+        };
     }
 
     /**

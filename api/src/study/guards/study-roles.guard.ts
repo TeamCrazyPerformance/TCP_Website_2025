@@ -46,10 +46,11 @@ export class StudyRolesGuard implements CanActivate {
         }
 
         // 해당 스터디에서 사용자의 멤버십 조회
+        const userId = user.userId || user.id;
         const studyMember = await this.studyMemberRepository.findOne({
             where: {
                 study: { id: studyId },
-                user: { id: user.id },
+                user: { id: userId },
             },
         });
 

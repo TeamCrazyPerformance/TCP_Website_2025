@@ -7,10 +7,9 @@ import { useAuth } from '../context/AuthContext';
 function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  // 아이디, 비밀번호, 로그인 상태 유지 체크박스 상태 관리
+  // 아이디, 비밀번호 상태 관리
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [keepLoggedIn, setKeepLoggedIn] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 폼 제출 핸들러
@@ -25,7 +24,7 @@ function Login() {
     try {
       setIsSubmitting(true);
       const data = await apiPost('/api/v1/auth/login', { username, password });
-      login(data.user, data.access_token, keepLoggedIn);
+      login(data.user, data.access_token);
       alert('로그인 되었습니다.');
       navigate('/');
     } catch (error) {
@@ -133,22 +132,7 @@ function Login() {
                   </div>
                 </div>
 
-                {/* Keep me logged in */}
-                <div className="checkbox-container">
-                  <input
-                    type="checkbox"
-                    id="keepLogin"
-                    className="custom-checkbox"
-                    checked={keepLoggedIn}
-                    onChange={(e) => setKeepLoggedIn(e.target.checked)}
-                  />
-                  <label
-                    htmlFor="keepLogin"
-                    className="text-sm text-gray-300 cursor-pointer"
-                  >
-                    로그인 상태 유지
-                  </label>
-                </div>
+
 
                 {/* Login Button */}
                 <button
@@ -162,15 +146,23 @@ function Login() {
 
                 {/* Secondary Actions */}
                 <div className="flex justify-center space-x-6 text-sm pt-4">
-                  <Link to="#" className="secondary-link hover:underline">
+                  <button
+                    type="button"
+                    onClick={() => alert('아직 구현되지 않은 기능입니다. TCP 운영진에게 문의 부탁드립니다.')}
+                    className="secondary-link hover:underline"
+                  >
                     <i className="fas fa-search mr-1"></i>
                     아이디 찾기
-                  </Link>
+                  </button>
                   <span className="text-gray-600">|</span>
-                  <Link to="#" className="secondary-link hover:underline">
+                  <button
+                    type="button"
+                    onClick={() => alert('아직 구현되지 않은 기능입니다. TCP 운영진에게 문의 부탁드립니다.')}
+                    className="secondary-link hover:underline"
+                  >
                     <i className="fas fa-key mr-1"></i>
                     비밀번호 재설정
-                  </Link>
+                  </button>
                   <span className="text-gray-600">|</span>
                   <Link
                     to="/register"
@@ -188,18 +180,18 @@ function Login() {
             {/* Additional Info */}
             <div className="text-center mt-8 text-sm text-gray-400">
               <p>
-                TCP 회원이 아니신가요?{' '}
+                TCP 부원이 아니신가요?{' '}
                 <Link
                   to="/recruitment"
                   className="text-blue-400 hover:text-blue-300 underline"
                 >
-                  지금 가입하세요
+                  지금 지원하세요
                 </Link>
               </p>{' '}
               {/* 가입 링크 */}
               <p className="mt-2">
                 문의사항:{' '}
-                <span className="text-blue-400">contact@tcp.club</span>
+                <span className="text-blue-400">seoultech.tcp@gmail.com</span>
               </p>
             </div>
           </div>
