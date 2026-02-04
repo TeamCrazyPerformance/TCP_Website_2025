@@ -91,7 +91,9 @@ async function request(path, method, body = null, options = {}) {
     return null;
   }
 
-  return response.json();
+  // 200 OK but empty body, or 204 No Content
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
 }
 
 function handleSessionExpiry() {
@@ -106,12 +108,6 @@ function handleSessionExpiry() {
   if (window.location.pathname !== '/login') {
     window.location.href = '/login';
   }
-}
-
-if (response.status === 204 || response.status === 200) {
-  // 204 No Content 또는 200 OK with empty body
-  const text = await response.text();
-  return text ? JSON.parse(text) : null;
 }
 
 // Export wrappers for compatibility
