@@ -4,6 +4,7 @@ import MyPageSidebar from './MyPageSidebar';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBars, faBell } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../context/AuthContext';
+import defaultProfileImage from '../logo.svg';
 
 function MyPageLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -100,11 +101,18 @@ function MyPageLayout() {
                       src={user.profile_image}
                       alt={displayName}
                       className="w-8 h-8 rounded-full object-cover"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = defaultProfileImage;
+                        e.target.className = "w-8 h-8 rounded-full object-contain bg-white p-1";
+                      }}
                     />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs text-white">
-                      {avatarInitial}
-                    </div>
+                    <img
+                      src={defaultProfileImage}
+                      alt="Profile"
+                      className="w-8 h-8 rounded-full object-contain bg-white p-1"
+                    />
                   )}
                   <span className="text-sm font-medium">{displayName}</span>
                 </div>

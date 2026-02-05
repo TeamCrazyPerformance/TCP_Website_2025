@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { apiGet, apiPatch } from '../../api/client';
 
 const MyPageAccountSettings = () => {
-    const [formData, setFormData] = useState({ name: '', birthday: '', phone: '', email: '' });
+    const [formData, setFormData] = useState({ username: '', name: '', phone: '', email: '' });
     const [initialData, setInitialData] = useState({});
     const [isDirty, setIsDirty] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -14,9 +14,9 @@ const MyPageAccountSettings = () => {
                 setLoading(true);
                 const data = await apiGet('/api/v1/mypage/account');
                 const accountData = {
+                    username: data.username || '', // Added
                     name: data.name || '',
-                    birthday: data.birthday || '',
-                    phone: data.phone_number || '',
+                    phone: data.phoneNumber || data.phone_number || '',
                     email: data.email || ''
                 };
                 setFormData(accountData);
@@ -36,9 +36,29 @@ const MyPageAccountSettings = () => {
         setIsDirty(JSON.stringify(formData) !== JSON.stringify(initialData));
     }, [formData, initialData]);
 
+    // 전화번호 자동 형식화 함수
+    const formatPhoneNumber = (value) => {
+        const numbers = value.replace(/[^0-9]/g, '');
+        const limited = numbers.slice(0, 11);
+        if (limited.startsWith('02')) {
+            if (limited.length <= 2) return limited;
+            if (limited.length <= 5) return `${limited.slice(0, 2)}-${limited.slice(2)}`;
+            if (limited.length <= 9) return `${limited.slice(0, 2)}-${limited.slice(2, 5)}-${limited.slice(5)}`;
+            return `${limited.slice(0, 2)}-${limited.slice(2, 6)}-${limited.slice(6, 10)}`;
+        }
+        if (limited.length <= 3) return limited;
+        if (limited.length <= 6) return `${limited.slice(0, 3)}-${limited.slice(3)}`;
+        if (limited.length <= 10) return `${limited.slice(0, 3)}-${limited.slice(3, 6)}-${limited.slice(6)}`;
+        return `${limited.slice(0, 3)}-${limited.slice(3, 7)}-${limited.slice(7)}`;
+    };
+
     const handleInputChange = (e) => {
         const { id, value } = e.target;
-        setFormData(prev => ({ ...prev, [id]: value }));
+        if (id === 'phone') {
+            setFormData(prev => ({ ...prev, [id]: formatPhoneNumber(value) }));
+        } else {
+            setFormData(prev => ({ ...prev, [id]: value }));
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -48,7 +68,6 @@ const MyPageAccountSettings = () => {
         try {
             const updateData = {
                 name: formData.name,
-                birthday: formData.birthday,
                 phone_number: formData.phone,
                 email: formData.email
             };
@@ -79,12 +98,12 @@ const MyPageAccountSettings = () => {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div>
-                            <label htmlFor="name" className="label">이름</label>
-                            <input id="name" name="name" type="text" className="input" value={formData.name} onChange={handleInputChange} required />
+                            <label htmlFor="username" className="label">아이디</label>
+                            <input id="username" name="username" type="text" className="input bg-gray-700 text-gray-400 cursor-not-allowed" value={formData.username} readOnly disabled />
                         </div>
                         <div>
-                            <label htmlFor="birthday" className="label">생일</label>
-                            <input id="birthday" name="birthday" type="date" className="input" value={formData.birthday} onChange={handleInputChange} required />
+                            <label htmlFor="name" className="label">이름</label>
+                            <input id="name" name="name" type="text" className="input" value={formData.name} onChange={handleInputChange} required />
                         </div>
                     </div>
                 </section>
@@ -95,7 +114,7 @@ const MyPageAccountSettings = () => {
                     <h4 id="sec-contacts" className="text-lg font-bold mb-4">연락처</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div>
-                            <label htmlFor="phone" className="label">휴대전화</label>
+                            <label htmlFor="phone" className="label">전화번호</label>
                             <input id="phone" name="phone" type="tel" className="input" value={formData.phone} onChange={handleInputChange} required />
                         </div>
                         <div>
@@ -103,11 +122,7 @@ const MyPageAccountSettings = () => {
                             <input id="email" name="email" type="email" className="input" value={formData.email} onChange={handleInputChange} required />
                         </div>
                     </div>
-                    <div className="mt-4">
-                        <button type="button" onClick={() => setIsModalOpen(true)} className="px-4 py-2 rounded-lg btn-outline hover:bg-gray-800">
-                            <i className="fa-solid fa-key mr-2"></i>비밀번호 변경
-                        </button>
-                    </div>
+
                 </section>
 
                 <hr className="my-6 border-gray-700" />
@@ -116,6 +131,12 @@ const MyPageAccountSettings = () => {
                     <button type="submit" className={`px-5 py-2 rounded-lg btn-primary ${!isDirty && 'opacity-50'}`} disabled={!isDirty}>저장</button>
                 </div>
             </form>
+
+            <div className="mt-6 flex justify-end">
+                <button type="button" onClick={() => setIsModalOpen(true)} className="px-4 py-2 rounded-lg btn-outline text-red-400 hover:bg-red-400/10 border-red-400">
+                    <i className="fa-solid fa-key mr-2"></i>비밀번호 변경
+                </button>
+            </div>
             <PasswordChangeModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
         </div>
     );
@@ -130,11 +151,43 @@ const PasswordChangeModal = ({ isOpen, onClose }) => {
     });
     const [submitting, setSubmitting] = useState(false);
 
+    // Password strength state
+    const [passwordStrength, setPasswordStrength] = useState({
+        minLength: false,
+        hasLowercase: false,
+        hasUppercase: false,
+        hasNumber: false,
+        hasSpecial: false,
+    });
+    const [passwordMatch, setPasswordMatch] = useState(null);
+
+    // Password validation logic
+    useEffect(() => {
+        const password = passwordData.newPassword;
+        setPasswordStrength({
+            minLength: password.length >= 8,
+            hasLowercase: /[a-z]/.test(password),
+            hasUppercase: /[A-Z]/.test(password),
+            hasNumber: /\d/.test(password),
+            hasSpecial: /[@$!%*?&]/.test(password),
+        });
+    }, [passwordData.newPassword]);
+
+    // Password match logic
+    useEffect(() => {
+        if (passwordData.confirmPassword.length === 0) {
+            setPasswordMatch(null);
+            return;
+        }
+        setPasswordMatch(passwordData.newPassword === passwordData.confirmPassword);
+    }, [passwordData.newPassword, passwordData.confirmPassword]);
+
     if (!isOpen) return null;
 
     const handlePasswordChange = (e) => {
         const { id, value } = e.target;
-        const field = id.replace('pw-', '').replace('-', '');
+        // pw-current -> currentPassword, pw-new -> newPassword, pw-confirm -> confirmPassword
+        const field = id.replace('pw-', '') + 'Password';
         setPasswordData(prev => ({ ...prev, [field]: value }));
     };
 
@@ -156,7 +209,8 @@ const PasswordChangeModal = ({ isOpen, onClose }) => {
             setSubmitting(true);
             await apiPatch('/api/v1/mypage/account/password', {
                 currentPassword: passwordData.currentPassword,
-                newPassword: passwordData.newPassword
+                newPassword: passwordData.newPassword,
+                confirmPassword: passwordData.confirmPassword
             });
             alert('비밀번호가 변경되었습니다.');
             setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '', verificationCode: '' });
@@ -199,6 +253,31 @@ const PasswordChangeModal = ({ isOpen, onClose }) => {
                             onChange={handlePasswordChange}
                             required
                         />
+                        {/* Password Strength Indicators */}
+                        {passwordData.newPassword.length > 0 && (
+                            <div className="mt-2 space-y-1 text-left text-sm">
+                                <div className={passwordStrength.minLength ? 'text-green-400' : 'text-red-400'}>
+                                    <i className={`fas ${passwordStrength.minLength ? 'fa-check' : 'fa-times'} mr-2`}></i>
+                                    8자 이상
+                                </div>
+                                <div className={passwordStrength.hasLowercase ? 'text-green-400' : 'text-red-400'}>
+                                    <i className={`fas ${passwordStrength.hasLowercase ? 'fa-check' : 'fa-times'} mr-2`}></i>
+                                    영문 소문자 포함
+                                </div>
+                                <div className={passwordStrength.hasUppercase ? 'text-green-400' : 'text-red-400'}>
+                                    <i className={`fas ${passwordStrength.hasUppercase ? 'fa-check' : 'fa-times'} mr-2`}></i>
+                                    영문 대문자 포함
+                                </div>
+                                <div className={passwordStrength.hasNumber ? 'text-green-400' : 'text-red-400'}>
+                                    <i className={`fas ${passwordStrength.hasNumber ? 'fa-check' : 'fa-times'} mr-2`}></i>
+                                    숫자 포함
+                                </div>
+                                <div className={passwordStrength.hasSpecial ? 'text-green-400' : 'text-red-400'}>
+                                    <i className={`fas ${passwordStrength.hasSpecial ? 'fa-check' : 'fa-times'} mr-2`}></i>
+                                    특수문자 포함 (@$!%*?&)
+                                </div>
+                            </div>
+                        )}
                         <div className="strength-rail mt-2"><div className="strength-bar"></div></div>
                     </div>
                     <div>
@@ -211,15 +290,15 @@ const PasswordChangeModal = ({ isOpen, onClose }) => {
                             onChange={handlePasswordChange}
                             required
                         />
+                        {passwordMatch !== null && (
+                            <div className={`text-sm mt-1 text-left ${passwordMatch ? 'text-green-400' : 'text-red-500'}`}>
+                                <i className={`fas ${passwordMatch ? 'fa-check' : 'fa-times'} mr-2`}></i>
+                                {passwordMatch ? '비밀번호가 일치합니다.' : '비밀번호가 일치하지 않습니다.'}
+                            </div>
+                        )}
                     </div>
                     <div>
-                        <div className="flex items-end gap-3">
-                            <div className="flex-1">
-                                <label htmlFor="pw-code" className="label">인증 코드</label>
-                                <input id="pw-code" type="text" className="input" required />
-                            </div>
-                            <button type="button" className="px-3 py-2 rounded-lg btn-outline hover:bg-gray-800">코드 전송</button>
-                        </div>
+
                     </div>
                     <div className="flex items-center justify-end gap-3 mt-6">
                         <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg btn-outline hover:bg-gray-800">취소</button>

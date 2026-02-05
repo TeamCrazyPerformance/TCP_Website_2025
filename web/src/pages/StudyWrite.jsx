@@ -194,6 +194,7 @@ export default function StudyWrite() {
                 name="deadline"
                 value={study.deadline}
                 onChange={handleChange}
+                max="9999-12-31" // Prevent years > 9999
                 className="w-full bg-gray-800 border-gray-700 rounded-lg py-3 px-4 text-base focus:ring-2 focus:ring-accent-blue focus:outline-none"
                 required
               />

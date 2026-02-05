@@ -30,10 +30,15 @@ async function request(path, method, body = null, options = {}) {
   };
 
   if (body) {
-    config.body = JSON.stringify(body);
+    if (body instanceof FormData) {
+      config.body = body;
+      delete config.headers['Content-Type']; // Let browser set boundary
+    } else {
+      config.body = JSON.stringify(body);
+    }
   }
 
-  // Allow overriding/removing Content-Type (e.g. for FormData)
+  // Allow overriding/removing Content-Type (e.g. for FormData) manually if needed
   if (extraHeaders['Content-Type'] === null) {
     delete config.headers['Content-Type'];
   }
