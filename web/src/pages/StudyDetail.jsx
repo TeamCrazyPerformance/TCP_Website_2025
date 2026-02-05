@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { apiGet, apiPost, apiDelete } from '../api/client';
+import defaultProfileImage from '../logo.svg';
 
 export default function StudyDetail() {
   const { id } = useParams();
@@ -83,7 +84,7 @@ export default function StudyDetail() {
           id: member.user_id,
           name: member.name,
           role: member.role === 'LEADER' ? '스터디장' : '스터디원',
-          avatar: 'https://via.placeholder.com/40',
+          avatar: member.profile_image || 'https://via.placeholder.com/40',
         }));
 
         if (isMounted) {
@@ -622,9 +623,13 @@ export default function StudyDetail() {
                 >
                   <div className="flex items-center">
                     <img
-                      src={member.avatar}
+                      src={member.avatar || defaultProfileImage}
                       alt={member.name}
-                      className="w-10 h-10 rounded-full mr-4"
+                      className="w-10 h-10 rounded-full mr-4 object-cover"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = defaultProfileImage;
+                      }}
                     />
                     <div>
                       <p className="font-bold text-white">{member.name}</p>

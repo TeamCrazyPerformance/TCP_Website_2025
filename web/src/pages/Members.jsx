@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { apiGet } from '../api/client';
+import defaultProfileImage from '../logo.svg';
 
 function Members() {
   const [members, setMembers] = useState([]);
@@ -22,10 +23,7 @@ function Members() {
         setIsLoading(true);
         const data = await apiGet('/api/v1/members');
         const mapped = (data || []).map((user) => {
-          const image =
-            user.profile_image?.startsWith('http')
-              ? user.profile_image
-              : placeholderAvatar;
+          const image = user.profile_image || defaultProfileImage;
 
           // education_status가 공개된 경우에만 확인, 아니면 기본값 'current'
           const status =
@@ -294,6 +292,10 @@ function Members() {
                     <img
                       src={member.profileImageUrl}
                       alt={`${member.name} Profile`}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = defaultProfileImage;
+                      }}
                     />
                   </div>
                   <h3 className="orbitron text-xl font-bold mb-2 text-white">
@@ -391,6 +393,10 @@ function Members() {
                     <img
                       src={member.profileImageUrl}
                       alt={`${member.name} Profile`}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = defaultProfileImage;
+                      }}
                     />
                   </div>
                   <h3 className="orbitron text-xl font-bold mb-2 text-white">

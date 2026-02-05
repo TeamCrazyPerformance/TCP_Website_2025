@@ -34,7 +34,9 @@ export class MembersService {
     });
     return users.map((user) => ({
       name: user.name,
-      profile_image: user.profile_image,
+      profile_image: user.profile_image && user.profile_image !== 'default_profile_image.png'
+        ? (user.profile_image.startsWith('http') ? user.profile_image : `/profiles/${user.profile_image}`)
+        : null,
       self_description: user.self_description,
       ...(user.is_public_email && { email: user.email }),
       ...(user.is_public_tech_stack && { tech_stack: user.tech_stack }),
@@ -64,7 +66,11 @@ export class MembersService {
     if (user.profile_image && user.profile_image !== 'default_profile_image.png') {
       const oldImagePath = path.join(this.profilesPath, user.profile_image);
       if (fs.existsSync(oldImagePath)) {
-        fs.unlinkSync(oldImagePath);
+        try {
+          fs.unlinkSync(oldImagePath);
+        } catch (error) {
+          console.error(`Failed to delete profile image: ${oldImagePath}`, error);
+        }
       }
     }
 
@@ -80,6 +86,33 @@ export class MembersService {
     user.profile_image = newFileName;
     await this.userRepository.save(user);
 
-    return { profile_image: `/uploads/profiles/${newFileName}` };
+    return { profile_image: `/profiles/${newFileName}` };
+  }
+
+  /**
+   * @description 사용자의 프로필 이미지를 삭제(기본 이미지로 초기화)합니다.
+   * @param userId 사용자 ID
+   */
+  async deleteProfileImage(userId: string): Promise<void> {
+    const user = await this.userRepository.findOneBy({ id: userId });
+    if (!user) {
+      throw new NotFoundException('사용자를 찾을 수 없습니다.');
+    }
+
+    // 기존 이미지가 있고 기본값이 아니라면 파일 삭제
+    if (user.profile_image && user.profile_image !== 'default_profile_image.png' && !user.profile_image.startsWith('http')) {
+      const oldImagePath = path.join(this.profilesPath, user.profile_image);
+      if (fs.existsSync(oldImagePath)) {
+        try {
+          fs.unlinkSync(oldImagePath);
+        } catch (error) {
+          console.error(`Failed to delete profile image: ${oldImagePath}`, error);
+        }
+      }
+    }
+
+    // DB 업데이트: 기본값으로 복원
+    user.profile_image = 'default_profile_image.png';
+    await this.userRepository.save(user);
   }
 }
