@@ -21,8 +21,18 @@ export class AuthService {
   ) { }
 
   private sanitize(user: User): SanitizedUser {
-    const { id, username, name, email, student_number, profile_image, role, created_at, updated_at } = user;
-    return { id, username, name, email, student_number, profile_image, role, created_at, updated_at };
+    const { id, username, name, email, student_number, role, created_at, updated_at } = user;
+    let profile_image: string | null = user.profile_image;
+
+    if (profile_image && profile_image !== 'default_profile_image.png') {
+      if (!profile_image.startsWith('http')) {
+        profile_image = `/profiles/${profile_image}`;
+      }
+    } else {
+      profile_image = null;
+    }
+
+    return { id, username, name, email, student_number, profile_image: profile_image as any, role, created_at, updated_at };
   }
 
   private async generateTokens(user: User, deviceInfo?: string) {

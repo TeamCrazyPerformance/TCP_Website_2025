@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { apiGet, apiPatch } from '../../api/client';
+import defaultProfileImage from '../../logo.svg';
 
 const buildSettingsState = (data) => ({
     email: Boolean(data?.is_public_email),
@@ -216,13 +217,15 @@ const MemberCardPreview = ({ settings, profile }) => {
     return (
         <div className="member-card p-6 rounded-xl text-center card-hover">
             <div className="img-container mx-auto">
-                {profile.profile_image ? (
-                    <img src={profile.profile_image} alt={displayName} />
-                ) : (
-                    <div className="w-28 h-28 rounded-full bg-gray-700 flex items-center justify-center text-xl text-white">
-                        {avatarInitial}
-                    </div>
-                )}
+                <img
+                    src={profile.profile_image || defaultProfileImage}
+                    alt={displayName}
+                    className="w-28 h-28 rounded-full object-cover mx-auto"
+                    onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = defaultProfileImage;
+                    }}
+                />
             </div>
             <h3 className="text-xl font-bold mb-2 text-white">{displayName}</h3>
             <p className="text-blue-300 mb-4">{bio || '자기소개를 입력해주세요.'}</p>

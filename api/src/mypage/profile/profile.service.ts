@@ -63,7 +63,7 @@ export class ProfileService {
 
     // DTO에서 실제로 값이 제공된 속성들만 업데이트
     Object.keys(dto).forEach(key => {
-      if (dto[key] !== undefined && dto[key] !== null) {
+      if (dto[key] !== undefined) {
         user[key] = dto[key];
       }
     });

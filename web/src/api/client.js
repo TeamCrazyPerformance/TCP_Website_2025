@@ -12,6 +12,20 @@ function getAuthHeaders() {
   return {};
 }
 
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 /**
  * Core Request Function with Auto-Refresh Logic
  */
@@ -46,7 +60,26 @@ async function request(path, method, body = null, options = {}) {
   let response = await fetch(url, config);
 
   // 1. If 401 Unauthorized, try to refresh token
-  if (response.status === 401) {
+  // Skip refresh if we are already on the login endpoint or refresh endpoint
+  if (response.status === 401 && !url.includes('/auth/login') && !url.includes('/auth/refresh')) {
+    if (isRefreshing) {
+      try {
+        await new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        });
+        // Retry with new token
+        config.headers = {
+          ...config.headers,
+          ...getAuthHeaders(),
+        };
+        return await fetch(url, config);
+      } catch (error) {
+        throw error;
+      }
+    }
+
+    isRefreshing = true;
+
     try {
       // Attempt refresh
       const refreshResponse = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
@@ -61,20 +94,28 @@ async function request(path, method, body = null, options = {}) {
           localStorage.setItem('access_token', data.access_token);
         }
 
+        // Notify waiting requests
+        processQueue(null);
+
         // Retry original request with new token
         config.headers = {
           ...config.headers,
-          ...getAuthHeaders(), // Get new token
+          ...getAuthHeaders(),
         };
         response = await fetch(url, config);
       } else {
         // Refresh failed (session expired completely)
+        const err = new Error('Session expired');
+        processQueue(err);
         handleSessionExpiry();
-        throw new Error('Session expired');
+        throw err;
       }
     } catch (e) {
+      processQueue(e);
       handleSessionExpiry();
       throw e;
+    } finally {
+      isRefreshing = false;
     }
   }
 

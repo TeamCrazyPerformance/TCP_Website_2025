@@ -504,7 +504,11 @@ function AdminMainContent() {
                 </div>
               )}
               {photos.competition && (
-                <img src={photos.competition} alt="Competition" />
+                <img
+                  src={photos.competition}
+                  alt="Competition"
+                  onError={(e) => { e.target.style.display = 'none'; document.getElementById('competitionPlaceholder').style.display = 'block'; }}
+                />
               )}
               <div className="photo-overlay">
                 <button
@@ -591,7 +595,13 @@ function AdminMainContent() {
                   <p className="text-sm text-gray-400 mt-2">Study Sessions</p>
                 </div>
               )}
-              {photos.study && <img src={photos.study} alt="Study" />}
+              {photos.study && (
+                <img
+                  src={photos.study}
+                  alt="Study"
+                  onError={(e) => { e.target.style.display = 'none'; document.getElementById('studyPlaceholder').style.display = 'block'; }}
+                />
+              )}
               <div className="photo-overlay">
                 <button
                   className="btn-secondary"
@@ -676,7 +686,13 @@ function AdminMainContent() {
                   <p className="text-sm text-gray-400 mt-2">MT Events</p>
                 </div>
               )}
-              {photos.mt && <img src={photos.mt} alt="MT" />}
+              {photos.mt && (
+                <img
+                  src={photos.mt}
+                  alt="MT"
+                  onError={(e) => { e.target.style.display = 'none'; document.getElementById('mtPlaceholder').style.display = 'block'; }}
+                />
+              )}
               <div className="photo-overlay">
                 <button
                   className="btn-secondary"

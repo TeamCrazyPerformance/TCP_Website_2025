@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import defaultProfileImage from '../../logo.svg';
 
 const AdminPermission = () => {
     const [users, setUsers] = useState([]);
@@ -103,10 +104,10 @@ const AdminPermission = () => {
 
     const handleBulkRoleChange = async (newRole) => {
         if (selected.size === 0) return;
-        
+
         const roleNames = { ADMIN: '관리자', MEMBER: '일반 멤버', GUEST: '게스트' };
         if (!window.confirm(`선택한 ${selected.size}명의 권한을 ${roleNames[newRole]}(으)로 변경하시겠습니까?`)) return;
-        
+
         setActionLoading(true);
         try {
             const promises = Array.from(selected).map(id => updateUserRole(id, newRole));
@@ -124,7 +125,7 @@ const AdminPermission = () => {
     const handleSingleRoleChange = async (userId, newRole) => {
         const roleNames = { ADMIN: '관리자', MEMBER: '일반 멤버', GUEST: '게스트' };
         if (!window.confirm(`이 사용자의 권한을 ${roleNames[newRole]}(으)로 변경하시겠습니까?`)) return;
-        
+
         const success = await updateUserRole(userId, newRole);
         if (success) {
             await fetchUsers();
@@ -164,9 +165,9 @@ const AdminPermission = () => {
                 <div className="multiselect-option text-gray-400">기술 스택 없음</div>
             ) : (
                 allTechStacks.map(tech => (
-                    <div key={tech} 
-                         className={`multiselect-option ${filters.tech.includes(tech) ? 'selected' : ''}`}
-                         onClick={() => handleTechStackSelect(tech)}>
+                    <div key={tech}
+                        className={`multiselect-option ${filters.tech.includes(tech) ? 'selected' : ''}`}
+                        onClick={() => handleTechStackSelect(tech)}>
                         {tech}
                     </div>
                 ))
@@ -305,22 +306,22 @@ const AdminPermission = () => {
                     </div>
                     {selected.size > 0 && (
                         <div className="flex flex-wrap gap-2">
-                            <button 
-                                className="btn-primary text-sm" 
+                            <button
+                                className="btn-primary text-sm"
                                 onClick={() => handleBulkRoleChange('ADMIN')}
                                 disabled={actionLoading}
                             >
                                 <i className="fas fa-user-shield mr-1"></i>관리자 권한 부여
                             </button>
-                            <button 
-                                className="btn-success text-sm" 
+                            <button
+                                className="btn-success text-sm"
                                 onClick={() => handleBulkRoleChange('MEMBER')}
                                 disabled={actionLoading}
                             >
                                 <i className="fas fa-user mr-1"></i>멤버 권한 부여
                             </button>
-                            <button 
-                                className="btn-warning text-sm" 
+                            <button
+                                className="btn-warning text-sm"
                                 onClick={() => handleBulkRoleChange('GUEST')}
                                 disabled={actionLoading}
                             >
@@ -367,10 +368,14 @@ const AdminPermission = () => {
                                                 <input type="checkbox" checked={selected.has(user.id)} onChange={() => handleSelect(user.id)} className="item-checkbox" />
                                             </td>
                                             <td className="p-4">
-                                                <img 
-                                                    src={user.profile_image || `https://via.placeholder.com/40/A8C5E6/FFFFFF?text=${(user.name || 'U').charAt(0)}`} 
-                                                    alt={user.name} 
-                                                    className="w-10 h-10 rounded-full object-cover" 
+                                                <img
+                                                    src={user.profile_image || defaultProfileImage}
+                                                    alt={user.name}
+                                                    className="w-10 h-10 rounded-full object-cover"
+                                                    onError={(e) => {
+                                                        e.target.onerror = null;
+                                                        e.target.src = defaultProfileImage;
+                                                    }}
                                                 />
                                             </td>
                                             <td className="p-4">
@@ -399,8 +404,8 @@ const AdminPermission = () => {
                                             <td className="p-4">
                                                 <div className="flex space-x-2">
                                                     <div className="group relative">
-                                                        <button 
-                                                            className="px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50" 
+                                                        <button
+                                                            className="px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50"
                                                             disabled={user.role === 'ADMIN'}
                                                             onClick={() => handleSingleRoleChange(user.id, 'ADMIN')}
                                                         >
@@ -411,8 +416,8 @@ const AdminPermission = () => {
                                                         </span>
                                                     </div>
                                                     <div className="group relative">
-                                                        <button 
-                                                            className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50" 
+                                                        <button
+                                                            className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
                                                             disabled={user.role === 'MEMBER'}
                                                             onClick={() => handleSingleRoleChange(user.id, 'MEMBER')}
                                                         >
@@ -423,8 +428,8 @@ const AdminPermission = () => {
                                                         </span>
                                                     </div>
                                                     <div className="group relative">
-                                                        <button 
-                                                            className="px-2 py-1 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700 disabled:opacity-50" 
+                                                        <button
+                                                            className="px-2 py-1 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700 disabled:opacity-50"
                                                             disabled={user.role === 'GUEST'}
                                                             onClick={() => handleSingleRoleChange(user.id, 'GUEST')}
                                                         >
