@@ -690,7 +690,6 @@ function Register() {
                         value={educationStatus}
                         onChange={(e) => setEducationStatus(e.target.value)}
                       >
-                        <option value="">선택 안함</option>
                         <option value="재학">재학</option>
                         <option value="휴학">휴학</option>
                         <option value="졸업">졸업</option>
