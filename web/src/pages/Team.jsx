@@ -111,6 +111,14 @@ export default function Team() {
       .filter(Boolean);
   };
 
+  const splitGoals = (value) => {
+    if (!value) return [];
+    return value
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+  };
+
   const mapTeam = (team) => {
     const roles = team.roles || [];
     const neededRoles = roles.length
@@ -129,8 +137,8 @@ export default function Team() {
     )}`;
     const deadline = team.deadline ? formatDate(team.deadline, '-') : '';
     const links = team.link ? [team.link] : [];
-    const goals = splitTags(team.goals || '').length
-      ? splitTags(team.goals || '')
+    const goals = splitGoals(team.goals || '').length
+      ? splitGoals(team.goals || '')
       : ['프로젝트 완수'];
     const selectionProcess = team.selectionProc || '지원서 검토 후 안내';
     const techStack = splitTags(team.techStack);
