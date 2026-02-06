@@ -239,7 +239,7 @@ function AnnouncementWrite() {
               htmlFor="title"
               className="block text-lg font-semibold mb-3 text-white text-left"
             >
-              <i className="fas fa-heading text-blue-400 mr-2"></i>제목
+              <i className="fas fa-heading text-blue-400 mr-2"></i>제목 <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -271,7 +271,7 @@ function AnnouncementWrite() {
               htmlFor="summary"
               className="block text-lg font-semibold mb-3 text-white text-left"
             >
-              <i className="fas fa-align-center text-purple-400 mr-2"></i>한줄요약
+              <i className="fas fa-align-center text-purple-400 mr-2"></i>한줄요약 <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -302,7 +302,7 @@ function AnnouncementWrite() {
               htmlFor="date"
               className="block text-lg font-semibold mb-3 text-white text-left"
             >
-              <i className="fas fa-calendar text-green-400 mr-2"></i>게시일
+              <i className="fas fa-calendar text-green-400 mr-2"></i>게시일 <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
@@ -332,7 +332,7 @@ function AnnouncementWrite() {
               htmlFor="content"
               className="block text-lg font-semibold mb-3 text-white text-left"
             >
-              <i className="fas fa-align-left text-pink-400 mr-2"></i>내용
+              <i className="fas fa-align-left text-pink-400 mr-2"></i>내용 <span className="text-red-500">*</span>
             </label>
 
             {/* 텍스트 서식 도구바 */}
