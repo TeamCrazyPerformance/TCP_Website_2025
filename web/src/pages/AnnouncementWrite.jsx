@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import DOMPurify from 'dompurify';
-import markdownit from 'markdown-it';
+import MarkdownIt from 'markdown-it';
 import { apiPost } from '../api/client';
 
-const md = markdownit();
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  breaks: true,
+});
 
 function AnnouncementWrite() {
   const navigate = useNavigate();
@@ -171,36 +175,55 @@ function AnnouncementWrite() {
   };
 
   const renderPreviewContent = () => {
-    const safeHtml = DOMPurify.sanitize(md.render(content));
+    const rawContent = content || '';
+    const html = md.render(rawContent);
+    const safeHtml = DOMPurify.sanitize(html);
+    
     return (
-      <>
+      <article>
         <header className="mb-8">
-          <h1 className="orbitron text-4xl font-bold gradient-text">
+          <div className="mb-4 text-left">
+            <span
+              className="px-3 py-1 rounded-full text-xs font-bold text-black"
+              style={{ background: 'linear-gradient(135deg, var(--accent-blue), var(--accent-purple))' }}
+            >
+              공지사항
+            </span>
+          </div>
+          <h1 className="orbitron text-3xl md:text-5xl font-bold mb-6 gradient-text text-left">
             {title}
           </h1>
-          <p className="text-xl text-gray-300 mt-3 font-medium">
-            {summary}
-          </p>
-          <div className="bg-gray-800 rounded-lg p-4 mt-4 text-sm text-gray-300">
-            <div className="flex items-center space-x-6">
-              <div className="flex items-center space-x-2">
-                <i className="fas fa-user text-purple-400"></i>
-                <span>작성자: 관리자</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <i className="fas fa-calendar text-purple-400"></i>
-                <span>{new Date(date).toLocaleDateString('ko-KR')}</span>
+          
+          {/* Meta: Left aligned content */}
+          <div className="article-meta widget-card rounded-lg p-6 mb-8">
+            <div className="flex flex-wrap items-center justify-between text-sm text-gray-300">
+              <div className="flex items-center space-x-6 mb-2 md:mb-0">
+                <div className="flex items-center space-x-2">
+                  <i className="fas fa-user text-blue-400"></i>
+                  <span>작성자: 관리자</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <i className="fas fa-calendar text-purple-400"></i>
+                  <span>
+                    {new Date(date).toLocaleDateString('ko-KR', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </header>
-        <div className="bg-gray-800 rounded-lg p-8">
+        
+        <div className="article-content widget-card rounded-lg p-8 mb-8">
           <div
-            className="text-gray-200 whitespace-pre-wrap"
+            className="article-body text-gray-200 text-left"
             dangerouslySetInnerHTML={{ __html: safeHtml }}
           />
         </div>
-      </>
+      </article>
     );
   };
 
@@ -490,8 +513,8 @@ function AnnouncementWrite() {
           id="previewModal"
           className="fixed inset-0 preview-modal flex items-center justify-center z-50"
         >
-          <div className="bg-gray-900 rounded-xl max-w-4xl w-full mx-4 max-h-screen overflow-y-auto">
-            <div className="sticky top-0 bg-gray-900 px-6 py-4 border-b border-gray-700 flex justify-between items-center">
+          <div className="bg-gray-900 rounded-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-gray-900 px-6 py-4 border-b border-gray-700 flex justify-between items-center z-10">
               <h2 className="orbitron text-xl font-bold gradient-text">
                 미리보기
               </h2>
@@ -503,7 +526,7 @@ function AnnouncementWrite() {
               </button>
             </div>
             <div className="p-6">
-              <article>{renderPreviewContent()}</article>
+              {renderPreviewContent()}
             </div>
           </div>
         </div>

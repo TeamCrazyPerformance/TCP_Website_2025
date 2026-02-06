@@ -338,6 +338,118 @@ body {
   color: inherit;
 }
 
+/* Markdown Styles */
+.article-body h1 {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  color: #ffffff;
+}
+
+.article-body h2 {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-top: 1.25rem;
+  margin-bottom: 0.75rem;
+  color: #ffffff;
+}
+
+.article-body h3 {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: #ffffff;
+}
+
+.article-body h4,
+.article-body h5,
+.article-body h6 {
+  font-weight: bold;
+  margin-top: 0.75rem;
+  margin-bottom: 0.5rem;
+  color: #ffffff;
+}
+
+.article-body p {
+  margin-bottom: 1rem;
+}
+
+.article-body ul,
+.article-body ol {
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.article-body ul {
+  list-style-type: disc;
+}
+
+.article-body ol {
+  list-style-type: decimal;
+}
+
+.article-body li {
+  margin-bottom: 0.5rem;
+}
+
+.article-body blockquote {
+  border-left: 4px solid var(--accent-blue);
+  padding-left: 1rem;
+  margin: 1rem 0;
+  color: #d1d5db;
+  font-style: italic;
+}
+
+.article-body code {
+  background-color: rgba(168, 197, 230, 0.1);
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem;
+  color: #a8c5e6;
+}
+
+.article-body pre {
+  background-color: rgba(0, 0, 0, 0.3);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.article-body pre code {
+  background-color: transparent;
+  padding: 0;
+  color: #e5e7eb;
+}
+
+.article-body a {
+  color: var(--accent-blue);
+  text-decoration: underline;
+}
+
+.article-body a:hover {
+  color: var(--accent-purple);
+}
+
+.article-body hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  margin: 1.5rem 0;
+}
+
+.article-body strong {
+  font-weight: bold;
+  color: #ffffff;
+}
+
+.article-body em {
+  font-style: italic;
+}
+
 /* Back Button Hover Effect */
 .btn-back-hover {
   transition: all 0.3s ease;
