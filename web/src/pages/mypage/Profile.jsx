@@ -143,7 +143,7 @@ function Profile() {
           email: data.email || '',
           bio: data.self_description || '',
           techStack: data.tech_stack || [],
-          status: data.education_status?.toLowerCase() || '',
+          status: data.education_status || '',
           github: data.github_username ? `https://github.com/${data.github_username}` : '',
           baekjoon: data.baekjoon_username || '', // Added
           portfolio: data.portfolio_link || '',
@@ -287,13 +287,13 @@ function Profile() {
         major: profile.major,
         self_description: profile.bio,
         tech_stack: profile.techStack,
-        education_status: profile.status.toUpperCase(),
+        education_status: profile.status,
         github_username: profile.github.replace('https://github.com/', '').replace('github.com/', ''),
         baekjoon_username: profile.baekjoon, // Added
         portfolio_link: profile.portfolio,
         current_company: profile.role,
         join_year: profile.joinYear ? parseInt(profile.joinYear, 10) : null, // Added
-        birth_date: profile.birthDate, // Added
+        birth_date: profile.birthDate ? profile.birthDate : null, // Added
         gender: profile.gender || null, // Added, convert empty string to null
       };
 
@@ -528,9 +528,9 @@ function Profile() {
                     value={profile.status}
                     onChange={handleProfileChange}
                   >
-                    <option value="attending">재학</option>
-                    <option value="absence">휴학</option>
-                    <option value="graduated">졸업</option>
+                    <option value="재학">재학</option>
+                    <option value="휴학">휴학</option>
+                    <option value="졸업">졸업</option>
                   </select>
                 </div>
 

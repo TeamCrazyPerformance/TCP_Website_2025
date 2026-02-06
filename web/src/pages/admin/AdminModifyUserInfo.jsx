@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import defaultProfileImage from '../../logo.svg';
 
 const InfoRow = ({ label, id, value, onChange, editable = true, type = 'text', options = null }) => (
     <div>
         <label htmlFor={id} className="block text-sm font-medium text-gray-300 mb-2">{label}</label>
         {options ? (
-            <select 
-                id={id} 
-                value={value || ''} 
-                onChange={onChange} 
+            <select
+                id={id}
+                value={value || ''}
+                onChange={onChange}
                 disabled={!editable}
                 className={`form-input ${!editable ? 'bg-gray-700 cursor-not-allowed' : ''}`}
             >
@@ -17,13 +18,13 @@ const InfoRow = ({ label, id, value, onChange, editable = true, type = 'text', o
                 ))}
             </select>
         ) : (
-            <input 
-                type={type} 
-                id={id} 
-                value={value || ''} 
-                onChange={onChange} 
-                readOnly={!editable} 
-                className={`form-input ${!editable ? 'bg-gray-700 cursor-not-allowed' : ''}`} 
+            <input
+                type={type}
+                id={id}
+                value={value || ''}
+                onChange={onChange}
+                readOnly={!editable}
+                className={`form-input ${!editable ? 'bg-gray-700 cursor-not-allowed' : ''}`}
             />
         )}
     </div>
@@ -113,7 +114,7 @@ const AdminModifyUserInfo = () => {
             });
 
             if (!res.ok) throw new Error('정보 수정에 실패했습니다');
-            
+
             alert('사용자 정보가 수정되었습니다.');
             handleCloseModal();
             await fetchUsers();
@@ -168,12 +169,12 @@ const AdminModifyUserInfo = () => {
                 <div className="widget-card p-6 rounded-xl">
                     <div className="mb-4">
                         <label className="block text-sm font-medium text-gray-300 mb-2">사용자 검색</label>
-                        <input 
+                        <input
                             type="text"
-                            value={search} 
-                            onChange={(e) => setSearch(e.target.value)} 
-                            placeholder="이름, 아이디, 학번, 이메일로 검색..." 
-                            className="form-input w-full md:w-1/2" 
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="이름, 아이디, 학번, 이메일로 검색..."
+                            className="form-input w-full md:w-1/2"
                         />
                     </div>
                     <p className="text-sm text-gray-400">총 {filteredUsers.length}명의 사용자</p>
@@ -205,10 +206,14 @@ const AdminModifyUserInfo = () => {
                                     filteredUsers.map(user => (
                                         <tr key={user.id} className="table-row border-b border-gray-700 hover:bg-gray-800/50 cursor-pointer" onClick={() => handleSelectUser(user)}>
                                             <td className="p-4">
-                                                <img 
-                                                    src={user.profile_image || `https://via.placeholder.com/40/A8C5E6/FFFFFF?text=${(user.name || 'U').charAt(0)}`} 
-                                                    alt={user.name} 
-                                                    className="w-10 h-10 rounded-full object-cover" 
+                                                <img
+                                                    src={user.profile_image || defaultProfileImage}
+                                                    alt={user.name}
+                                                    className="w-10 h-10 rounded-full object-cover"
+                                                    onError={(e) => {
+                                                        e.target.onerror = null;
+                                                        e.target.src = defaultProfileImage;
+                                                    }}
                                                 />
                                             </td>
                                             <td className="p-4">
@@ -223,7 +228,7 @@ const AdminModifyUserInfo = () => {
                                                 </span>
                                             </td>
                                             <td className="p-4 text-center">
-                                                <button 
+                                                <button
                                                     className="btn-primary btn-small"
                                                     onClick={(e) => { e.stopPropagation(); handleSelectUser(user); }}
                                                 >
@@ -254,71 +259,71 @@ const AdminModifyUserInfo = () => {
 
                         <form onSubmit={handleFormSubmit}>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                                <InfoRow 
-                                    label="아이디 (변경 불가)" 
-                                    id="username" 
-                                    value={formData.username} 
-                                    editable={false} 
+                                <InfoRow
+                                    label="아이디 (변경 불가)"
+                                    id="username"
+                                    value={formData.username}
+                                    editable={false}
                                 />
-                                <InfoRow 
-                                    label="이름" 
-                                    id="name" 
-                                    value={formData.name} 
-                                    onChange={(e) => handleFormChange('name', e.target.value)} 
+                                <InfoRow
+                                    label="이름"
+                                    id="name"
+                                    value={formData.name}
+                                    onChange={(e) => handleFormChange('name', e.target.value)}
                                 />
-                                <InfoRow 
-                                    label="학번" 
-                                    id="student_number" 
-                                    value={formData.student_number} 
-                                    onChange={(e) => handleFormChange('student_number', e.target.value)} 
+                                <InfoRow
+                                    label="학번"
+                                    id="student_number"
+                                    value={formData.student_number}
+                                    onChange={(e) => handleFormChange('student_number', e.target.value)}
                                 />
-                                <InfoRow 
-                                    label="이메일" 
-                                    id="email" 
+                                <InfoRow
+                                    label="이메일"
+                                    id="email"
                                     type="email"
-                                    value={formData.email} 
-                                    onChange={(e) => handleFormChange('email', e.target.value)} 
+                                    value={formData.email}
+                                    onChange={(e) => handleFormChange('email', e.target.value)}
                                 />
-                                <InfoRow 
-                                    label="전화번호" 
-                                    id="phone_number" 
-                                    value={formData.phone_number} 
-                                    onChange={(e) => handleFormChange('phone_number', e.target.value)} 
+                                <InfoRow
+                                    label="전화번호"
+                                    id="phone_number"
+                                    value={formData.phone_number}
+                                    onChange={(e) => handleFormChange('phone_number', e.target.value)}
                                 />
-                                <InfoRow 
-                                    label="전공" 
-                                    id="major" 
-                                    value={formData.major} 
-                                    onChange={(e) => handleFormChange('major', e.target.value)} 
+                                <InfoRow
+                                    label="전공"
+                                    id="major"
+                                    value={formData.major}
+                                    onChange={(e) => handleFormChange('major', e.target.value)}
                                 />
-                                <InfoRow 
-                                    label="가입 연도" 
-                                    id="join_year" 
+                                <InfoRow
+                                    label="가입 연도"
+                                    id="join_year"
                                     type="number"
-                                    value={formData.join_year} 
-                                    onChange={(e) => handleFormChange('join_year', e.target.value)} 
+                                    value={formData.join_year}
+                                    onChange={(e) => handleFormChange('join_year', e.target.value)}
                                 />
-                                <InfoRow 
-                                    label="생년월일" 
-                                    id="birth_date" 
+                                <InfoRow
+                                    label="생년월일"
+                                    id="birth_date"
                                     type="date"
-                                    value={formData.birth_date ? formData.birth_date.split('T')[0] : ''} 
-                                    onChange={(e) => handleFormChange('birth_date', e.target.value)} 
+                                    value={formData.birth_date ? formData.birth_date.split('T')[0] : ''}
+                                    onChange={(e) => handleFormChange('birth_date', e.target.value)}
                                 />
-                                <InfoRow 
-                                    label="성별" 
-                                    id="gender" 
-                                    value={formData.gender} 
+                                <InfoRow
+                                    label="성별"
+                                    id="gender"
+                                    value={formData.gender}
                                     onChange={(e) => handleFormChange('gender', e.target.value)}
                                     options={[
                                         { value: 'Male', label: '남성' },
                                         { value: 'Female', label: '여성' }
                                     ]}
                                 />
-                                <InfoRow 
-                                    label="학적 상태" 
-                                    id="education_status" 
-                                    value={formData.education_status} 
+                                <InfoRow
+                                    label="학적 상태"
+                                    id="education_status"
+                                    value={formData.education_status}
                                     onChange={(e) => handleFormChange('education_status', e.target.value)}
                                     options={[
                                         { value: '재학', label: '재학' },

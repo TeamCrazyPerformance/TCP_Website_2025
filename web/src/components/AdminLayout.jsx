@@ -1,6 +1,7 @@
 // src/components/AdminLayout.jsx
 import React, { useEffect, useState } from 'react';
-import { useLocation, Outlet, useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, Outlet } from 'react-router-dom';
+import defaultProfileImage from '../logo.svg';
 import AdminSidebar from './AdminSidebar';
 
 function AdminLayout() {
@@ -132,9 +133,13 @@ function AdminLayout() {
                 </button>
                 <div className="flex items-center space-x-2">
                   <img
-                    src={user?.profile_image || "https://i.pravatar.cc/40?u=admin"}
+                    src={user?.profile_image || defaultProfileImage}
                     alt="Admin"
                     className="w-8 h-8 rounded-full object-cover"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = defaultProfileImage;
+                    }}
                   />
                   <span className="text-sm font-medium">{user?.name || 'Admin'}</span>
                 </div>
