@@ -230,16 +230,16 @@ const Privacy = () => {
               <div>
                 <strong className="text-white block mb-1">- 개인정보 보호책임자</strong>
                 <ul className="list-disc pl-6 text-gray-300 space-y-1">
-                  <li>성 명: [소속/직책 입력]</li>
-                  <li>소속/담당: [동아리 운영팀 등]</li>
-                  <li>연락처: [전화번호(선택)/이메일 입력]</li>
+                  <li>성 명: 이준수</li>
+                  <li>소속/담당: TCP 웹사이트 개발/운영팀</li>
+                  <li>연락처: junsulee119@gmail.com</li>
                 </ul>
               </div>
               <div>
                 <strong className="text-white block mb-1">- 개인정보보호 문의처</strong>
                 <ul className="list-disc pl-6 text-gray-300 space-y-1">
-                  <li>부서명: [TCP 운영팀]</li>
-                  <li>연락처: [전화번호(선택)] / tcp@university.ac.kr (예시)</li>
+                  <li>부서명: TCP 웹사이트 개발/운영팀</li>
+                  <li>연락처: junsulee119@gmail.com</li>
                 </ul>
               </div>
             </div>
