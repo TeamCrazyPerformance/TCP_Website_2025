@@ -4,7 +4,7 @@ import InfoRow from '../ui/InfoRow';
 import { isExpired } from '../../utils/helpers';
 import { apiGet, apiPost, apiDelete } from '../../api/client';
 
-export default function TeamDetailModal({ isOpen, onClose, team, onApplicationStatusChange }) {
+export default function TeamDetailModal({ isOpen, onClose, team, onApplicationStatusChange, isMyPage = false }) {
   const { user } = useAuth();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [selectedRoleId, setSelectedRoleId] = useState(null);
@@ -367,6 +367,52 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
             </div>
           </section>
 
+          {/* 지원자 정보 - 리더인 경우에만 표시 */}
+          {team.applicants && team.applicants.length > 0 && (
+            <section className="mb-6">
+              <h4 className="font-semibold text-white mb-3 flex items-center">
+                <i className="fas fa-users text-yellow-400 mr-2" />
+                지원 멤버 ({team.applicants.length}명)
+              </h4>
+              <div className="bg-gray-800 bg-opacity-50 rounded-lg overflow-hidden">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-gray-700 bg-opacity-50">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold text-gray-300">이름</th>
+                      <th className="px-4 py-3 font-semibold text-gray-300">지원역할</th>
+                      <th className="px-4 py-3 font-semibold text-gray-300">전화</th>
+                      <th className="px-4 py-3 font-semibold text-gray-300">이메일</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-700">
+                    {team.applicants.map((applicant) => (
+                      <tr key={applicant.id} className="hover:bg-gray-700 hover:bg-opacity-30 transition-colors">
+                        <td className="px-4 py-3 text-white font-medium">{applicant.name}</td>
+                        <td className="px-4 py-3 text-gray-300">{applicant.role?.roleName || applicant.role?.name || '역할 미정'}</td>
+                        <td className="px-4 py-3">
+                          <a 
+                            href={`tel:${applicant.phoneNumber}`}
+                            className="text-blue-400 hover:text-blue-300 transition-colors"
+                          >
+                            {applicant.phoneNumber}
+                          </a>
+                        </td>
+                        <td className="px-4 py-3">
+                          <a 
+                            href={`mailto:${applicant.email}`}
+                            className="text-blue-400 hover:text-blue-300 transition-colors break-all"
+                          >
+                            {applicant.email}
+                          </a>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
           {/* 역할 선택 - 로그인 사용자 & 리더 아님 & 지원하지 않은 경우만 표시 */}
           {user && !isLeader && !applicationStatus?.hasApplied && team.status === '모집중' && !isExpired(team.deadline) && (
             <section className="mb-6">
@@ -430,7 +476,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
             {/* 로그인한 경우 */}
             {user && team.status === '모집중' && !isExpired(team.deadline) && (
               <>
-                {isLeader ? (
+                {isLeader && !isMyPage ? (
                   <a
                     href="/mypage/teams"
                     className="bg-gray-700 text-white px-6 py-2 rounded-lg font-medium hover:bg-gray-600 transition-colors inline-flex items-center"
@@ -442,7 +488,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
                     <i className="fas fa-users mr-2" />
                     지원현황 보기
                   </a>
-                ) : applicationStatus?.hasApplied ? (
+                ) : isLeader && isMyPage ? null : applicationStatus?.hasApplied ? (
                   <button
                     onClick={handleCancelApplication}
                     disabled={isSubmitting}
@@ -470,7 +516,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
                 disabled
                 className="bg-gray-700 text-gray-500 cursor-not-allowed px-6 py-2 rounded-lg font-medium"
               >
-                지원 불가
+                마감
               </button>
             )}
           </div>

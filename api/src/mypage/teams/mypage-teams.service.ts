@@ -27,7 +27,7 @@ export class MyPageTeamsService {
       .orderBy('team.createdAt', 'DESC')
       .getMany();
 
-    // 내가 지원한 팀 (나를 제외한 모든 팀)
+    // 내가 지원한 팀 (나를 제외한 모든 팀, 모집중인 것만)
     const appliedTeamMembers = await this.teamMemberRepository
       .createQueryBuilder('member')
       .leftJoinAndSelect('member.team', 'team')
@@ -37,6 +37,7 @@ export class MyPageTeamsService {
       .leftJoinAndSelect('member.role', 'role')
       .where('member.user.id = :userId', { userId })
       .andWhere('member.isLeader = :isLeader', { isLeader: false })
+      .andWhere('team.status = :status', { status: TeamStatus.OPEN })
       .orderBy('team.createdAt', 'DESC')
       .getMany();
 
