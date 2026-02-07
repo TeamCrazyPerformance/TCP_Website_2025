@@ -238,6 +238,26 @@ function Recruitment() {
       return;
     }
 
+    // Validate dates (Year <= 9999)
+    const isValidDate = (dateString) => {
+      if (!dateString) return true; // Empty date is valid (or handled by required attribute if needed)
+      const year = new Date(dateString).getFullYear();
+      return year <= 9999;
+    };
+
+    const projectDatesValid = data.projects.every(p => {
+      const dates = p.date.split('~').map(d => d.trim());
+      return dates.every(d => isValidDate(d));
+    });
+
+    const awardDatesValid = data.awards.every(a => isValidDate(a.date));
+
+    if (!projectDatesValid || !awardDatesValid) {
+      alert('연도는 9999년까지만 입력 가능합니다.');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       await apiPost('/api/v1/recruitment', payload);
@@ -756,12 +776,14 @@ function Recruitment() {
                               type="date"
                               name="project_start_date"
                               className="form-input mt-1"
+                              max="9999-12-31"
                             />
                             <span>~</span>
                             <input
                               type="date"
                               name="project_end_date"
                               className="form-input mt-1"
+                              max="9999-12-31"
                             />
                           </div>
                         </label>
@@ -841,6 +863,7 @@ function Recruitment() {
                             type="date"
                             name="award_date"
                             className="form-input mt-1"
+                            max="9999-12-31"
                           />
                         </label>
                         <label className="block text-sm font-medium text-gray-300 mt-2">

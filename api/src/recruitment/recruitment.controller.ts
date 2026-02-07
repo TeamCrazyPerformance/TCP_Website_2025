@@ -1,3 +1,4 @@
+import { Response } from 'express';
 import {
   Controller,
   Post,
@@ -9,6 +10,7 @@ import {
   Param,
   Delete,
   UseGuards,
+  Res,
 } from '@nestjs/common';
 import { RecruitmentService } from './recruitment.service';
 import { CreateRecruitmentDto } from './dto/create-recruitment.dto';
@@ -41,6 +43,19 @@ export class RecruitmentController {
   @Get('status')
   getRecruitmentStatus() {
     return this.recruitmentService.getRecruitmentStatus();
+  }
+
+  // 모든 지원서를 텍스트 파일로 변환하여 압축 파일로 다운로드 (관리자 전용)
+  @Get('download-all')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  async downloadAll(@Res() res: Response) {
+    const { stream, filename } = await this.recruitmentService.downloadAll();
+    res.set({
+      'Content-Type': 'application/zip',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    });
+    stream.pipe(res);
   }
 
   // 특정 지원서 조회 (관리자 전용)
