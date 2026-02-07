@@ -275,8 +275,91 @@ export class RecruitmentService {
       }
       this.logger.error(`Failed to remove application #${id}`, error);
       throw new InternalServerErrorException(
-        'An error occurred on the server.',
       );
     }
+  }
+
+  // 모든 지원서를 텍스트 파일로 변환하여 압축 파일로 다운로드
+  async downloadAll(): Promise<{ stream: any; filename: string }> {
+    const resumes = await this.findAll();
+    const archiver = require('archiver');
+    const archive = archiver('zip', { zlib: { level: 9 } });
+
+    // 에러 핸들링
+    archive.on('error', (err) => {
+      throw new InternalServerErrorException(err);
+    });
+
+    // 각 지원서를 텍스트 파일로 변환하여 압축
+    for (const resume of resumes) {
+      const content = this.formatResumeToText(resume);
+      const filename = `${resume.name}_${resume.student_number}.txt`;
+      archive.append(content, { name: filename });
+    }
+
+    archive.finalize();
+
+    return {
+      stream: archive,
+      filename: `applications_${new Date().toISOString().split('T')[0]}.zip`,
+    };
+  }
+
+  private formatResumeToText(resume: Resume): string {
+    return `
+[기본 정보]
+이름: ${resume.name}
+학번: ${resume.student_number}
+전공: ${resume.major}
+전화번호: ${resume.phone_number}
+제출일시: ${resume.created_at.toLocaleString()}
+
+[관심 분야]
+${resume.area_interest || '없음'}
+
+[자기소개]
+${resume.self_introduction}
+
+[지원 동기 및 목표]
+${resume.club_expectation}
+
+[기술 스택]
+${resume.tech_stack || '없음'}
+
+[프로젝트 경험]
+${resume.projects && resume.projects.length > 0
+        ? resume.projects
+          .map(
+            (p) => `
+- 프로젝트명: ${p.project_name}
+  기간: ${p.project_date}
+  기여도: ${p.project_contribution}%
+  사용 기술: ${p.project_tech_stack}
+  설명: ${p.project_description}
+`,
+          )
+          .join('')
+        : '없음'
+      }
+
+[수상 경력]
+${resume.awards && resume.awards.length > 0
+        ? resume.awards
+          .map(
+            (a) => `
+- 수상명: ${a.award_name}
+  일시: ${a.award_date}
+  기관: ${a.award_institution}
+  설명: ${a.award_description}
+`,
+          )
+          .join('')
+        : '없음'
+      }
+
+[관리자 검토]
+상태: ${resume.review_status}
+의견: ${resume.review_comment || '없음'}
+`;
   }
 }

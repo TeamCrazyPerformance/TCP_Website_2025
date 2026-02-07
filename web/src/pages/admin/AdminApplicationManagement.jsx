@@ -22,8 +22,8 @@ const ApplicationModal = ({ app, onClose, onUpdateStatus, onSaveComment }) => {
     };
 
     return (
-        <div 
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" 
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
             onClick={handleBackdropClick}
         >
             <div
@@ -275,8 +275,8 @@ const AdminApplicationManagement = () => {
     if (loading) return <div className="p-8 text-center text-white">Loading...</div>;
     if (error) return <div className="p-8 text-center text-red-500">Error: {error}</div>;
 
-    const filteredApplications = statusFilter === 'all' 
-        ? applications 
+    const filteredApplications = statusFilter === 'all'
+        ? applications
         : applications.filter(app => app.review_status === statusFilter);
 
     const statusCounts = {
@@ -297,31 +297,31 @@ const AdminApplicationManagement = () => {
 
                 {/* Status Filter */}
                 <div className="flex flex-wrap gap-2 mb-6">
-                    <button 
+                    <button
                         onClick={() => setStatusFilter('all')}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${statusFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
                     >
                         전체 ({statusCounts.all})
                     </button>
-                    <button 
+                    <button
                         onClick={() => setStatusFilter('pending')}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${statusFilter === 'pending' ? 'bg-yellow-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
                     >
                         대기 ({statusCounts.pending})
                     </button>
-                    <button 
+                    <button
                         onClick={() => setStatusFilter('reviewed')}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${statusFilter === 'reviewed' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
                     >
                         검토 완료 ({statusCounts.reviewed})
                     </button>
-                    <button 
+                    <button
                         onClick={() => setStatusFilter('accepted')}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${statusFilter === 'accepted' ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
                     >
                         합격 ({statusCounts.accepted})
                     </button>
-                    <button 
+                    <button
                         onClick={() => setStatusFilter('rejected')}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${statusFilter === 'rejected' ? 'bg-red-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
                     >
@@ -329,14 +329,40 @@ const AdminApplicationManagement = () => {
                     </button>
                 </div>
 
-                {/* Phone Number Toggle */}
-                <div className="flex justify-end mb-4">
-                    <button 
+                {/* Phone Number Toggle & Download Button */}
+                <div className="flex justify-end gap-2 mb-4">
+                    <button
                         onClick={() => setShowAllPhones(!showAllPhones)}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${showAllPhones ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
                     >
                         <i className={`fas ${showAllPhones ? 'fa-eye-slash' : 'fa-phone'}`}></i>
                         {showAllPhones ? '전화번호 숨기기' : '전화번호 보기'}
+                    </button>
+                    <button
+                        onClick={async () => {
+                            try {
+                                const token = localStorage.getItem('access_token');
+                                const res = await fetch('/api/v1/recruitment/download-all', {
+                                    headers: { Authorization: `Bearer ${token}` }
+                                });
+                                if (!res.ok) throw new Error('Download failed');
+                                const blob = await res.blob();
+                                const url = window.URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `applications_${new Date().toISOString().split('T')[0]}.zip`;
+                                document.body.appendChild(a);
+                                a.click();
+                                window.URL.revokeObjectURL(url);
+                                document.body.removeChild(a);
+                            } catch (err) {
+                                alert('다운로드 실패: ' + err.message);
+                            }
+                        }}
+                        className="px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 bg-purple-600 text-white hover:bg-purple-500"
+                    >
+                        <i className="fas fa-download"></i>
+                        일괄 다운로드 (.zip)
                     </button>
                 </div>
 
@@ -359,8 +385,8 @@ const AdminApplicationManagement = () => {
                                     </td></tr>
                                 ) : (
                                     filteredApplications.map(app => (
-                                        <tr 
-                                            key={app.id} 
+                                        <tr
+                                            key={app.id}
                                             className="table-row border-b border-gray-700 hover:bg-gray-800 transition-colors cursor-pointer"
                                             onClick={() => setSelectedApp(app)}
                                         >
