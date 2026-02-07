@@ -52,7 +52,6 @@ GET /api/v1/members
 | `self_description` | `string \| null` | 항상 | 자기소개 |
 | `email` | `string` | `is_public_email = true` | 이메일 |
 | `tech_stack` | `string[]` | `is_public_tech_stack = true` | 기술 스택 |
-| `education_status` | `string` | `is_public_education_status = true` | 재학 상태 |
 | `github_username` | `string` | `is_public_github_username = true` | GitHub 아이디 |
 | `portfolio_link` | `string` | `is_public_portfolio_link = true` | 포트폴리오 링크 |
 

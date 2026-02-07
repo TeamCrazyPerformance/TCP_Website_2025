@@ -18,7 +18,6 @@ export class PrivacyService {
       select: {
         is_public_email: true,
         is_public_tech_stack: true,
-        is_public_education_status: true,
         is_public_github_username: true,
         is_public_portfolio_link: true,
       },
