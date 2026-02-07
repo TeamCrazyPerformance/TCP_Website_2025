@@ -11,10 +11,6 @@ export class UpdatePrivacyDto {
 
   @IsOptional()
   @IsBoolean()
-  is_public_education_status?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
   is_public_github_username?: boolean;
 
   @IsOptional()

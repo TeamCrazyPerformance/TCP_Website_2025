@@ -80,7 +80,6 @@ describe('PATCH /api/v1/mypage/privacy (e2e)', () => {
     expect(getResponse.body.is_public_email).toBe(true);
     // 다른 설정들은 기본값(false) 유지
     expect(getResponse.body.is_public_tech_stack).toBe(false);
-    expect(getResponse.body.is_public_education_status).toBe(false);
     expect(getResponse.body.is_public_github_username).toBe(false);
     expect(getResponse.body.is_public_portfolio_link).toBe(false);
   });
@@ -108,7 +107,6 @@ describe('PATCH /api/v1/mypage/privacy (e2e)', () => {
     expect(getResponse.body.is_public_tech_stack).toBe(true);
     expect(getResponse.body.is_public_github_username).toBe(false);
     // 요청에 포함되지 않은 필드는 기본값 유지
-    expect(getResponse.body.is_public_education_status).toBe(false);
     expect(getResponse.body.is_public_portfolio_link).toBe(false);
   });
 
@@ -120,14 +118,7 @@ describe('PATCH /api/v1/mypage/privacy (e2e)', () => {
       .send({ is_public_email: true })
       .expect(200);
 
-    // 2. 학력 공개 설정
-    await request(app.getHttpServer())
-      .patch('/api/v1/mypage/privacy')
-      .set('Authorization', `Bearer ${userToken}`)
-      .send({ is_public_education_status: true })
-      .expect(200);
-
-    // 3. 이메일 공개 해제
+    // 2. 이메일 공개 해제
     await request(app.getHttpServer())
       .patch('/api/v1/mypage/privacy')
       .set('Authorization', `Bearer ${userToken}`)
@@ -140,7 +131,6 @@ describe('PATCH /api/v1/mypage/privacy (e2e)', () => {
       .set('Authorization', `Bearer ${userToken}`);
 
     expect(finalResponse.body.is_public_email).toBe(false);
-    expect(finalResponse.body.is_public_education_status).toBe(true); // 2단계에서 설정한 값 유지
     expect(finalResponse.body.is_public_tech_stack).toBe(false);
     expect(finalResponse.body.is_public_github_username).toBe(false);
     expect(finalResponse.body.is_public_portfolio_link).toBe(false);

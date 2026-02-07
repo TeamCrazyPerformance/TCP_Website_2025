@@ -38,9 +38,9 @@ export class MembersService {
         ? (user.profile_image.startsWith('http') ? user.profile_image : `/profiles/${user.profile_image}`)
         : null,
       self_description: user.self_description,
+      education_status: user.education_status,
       ...(user.is_public_email && { email: user.email }),
       ...(user.is_public_tech_stack && { tech_stack: user.tech_stack }),
-      ...(user.is_public_education_status && { education_status: user.education_status }),
       ...(user.is_public_github_username && { github_username: user.github_username }),
       ...(user.is_public_portfolio_link && { portfolio_link: user.portfolio_link }),
     }));
