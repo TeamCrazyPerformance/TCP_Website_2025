@@ -126,7 +126,8 @@ export class WithdrawService {
     // 스터디 멤버십 삭제
     await this.studyMemberRepository.delete({ user: { id: userId } });
 
-    // 팀 멤버십은 onDelete: CASCADE로 자동 삭제됨
+    // 팀 멤버십 삭제 
+    await this.teamMemberRepository.delete({ user: { id: userId } });
 
     await this.userRepository.softRemove(user);
 

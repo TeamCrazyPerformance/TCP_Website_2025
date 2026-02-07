@@ -171,6 +171,12 @@ export class AdminMembersService {
       }
     }
 
+    // 스터디 멤버십 삭제
+    await this.studyMemberRepository.delete({ user: { id } });
+
+    // 팀 멤버십 삭제
+    await this.teamMemberRepository.delete({ user: { id } });
+
     await this.userRepository.softRemove(user);
   }
 }
