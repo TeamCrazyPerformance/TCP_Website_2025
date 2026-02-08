@@ -283,10 +283,6 @@ function AdminAnnouncement() {
                 검색
               </label>
               <div className="relative">
-                <FontAwesomeIcon
-                  icon={faSearch}
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                />
                 <input
                   type="text"
                   id="searchInput"
@@ -343,7 +339,7 @@ function AdminAnnouncement() {
 
       {/* Bulk Actions */}
       <section className="mb-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0 min-h-[2.5rem]">
           <div className="flex items-center space-x-4">
             <label className="flex items-center space-x-2">
               <input
@@ -360,14 +356,16 @@ function AdminAnnouncement() {
             </span>
           </div>
 
-          {selectedItems.size > 0 && (
-            <div className="flex flex-wrap gap-2" id="bulkActions">
-              <button className="btn-danger text-sm" onClick={bulkDelete}>
-                <FontAwesomeIcon icon={faTrash} className="mr-1" />
-                삭제
-              </button>
-            </div>
-          )}
+          <div className="flex flex-wrap gap-2" id="bulkActions">
+            <button 
+              className={`btn-danger text-xs px-3 py-1.5 transition-opacity ${selectedItems.size > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+              onClick={bulkDelete}
+              disabled={selectedItems.size === 0}
+            >
+              <FontAwesomeIcon icon={faTrash} className="mr-1" />
+              삭제
+            </button>
+          </div>
         </div>
       </section>
 
