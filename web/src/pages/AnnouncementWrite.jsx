@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import MarkdownIt from 'markdown-it';
-import { apiPost } from '../api/client';
+import { apiPost, apiPatch, apiGet } from '../api/client';
 
 const md = new MarkdownIt({
   html: true,
@@ -12,14 +12,16 @@ const md = new MarkdownIt({
 
 function AnnouncementWrite() {
   const navigate = useNavigate();
+  const { id } = useParams(); // URL 파라미터에서 id 가져오기
+  const isEditMode = Boolean(id); // id가 있으면 수정 모드
 
   // 폼 상태 관리
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
   const [date, setDate] = useState('');
   const [content, setContent] = useState('');
-  const [author] = useState('관리자');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(isEditMode); // 수정 모드일 때 로딩 상태
 
   // 모달 상태 관리
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
@@ -31,6 +33,27 @@ function AnnouncementWrite() {
 
   // 컴포넌트 마운트 시 초기 설정
   useEffect(() => {
+    // 수정 모드일 경우 데이터 불러오기
+    if (isEditMode && id) {
+      const fetchAnnouncement = async () => {
+        try {
+          setIsLoading(true);
+          const data = await apiGet(`/api/v1/announcements/${id}`);
+          setTitle(data.title || '');
+          setSummary(data.summary || '');
+          setContent(data.contents || '');
+          setDate(data.publishAt ? new Date(data.publishAt).toISOString().split('T')[0] : '');
+        } catch (error) {
+          alert('공지사항을 불러오는데 실패했습니다.');
+          navigate('/announcement');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchAnnouncement();
+      return;
+    }
+
     const today = new Date().toISOString().split('T')[0];
     setDate(today);
 
@@ -44,10 +67,12 @@ function AnnouncementWrite() {
         setContent(draftData.content || '');
       }
     }
-  }, []);
+  }, [isEditMode, id, navigate]);
 
-  // 페이지 이탈 경고
+  // 페이지 이탈 경고 (수정 모드일 때는 비활성화)
   useEffect(() => {
+    if (isEditMode) return; // 수정 모드에서는 경고하지 않음
+    
     const handleBeforeUnload = (e) => {
       if (title || content) {
         e.preventDefault();
@@ -58,7 +83,7 @@ function AnnouncementWrite() {
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [title, content]);
+  }, [title, content, isEditMode]);
 
   // 텍스트 포맷팅 (마크다운)
   const formatText = (command) => {
@@ -137,7 +162,7 @@ function AnnouncementWrite() {
     alert('임시 저장되었습니다.');
   };
 
-  // 게시하기 (폼 제출)
+  // 게시하기 또는 수정하기 (폼 제출)
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim() || !summary.trim() || !content.trim() || !date) {
@@ -160,15 +185,28 @@ function AnnouncementWrite() {
 
     try {
       setIsSubmitting(true);
-      await apiPost('/api/v1/announcements', payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      localStorage.removeItem('announcement_draft');
-      setIsSuccessModalOpen(true);
+      
+      if (isEditMode && id) {
+        // 수정 모드: PATCH 요청
+        await apiPatch(`/api/v1/announcements/${id}`, payload, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        alert('공지사항이 수정되었습니다.');
+        navigate(`/announcement/${id}`);
+      } else {
+        // 작성 모드: POST 요청
+        await apiPost('/api/v1/announcements', payload, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        localStorage.removeItem('announcement_draft');
+        setIsSuccessModalOpen(true);
+      }
     } catch (error) {
-      alert(error.message || '공지사항 등록에 실패했습니다.');
+      alert(error.message || `공지사항 ${isEditMode ? '수정' : '등록'}에 실패했습니다.`);
     } finally {
       setIsSubmitting(false);
     }
@@ -199,10 +237,6 @@ function AnnouncementWrite() {
             <div className="flex flex-wrap items-center justify-between text-sm text-gray-300">
               <div className="flex items-center space-x-6 mb-2 md:mb-0">
                 <div className="flex items-center space-x-2">
-                  <i className="fas fa-user text-blue-400"></i>
-                  <span>작성자: 관리자</span>
-                </div>
-                <div className="flex items-center space-x-2">
                   <i className="fas fa-calendar text-purple-400"></i>
                   <span>
                     {new Date(date).toLocaleDateString('ko-KR', {
@@ -224,30 +258,43 @@ function AnnouncementWrite() {
           />
         </div>
       </article>
-    );
+    );  
   };
+
+  // 로딩 중일 때
+  if (isLoading) {
+    return (
+      <main className="pt-20 pb-16 min-h-screen">
+        <div className="container mx-auto px-4 py-24 text-center text-gray-400">
+          공지사항을 불러오는 중...
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="pt-20 pb-16 min-h-screen">
       <div className="container mx-auto px-4 max-w-4xl">
-        {/* 페이지 헤더 */}
-        <div className="mb-8 flex justify-start">
-          {' '}
-          {/* flex와 justify-start 추가 */}
-          <Link
-            to="/announcement"
-            className="btn-secondary inline-flex items-center px-6 py-3 rounded-lg text-sm font-medium text-white"
-          >
-            <i className="fas fa-arrow-left mr-2"></i>공지사항 목록으로 돌아가기
-          </Link>
-        </div>
+        {/* 페이지 헤더 - 수정 모드일 때는 숨김 */}
+        {!isEditMode && (
+          <div className="mb-8 flex justify-start">
+            {' '}
+            {/* flex와 justify-start 추가 */}
+            <Link
+              to="/announcement"
+              className="btn-secondary inline-flex items-center px-6 py-3 rounded-lg text-sm font-medium text-white"
+            >
+              <i className="fas fa-arrow-left mr-2"></i>공지사항 목록으로 돌아가기
+            </Link>
+          </div>
+        )}
 
         <div className="text-center mb-12">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-400 via-pink-400 to-red-400 flex items-center justify-center">
             <i className="fas fa-edit text-white text-xl"></i>
           </div>
           <h1 className="orbitron text-4xl md:text-5xl font-bold gradient-text mb-2">
-            공지사항 작성
+            {isEditMode ? '공지사항 수정' : '공지사항 작성'}
           </h1>
           <p className="text-gray-400">
             TCP 동아리 회원들에게 전달할 중요한 소식을 작성해주세요.
@@ -459,24 +506,6 @@ function AnnouncementWrite() {
             </div>
           </div>
 
-          {/* 작성자 정보 */}
-          <div className="mb-8">
-            <label
-              htmlFor="author"
-              className="block text-lg font-semibold mb-3 text-white text-left"
-            >
-              <i className="fas fa-user text-yellow-400 mr-2"></i>작성자
-            </label>
-            <input
-              type="text"
-              id="author"
-              name="author"
-              className="form-input px-4 py-3 rounded-lg"
-              value={author}
-              readOnly
-            />
-          </div>
-
           {/* 버튼 그룹 */}
           <div className="flex flex-col sm:flex-row gap-4 justify-end">
             <button
@@ -489,10 +518,11 @@ function AnnouncementWrite() {
 
             <button
               type="button"
-              onClick={handleSaveDraft}
+              onClick={isEditMode ? () => navigate(`/announcement/${id}`) : handleSaveDraft}
               className="btn-secondary px-8 py-3 rounded-lg font-medium text-white flex items-center justify-center"
             >
-              <i className="fas fa-save mr-2"></i>임시저장
+              <i className={`fas ${isEditMode ? 'fa-times' : 'fa-save'} mr-2`}></i>
+              {isEditMode ? '취소하기' : '임시저장'}
             </button>
 
             <button
@@ -501,7 +531,10 @@ function AnnouncementWrite() {
               disabled={isSubmitting}
             >
               <i className="fas fa-paper-plane mr-2"></i>
-              {isSubmitting ? '게시 중...' : '게시하기'}
+              {isSubmitting 
+                ? (isEditMode ? '수정 중...' : '게시 중...') 
+                : (isEditMode ? '수정하기' : '게시하기')
+              }
             </button>
           </div>
         </form>

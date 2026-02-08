@@ -90,6 +90,7 @@ function AppContent() {
         <Route path="/recruitment" element={<Recruitment />} />
         <Route path="/announcement" element={<Announcement />} />
         <Route path="/announcement/write" element={<AnnouncementWrite />} />
+        <Route path="/announcement/edit/:id" element={<AnnouncementWrite />} />
         <Route path="/announcement/:id" element={<AnnouncementArticle />} />
         <Route path="/study" element={<Study />} />
         <Route path="/study/write" element={<StudyWrite />} />
