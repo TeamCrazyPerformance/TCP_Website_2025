@@ -40,14 +40,16 @@ function AnnouncementWrite() {
       const fetchAnnouncement = async () => {
         try {
           setIsLoading(true);
-          const data = await apiGet(`/api/v1/announcements/${id}`);
+          // 어드민에서 오면 예약 공지도 조회 가능한 엔드포인트 사용
+          const endpoint = fromAdmin ? `/api/v1/admin/announcements/${id}` : `/api/v1/announcements/${id}`;
+          const data = await apiGet(endpoint);
           setTitle(data.title || '');
           setSummary(data.summary || '');
           setContent(data.contents || '');
           setDate(data.publishAt ? new Date(data.publishAt).toISOString().split('T')[0] : '');
         } catch (error) {
           alert('공지사항을 불러오는데 실패했습니다.');
-          navigate('/announcement');
+          navigate(fromAdmin ? '/admin/announcement' : '/announcement');
         } finally {
           setIsLoading(false);
         }
@@ -69,7 +71,7 @@ function AnnouncementWrite() {
         setContent(draftData.content || '');
       }
     }
-  }, [isEditMode, id, navigate]);
+  }, [isEditMode, id, navigate, fromAdmin]);
 
   // 페이지 이탈 경고 (수정 모드일 때는 비활성화)
   useEffect(() => {
@@ -585,7 +587,7 @@ function AnnouncementWrite() {
               공지사항이 성공적으로 게시되었습니다.
             </p>
             <button
-              onClick={() => navigate('/announcement')}
+              onClick={() => navigate(fromAdmin ? '/admin/announcement' : '/announcement')}
               className="btn-primary px-6 py-2 rounded-lg font-medium text-white"
             >
               공지사항 목록 보기

@@ -32,7 +32,7 @@ function AdminAnnouncement() {
   const loadAnnouncements = async () => {
     try {
       setIsLoading(true);
-      const data = await apiGet('/api/v1/announcements');
+      const data = await apiGet('/api/v1/admin/announcements');
       // API 응답 데이터 형식에 맞게 변환
       const formattedData = data.map((item) => ({
         id: item.id,
@@ -388,6 +388,7 @@ function AdminAnnouncement() {
                   <th
                     className="p-4 text-center sort-header"
                     onClick={() => handleSort('title')}
+                    style={{width: '400px'}}
                   >
                     <div className="flex items-center justify-center">
                       제목
@@ -424,7 +425,7 @@ function AdminAnnouncement() {
                     </div>
                   </th>
                   <th className="p-4 text-center" style={{width: '100px'}}>상태</th>
-                  <th className="p-4 text-center" style={{width: '100px'}}>작업</th>
+                  <th className="p-4 text-center" style={{width: '150px'}}>작업</th>
                 </tr>
               </thead>
               <tbody id="announcementsTable">

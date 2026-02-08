@@ -32,7 +32,9 @@ function AnnouncementArticle() {
     const fetchArticle = async () => {
       try {
         setIsLoading(true);
-        const data = await apiGet(`/api/v1/announcements/${id}`);
+        // 어드민에서 오면 예약 공지도 조회 가능한 엔드포인트 사용
+        const endpoint = fromAdmin ? `/api/v1/admin/announcements/${id}` : `/api/v1/announcements/${id}`;
+        const data = await apiGet(endpoint);
         const mapped = {
           id: data.id,
           category: '공지사항',
@@ -65,7 +67,7 @@ function AnnouncementArticle() {
     return () => {
       isMounted = false;
     };
-  }, [id]);
+  }, [id, fromAdmin]);
 
   useEffect(() => {
     const observerOptions = {
