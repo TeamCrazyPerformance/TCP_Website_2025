@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import MarkdownIt from 'markdown-it';
 import { apiPost, apiPatch, apiGet } from '../api/client';
@@ -13,7 +13,9 @@ const md = new MarkdownIt({
 function AnnouncementWrite() {
   const navigate = useNavigate();
   const { id } = useParams(); // URL 파라미터에서 id 가져오기
+  const [searchParams] = useSearchParams();
   const isEditMode = Boolean(id); // id가 있으면 수정 모드
+  const fromAdmin = searchParams.get('from') === 'admin'; // admin에서 왔는지 확인
 
   // 폼 상태 관리
   const [title, setTitle] = useState('');
@@ -194,7 +196,7 @@ function AnnouncementWrite() {
           },
         });
         alert('공지사항이 수정되었습니다.');
-        navigate(`/announcement/${id}`);
+        navigate(fromAdmin ? '/admin/announcement' : `/announcement/${id}`);
       } else {
         // 작성 모드: POST 요청
         await apiPost('/api/v1/announcements', payload, {
@@ -281,10 +283,11 @@ function AnnouncementWrite() {
             {' '}
             {/* flex와 justify-start 추가 */}
             <Link
-              to="/announcement"
+              to={fromAdmin ? "/admin/announcement" : "/announcement"}
               className="btn-secondary inline-flex items-center px-6 py-3 rounded-lg text-sm font-medium text-white"
             >
-              <i className="fas fa-arrow-left mr-2"></i>공지사항 목록으로 돌아가기
+              <i className="fas fa-arrow-left mr-2"></i>
+              {fromAdmin ? '관리자 페이지로 돌아가기' : '공지사항 목록으로 돌아가기'}
             </Link>
           </div>
         )}
@@ -518,7 +521,7 @@ function AnnouncementWrite() {
 
             <button
               type="button"
-              onClick={isEditMode ? () => navigate(`/announcement/${id}`) : handleSaveDraft}
+              onClick={isEditMode ? () => navigate(fromAdmin ? '/admin/announcement' : `/announcement/${id}`) : handleSaveDraft}
               className="btn-secondary px-8 py-3 rounded-lg font-medium text-white flex items-center justify-center"
             >
               <i className={`fas ${isEditMode ? 'fa-times' : 'fa-save'} mr-2`}></i>

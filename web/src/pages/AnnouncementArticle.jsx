@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate, useLocation } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import MarkdownIt from 'markdown-it';
 import { apiGet, apiDelete } from '../api/client';
@@ -14,6 +14,7 @@ const md = new MarkdownIt({
 function AnnouncementArticle() {
   const { id } = useParams(); // 라우트 파라미터 이름을 'id'로 받습니다.
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [article, setArticle] = useState(null);
@@ -22,6 +23,8 @@ function AnnouncementArticle() {
   
   // 관리자 권한 확인
   const isAdmin = user?.role === 'ADMIN';
+  // Admin 페이지에서 왔는지 확인
+  const fromAdmin = location.state?.from === 'admin';
 
   useEffect(() => {
     let isMounted = true;
@@ -198,11 +201,11 @@ function AnnouncementArticle() {
       <div className="container mx-auto px-4 py-24 text-center text-gray-400">
         <h1 className="text-4xl">게시글을 찾을 수 없습니다.</h1>
         <Link
-          to="/announcement"
+          to={fromAdmin ? "/admin/announcement" : "/announcement"}
           className="mt-8 back-button inline-flex items-center px-8 py-4 rounded-lg text-lg font-medium"
         >
           <i className="fas fa-list mr-3"></i>
-          공지사항 목록 보기
+          {fromAdmin ? '관리자 페이지로 돌아가기' : '공지사항 목록 보기'}
         </Link>
       </div>
     );
@@ -214,11 +217,11 @@ function AnnouncementArticle() {
         {/* Back Button: Left aligned, widget-card background */}
         <div className="mb-8 scroll-fade text-left">
           <Link
-            to="/announcement"
+            to={fromAdmin ? "/admin/announcement" : "/announcement"}
             className="widget-card btn-back-hover inline-flex items-center px-6 py-3 rounded-lg text-sm font-medium transition-colors"
           >
             <i className="fas fa-arrow-left mr-2"></i>
-            공지사항 목록으로 돌아가기
+            {fromAdmin ? '관리자 페이지로 돌아가기' : '공지사항 목록으로 돌아가기'}
           </Link>
         </div>
 
@@ -308,11 +311,11 @@ function AnnouncementArticle() {
         {/* Bottom Back Button: Centered */}
         <div className="mt-12 text-center">
           <Link
-            to="/announcement"
+            to={fromAdmin ? "/admin/announcement" : "/announcement"}
             className="widget-card btn-back-hover inline-flex items-center px-8 py-4 rounded-lg text-lg font-medium transition-colors"
           >
             <i className="fas fa-list mr-3"></i>
-            공지사항 목록 보기
+            {fromAdmin ? '관리자 페이지로 돌아가기' : '공지사항 목록 보기'}
           </Link>
         </div>
       </div>
