@@ -4,7 +4,7 @@ import InfoRow from '../ui/InfoRow';
 import { isExpired } from '../../utils/helpers';
 import { apiGet, apiPost, apiDelete } from '../../api/client';
 
-export default function TeamDetailModal({ isOpen, onClose, team, onApplicationStatusChange, isMyPage = false }) {
+export default function TeamDetailModal({ isOpen, onClose, team, onApplicationStatusChange, isMyPage = false, isAdminView = false }) {
   const { user } = useAuth();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [selectedRoleId, setSelectedRoleId] = useState(null);
@@ -414,7 +414,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
           )}
 
           {/* 역할 선택 - 로그인 사용자 & 리더 아님 & 지원하지 않은 경우만 표시 */}
-          {user && !isLeader && !applicationStatus?.hasApplied && team.status === '모집중' && !isExpired(team.deadline) && (
+          {!isAdminView && user && !isLeader && !applicationStatus?.hasApplied && team.status === '모집중' && !isExpired(team.deadline) && (
             <section className="mb-6">
               <h4 className="font-semibold text-white mb-3 flex items-center">
                 <i className="fas fa-user-tag text-purple-400 mr-2" />
@@ -436,7 +436,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
           )}
 
           {/* 이미 지원한 경우 정보 표시 */}
-          {applicationStatus?.hasApplied && applicationStatus.applicationInfo?.appliedRole && (
+          {!isAdminView && applicationStatus?.hasApplied && applicationStatus.applicationInfo?.appliedRole && (
             <section className="mb-6">
               <h4 className="font-semibold text-white mb-3 flex items-center">
                 <i className="fas fa-check-circle text-green-400 mr-2" />
@@ -460,7 +460,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
             </button>
 
             {/* 로그인하지 않은 경우 */}
-            {!user && team.status === '모집중' && !isExpired(team.deadline) && (
+            {!isAdminView && !user && team.status === '모집중' && !isExpired(team.deadline) && (
               <button
                 onClick={() => {
                   alert('로그인이 필요합니다.');
@@ -474,7 +474,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
             )}
 
             {/* 로그인한 경우 */}
-            {user && team.status === '모집중' && !isExpired(team.deadline) && (
+            {!isAdminView && user && team.status === '모집중' && !isExpired(team.deadline) && (
               <>
                 {isLeader && !isMyPage ? (
                   <a
@@ -511,7 +511,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
             )}
 
             {/* 모집 마감 또는 기한 만료 */}
-            {(team.status !== '모집중' || isExpired(team.deadline)) && (
+            {!isAdminView && (team.status !== '모집중' || isExpired(team.deadline)) && (
               <button
                 disabled
                 className="bg-gray-700 text-gray-500 cursor-not-allowed px-6 py-2 rounded-lg font-medium"
