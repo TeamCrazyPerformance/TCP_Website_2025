@@ -192,8 +192,7 @@ function Members() {
                 Team Crazy Performance
               </p>
               <p className="text-lg text-gray-400 max-w-2xl mx-auto">
-                TCP 팀의 멤버들을 만나보세요. 검색과 필터로 원하는 멤버를
-                찾아보세요.
+                TCP의 멤버들을 만나보세요. 검색과 필터로 원하는 멤버를 찾아보세요.
               </p>
             </div>
           </div>
@@ -265,7 +264,7 @@ function Members() {
               현재 멤버
             </h2>
             <p className="orbitron text-xl text-gray-300 max-w-3xl mx-auto">
-              TCP 팀의 현재 활동 중인 멤버들입니다.
+              현재 활동 중인 TCP 멤버들입니다.
             </p>
           </div>
 
@@ -363,7 +362,7 @@ function Members() {
               졸업 멤버
             </h2>
             <p className="orbitron text-xl text-gray-300 max-w-3xl mx-auto">
-              TCP 팀을 졸업하여 각자의 길을 걸어가고 있는 멤버들입니다.
+              학교를 졸업하여 각자의 길을 걸어가고 있는 TCP 멤버들입니다.
             </p>
           </div>
           <div
