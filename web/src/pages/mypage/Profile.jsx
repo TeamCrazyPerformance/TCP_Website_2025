@@ -9,6 +9,7 @@ import {
   faBook,
   faUsers,
   faTrophy,
+  faCamera,
 } from '@fortawesome/free-solid-svg-icons';
 import { faGithub } from '@fortawesome/free-brands-svg-icons';
 
@@ -264,26 +265,35 @@ function Profile() {
           프로필 정보
         </h3>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="flex flex-col gap-8">
           {/* Profile Card */}
-          <div className="lg:col-span-1">
+          <div className="w-full">
             <div className="widget-card p-6 rounded-xl text-center">
               <div
-                className="profile-photo-container mx-auto mb-4"
+                className="profile-photo-container mx-auto mb-4 relative group cursor-pointer w-32 h-32"
                 onClick={openPhotoModal}
               >
                 {profile.photo ? (
                   <img
                     src={profile.photo}
                     alt="프로필 이미지"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover rounded-full border-4 border-gray-700 group-hover:border-blue-500 transition-colors"
                   />
                 ) : (
-                  <div className="w-full h-full rounded-full bg-gray-700 flex items-center justify-center text-white text-xl">
+                  <div className="w-full h-full rounded-full bg-gray-700 flex items-center justify-center text-white text-xl border-4 border-gray-700 group-hover:border-blue-500 transition-colors">
                     {profileInitial}
                   </div>
                 )}
+
+                {/* Hover Overlay */}
+                <div className="absolute inset-0 rounded-full bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="text-white text-sm font-medium">
+                    <FontAwesomeIcon icon={faCamera} className="mb-1 block text-2xl mx-auto" />
+                    변경
+                  </div>
+                </div>
               </div>
+
               <div className="mb-4">
                 <h4 className="orbitron text-xl font-bold mb-2 text-white">
                   {profile.nickname}
@@ -315,7 +325,7 @@ function Profile() {
           </div>
 
           {/* Profile Details */}
-          <div className="lg:col-span-2">
+          <div className="w-full">
             <div className="widget-card p-6 rounded-xl">
               <h5 className="orbitron text-lg font-bold mb-4 text-white">
                 기본 정보
