@@ -163,9 +163,11 @@ function AdminRecruitment() {
       },
     }));
 
-    // Auto Save
-    const backendField = id === 'startDate' ? 'start_date' : 'end_date';
-    updateBackendSetting({ [backendField]: value || null });
+    // Auto Save only if valid date format (length 10)
+    if (value.length === 10) {
+      const backendField = id === 'startDate' ? 'start_date' : 'end_date';
+      updateBackendSetting({ [backendField]: value });
+    }
   };
 
   const toggleApplyButton = () => {

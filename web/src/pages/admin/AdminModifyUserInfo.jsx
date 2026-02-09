@@ -310,7 +310,7 @@ const AdminModifyUserInfo = () => {
                                     label="생년월일"
                                     id="birth_date"
                                     type="text"
-                                    value={formData.birth_date ? formData.birth_date.split('T')[0] : ''}
+                                    value={formData.birth_date ? formData.birth_date.split('T')[0].replace(/-/g, '.').replace(/\//g, '.') : ''}
                                     onChange={(e) => {
                                         const val = formatBirthDate(e.target.value);
                                         handleFormChange('birth_date', val);

@@ -150,7 +150,7 @@ function Profile() {
           baekjoon: data.baekjoon_username || '', // Added
           portfolio: data.portfolio_link || '',
           joinYear: data.join_year || '', // Added
-          birthDate: data.birth_date ? data.birth_date.split('T')[0] : '', // Added, format YYYY-MM-DD
+          birthDate: data.birth_date ? data.birth_date.split('T')[0].replace(/-/g, '.').replace(/\//g, '.') : '', // Added, format YYYY.MM.DD
           gender: data.gender || '', // Added
         });
         setError(null);
