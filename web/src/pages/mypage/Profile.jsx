@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { apiGet, apiPatch, apiDelete } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import { formatBirthDate } from '../../utils/dateFormatter';
+import { formatBirthDate, normalizeDate } from '../../utils/dateFormatter';
 import defaultProfileImage from '../../logo.svg';
 import {
   faLink,
@@ -150,13 +150,7 @@ function Profile() {
           baekjoon: data.baekjoon_username || '', // Added
           portfolio: data.portfolio_link || '',
           joinYear: data.join_year || '', // Added
-          birthDate: data.birth_date ? (() => {
-            const d = new Date(data.birth_date);
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${year}.${month}.${day}`;
-          })() : '', // Added, format YYYY.MM.DD
+          birthDate: normalizeDate(data.birth_date), // Added, format YYYY.MM.DD
           gender: data.gender || '', // Added
         });
         setError(null);

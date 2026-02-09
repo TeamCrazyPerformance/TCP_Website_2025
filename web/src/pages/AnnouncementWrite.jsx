@@ -47,7 +47,7 @@ function AnnouncementWrite() {
           setTitle(data.title || '');
           setSummary(data.summary || '');
           setContent(data.contents || '');
-          setDate(data.publishAt ? new Date(data.publishAt).toISOString().split('T')[0] : '');
+          setDate(data.publishAt ? new Date(data.publishAt).toISOString().split('T')[0].replace(/-/g, '.') : '');
         } catch (error) {
           alert('공지사항을 불러오는데 실패했습니다.');
           navigate(fromAdmin ? '/admin/announcement' : '/announcement');
@@ -59,7 +59,7 @@ function AnnouncementWrite() {
       return;
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0].replace(/-/g, '.');
     setDate(today);
 
     const savedDraft = localStorage.getItem('announcement_draft');
