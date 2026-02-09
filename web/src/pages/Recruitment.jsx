@@ -19,6 +19,8 @@ import {
   faCalendarAlt,
   faUserFriends,
   faAward,
+  faFire,
+  faBook,
 } from '@fortawesome/free-solid-svg-icons';
 import { apiPost, apiGet } from '../api/client';
 
