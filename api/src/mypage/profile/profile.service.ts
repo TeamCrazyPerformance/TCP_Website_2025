@@ -18,7 +18,6 @@ export class ProfileService {
         'username',
         'name',
         'profile_image',
-        'email',
         'tech_stack',
         'education_status',
         'github_username',

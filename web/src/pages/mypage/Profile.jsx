@@ -334,7 +334,7 @@ function Profile() {
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     아이디
                   </label>
-                  <div className="text-gray-300 text-lg px-3 py-2 border border-gray-700 rounded-md bg-gray-800">
+                  <div className="text-gray-300 text-lg px-3 py-2 border border-gray-700 rounded-md bg-transparent text-left">
                     {profile.username}
                   </div>
                 </div>
@@ -342,7 +342,7 @@ function Profile() {
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     이메일
                   </label>
-                  <div className="text-gray-300 text-lg px-3 py-2 border border-gray-700 rounded-md bg-gray-800">
+                  <div className="text-gray-300 text-lg px-3 py-2 border border-gray-700 rounded-md bg-transparent text-left">
                     {profile.email}
                   </div>
                 </div>
