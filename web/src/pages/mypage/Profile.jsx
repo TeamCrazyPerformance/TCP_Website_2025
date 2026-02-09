@@ -135,6 +135,7 @@ function Profile() {
       try {
         setLoading(true);
         const data = await apiGet('/api/v1/mypage/profile');
+        alert('Raw birth_date: ' + data.birth_date + '\nNormalized: ' + normalizeDate(data.birth_date)); // DEBUG
         // Map backend fields to frontend format
         setProfile({
           photo: data.profile_image || '',
