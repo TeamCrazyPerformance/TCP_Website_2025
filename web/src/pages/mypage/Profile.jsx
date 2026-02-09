@@ -135,7 +135,6 @@ function Profile() {
       try {
         setLoading(true);
         const data = await apiGet('/api/v1/mypage/profile');
-        alert('Raw birth_date: ' + data.birth_date + '\nNormalized: ' + normalizeDate(data.birth_date)); // DEBUG
         // Map backend fields to frontend format
         setProfile({
           photo: data.profile_image || '',
@@ -479,7 +478,11 @@ function Profile() {
                       }}
                       placeholder="YYYY.MM.DD"
                       maxLength={10}
+                      autoComplete="off"
                     />
+                    <div className="text-red-500 font-bold mt-2">
+                      DEBUG: profile.birthDate = "{profile.birthDate}"
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
