@@ -17,6 +17,7 @@ function Header({ isScrolled }) {
     [user]
   );
   const avatarInitial = displayName ? displayName[0].toUpperCase() : 'U';
+
   const getNavLinkClass = ({ isActive }) =>
     `nav-link orbitron text-sm font-medium ${isActive ? 'active' : 'text-gray-300'
     } hover:text-white`;
@@ -92,11 +93,11 @@ function Header({ isScrolled }) {
             {isAuthenticated ? (
               <>
                 <NavLink to="/mypage" className="flex items-center space-x-2 px-2 py-1 rounded-lg hover:bg-white/10 transition-colors group">
-                  {user?.profile_image && !imgError ? (
+                  {!imgError ? (
                     <img
-                      src={user.profile_image}
+                      src={user?.profile_image || logo}
                       alt={displayName}
-                      className="w-8 h-8 rounded-full object-cover border border-gray-600 group-hover:border-gray-400"
+                      className="w-8 h-8 rounded-full object-cover border border-gray-600 group-hover:border-gray-400 bg-gray-700"
                       onError={() => setImgError(true)}
                     />
                   ) : (
