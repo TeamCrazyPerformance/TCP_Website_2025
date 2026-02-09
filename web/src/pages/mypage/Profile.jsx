@@ -258,7 +258,7 @@ function Profile() {
   const profileInitial = (profile.nickname || profile.email || 'U')[0].toUpperCase();
 
   return (
-    <div className="container mx-auto max-w-7xl">
+    <div className="container mx-auto max-w-3xl">
       {/* Profile Section */}
       <section id="profile" className="mb-8">
         <h3 className="orbitron text-2xl font-bold gradient-text mb-6">
