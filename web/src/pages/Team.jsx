@@ -401,7 +401,7 @@ export default function Team() {
           {/* Search */}
           <div>
             <label htmlFor="search" className="block text-sm font-medium text-gray-300 mb-2">
-              Search
+              검색
             </label>
             <div className="relative">
               <input
@@ -418,7 +418,7 @@ export default function Team() {
           {/* Status */}
           <div>
             <label htmlFor="filter-status" className="block text-sm font-medium text-gray-300 mb-2">
-              Status
+              모집 상태
             </label>
             <select
               id="filter-status"
@@ -434,7 +434,7 @@ export default function Team() {
           {/* Category */}
           <div>
             <label htmlFor="filter-category" className="block text-sm font-medium text-gray-300 mb-2">
-              Category
+              카테고리
             </label>
             <select
               id="filter-category"
@@ -453,7 +453,7 @@ export default function Team() {
           {/* Sort by */}
           <div>
             <label htmlFor="sort-by" className="block text-sm font-medium text-gray-300 mb-2">
-              Sort by
+              날짜순 정렬
             </label>
             <select
               id="sort-by"
