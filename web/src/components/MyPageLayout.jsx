@@ -49,13 +49,13 @@ function MyPageLayout() {
 
   const getPageTitle = () => {
     const path = location.pathname;
-    if (path === '/mypage') return '마이페이지';
-    if (path === '/mypage/settings') return '멤버 페이지 공개 설정';
+    if (path === '/mypage') return '내 프로필';
+    if (path === '/mypage/settings') return '멤버 페이지 정보 공개 설정';
     if (path === '/mypage/studies') return '참여 스터디 목록';
     if (path === '/mypage/teams') return '팀 구성 이력';
-    if (path === '/mypage/account-settings') return '계정 설정';
-    if (path === '/mypage/withdrawal') return '탈퇴 신청';
-    return '마이페이지';
+    if (path === '/mypage/account-settings') return '개인정보 수정';
+    if (path === '/mypage/withdrawal') return '회원 탈퇴';
+    return '내 프로필';
   };
 
   const handleLogout = async () => {
@@ -91,9 +91,6 @@ function MyPageLayout() {
                 {getPageTitle()}
               </h2>
               <div className="flex items-center space-x-4 ml-auto">
-                <button className="text-gray-400 hover:text-white">
-                  <FontAwesomeIcon icon={faBell} />
-                </button>
                 <div className="flex items-center space-x-2">
                   {user?.profile_image ? (
                     <img

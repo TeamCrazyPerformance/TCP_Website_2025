@@ -22,31 +22,35 @@ function MyPageSidebar() {
   return (
     <aside id="sidebar" className="sidebar flex-shrink-0 p-4">
       <div className="flex items-center space-x-3 mb-8 px-2">
-        <img src={logo} alt="TCP 로고" className="w-10 h-10 object-contain" />
+        <Link to="/">
+          <img src={logo} alt="TCP 로고" className="w-10 h-10 object-contain" />
+        </Link>
         <div>
-          <h1 className="orbitron text-xl font-bold gradient-text">TCP</h1>
-          <p className="text-xs text-gray-400">My Page</p>
+          <Link to="/">
+            <h1 className="orbitron text-xl font-bold gradient-text">TCP</h1>
+          </Link>
+          <p className="orbitron text-xs text-gray-400">My Page</p>
         </div>
       </div>
 
       <nav className="space-y-4">
         <div>
           <h3 className="px-4 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            개인 정보
+            프로필 관리
           </h3>
           <Link
             to="/mypage"
             className={`sidebar-link ${isActive('/mypage') ? 'active' : ''}`}
           >
             <FontAwesomeIcon icon={faUser} />
-            <span className="ml-2">프로필 보기/수정</span>
+            <span className="ml-2">내 프로필</span>
           </Link>
           <Link
             to="/mypage/settings"
             className={`sidebar-link ${isActive('/mypage/settings') ? 'active' : ''}`}
           >
             <FontAwesomeIcon icon={faEye} />
-            <span className="ml-2">멤버 페이지 공개 설정</span>
+            <span className="ml-2">멤버 페이지 정보 공개 설정</span>
           </Link>
         </div>
 
@@ -79,14 +83,14 @@ function MyPageSidebar() {
             className={`sidebar-link ${isActive('/mypage/account-settings') ? 'active' : ''}`}
           >
             <FontAwesomeIcon icon={faCog} />
-            <span className="ml-2">계정 설정</span>
+            <span className="ml-2">개인정보 수정</span>
           </Link>
           <Link
             to="/mypage/withdraw"
             className={`sidebar-link ${isActive('/mypage/withdraw') ? 'text-red-400' : ''}`}
           >
             <FontAwesomeIcon icon={faSignOutAlt} />
-            <span className="ml-2">탈퇴 신청</span>
+            <span className="ml-2">회원 탈퇴</span>
           </Link>
         </div>
 
