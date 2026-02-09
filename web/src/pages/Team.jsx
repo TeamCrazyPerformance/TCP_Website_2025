@@ -122,7 +122,7 @@ export default function Team() {
       ...new Set([...splitTags(team.tag), ...splitTags(team.techStack)]),
     ];
     const leaderName = team.leader?.name || team.leader?.username || '팀 리더';
-    const leaderAvatar = team.leader?.profile_image || 
+    const leaderAvatar = team.leader?.profile_image ||
       'https://via.placeholder.com/40/A8C5E6/FFFFFF?text=L';
     const period = `${formatDate(team.periodStart)} – ${formatDate(
       team.periodEnd
@@ -253,7 +253,7 @@ export default function Team() {
 
     const fetchApplicationStatuses = async () => {
       const statusMap = {};
-      
+
       await Promise.all(
         teams.map(async (team) => {
           try {
@@ -384,7 +384,7 @@ export default function Team() {
           Find Your Team
         </h1>
         <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-8">
-          함께 성장하고 도전할 최고의 팀원을 찾아보세요. TCP 동아리원뿐만 
+          함께 성장하고 도전할 최고의 팀원을 찾아보세요. TCP 동아리원뿐만
           아니라 누구나 프로젝트, 스터디, 해커톤 팀원을 쉽게 모집하고 지원할 수 있습니다.
         </p>
         <button
