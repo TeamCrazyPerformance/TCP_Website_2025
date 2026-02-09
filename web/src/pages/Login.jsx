@@ -78,7 +78,7 @@ function Login() {
               <h1 className="orbitron text-3xl font-bold gradient-text mb-2">
                 TCP 로그인
               </h1>
-              <p className="text-gray-400">
+              <p className="orbitron text-gray-400">
                 Team Crazy Performance에 오신 것을 환영합니다
               </p>
             </div>

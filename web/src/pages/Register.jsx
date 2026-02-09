@@ -327,7 +327,7 @@ function Register() {
       {/* Register Form Section */}
       <section className="pt-24 pb-16 min-h-screen flex items-center">
         <div className="container mx-auto px-4">
-          <div className="max-w-2xl mx-auto bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-lg p-10">
+          <div className="register-card max-w-2xl mx-auto rounded-2xl shadow-lg p-10 card-hover">
             {/* Top Branding */}
             <div className="text-center mb-8">
               <div className="w-16 h-16 mx-auto mb-4">
@@ -340,8 +340,8 @@ function Register() {
               <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text">
                 회원가입
               </h2>
-              <p className="text-gray-400 mt-2">
-                Team Crazy Performance에 오신 것을 환영합니다
+              <p className="orbitron text-gray-400 mt-2">
+                Team Crazy Performance에 오신 것을 환영합니다. TCP 부원이 아니더라도 회원가입이 가능합니다.
               </p>
             </div>
 
