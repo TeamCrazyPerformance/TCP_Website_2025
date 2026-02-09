@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { apiGet, apiPatch, apiDelete } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
+import { formatBirthDate } from '../../utils/dateFormatter';
 import defaultProfileImage from '../../logo.svg';
 import {
   faLink,
@@ -467,12 +468,16 @@ function Profile() {
                       생년월일
                     </label>
                     <input
-                      type="date"
+                      type="text"
                       className="editable form-input"
                       name="birthDate"
                       value={profile.birthDate}
-                      onChange={handleProfileChange}
-                      max="9999-12-31"
+                      onChange={(e) => {
+                        const val = formatBirthDate(e.target.value);
+                        handleProfileChange({ target: { name: 'birthDate', value: val } });
+                      }}
+                      placeholder="YYYY.MM.DD"
+                      maxLength={10}
                     />
                   </div>
                   <div>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { formatBirthDate } from '../../utils/dateFormatter';
 import defaultProfileImage from '../../logo.svg';
 
-const InfoRow = ({ label, id, value, onChange, editable = true, type = 'text', options = null }) => (
+const InfoRow = ({ label, id, value, onChange, editable = true, type = 'text', options = null, ...props }) => (
     <div>
         <label htmlFor={id} className="block text-sm font-medium text-gray-300 mb-2">{label}</label>
         {options ? (
@@ -11,6 +12,7 @@ const InfoRow = ({ label, id, value, onChange, editable = true, type = 'text', o
                 onChange={onChange}
                 disabled={!editable}
                 className={`form-input ${!editable ? 'bg-gray-700 cursor-not-allowed' : ''}`}
+                {...props}
             >
                 <option value="">선택</option>
                 {options.map(opt => (
@@ -25,6 +27,7 @@ const InfoRow = ({ label, id, value, onChange, editable = true, type = 'text', o
                 onChange={onChange}
                 readOnly={!editable}
                 className={`form-input ${!editable ? 'bg-gray-700 cursor-not-allowed' : ''}`}
+                {...props}
             />
         )}
     </div>
@@ -306,9 +309,14 @@ const AdminModifyUserInfo = () => {
                                 <InfoRow
                                     label="생년월일"
                                     id="birth_date"
-                                    type="date"
+                                    type="text"
                                     value={formData.birth_date ? formData.birth_date.split('T')[0] : ''}
-                                    onChange={(e) => handleFormChange('birth_date', e.target.value)}
+                                    onChange={(e) => {
+                                        const val = formatBirthDate(e.target.value);
+                                        handleFormChange('birth_date', val);
+                                    }}
+                                    placeholder="YYYY.MM.DD"
+                                    maxLength={10}
                                 />
                                 <InfoRow
                                     label="성별"

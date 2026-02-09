@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { formatBirthDate } from '../../utils/dateFormatter';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faSave,
@@ -150,6 +151,7 @@ function AdminRecruitment() {
   // Handlers with auto-save
   const updateRecruitmentPeriod = (e) => {
     const { id, value } = e.target;
+    // value is already formatted by formatBirthDate in onChange
     const key = id === 'startDate' ? 'start' : 'end';
 
     // Optimistic Update
@@ -190,8 +192,8 @@ function AdminRecruitment() {
         const result = await callApi('/api/v1/admin/recruitment/start-now', 'POST');
         const startDate = result.start_date ? result.start_date.split('T')[0] : '';
         const endDate = result.end_date ? result.end_date.split('T')[0] : '';
-        setSettings(prev => ({ 
-          ...prev, 
+        setSettings(prev => ({
+          ...prev,
           applyButtonEnabled: true,
           recruitmentPeriod: { start: startDate, end: endDate }
         }));
@@ -205,8 +207,8 @@ function AdminRecruitment() {
       try {
         const result = await callApi('/api/v1/admin/recruitment/stop-now', 'POST');
         const endDate = result.end_date ? result.end_date.split('T')[0] : '';
-        setSettings(prev => ({ 
-          ...prev, 
+        setSettings(prev => ({
+          ...prev,
           applyButtonEnabled: false,
           recruitmentPeriod: { ...prev.recruitmentPeriod, end: endDate }
         }));
@@ -473,11 +475,17 @@ function AdminRecruitment() {
                   모집 시작일
                 </label>
                 <input
-                  type="date"
+                  type="text"
                   className="form-input"
                   id="startDate"
                   value={settings.recruitmentPeriod.start}
-                  onChange={updateRecruitmentPeriod}
+                  onChange={(e) => {
+                    const val = formatBirthDate(e.target.value);
+                    // Call original handler with modified value
+                    updateRecruitmentPeriod({ target: { id: 'startDate', value: val } });
+                  }}
+                  placeholder="YYYY.MM.DD"
+                  maxLength={10}
                 />
               </div>
 
@@ -486,11 +494,17 @@ function AdminRecruitment() {
                   모집 종료일
                 </label>
                 <input
-                  type="date"
+                  type="text"
                   className="form-input"
                   id="endDate"
                   value={settings.recruitmentPeriod.end}
-                  onChange={updateRecruitmentPeriod}
+                  onChange={(e) => {
+                    const val = formatBirthDate(e.target.value);
+                    // Call original handler with modified value
+                    updateRecruitmentPeriod({ target: { id: 'endDate', value: val } });
+                  }}
+                  placeholder="YYYY.MM.DD"
+                  maxLength={10}
                 />
               </div>
 
