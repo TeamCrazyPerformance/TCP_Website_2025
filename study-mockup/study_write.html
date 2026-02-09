@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TCP - 스터디 주차별 진행 현황 작성</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet" />
+  <link href='https://spoqa.github.io/spoqa-han-sans/css/SpoqaHanSansNeo.css' rel='stylesheet' type='text/css'>
+  <style>
+    :root {
+      --primary-black: #0a0a0a;
+      --secondary-gray: #1a1a1a;
+      --light-gray: #2a2a2a;
+      --accent-blue: #a8c5e6;
+      --accent-purple: #c5a8e6;
+      --accent-green: #a8e6c5;
+      --accent-pink: #e6a8c5;
+    }
+    body { font-family: 'Spoqa Han Sans Neo', sans-serif; background-color: var(--primary-black); color: #fff; }
+    .orbitron { font-family: 'Orbitron', monospace; }
+    .gradient-text { background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .nav-link { position: relative; transition: all .3s ease; }
+    .nav-link::after{ content:''; position:absolute; bottom:-5px; left:0; width:0; height:2px; background:linear-gradient(90deg,var(--accent-blue),var(--accent-purple)); transition:width .3s ease; }
+    .nav-link:hover::after{ width:100%; }
+    .feature-card{ background:linear-gradient(135deg,var(--secondary-gray),var(--light-gray)); border:1px solid rgba(255,255,255,.1); }
+    .form-input{ background:var(--light-gray); border:1px solid rgba(255,255,255,.2); color:#fff; transition:all .2s ease; }
+    .form-input:focus{ border-color:var(--accent-blue); box-shadow:0 0 0 3px rgba(168,197,230,.12); outline:none; }
+    .btn-primary{ background:linear-gradient(135deg,var(--accent-blue),var(--accent-purple)); transition:all .2s ease; }
+    .btn-primary:hover{ transform:translateY(-1px) scale(1.01); box-shadow:0 10px 30px rgba(168,197,230,.3); }
+    .btn-secondary{ background:var(--light-gray); border:1px solid rgba(255,255,255,.2); transition:all .2s ease; }
+    .btn-secondary:hover{ background:var(--secondary-gray); border-color:rgba(255,255,255,.4); }
+    .toolbar-btn{ padding:.5rem; background:var(--light-gray); border:1px solid rgba(255,255,255,.2); color:#fff; border-radius:.375rem; transition:all .2s ease; }
+    .toolbar-btn:hover{ background:var(--accent-blue); color:var(--primary-black); }
+    .char-counter{ font-size:.85rem; color:#9ca3af; }
+    .char-counter.warning{ color:var(--accent-pink); }
+    .dropzone{ border:2px dashed rgba(255,255,255,.3); border-radius:.75rem; padding:1rem; text-align:center; color:#9ca3af; }
+    .modal{ display:none; position:fixed; inset:0; z-index:1000; justify-content:center; align-items:flex-start; overflow-y:auto; padding:2rem 1rem; background:rgba(0,0,0,.75); backdrop-filter: blur(6px); }
+    .modal.active{ display:flex; }
+    .modal-card{ background:linear-gradient(135deg,var(--secondary-gray),var(--light-gray)); border:1px solid rgba(255,255,255,.1); border-radius:1rem; max-width:900px; width:100%; }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="fixed top-0 left-0 right-0 z-40 bg-black bg-opacity-90 backdrop-blur-md border-b border-gray-800">
+    <div class="container mx-auto px-4">
+      <div class="flex items-center justify-between h-16">
+        <a href="index.html" class="flex items-center space-x-3">
+          <div class="w-10 h-10"><img src="logo.svg" alt="TCP 로고" class="w-full h-full object-contain" /></div>
+          <div>
+            <h1 class="orbitron text-xl font-bold gradient-text">TCP</h1>
+            <p class="text-xs text-gray-400">Team Crazy Performance</p>
+          </div>
+        </a>
+        <nav class="hidden md:flex space-x-6">
+          <a href="about.html" class="nav-link orbitron text-sm font-medium text-gray-300 hover:text-white">About</a>
+          <a href="members.html" class="nav-link orbitron text-sm font-medium text-gray-300 hover:text-white">Members</a>
+          <a href="recruitment.html" class="nav-link orbitron text-sm font-medium text-gray-300 hover:text-white">Recruitment</a>
+          <a href="announcement.html" class="nav-link orbitron text-sm font-medium text-gray-300 hover:text-white">Announcement</a>
+          <a href="study.html" class="nav-link orbitron text-sm font-medium text-white">Study</a>
+          <a href="team.html" class="nav-link orbitron text-sm font-medium text-gray-300 hover:text-white">Find Your Team</a>
+        </nav>
+        <div class="flex items-center space-x-4">
+          <button class="text-gray-400 hover:text-white"><i class="fas fa-bell"></i></button>
+          <div class="flex items-center space-x-2">
+            <a href="mypage.html"><img src="https://i.pravatar.cc/40?u=admin" class="w-8 h-8 rounded-full" alt="Admin" /></a>
+            <a href="mypage.html"><span class="text-sm font-medium">스터디장</span></a>
+          </div>
+          <button class="px-4 py-2 text-sm border border-gray-600 rounded-lg hover:border-gray-400 transition-colors">로그아웃</button>
+        </div>
+        <button class="md:hidden"><i class="fas fa-bars text-white"></i></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="pt-20 pb-16 min-h-screen">
+    <div class="container mx-auto px-4 max-w-5xl">
+      <!-- Back button -->
+      <div class="mb-8">
+        <a id="backToList" href="#" class="btn-secondary inline-flex items-center px-6 py-3 rounded-lg text-sm font-medium text-white">
+          <i class="fas fa-arrow-left mr-2"></i>주차별 진행 현황으로 돌아가기
+        </a>
+      </div>
+
+      <!-- Page header -->
+      <div class="text-center mb-10">
+        <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-green-400 via-blue-400 to-purple-400 flex items-center justify-center"><i class="fas fa-clipboard-list text-white text-xl"></i></div>
+        <h1 class="text-3xl md:text-4xl font-extrabold gradient-text">주차별 진행 현황 작성</h1>
+        <p class="text-gray-400 mt-2">해당 스터디의 주차별 학습 진행 내용을 기록해주세요.</p>
+      </div>
+
+      <!-- Write Form -->
+      <form id="weekForm" class="feature-card rounded-xl p-6 md:p-8">
+        <!-- Study & Week Row -->
+        <input type="hidden" id="studyId" name="studyId" />
+        <div class="grid md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <label for="weekNo" class="block text-sm font-semibold mb-2 text-white"><i class="fas fa-hashtag text-purple-300 mr-2"></i>주차(숫자)</label>
+            <input id="weekNo" name="weekNo" type="number" min="0" step="1" class="form-input w-full px-4 py-3 rounded-lg" placeholder="예: 3" required />
+            <p class="text-xs text-gray-400 mt-1">Week 0부터 시작 가능</p>
+          </div>
+        <div>
+          <label for="date" class="block text-sm font-semibold mb-2 text-white"><i class="fas fa-calendar text-green-300 mr-2"></i>진행일</label>
+          <input id="date" name="date" type="date" class="form-input w-full px-4 py-3 rounded-lg" required />
+        </div>
+      </div>
+
+        <!-- Title & Summary Row -->
+        <div class="grid md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <label for="title" class="block text-sm font-semibold mb-2 text-white"><i class="fas fa-heading text-blue-300 mr-2"></i>제목</label>
+            <input id="title" name="title" type="text" maxlength="100" class="form-input w-full px-4 py-3 rounded-lg" placeholder="예: Week 3: 네트워킹 & Ingress" required />
+            <div class="flex justify-between items-center mt-2"><span class="text-xs text-gray-400">명확하고 간결하게</span><span id="titleCounter" class="char-counter">0/100</span></div>
+          </div>
+          <div>
+            <label for="summary" class="block text-sm font-semibold mb-2 text-white"><i class="fas fa-quote-left text-green-300 mr-2"></i>요약</label>
+            <input id="summary" name="summary" type="text" maxlength="150" class="form-input w-full px-4 py-3 rounded-lg" placeholder="핵심 정리 한 줄" required />
+            <div class="flex justify-between items-center mt-2"><span class="text-xs text-gray-400">목록/검색 영역에 사용</span><span id="summaryCounter" class="char-counter">0/150</span></div>
+          </div>
+        </div>
+
+        <!-- Duration & Tags Row -->
+        <div class="grid md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <label for="duration" class="block text-sm font-semibold mb-2 text-white"><i class="fas fa-clock text-yellow-300 mr-2"></i>소요 시간</label>
+            <input id="duration" name="duration" type="text" class="form-input w-full px-4 py-3 rounded-lg" placeholder="예: 2시간" />
+          </div>
+          <div>
+            <label for="tags" class="block text-sm font-semibold mb-2 text-white"><i class="fas fa-tags text-pink-300 mr-2"></i>태그(쉼표로 구분)</label>
+            <input id="tags" name="tags" type="text" class="form-input w-full px-4 py-3 rounded-lg" placeholder="예: Kubernetes, Ingress, TLS" />
+          </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="mb-3 p-3 bg-gray-800 rounded-lg flex flex-wrap gap-2">
+          <button type="button" class="toolbar-btn" title="굵게" onclick="formatText('bold')"><i class="fas fa-bold"></i></button>
+          <button type="button" class="toolbar-btn" title="기울임" onclick="formatText('italic')"><i class="fas fa-italic"></i></button>
+          <button type="button" class="toolbar-btn" title="밑줄" onclick="formatText('underline')"><i class="fas fa-underline"></i></button>
+          <div class="border-l border-gray-600 mx-2"></div>
+          <button type="button" class="toolbar-btn" title="불릿" onclick="insertText('• ')"><i class="fas fa-list-ul"></i></button>
+          <button type="button" class="toolbar-btn" title="번호" onclick="insertText('1. ')"><i class="fas fa-list-ol"></i></button>
+          <div class="border-l border-gray-600 mx-2"></div>
+          <button type="button" class="toolbar-btn" title="핀" onclick="insertText('📌 ')">📌</button>
+          <button type="button" class="toolbar-btn" title="경고" onclick="insertText('⚠️ ')">⚠️</button>
+          <button type="button" class="toolbar-btn" title="축하" onclick="insertText('🎉 ')">🎉</button>
+        </div>
+
+        <!-- Content -->
+        <div class="mb-6">
+          <label for="content" class="block text-sm font-semibold mb-2 text-white"><i class="fas fa-align-left text-pink-300 mr-2"></i>내용</label>
+          <textarea id="content" name="content" rows="14" maxlength="4000" class="form-input w-full px-4 py-4 rounded-lg resize-none" placeholder="세부 진행 내용, 실습 결과, 회고 등을 자유롭게 적어주세요." required></textarea>
+          <div class="flex justify-between items-center mt-2"><span class="text-xs text-gray-400">간단한 마크다운(**, *, _) 사용 가능</span><span id="contentCounter" class="char-counter">0/4000</span></div>
+        </div>
+
+        <!-- Files Row -->
+        <div class="grid md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <label class="block text-sm font-semibold mb-2 text-white"><i class="fas fa-images text-blue-300 mr-2"></i>이미지 업로드</label>
+            <div id="imageDrop" class="dropzone">
+              이미지를 드래그&드롭하거나 클릭해서 선택하세요
+              <input id="images" type="file" accept="image/*" multiple class="hidden" />
+            </div>
+            <ul id="imageList" class="mt-3 text-sm text-gray-300 space-y-1"></ul>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold mb-2 text-white"><i class="fas fa-paperclip text-green-300 mr-2"></i>첨부 파일</label>
+            <div id="fileDrop" class="dropzone">
+              파일을 드래그&드롭하거나 클릭해서 선택하세요
+              <input id="attachments" type="file" multiple class="hidden" />
+            </div>
+            <ul id="fileList" class="mt-3 text-sm text-gray-300 space-y-1"></ul>
+          </div>
+        </div>
+
+        <!-- Author -->
+        <div class="grid md:grid-cols-2 gap-6 mb-8">
+          <div>
+            <label for="author" class="block text-sm font-semibold mb-2 text-white"><i class="fas fa-user text-yellow-300 mr-2"></i>작성자</label>
+            <input id="author" name="author" type="text" class="form-input w-full px-4 py-3 rounded-lg" value="스터디장" readonly />
+          </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex flex-col sm:flex-row gap-4 justify-end">
+          <button type="button" id="saveDraftBtn" class="btn-secondary px-6 py-3 rounded-lg font-medium text-white flex items-center justify-center"><i class="fas fa-save mr-2"></i>임시저장</button>
+          <button type="submit" class="btn-primary px-6 py-3 rounded-lg font-bold text-white flex items-center justify-center"><i class="fas fa-paper-plane mr-2"></i>게시하기</button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <!-- Success Modal -->
+  <div id="successModal" class="modal">
+    <div class="modal-card max-w-md w-full p-8 text-center">
+      <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-green-400 to-blue-400 flex items-center justify-center"><i class="fas fa-check text-white text-xl"></i></div>
+      <h3 class="text-xl font-bold gradient-text mb-2">게시 완료!</h3>
+      <p class="text-gray-300 mb-6">주차별 진행 현황이 성공적으로 게시되었습니다.</p>
+      <button id="goToStudy" class="btn-primary px-6 py-2 rounded-lg font-medium text-white">목록으로 이동</button>
+    </div>
+  </div>
+
+  <footer class="bg-black border-t border-gray-800 py-12 mt-8">
+    <div class="container mx-auto px-4">
+      <div class="grid md:grid-cols-4 gap-8">
+        <div>
+          <div class="flex items-center space-x-3 mb-4"><div class="w-10 h-10"><img src="logo.svg" alt="TCP 로고" class="w-full h-full object-contain" /></div><h3 class="orbitron text-lg font-bold gradient-text">TCP</h3></div>
+          <p class="text-sm text-gray-400">Team Crazy Performance<br/>컴퓨터공학 동아리</p>
+        </div>
+        <div>
+          <h4 class="text-lg font-bold mb-4 text-white">임원진</h4>
+          <div class="space-y-2 text-sm text-gray-400"><div><span class="text-blue-300">회장:</span> 김TCP</div><div><span class="text-purple-300">부회장:</span> 이Performance</div></div>
+        </div>
+        <div>
+          <h4 class="text-lg font-bold mb-4 text-white">연락처</h4>
+          <div class="space-y-2 text-sm text-gray-400"><div class="flex items-center space-x-2"><i class="fas fa-phone text-blue-400"></i><span>010-1234-5678</span></div><div class="flex items-center space-x-2"><i class="fas fa-envelope text-purple-400"></i><span>tcp@university.ac.kr</span></div><div class="flex items-center space-x-2"><i class="fab fa-instagram text-pink-400"></i><a href="#" class="hover:text-pink-300 transition-colors">@tcp_official</a></div></div>
+        </div>
+        <div>
+          <h4 class="text-lg font-bold mb-4 text-white">법적 정보</h4>
+          <div class="space-y-2 text-sm"><div><a href="terms.html" class="text-gray-400 hover:text-white transition-colors">이용약관</a></div><div><a href="privacy.html" class="text-gray-400 hover:text-white transition-colors">개인정보처리방침</a></div></div>
+        </div>
+      </div>
+      <div class="border-t border-gray-800 mt-8 pt-8 text-center"><p class="text-sm text-gray-400">© 2024 TCP (Team Crazy Performance). All rights reserved.</p></div>
+    </div>
+  </footer>
+
+  <script>
+    // --- Utilities ---
+    const qs = (sel) => document.querySelector(sel);
+    const byId = (id) => document.getElementById(id);
+
+    // Parse study id from URL
+    function getStudyId() {
+      const params = new URLSearchParams(location.search);
+      return params.get('study') || 'kubernetes-devops'; // fallback to study 1 id used in examples
+    }
+
+    function setBackLink(studyId){
+      const backUrl = `study_study1_forStudyLeader.html?study=${encodeURIComponent(studyId)}`;
+      byId('backToList').href = backUrl;
+      byId('goToStudy').addEventListener('click', () => location.href = backUrl);
+    }
+
+    // Character counters
+    function attachCounter(inputId, counterId, max){
+      const el = byId(inputId); const counter = byId(counterId);
+      const update = () => { const len = el.value.length; counter.textContent = `${len}/${max}`; counter.classList.toggle('warning', len > max * 0.93); };
+      update(); el.addEventListener('input', update);
+    }
+
+    // Toolbar helpers
+    function formatText(cmd){
+      const ta = byId('content'); const s = ta.selectionStart; const e = ta.selectionEnd; const sel = ta.value.substring(s, e);
+      let t = sel; if(cmd==='bold') t = `**${sel}**`; else if(cmd==='italic') t = `*${sel}*`; else if(cmd==='underline') t = `_${sel}_`;
+      ta.setRangeText(t, s, e, 'end'); ta.focus();
+    }
+    function insertText(text){
+      const ta = byId('content'); const s = ta.selectionStart; ta.setRangeText(text, s, s, 'end'); ta.focus();
+    }
+    window.formatText = formatText; window.insertText = insertText;
+
+    // Dropzones
+    function makeDropzone(wrapperId, inputId, listId){
+      const wrap = byId(wrapperId); const input = byId(inputId); const list = byId(listId);
+      const refreshList = () => {
+        list.innerHTML = '';
+        const files = Array.from(input.files || []);
+        files.forEach(f => {
+          const li = document.createElement('li');
+          li.innerHTML = `<i class='fas ${inputId==='images'?'fa-image':'fa-file'} mr-2 text-blue-300'></i>${f.name} <span class='text-gray-400 text-xs ml-2'>${(f.size/1024).toFixed(0)}KB</span>`;
+          list.appendChild(li);
+        });
+      };
+      wrap.addEventListener('click', () => input.click());
+      wrap.addEventListener('dragover', e => { e.preventDefault(); wrap.classList.add('ring-2','ring-blue-300'); });
+      wrap.addEventListener('dragleave', () => wrap.classList.remove('ring-2','ring-blue-300'));
+      wrap.addEventListener('drop', e => { e.preventDefault(); wrap.classList.remove('ring-2','ring-blue-300'); input.files = e.dataTransfer.files; refreshList(); });
+      input.addEventListener('change', refreshList);
+    }
+
+    // Markdown-lite to HTML (very light)
+    function mdLite(src){
+      return src
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/_(.*?)_/g, '<u>$1</u>')
+        .replace(/\n\n/g, '</p><p>')
+        .replace(/\n/g, '<br/>');
+    }
+
+    // Draft storage
+    function draftKey(studyId){ return `study_${studyId}_week_draft`; }
+    function saveDraft(){
+      const studyId = byId('studyId').value;
+      const data = {
+        studyId,
+        weekNo: byId('weekNo').value,
+        date: byId('date').value,
+        title: byId('title').value,
+        summary: byId('summary').value,
+        duration: byId('duration').value,
+        tags: byId('tags').value,
+        content: byId('content').value,
+        timestamp: new Date().toISOString()
+      };
+      localStorage.setItem(draftKey(studyId), JSON.stringify(data));
+      return data;
+    }
+    function loadDraft(){
+      const studyId = byId('studyId').value; const raw = localStorage.getItem(draftKey(studyId));
+      if(!raw) return false; const d = JSON.parse(raw);
+      byId('weekNo').value = d.weekNo || '';
+      byId('date').value = d.date || '';
+      byId('title').value = d.title || '';
+      byId('summary').value = d.summary || '';
+      byId('duration').value = d.duration || '';
+      byId('tags').value = d.tags || '';
+      byId('content').value = d.content || '';
+      return true;
+    }
+
+    // Submit (mock)
+    function submitForm(e){
+      e.preventDefault();
+      const form = e.target;
+      if(!form.reportValidity()) return;
+      const submitBtn = form.querySelector('button[type="submit"]'); const original = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>게시 중...'; submitBtn.disabled = true;
+      // simulate API call
+      setTimeout(() => {
+        const data = saveDraft(); // keep latest in case reader page consumes it later
+        localStorage.setItem(`study_${data.studyId}_week_${data.weekNo}`, JSON.stringify(data));
+        localStorage.removeItem(draftKey(data.studyId));
+        byId('successModal').classList.add('active');
+        submitBtn.innerHTML = original; submitBtn.disabled = false;
+      }, 700);
+    }
+
+    // Before unload guard
+    function hasContent(){ return ['title','summary','content'].some(id => byId(id).value.trim().length>0); }
+
+    // Init
+    document.addEventListener('DOMContentLoaded', () => {
+      const sid = getStudyId(); byId('studyId').value = sid; setBackLink(sid);
+      // default date = today
+      byId('date').value = new Date().toISOString().split('T')[0];
+
+      // counters
+      attachCounter('title','titleCounter',100);
+      attachCounter('summary','summaryCounter',150);
+      attachCounter('content','contentCounter',4000);
+
+      // dropzones
+      makeDropzone('imageDrop','images','imageList');
+      makeDropzone('fileDrop','attachments','fileList');
+
+      // draft recovery
+      if(localStorage.getItem(draftKey(sid))){ if(confirm('임시저장된 글이 있습니다. 불러오시겠습니까?')){ loadDraft(); attachCounter('title','titleCounter',100); attachCounter('summary','summaryCounter',150); attachCounter('content','contentCounter',4000);} }
+
+      // events
+      byId('saveDraftBtn').addEventListener('click', () => {
+        saveDraft(); const btn = byId('saveDraftBtn'); const t = btn.innerHTML; btn.innerHTML = '<i class="fas fa-check mr-2"></i>저장완료!'; btn.style.background = 'linear-gradient(135deg, var(--accent-green), var(--accent-blue))'; setTimeout(()=>{ btn.innerHTML = t; btn.style.background=''; }, 1600);
+      });
+      byId('weekForm').addEventListener('submit', submitForm);
+
+      // leave warning
+      window.addEventListener('beforeunload', (e) => { if(hasContent()){ e.preventDefault(); e.returnValue = '작성 중인 내용이 있습니다. 정말 떠나시겠습니까?'; } });
+
+      // header scroll bg
+      window.addEventListener('scroll', () => { const header = document.querySelector('header'); header.style.backgroundColor = window.scrollY>50 ? 'rgba(0,0,0,.95)' : 'rgba(0,0,0,.9)'; });
+    });
+  </script>
+</body>
+</html>
