@@ -15,8 +15,8 @@ const MyPageAccountSettings = () => {
                 const data = await apiGet('/api/v1/mypage/account');
                 const accountData = {
                     name: data.name || '',
-                    birthday: data.birthday || '',
-                    phone: data.phone_number || '',
+                    birthday: data.birthDate || '',
+                    phone: data.phoneNumber || '',
                     email: data.email || ''
                 };
                 setFormData(accountData);
