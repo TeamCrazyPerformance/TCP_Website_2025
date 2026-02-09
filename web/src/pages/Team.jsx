@@ -385,7 +385,7 @@ export default function Team() {
         </h1>
         <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-8">
           함께 성장하고 도전할 최고의 팀원을 찾아보세요. TCP 동아리원뿐만
-          아니라 누구나 프로젝트, 스터디, 해커톤 팀원을 쉽게 모집하고 지원할 수 있습니다.
+          아니라 누구나 프로젝트, 스터디, 해커톤 팀원을 쉽게 모집하고 지원할 수 있어요.
         </p>
         <button
           onClick={handleOpenRecruit}
