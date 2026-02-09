@@ -131,7 +131,7 @@ function Profile() {
         // Map backend fields to frontend format
         setProfile({
           photo: data.profile_image || '',
-          nickname: data.username || '',
+          username: data.username || '',
           major: data.major || '',
           studentId: data.student_number || '',
           role: data.current_company || '',
@@ -204,7 +204,6 @@ function Profile() {
       setSaving(true);
       // Map frontend fields back to backend format
       const updateData = {
-        username: profile.nickname,
         major: profile.major,
         self_description: profile.bio,
         tech_stack: profile.techStack,
@@ -255,7 +254,7 @@ function Profile() {
   // No profile loaded
   if (!profile) return null;
 
-  const profileInitial = (profile.nickname || profile.email || 'U')[0].toUpperCase();
+  const profileInitial = (profile.username || profile.email || 'U')[0].toUpperCase();
 
   return (
     <div className="container mx-auto max-w-3xl">
@@ -296,7 +295,7 @@ function Profile() {
 
               <div className="mb-4">
                 <h4 className="orbitron text-xl font-bold mb-2 text-white">
-                  {profile.nickname}
+                  {profile.username}
                 </h4>
                 <p className="text-blue-300 mb-2">
                   {profile.major} {profile.studentId}
@@ -333,28 +332,19 @@ function Profile() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    닉네임
+                    아이디
                   </label>
-                  <input
-                    type="text"
-                    className="editable form-input"
-                    name="nickname"
-                    value={profile.nickname}
-                    onChange={handleProfileChange}
-                  />
+                  <div className="text-gray-300 text-lg px-3 py-2 border border-gray-700 rounded-md bg-gray-800">
+                    {profile.username}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     이메일
                   </label>
-                  <input
-                    type="email"
-                    className="editable form-input"
-                    name="email"
-                    value={profile.email}
-                    onChange={handleProfileChange}
-                    readOnly
-                  />
+                  <div className="text-gray-300 text-lg px-3 py-2 border border-gray-700 rounded-md bg-gray-800">
+                    {profile.email}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -457,7 +447,7 @@ function Profile() {
                   />
                 </div>
               </div>
-              <div className="mt-6 flex space-x-4">
+              <div className="mt-6 flex space-x-4 justify-end">
                 <button
                   onClick={saveProfileSettings}
                   className="btn-primary"
