@@ -244,11 +244,7 @@ function AnnouncementWrite() {
                 <div className="flex items-center space-x-2">
                   <i className="fas fa-calendar text-purple-400"></i>
                   <span>
-                    {new Date(date).toLocaleDateString('ko-KR', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
+                    {date.replace(/-/g, '.')}
                   </span>
                 </div>
               </div>
