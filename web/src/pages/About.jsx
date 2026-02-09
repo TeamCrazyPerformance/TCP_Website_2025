@@ -198,8 +198,8 @@ function About() {
               TCP 소개
             </h2>
             <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-              Team Crazy Performance는 단순한 동아리가 아닙니다. 우리는
-              개발자로서의 꿈을 현실로 만들어가는 여정을 함께하는 파트너입니다.
+              Team Crazy Performance는 다양한 사람들을 연결하고 함께 성장하는
+              동아리입니다.
             </p>
           </div>
 
@@ -443,7 +443,7 @@ function About() {
         <div className="container mx-auto px-4 text-center">
           <div className="max-w-3xl mx-auto">
             <h2 className="orbitron text-4xl md:text-5xl font-black mb-6 text-white">
-              TCP와 함께 개발자의 길을 걸어보세요
+              TCP에서 개발자의 길을 걸어보세요
             </h2>
             <p className="text-xl text-gray-200 mb-8">
               뛰어난 동료들과 함께 성장하고, 협업 경험을 쌓으며, 자신의
