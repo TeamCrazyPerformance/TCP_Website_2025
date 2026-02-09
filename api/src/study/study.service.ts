@@ -446,8 +446,11 @@ export class StudyService {
     }
 
     // 2. Find all progress entries linked to this study
+    // 2. Find all progress entries linked to this study
     const progressEntries = await this.progressRepository.find({
       where: { study_id: { id: studyId } },
+      relations: ['resources'],
+      order: { week_no: 'ASC', created_at: 'DESC' },
     });
 
     // 3. Map the entities to DTOs
@@ -455,6 +458,14 @@ export class StudyService {
       id: p.id,
       title: p.title,
       content: p.content,
+      weekNo: p.week_no,
+      progressDate: p.progress_date,
+      resources: p.resources ? p.resources.map(r => ({
+        id: r.id,
+        name: r.name,
+        format: r.format,
+        dir_path: r.dir_path,
+      })) : [],
     }));
   }
 
@@ -475,15 +486,36 @@ export class StudyService {
     }
 
     // 2. Create a new Progress entity instance with the provided data and link it to the study.
+    const { resourceIds, weekNo, progressDate, ...progressData } = createProgressDto;
+
     const newProgress = this.progressRepository.create({
-      ...createProgressDto,
+      ...progressData,
+      week_no: weekNo,
+      progress_date: progressDate,
       study_id: study,
     });
 
     // 3. Save the new progress entry to the database.
     const savedProgress = await this.progressRepository.save(newProgress);
 
-    // 4. Return the success response with the new ID.
+    // 4. If resourceIds are provided, link them to this progress
+    if (resourceIds && resourceIds.length > 0) {
+      // Find resources that belong to this study and match the IDs
+      const resourcesToUpdate = await this.resourceRepository.findByIds(resourceIds);
+
+      // Filter resources to ensure they belong to the correct study (security check)
+      const validResources = resourcesToUpdate.filter(r => r.study_id.id === studyId);
+
+      if (validResources.length > 0) {
+        // Update each resource to set the progress field
+        for (const resource of validResources) {
+          resource.progress = savedProgress;
+          await this.resourceRepository.save(resource);
+        }
+      }
+    }
+
+    // 5. Return the success response with the new ID.
     return {
       success: true,
       id: savedProgress.id,
@@ -527,8 +559,30 @@ export class StudyService {
     }
 
     // 4. Merge the changes from the DTO into the found entity and save to the database.
-    Object.assign(progressEntry, updateProgressDto);
+    // 4. Merge the changes from the DTO into the found entity and save to the database.
+    const { resourceIds, weekNo, progressDate, ...updateData } = updateProgressDto;
+
+    if (weekNo !== undefined) progressEntry.week_no = weekNo;
+    if (progressDate !== undefined) progressEntry.progress_date = progressDate;
+    Object.assign(progressEntry, updateData);
+
     await this.progressRepository.save(progressEntry);
+
+    // 5. If resourceIds are provided, link them to this progress
+    // Note: This logic APPENDS or REPLACES? Usually it replaces or adds.
+    // For simplicity, if resourceIds is passed, we check if we need to add them.
+    // If we want to support removing resources, we might need a separate endpoint or logic.
+    // Let's assume this just adds/links new resources for now, or use a "set" approach?
+    // Given the simple form, let's treat it as "update these resources to point to this progress".
+    if (resourceIds && resourceIds.length > 0) {
+      const resourcesToUpdate = await this.resourceRepository.findByIds(resourceIds);
+      const validResources = resourcesToUpdate.filter(r => r.study_id.id === studyId);
+
+      for (const resource of validResources) {
+        resource.progress = progressEntry;
+        await this.resourceRepository.save(resource);
+      }
+    }
 
     return { success: true };
   }

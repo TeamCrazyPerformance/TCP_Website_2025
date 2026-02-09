@@ -25,6 +25,7 @@ import Study from './pages/Study';
 import StudyWrite from './pages/StudyWrite';
 import StudyDetail from './pages/StudyDetail';
 import StudyManagement from './pages/StudyManagement';
+import StudyProgressWrite from './pages/StudyProgressWrite';
 import Team from './pages/Team';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -96,6 +97,8 @@ function AppContent() {
         <Route path="/study/write" element={<StudyWrite />} />
         <Route path="/study/:id" element={<StudyDetail />} />
         <Route path="/study/:id/manage" element={<StudyManagement />} />
+        <Route path="/study/:id/progress/write" element={<StudyProgressWrite />} />
+        <Route path="/study/:id/progress/:progressId/edit" element={<StudyProgressWrite />} />
         <Route path="/team" element={<Team />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

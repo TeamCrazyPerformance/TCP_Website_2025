@@ -488,71 +488,98 @@ export default function StudyDetail() {
         {userRole !== 'guest' && (
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 mb-10">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-white">진행사항</h2>
+              <h2 className="text-2xl font-bold text-white">Weekly Progress</h2>
               {userRole === 'leader' && (
-                <button
-                  onClick={() => setShowProgressForm(!showProgressForm)}
-                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+                <Link
+                  to={`/study/${id}/progress/write`}
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center"
                 >
                   <i className="fas fa-plus mr-2"></i>
-                  {showProgressForm ? '취소' : '진행사항 작성'}
-                </button>
+                  Write Progress
+                </Link>
               )}
             </div>
 
-            {/* Progress Form - only for leaders */}
-            {showProgressForm && userRole === 'leader' && (
-              <form onSubmit={handleProgressSubmit} className="mb-6 bg-gray-800 p-6 rounded-lg">
-                <div className="mb-4">
-                  <label htmlFor="progressTitle" className="block text-sm font-semibold text-gray-100 mb-2">
-                    제목
-                  </label>
-                  <input
-                    type="text"
-                    id="progressTitle"
-                    value={progressTitle}
-                    onChange={(e) => setProgressTitle(e.target.value)}
-                    className="w-full bg-gray-700 border-gray-600 rounded-lg py-2 px-4 text-white focus:ring-2 focus:ring-accent-blue focus:outline-none"
-                    placeholder="진행사항 제목"
-                    required
-                  />
-                </div>
-                <div className="mb-4">
-                  <label htmlFor="progressContent" className="block text-sm font-semibold text-gray-100 mb-2">
-                    내용
-                  </label>
-                  <textarea
-                    id="progressContent"
-                    value={progressContent}
-                    onChange={(e) => setProgressContent(e.target.value)}
-                    rows="4"
-                    className="w-full bg-gray-700 border-gray-600 rounded-lg py-2 px-4 text-white focus:ring-2 focus:ring-accent-blue focus:outline-none"
-                    placeholder="진행사항 내용을 작성하세요"
-                    required
-                  ></textarea>
-                </div>
-                <button
-                  type="submit"
-                  disabled={isSubmittingProgress}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:opacity-50"
-                >
-                  {isSubmittingProgress ? '등록 중...' : '등록하기'}
-                </button>
-              </form>
-            )}
-
-            {/* Progress List */}
+            {/* Progress List as Week Cards */}
             {progress.length > 0 ? (
-              <ul className="space-y-4">
+              <div className="space-y-6">
                 {progress.map((item) => (
-                  <li key={item.id} className="bg-gray-800 p-4 rounded-lg">
-                    <h3 className="font-bold text-white text-lg mb-2">{item.title}</h3>
-                    <p className="text-gray-300">{item.content}</p>
-                  </li>
+                  <div key={item.id} className="widget-card rounded-lg p-6 relative group">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <span className="text-accent-blue font-bold text-sm mb-1 block">
+                          Week {item.weekNo || '?'}
+                        </span>
+                        <h3 className="text-xl font-bold text-white">{item.title}</h3>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="text-gray-400 text-sm">
+                          {item.progressDate ? new Date(item.progressDate).toISOString().split('T')[0].replace(/-/g, '.') : ''}
+                        </span>
+
+                        {userRole === 'leader' && (
+                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Link
+                              to={`/study/${id}/progress/${item.id}/edit`}
+                              className="text-gray-400 hover:text-white"
+                              title="Edit"
+                            >
+                              <i className="fas fa-edit"></i>
+                            </Link>
+                            <button
+                              onClick={async () => {
+                                if (!window.confirm('Delete this progress report?')) return;
+                                try {
+                                  await apiDelete(`/api/v1/study/${id}/progress/${item.id}`);
+                                  window.location.reload();
+                                } catch (e) {
+                                  alert('Failed to delete.');
+                                }
+                              }}
+                              className="text-red-400 hover:text-red-300"
+                              title="Delete"
+                            >
+                              <i className="fas fa-trash"></i>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Content Preview (Truncated or Full?) Mockup usually shows full or large excerpt. Let's show full for now or standard height? */}
+                    <div className="text-gray-300 mb-4 whitespace-pre-line">
+                      {item.content.length > 300
+                        ? item.content.substring(0, 300) + '...'
+                        : item.content}
+                    </div>
+
+                    {/* Resources linked to this progress */}
+                    {item.resources && item.resources.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-gray-700">
+                        <h4 className="text-sm font-bold text-gray-400 mb-2">Attachments</h4>
+                        <ul className="space-y-2">
+                          {item.resources.map(r => (
+                            <li key={r.id} className="flex items-center text-sm text-blue-400">
+                              <i className="fas fa-paperclip mr-2"></i>
+                              <button onClick={() => handleDownload(r.id, r.name)} className="hover:underline">
+                                {r.name}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
                 ))}
-              </ul>
+              </div>
             ) : (
-              <p className="text-gray-400 text-center py-4">아직 등록된 진행사항이 없습니다.</p>
+              <div className="text-center py-12 bg-gray-800 rounded-lg border border-gray-700 border-dashed">
+                <i className="fas fa-book-open text-4xl text-gray-600 mb-4"></i>
+                <p className="text-gray-400">아직 등록된 진행사항이 없습니다.</p>
+                {userRole === 'leader' && (
+                  <p className="text-sm text-gray-500 mt-2">첫 번째 스터디 진행 상황을 기록해보세요!</p>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -561,7 +588,7 @@ export default function StudyDetail() {
         {userRole !== 'guest' && (
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 mb-10">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-white">자료실</h2>
+              <h2 className="text-2xl font-bold text-white">General Resources</h2>
               {userRole === 'leader' && (
                 <>
                   <input
@@ -582,7 +609,7 @@ export default function StudyDetail() {
                 </>
               )}
             </div>
-            <p className="text-sm text-gray-400 mb-4">PDF, DOCX, PPTX 파일만 업로드 가능 (최대 10MB)</p>
+            <p className="text-sm text-gray-400 mb-4">공통 학습 자료나 참고 문헌을 공유하세요.</p>
 
             {/* Resource List */}
             {resources.length > 0 ? (
