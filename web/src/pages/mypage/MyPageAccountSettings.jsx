@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { apiGet, apiPatch } from '../../api/client';
 
 const MyPageAccountSettings = () => {
-    const [formData, setFormData] = useState({ name: '', birthday: '', phone: '', email: '' });
+    const [formData, setFormData] = useState({ username: '', name: '', phone: '', email: '' });
     const [initialData, setInitialData] = useState({});
     const [isDirty, setIsDirty] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -14,6 +14,7 @@ const MyPageAccountSettings = () => {
                 setLoading(true);
                 const data = await apiGet('/api/v1/mypage/account');
                 const accountData = {
+                    username: data.username || '', // Added
                     name: data.name || '',
                     birthday: data.birthDate || '',
                     phone: data.phoneNumber || '',
@@ -68,7 +69,6 @@ const MyPageAccountSettings = () => {
         try {
             const updateData = {
                 name: formData.name,
-                birthday: formData.birthday,
                 phone_number: formData.phone,
                 email: formData.email
             };
@@ -132,6 +132,12 @@ const MyPageAccountSettings = () => {
                     <button type="submit" className={`px-5 py-2 rounded-lg btn-primary ${!isDirty && 'opacity-50'}`} disabled={!isDirty}>저장</button>
                 </div>
             </form>
+
+            <div className="mt-6 flex justify-end">
+                <button type="button" onClick={() => setIsModalOpen(true)} className="px-4 py-2 rounded-lg btn-outline text-red-400 hover:bg-red-400/10 border-red-400">
+                    <i className="fa-solid fa-key mr-2"></i>비밀번호 변경
+                </button>
+            </div>
             <PasswordChangeModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
         </div>
     );
@@ -146,11 +152,43 @@ const PasswordChangeModal = ({ isOpen, onClose }) => {
     });
     const [submitting, setSubmitting] = useState(false);
 
+    // Password strength state
+    const [passwordStrength, setPasswordStrength] = useState({
+        minLength: false,
+        hasLowercase: false,
+        hasUppercase: false,
+        hasNumber: false,
+        hasSpecial: false,
+    });
+    const [passwordMatch, setPasswordMatch] = useState(null);
+
+    // Password validation logic
+    useEffect(() => {
+        const password = passwordData.newPassword;
+        setPasswordStrength({
+            minLength: password.length >= 8,
+            hasLowercase: /[a-z]/.test(password),
+            hasUppercase: /[A-Z]/.test(password),
+            hasNumber: /\d/.test(password),
+            hasSpecial: /[@$!%*?&]/.test(password),
+        });
+    }, [passwordData.newPassword]);
+
+    // Password match logic
+    useEffect(() => {
+        if (passwordData.confirmPassword.length === 0) {
+            setPasswordMatch(null);
+            return;
+        }
+        setPasswordMatch(passwordData.newPassword === passwordData.confirmPassword);
+    }, [passwordData.newPassword, passwordData.confirmPassword]);
+
     if (!isOpen) return null;
 
     const handlePasswordChange = (e) => {
         const { id, value } = e.target;
-        const field = id.replace('pw-', '').replace('-', '');
+        // pw-current -> currentPassword, pw-new -> newPassword, pw-confirm -> confirmPassword
+        const field = id.replace('pw-', '') + 'Password';
         setPasswordData(prev => ({ ...prev, [field]: value }));
     };
 
@@ -172,7 +210,8 @@ const PasswordChangeModal = ({ isOpen, onClose }) => {
             setSubmitting(true);
             await apiPatch('/api/v1/mypage/account/password', {
                 currentPassword: passwordData.currentPassword,
-                newPassword: passwordData.newPassword
+                newPassword: passwordData.newPassword,
+                confirmPassword: passwordData.confirmPassword
             });
             alert('비밀번호가 변경되었습니다.');
             setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '', verificationCode: '' });
@@ -226,6 +265,12 @@ const PasswordChangeModal = ({ isOpen, onClose }) => {
                             onChange={handlePasswordChange}
                             required
                         />
+                        {passwordMatch !== null && (
+                            <div className={`text-sm mt-1 text-left ${passwordMatch ? 'text-green-400' : 'text-red-500'}`}>
+                                <i className={`fas ${passwordMatch ? 'fa-check' : 'fa-times'} mr-2`}></i>
+                                {passwordMatch ? '비밀번호가 일치합니다.' : '비밀번호가 일치하지 않습니다.'}
+                            </div>
+                        )}
                     </div>
                     <div>
                         <div className="flex items-end gap-3">

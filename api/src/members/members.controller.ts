@@ -2,6 +2,7 @@ import {
     Controller,
     Get,
     Patch,
+    Delete,
     UseGuards,
     UseInterceptors,
     UploadedFile,
@@ -9,6 +10,7 @@ import {
     MaxFileSizeValidator,
     FileTypeValidator,
     Req,
+    BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MembersService } from './members.service';
@@ -38,14 +40,26 @@ export class MembersController {
             new ParseFilePipe({
                 validators: [
                     new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5MB limit
-                    new FileTypeValidator({ fileType: /(jpg|jpeg|png|gif|webp)$/ }),
                 ],
             }),
         )
         file: Express.Multer.File,
         @Req() req: any,
     ): Promise<{ profile_image: string }> {
+        if (!file.mimetype.match(/^image\/(jpg|jpeg|png|gif|webp)$/)) {
+            throw new BadRequestException('지원하지 않는 파일 형식입니다. (jpg, jpeg, png, gif, webp만 가능)');
+        }
         const userId = req.user.userId;
         return this.membersService.updateProfileImage(userId, file);
+    }
+
+    /**
+     * @description 현재 로그인한 사용자의 프로필 이미지를 삭제(기본 이미지로 변경)합니다.
+     */
+    @Delete('me/profile-image')
+    @UseGuards(JwtAuthGuard)
+    async deleteProfileImage(@Req() req: any): Promise<void> {
+        const userId = req.user.userId;
+        return this.membersService.deleteProfileImage(userId);
     }
 }

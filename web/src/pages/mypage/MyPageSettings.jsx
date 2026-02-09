@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { apiGet, apiPatch } from '../../api/client';
+import defaultProfileImage from '../../logo.svg';
 
 const buildSettingsState = (data) => ({
     email: Boolean(data?.is_public_email),
     techstack: Boolean(data?.is_public_tech_stack),
-    career: Boolean(data?.is_public_education_status),
     github: Boolean(data?.is_public_github_username),
     portfolio: Boolean(data?.is_public_portfolio_link),
 });
@@ -71,7 +71,6 @@ const MyPageSettings = () => {
             await apiPatch('/api/v1/mypage/privacy', {
                 is_public_email: settings.email,
                 is_public_tech_stack: settings.techstack,
-                is_public_education_status: settings.career,
                 is_public_github_username: settings.github,
                 is_public_portfolio_link: settings.portfolio,
             });
@@ -147,6 +146,16 @@ const MyPageSettings = () => {
                                 </div>
                                 <i className="fas fa-lock text-gray-500"></i>
                             </div>
+                            <div className="flex items-center justify-between p-4 bg-gray-800 bg-opacity-50 rounded-lg">
+                                <div className="flex items-center space-x-3">
+                                    <i className="fas fa-graduation-cap text-green-400"></i>
+                                    <div>
+                                        <h5 className="font-semibold text-white">재학 상태</h5>
+                                        <p className="text-sm text-gray-400">{educationStatus || '미등록'}</p>
+                                    </div>
+                                </div>
+                                <i className="fas fa-lock text-gray-500"></i>
+                            </div>
                         </div>
                     </div>
 
@@ -159,7 +168,6 @@ const MyPageSettings = () => {
                         <div className="space-y-4">
                             <SettingItem settingKey="email" label="이메일" value={email || '미등록'} helpText="멤버 페이지에 이메일을 표시합니다." icon="fa-envelope text-blue-400" isActive={settings.email} onToggle={toggleSetting} />
                             <SettingItem settingKey="techstack" label="기술 스택" value={techStack.length ? techStack.join(', ') : '미등록'} helpText="기술 스택을 멤버 페이지에 표시합니다." icon="fa-code text-purple-400" isActive={settings.techstack} onToggle={toggleSetting} />
-                            <SettingItem settingKey="career" label="재학 상태" value={educationStatus || '미등록'} helpText="재학 상태를 멤버 페이지에 표시합니다." icon="fa-briefcase text-green-400" isActive={settings.career} onToggle={toggleSetting} />
                             <SettingItem settingKey="github" label="GitHub" value={github || '미등록'} helpText="GitHub 프로필을 멤버 페이지에 표시합니다." icon="fab fa-github text-pink-400" isActive={settings.github} onToggle={toggleSetting} />
                             <SettingItem settingKey="portfolio" label="포트폴리오" value={portfolio || '미등록'} helpText="포트폴리오 링크를 멤버 페이지에 표시합니다." icon="fa-link text-yellow-400" isActive={settings.portfolio} onToggle={toggleSetting} />
                         </div>
@@ -216,13 +224,15 @@ const MemberCardPreview = ({ settings, profile }) => {
     return (
         <div className="member-card p-6 rounded-xl text-center card-hover">
             <div className="img-container mx-auto">
-                {profile.profile_image ? (
-                    <img src={profile.profile_image} alt={displayName} />
-                ) : (
-                    <div className="w-28 h-28 rounded-full bg-gray-700 flex items-center justify-center text-xl text-white">
-                        {avatarInitial}
-                    </div>
-                )}
+                <img
+                    src={profile.profile_image || defaultProfileImage}
+                    alt={displayName}
+                    className="w-28 h-28 rounded-full object-cover mx-auto"
+                    onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = defaultProfileImage;
+                    }}
+                />
             </div>
             <h3 className="text-xl font-bold mb-2 text-white">{displayName}</h3>
             <p className="text-blue-300 mb-4">{bio || '자기소개를 입력해주세요.'}</p>
@@ -232,7 +242,7 @@ const MemberCardPreview = ({ settings, profile }) => {
                     <i className="fas fa-envelope text-blue-400 mr-2"></i>{email}
                 </div>
             )}
-            {settings.career && educationStatus && (
+            {educationStatus && (
                 <div className="mb-4 text-sm text-gray-300">
                     <i className="fas fa-graduation-cap text-green-400 mr-2"></i>{educationStatus}
                 </div>

@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { MembersModule } from './members/members.module';
 import { AdminMembersModule } from './admin/members/admin-members.module';
 import { AnnouncementModule } from './announcement/announcement.module';
+import { AdminAnnouncementModule } from './admin/announcement/admin-announcement.module';
 import { TeamsModule } from './teams/teams.module';
 import { StudyModule } from './study/study.module';
 import { ActivityImagesModule } from './admin/activity-images/activity-images.module';
@@ -55,6 +56,7 @@ import { MainPageModule } from './main-page/main-page.module';
     MembersModule,
     AdminMembersModule,
     AnnouncementModule,
+    AdminAnnouncementModule,
     TeamsModule,
     StudyModule,
     ActivityImagesModule,

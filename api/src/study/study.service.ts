@@ -79,10 +79,10 @@ export class StudyService {
     return studies.map((study) => {
       // For each study, search its 'studyMembers' array to find the entry where role is LEADER.
       const leaderMember = study.studyMembers.find(
-        (member) => member.role === StudyMemberRole.LEADER,
+        (member) => member.role === StudyMemberRole.LEADER && member.user,
       );
 
-      // Construct and return the DTO object with the required shape.
+      // Safely get the leader's name. If no leader was found or user is deleted, this will be null.
       return {
         id: study.id,
         study_name: study.study_name,
@@ -94,8 +94,7 @@ export class StudyService {
         apply_deadline: study.apply_deadline,
         place: study.place,
         way: study.way,
-        // Safely get the leader's name. If no leader was found, this will be null.
-        leader_name: leaderMember ? leaderMember.user.name : null,
+        leader_name: leaderMember?.user?.name ?? null,
         // The total member count is the total number of studyMembers associated with the study, excluding PENDING members.
         members_count: study.studyMembers.filter(
           (member) => member.role !== StudyMemberRole.PENDING,
@@ -150,7 +149,9 @@ export class StudyService {
         user_id: member.user.id,
         name: member.user.name,
         role: member.role,
-        profile_image: member.user.profile_image,
+        profile_image: member.user.profile_image && !member.user.profile_image.startsWith('http')
+          ? `/profiles/${member.user.profile_image}`
+          : member.user.profile_image,
       })),
       resources: study.resources
         .filter((r) => r.deleted_at === null)
@@ -270,9 +271,10 @@ export class StudyService {
     }
 
     // 3. Map the array of StudyMember entities to an array of StudyMemberResponseDto.
+    // Handle deleted users gracefully
     return study.studyMembers.map((member) => ({
-      user_id: member.user.id,
-      name: member.user.name,
+      user_id: member.user?.id ?? 'deleted',
+      name: member.user?.name ?? '탈퇴한 유저',
       role: member.role,
     }));
   }
@@ -299,16 +301,17 @@ export class StudyService {
       );
     }
 
-    // 2. Return detailed member information
+    // 2. Return detailed member information (handle deleted user)
+    const user = studyMember.user;
     return {
-      user_id: studyMember.user.id,
-      name: studyMember.user.name,
+      user_id: user?.id ?? 'deleted',
+      name: user?.name ?? '탈퇴한 유저',
       role: studyMember.role,
-      student_number: studyMember.user.student_number,
-      phone_number: studyMember.user.phone_number,
-      email: studyMember.user.email,
-      major: studyMember.user.major,
-      profile_image: studyMember.user.profile_image,
+      student_number: user?.student_number ?? null,
+      phone_number: user?.phone_number ?? null,
+      email: user?.email ?? null,
+      major: user?.major ?? null,
+      profile_image: user?.profile_image ?? null,
     };
   }
 

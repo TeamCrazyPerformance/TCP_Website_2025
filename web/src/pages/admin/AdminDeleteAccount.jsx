@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import defaultProfileImage from '../../logo.svg';
 
 const AdminDeleteAccount = () => {
     const [users, setUsers] = useState([]);
@@ -99,7 +100,7 @@ const AdminDeleteAccount = () => {
 
     const confirmDelete = async () => {
         if (!userToDelete) return;
-        
+
         setDeleteLoading(true);
         try {
             const token = localStorage.getItem('access_token');
@@ -107,8 +108,11 @@ const AdminDeleteAccount = () => {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` }
             });
-            if (!res.ok) throw new Error('계정 삭제에 실패했습니다');
-            
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.message || '계정 삭제에 실패했습니다');
+            }
+
             setUserToDelete(null);
             await fetchUsers();
             alert('계정이 삭제되었습니다.');
@@ -148,9 +152,9 @@ const AdminDeleteAccount = () => {
                 <div className="multiselect-option text-gray-400">기술 스택 없음</div>
             ) : (
                 allTechStacks.map(tech => (
-                    <div key={tech} 
-                         className={`multiselect-option ${filters.tech.includes(tech) ? 'selected' : ''}`}
-                         onClick={() => handleTechStackSelect(tech)}>
+                    <div key={tech}
+                        className={`multiselect-option ${filters.tech.includes(tech) ? 'selected' : ''}`}
+                        onClick={() => handleTechStackSelect(tech)}>
                         {tech}
                     </div>
                 ))
@@ -177,10 +181,14 @@ const AdminDeleteAccount = () => {
                         </div>
                         <div className="mt-4 p-4 bg-gray-800 rounded-lg">
                             <div className="flex items-center space-x-3">
-                                <img 
-                                    src={userToDelete.profile_image || `https://via.placeholder.com/48/A8C5E6/FFFFFF?text=${(userToDelete.name || 'U').charAt(0)}`} 
-                                    alt={userToDelete.name} 
-                                    className="w-12 h-12 rounded-full object-cover" 
+                                <img
+                                    src={userToDelete.profile_image || defaultProfileImage}
+                                    alt={userToDelete.name}
+                                    className="w-12 h-12 rounded-full object-cover"
+                                    onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.src = defaultProfileImage;
+                                    }}
                                 />
                                 <div>
                                     <div className="text-white font-semibold">{userToDelete.name || '-'}</div>
@@ -294,10 +302,14 @@ const AdminDeleteAccount = () => {
                                     filteredUsers.map(user => (
                                         <tr key={user.id} className="table-row border-b border-gray-700 hover:bg-gray-800/50">
                                             <td className="p-4">
-                                                <img 
-                                                    src={user.profile_image || `https://via.placeholder.com/48/A8C5E6/FFFFFF?text=${(user.name || 'U').charAt(0)}`} 
-                                                    alt={user.name} 
-                                                    className="w-12 h-12 rounded-full object-cover" 
+                                                <img
+                                                    src={user.profile_image || defaultProfileImage}
+                                                    alt={user.name}
+                                                    className="w-12 h-12 rounded-full object-cover"
+                                                    onError={(e) => {
+                                                        e.target.onerror = null;
+                                                        e.target.src = defaultProfileImage;
+                                                    }}
                                                 />
                                             </td>
                                             <td className="p-4">

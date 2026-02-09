@@ -5,7 +5,8 @@ export class PublicUserDto {
   name: string;
 
   @IsString()
-  profile_image: string;
+  @IsOptional()
+  profile_image?: string | null;
 
   @IsString()
   @IsOptional()

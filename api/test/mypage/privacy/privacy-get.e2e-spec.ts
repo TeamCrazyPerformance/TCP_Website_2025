@@ -68,14 +68,12 @@ describe('GET /api/v1/mypage/privacy (e2e)', () => {
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty('is_public_email');
     expect(response.body).toHaveProperty('is_public_tech_stack');
-    expect(response.body).toHaveProperty('is_public_education_status');
     expect(response.body).toHaveProperty('is_public_github_username');
     expect(response.body).toHaveProperty('is_public_portfolio_link');
     
     // 기본값 확인 (boolean 타입인지)
     expect(typeof response.body.is_public_email).toBe('boolean');
     expect(typeof response.body.is_public_tech_stack).toBe('boolean');
-    expect(typeof response.body.is_public_education_status).toBe('boolean');
     expect(typeof response.body.is_public_github_username).toBe('boolean');
     expect(typeof response.body.is_public_portfolio_link).toBe('boolean');
   });

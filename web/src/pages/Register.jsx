@@ -17,7 +17,7 @@ function Register() {
   const [major, setMajor] = useState('');
   const [joinYear, setJoinYear] = useState('');
   const [birthDate, setBirthDate] = useState('');
-  const [gender, setGender] = useState('Male');
+  const [gender, setGender] = useState('');
   const [educationStatus, setEducationStatus] = useState('재학');
   const [techStack, setTechStack] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -627,7 +627,7 @@ function Register() {
                         className="block text-sm font-medium text-gray-300 mb-2 text-left"
                         htmlFor="joinYear"
                       >
-                        입학년도 (선택)
+                        동아리 가입 연도 (선택)
                       </label>
                       <input
                         type="number"
@@ -636,7 +636,10 @@ function Register() {
                         className="w-full px-3 py-2 bg-transparent border border-gray-600 rounded-md placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                         placeholder="예: 2024"
                         value={joinYear}
-                        onChange={(e) => setJoinYear(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value.slice(0, 4);
+                          setJoinYear(val);
+                        }}
                       />
                     </div>
                     <div>

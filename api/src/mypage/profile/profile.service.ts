@@ -17,10 +17,18 @@ export class ProfileService {
       select: [
         'username',
         'name',
+        'username',
+        'student_number',
+        'major',
+        'current_company',
         'profile_image',
         'tech_stack',
         'education_status',
         'github_username',
+        'baekjoon_username',
+        'gender',
+        'birth_date',
+        'join_year',
         'self_description',
         'portfolio_link',
       ],
@@ -28,6 +36,14 @@ export class ProfileService {
 
     if (!user) {
       throw new NotFoundException('사용자를 찾을 수 없습니다.');
+    }
+
+    if (user.profile_image && user.profile_image !== 'default_profile_image.png') {
+      if (!user.profile_image.startsWith('http')) {
+        user.profile_image = `/profiles/${user.profile_image}`;
+      }
+    } else {
+      (user as any).profile_image = null;
     }
 
     return user;
@@ -47,7 +63,7 @@ export class ProfileService {
 
     // DTO에서 실제로 값이 제공된 속성들만 업데이트
     Object.keys(dto).forEach(key => {
-      if (dto[key] !== undefined && dto[key] !== null) {
+      if (dto[key] !== undefined) {
         user[key] = dto[key];
       }
     });

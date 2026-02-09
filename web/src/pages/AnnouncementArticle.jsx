@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate, useLocation } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import MarkdownIt from 'markdown-it';
-import { apiGet } from '../api/client';
+import { apiGet, apiDelete } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 
 const md = new MarkdownIt({
   html: true,
@@ -12,10 +13,18 @@ const md = new MarkdownIt({
 
 function AnnouncementArticle() {
   const { id } = useParams(); // 라우트 파라미터 이름을 'id'로 받습니다.
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [article, setArticle] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  
+  // 관리자 권한 확인
+  const isAdmin = user?.role === 'ADMIN';
+  // Admin 페이지에서 왔는지 확인
+  const fromAdmin = location.state?.from === 'admin';
 
   useEffect(() => {
     let isMounted = true;
@@ -23,7 +32,9 @@ function AnnouncementArticle() {
     const fetchArticle = async () => {
       try {
         setIsLoading(true);
-        const data = await apiGet(`/api/v1/announcements/${id}`);
+        // 어드민에서 오면 예약 공지도 조회 가능한 엔드포인트 사용
+        const endpoint = fromAdmin ? `/api/v1/admin/announcements/${id}` : `/api/v1/announcements/${id}`;
+        const data = await apiGet(endpoint);
         const mapped = {
           id: data.id,
           category: '공지사항',
@@ -34,6 +45,7 @@ function AnnouncementArticle() {
           likes: 0,
           tags: ['공지'],
           content: data.contents || '',
+          summary: data.summary || '',
         };
         if (isMounted) {
           setArticle(mapped);
@@ -55,7 +67,7 @@ function AnnouncementArticle() {
     return () => {
       isMounted = false;
     };
-  }, [id]);
+  }, [id, fromAdmin]);
 
   useEffect(() => {
     const observerOptions = {
@@ -81,6 +93,37 @@ function AnnouncementArticle() {
 
   const openShareModal = () => setIsShareModalOpen(true);
   const closeShareModal = () => setIsShareModalOpen(false);
+
+  // 수정 페이지로 이동
+  const handleEdit = () => {
+    navigate(`/announcement/edit/${id}`);
+  };
+
+  // 삭제 핸들러
+  const handleDelete = async () => {
+    if (!window.confirm('이 공지사항을 삭제하시겠습니까?')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        alert('로그인이 필요합니다.');
+        return;
+      }
+
+      await apiDelete(`/api/v1/announcements/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      alert('공지사항이 삭제되었습니다.');
+      navigate('/announcement');
+    } catch (error) {
+      alert(error.message || '공지사항 삭제에 실패했습니다.');
+    }
+  };
 
   const copyUrl = () => {
     const urlToCopy = window.location.href;
@@ -160,11 +203,11 @@ function AnnouncementArticle() {
       <div className="container mx-auto px-4 py-24 text-center text-gray-400">
         <h1 className="text-4xl">게시글을 찾을 수 없습니다.</h1>
         <Link
-          to="/announcement"
+          to={fromAdmin ? "/admin/announcement" : "/announcement"}
           className="mt-8 back-button inline-flex items-center px-8 py-4 rounded-lg text-lg font-medium"
         >
           <i className="fas fa-list mr-3"></i>
-          공지사항 목록 보기
+          {fromAdmin ? '관리자 페이지로 돌아가기' : '공지사항 목록 보기'}
         </Link>
       </div>
     );
@@ -176,11 +219,11 @@ function AnnouncementArticle() {
         {/* Back Button: Left aligned, widget-card background */}
         <div className="mb-8 scroll-fade text-left">
           <Link
-            to="/announcement"
+            to={fromAdmin ? "/admin/announcement" : "/announcement"}
             className="widget-card btn-back-hover inline-flex items-center px-6 py-3 rounded-lg text-sm font-medium transition-colors"
           >
             <i className="fas fa-arrow-left mr-2"></i>
-            공지사항 목록으로 돌아가기
+            {fromAdmin ? '관리자 페이지로 돌아가기' : '공지사항 목록으로 돌아가기'}
           </Link>
         </div>
 
@@ -236,18 +279,33 @@ function AnnouncementArticle() {
           </div>
 
           <footer className="border-t border-gray-700 pt-6">
-            <div className="flex flex-wrap items-center justify-between">
-              <div className="flex items-center space-x-4 mb-4 md:mb-0">
-                <button
-                  onClick={openShareModal}
-                  id="shareBtn"
-                  className="flex items-center space-x-2 px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
-                >
-                  <i className="fas fa-share text-blue-400"></i>
-                  <span>공유</span>
-                </button>
-              </div>
-              {/* Removed Tags section */}
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              {isAdmin && (
+                <>
+                  <button
+                    onClick={handleEdit}
+                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <i className="fas fa-edit"></i>
+                    <span>수정</span>
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    className="flex items-center space-x-2 px-4 py-2 bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    <i className="fas fa-trash"></i>
+                    <span>삭제</span>
+                  </button>
+                </>
+              )}
+              <button
+                onClick={openShareModal}
+                id="shareBtn"
+                className="flex items-center space-x-2 px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                <i className="fas fa-share text-blue-400"></i>
+                <span>공유</span>
+              </button>
             </div>
           </footer>
         </article>
@@ -255,11 +313,11 @@ function AnnouncementArticle() {
         {/* Bottom Back Button: Centered */}
         <div className="mt-12 text-center">
           <Link
-            to="/announcement"
+            to={fromAdmin ? "/admin/announcement" : "/announcement"}
             className="widget-card btn-back-hover inline-flex items-center px-8 py-4 rounded-lg text-lg font-medium transition-colors"
           >
             <i className="fas fa-list mr-3"></i>
-            공지사항 목록 보기
+            {fromAdmin ? '관리자 페이지로 돌아가기' : '공지사항 목록 보기'}
           </Link>
         </div>
       </div>

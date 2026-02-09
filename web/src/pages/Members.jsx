@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { apiGet } from '../api/client';
+import defaultProfileImage from '../logo.svg';
 
 
 
@@ -23,7 +24,7 @@ function Members() {
         const mapped = (data || []).map((user) => {
           const image = user.profile_image;
 
-          // education_status가 공개된 경우에만 확인, 아니면 기본값 'current'
+          // education_status에 따라 구분
           const status =
             user.education_status === '졸업' ? 'alumni' : 'current';
 
@@ -39,15 +40,13 @@ function Members() {
             // 항상 공개되는 필드
             name: user.name,
             profileImageUrl: image,
-            description: user.self_description || 'TCP 멤버',
+            description: user.self_description,
+            status,
+            educationStatus: user.education_status,
 
             // 공개 여부에 따라 조건부로 포함되는 필드
             ...(user.email && { email: user.email }),
             ...(user.tech_stack && { tags: user.tech_stack }),
-            ...(user.education_status && {
-              status,
-              educationStatus: user.education_status
-            }),
             ...(user.github_username && {
               githubUrl: `https://github.com/${user.github_username}`
             }),
@@ -55,8 +54,6 @@ function Members() {
 
             // tech_stack이 없으면 빈 배열로 설정 (필터링 로직을 위해)
             ...(!user.tech_stack && { tags: [] }),
-            // education_status가 없으면 기본값 설정
-            ...(!user.education_status && { status: 'current' }),
           };
         });
         if (isMounted) {
@@ -289,6 +286,10 @@ function Members() {
                     <img
                       src={member.profileImageUrl}
                       alt={`${member.name} Profile`}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = defaultProfileImage;
+                      }}
                     />
                   </div>
                   <h3 className="orbitron text-xl font-bold mb-2 text-white">
@@ -301,12 +302,10 @@ function Members() {
                       {member.email}
                     </p>
                   )}
-                  {member.educationStatus && (
-                    <p className="text-xs text-blue-400 mb-2">
-                      <i className="fas fa-graduation-cap mr-1"></i>
-                      {member.educationStatus}
-                    </p>
-                  )}
+                  <p className="text-xs text-blue-400 mb-2">
+                    <i className="fas fa-graduation-cap mr-1"></i>
+                    {member.educationStatus}
+                  </p>
                   <div className="flex flex-wrap justify-center gap-1 mt-3 mb-4">
                     {member.tags.map((tag, tagIndex) => (
                       <span
@@ -386,6 +385,10 @@ function Members() {
                     <img
                       src={member.profileImageUrl}
                       alt={`${member.name} Profile`}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = defaultProfileImage;
+                      }}
                     />
                   </div>
                   <h3 className="orbitron text-xl font-bold mb-2 text-white">
@@ -398,12 +401,10 @@ function Members() {
                       {member.email}
                     </p>
                   )}
-                  {member.educationStatus && (
-                    <p className="text-xs text-blue-400 mb-2">
-                      <i className="fas fa-graduation-cap mr-1"></i>
-                      {member.educationStatus}
-                    </p>
-                  )}
+                  <p className="text-xs text-blue-400 mb-2">
+                    <i className="fas fa-graduation-cap mr-1"></i>
+                    {member.educationStatus}
+                  </p>
                   <div className="flex flex-wrap justify-center gap-1 mt-3 mb-4">
                     {member.tags.map((tag, tagIndex) => (
                       <span

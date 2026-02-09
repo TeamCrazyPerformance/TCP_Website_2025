@@ -497,7 +497,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
             {/* Row 1: Title & Category */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormInput
-                label="프로젝트 제목 *"
+                label={<>프로젝트 제목 <span className="text-red-500">*</span></>}
                 name="title"
                 value={form.title}
                 onChange={onForm}
@@ -505,7 +505,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
                 placeholder="프로젝트 제목을 입력하세요"
               />
               <FormSelect
-                label="카테고리 *"
+                label={<>카테고리 <span className="text-red-500">*</span></>}
                 name="category"
                 value={form.category}
                 onChange={onForm}
@@ -518,7 +518,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
             {/* Row 2: Period & Deadline */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">진행 기간 (시작 ~ 종료) *</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">진행 기간 (시작 ~ 종료) <span className="text-red-500">*</span></label>
                 <div className="flex gap-2 items-center">
                   <input
                     type="date"
@@ -546,7 +546,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
                 </div>
               </div>
               <FormInput
-                label="지원 마감일 *"
+                label={<>지원 마감일 <span className="text-red-500">*</span></>}
                 name="deadline"
                 type="date"
                 value={form.deadline}
@@ -559,7 +559,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
 
             {/* Row 3: Description */}
             <FormTextarea
-              label="프로젝트 설명 *"
+              label={<>프로젝트 설명 <span className="text-red-500">*</span></>}
               name="description"
               value={form.description}
               onChange={onForm}
@@ -570,7 +570,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
 
             {/* Row 4: Roles (Dynamic) */}
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-2">필요한 역할 *</label>
+              <label className="block text-sm font-medium text-gray-400 mb-2">필요한 역할 <span className="text-red-500">*</span></label>
               <div className="space-y-3 mb-3">
                 {roles.map((role, idx) => !role.isDeleted && (
                   <div key={idx} className="flex gap-3 items-center">
@@ -643,7 +643,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
             {/* Row 8: Execution & Selection */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormSelect
-                label="진행 방식"
+                label={<>진행방식 <span className="text-red-500">*</span></>}
                 name="executionType"
                 value={getExecutionTypeDisplay()}
                 onChange={onForm}
@@ -669,7 +669,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
 
             {/* Row 9: Contact */}
             <FormInput
-              label="연락처 *"
+              label={<>연락처 <span className="text-red-500">*</span></>}
               name="contact"
               value={form.contact}
               onChange={onForm}

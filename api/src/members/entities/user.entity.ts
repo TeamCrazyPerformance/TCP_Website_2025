@@ -98,9 +98,6 @@ export class User {
   is_public_tech_stack: boolean;
 
   @Column({ type: 'boolean', default: false })
-  is_public_education_status: boolean;
-
-  @Column({ type: 'boolean', default: false })
   is_public_portfolio_link: boolean;
 
   @CreateDateColumn()

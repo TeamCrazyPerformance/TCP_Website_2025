@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Study } from '../../study/entities/study.entity';
 import { StudyMember } from '../../study/entities/study-member.entity';
 import { StudyMemberRole } from '../../study/entities/enums/study-member-role.enum';
@@ -17,14 +17,14 @@ export class MyPageStudyService {
 
     @InjectRepository(StudyMember)
     private readonly studyMemberRepository: Repository<StudyMember>,
-  ) {}
+  ) { }
 
   async findMyStudies(userId: string) {
-    // 내가 속한 모든 스터디 조회
+    // 내가 속한 모든 스터디 조회 (MEMBER, LEADER, NOMINEE)
     const myStudyMembers = await this.studyMemberRepository.find({
       where: {
         user: { id: userId },
-        role: StudyMemberRole.MEMBER, // PENDING 제외
+        role: In([StudyMemberRole.MEMBER, StudyMemberRole.LEADER, StudyMemberRole.NOMINEE]),
       },
       relations: ['study', 'study.studyMembers'],
       order: { study: { created_at: 'DESC' } },
@@ -33,23 +33,27 @@ export class MyPageStudyService {
     // 현재 날짜
     const now = new Date();
 
-    // 진행중인 스터디와 완료된 스터디 분리
+    // 진행중인 스터디, 완료된 스터디, 예정된 스터디 분리
     const ongoingStudies: any[] = [];
     const completedStudies: any[] = [];
+    const upcomingStudies: any[] = [];
 
     for (const member of myStudyMembers) {
       const study = member.study;
-      
-      // 기간 파싱 (예: "2024-01-01 ~ 2024-06-30")
-      const periodMatch = study.period?.match(/(\d{4}-\d{2}-\d{2})\s*~\s*(\d{4}-\d{2}-\d{2})/);
-      
+
+      // 기간 파싱 (예: "2025.01-2025.12")
+      const periodMatch = study.period?.match(/(\d{4})\.(\d{2})-(\d{4})\.(\d{2})/);
+
       let startDate: Date | null = null;
       let endDate: Date | null = null;
       let progress = 0;
 
       if (periodMatch) {
-        startDate = new Date(periodMatch[1]);
-        endDate = new Date(periodMatch[2]);
+        // 시작: 해당 월의 1일, 종료: 해당 월의 마지막 날
+        startDate = new Date(parseInt(periodMatch[1]), parseInt(periodMatch[2]) - 1, 1);
+        const endYear = parseInt(periodMatch[3]);
+        const endMonth = parseInt(periodMatch[4]);
+        endDate = new Date(endYear, endMonth, 0); // 월의 마지막 날
 
         // 진행률 계산
         if (startDate && endDate) {
@@ -66,10 +70,13 @@ export class MyPageStudyService {
         memberCount: study.studyMembers?.length || 0,
         way: study.way,
         tag: study.tag,
+        progress,
       };
 
-      // 종료일이 지났으면 완료, 아니면 진행중
-      if (endDate && now > endDate) {
+      // 시작일이 미래면 예정, 종료일이 지났으면 완료, 그 외 진행중
+      if (startDate && now < startDate) {
+        upcomingStudies.push(studyInfo);
+      } else if (endDate && now > endDate) {
         completedStudies.push(studyInfo);
       } else {
         ongoingStudies.push(studyInfo);
@@ -79,6 +86,7 @@ export class MyPageStudyService {
     return {
       ongoingStudies,
       completedStudies,
+      upcomingStudies,
     };
   }
 
@@ -93,24 +101,28 @@ export class MyPageStudyService {
       throw new NotFoundException(`Study with id ${studyId} not found`);
     }
 
-    // 내가 멤버인지 확인
+    // 내가 멤버인지 확인 (MEMBER, LEADER, NOMINEE)
+    const allowedRoles = [StudyMemberRole.MEMBER, StudyMemberRole.LEADER, StudyMemberRole.NOMINEE];
     const isMember = study.studyMembers.some(
       (member) =>
-        member.user.id === userId && member.role === StudyMemberRole.MEMBER,
+        member.user?.id === userId && allowedRoles.includes(member.role),
     );
 
     if (!isMember) {
       throw new ForbiddenException('Access denied: You are not a member of this study');
     }
 
-    // 기간 파싱
-    const periodMatch = study.period?.match(/(\d{4}-\d{2}-\d{2})\s*~\s*(\d{4}-\d{2}-\d{2})/);
-    
+    // 기간 파싱 (예: "2025.01-2025.12")
+    const periodMatch = study.period?.match(/(\d{4})\.(\d{2})-(\d{4})\.(\d{2})/);
+
     let progress = 0;
 
     if (periodMatch) {
-      const startDate = new Date(periodMatch[1]);
-      const endDate = new Date(periodMatch[2]);
+      // 시작: 해당 월의 1일, 종료: 해당 월의 마지막 날
+      const startDate = new Date(parseInt(periodMatch[1]), parseInt(periodMatch[2]) - 1, 1);
+      const endYear = parseInt(periodMatch[3]);
+      const endMonth = parseInt(periodMatch[4]);
+      const endDate = new Date(endYear, endMonth, 0);
       const now = new Date();
 
       // 진행률 계산

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { apiGet, apiPatch } from '../../api/client';
+import { apiGet, apiPatch, apiDelete } from '../../api/client';
+import { useAuth } from '../../context/AuthContext';
+import defaultProfileImage from '../../logo.svg';
 import {
   faLink,
   faCloudUploadAlt,
@@ -19,10 +21,14 @@ function Profile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const { user, login } = useAuth();
+
 
   // 모달 관련 상태
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [selectedPhotoSrc, setSelectedPhotoSrc] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [modalImageError, setModalImageError] = useState(false);
   const fileInputRef = useRef(null);
 
   // textarea 자동 높이 조절을 위한 ref
@@ -138,9 +144,13 @@ function Profile() {
           email: data.email || '',
           bio: data.self_description || '',
           techStack: data.tech_stack || [],
-          status: data.education_status?.toLowerCase() || '',
+          status: data.education_status || '',
           github: data.github_username ? `https://github.com/${data.github_username}` : '',
+          baekjoon: data.baekjoon_username || '', // Added
           portfolio: data.portfolio_link || '',
+          joinYear: data.join_year || '', // Added
+          birthDate: data.birth_date ? data.birth_date.split('T')[0] : '', // Added, format YYYY-MM-DD
+          gender: data.gender || '', // Added
         });
         setError(null);
       } catch (err) {
@@ -166,7 +176,9 @@ function Profile() {
   const openPhotoModal = () => {
     if (!profile) return;
     setIsPhotoModalOpen(true);
+    setModalImageError(false);
     setSelectedPhotoSrc(profile.photo || '');
+    setSelectedFile(null);
   };
   const closePhotoModal = () => {
     setIsPhotoModalOpen(false);
@@ -176,18 +188,85 @@ function Profile() {
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
+      setSelectedFile(file); //파일 객체 저장
       const reader = new FileReader();
       reader.onload = (e) => {
         setSelectedPhotoSrc(e.target.result);
+        setModalImageError(false); // 새 이미지 로드 시 에러 초기화
       };
       reader.readAsDataURL(file);
     }
   };
 
   // 프로필 사진 변경 저장
-  const savePhotoChange = () => {
-    setProfile((prev) => ({ ...prev, photo: selectedPhotoSrc }));
-    closePhotoModal();
+  const savePhotoChange = async () => {
+    if (!selectedFile) {
+      closePhotoModal();
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      // 이미지 업로드 API 호출
+      // client.js의 apiPatch는 JSON을 가정할 수 있으므로, Content-Type 헤더를 확인해야 함
+      // 하지만 apiPatch가 자동으로 Content-Type을 설정하는지 확인 필요.
+      // 보통 axios나 fetch는 FormData를 넘기면 알아서 설정함.
+      // 여기서는 apiPatch가 headers를 덮어쓰는지 확인해야 하지만, 
+      // apiPatch 구현을 모르므로 안전하게 직접 fetch를 쓰거나 client.js를 확인해야 함.
+      // 일단 apiPatch를 시도하되, Content-Type: multipart/form-data는 브라우저가 boundary를 설정해야 하므로
+      // 헤더를 명시적으로 설정하지 않고 보냄 (client.js가 JSON으로 강제하지 않는다면).
+
+      // 만약 apiPatch가 JSON 문자열화를 강제한다면 문제됨.
+      // 안전하게 fetch 형식을 사용하는 apiPatch에 formData를 전달.
+
+      const response = await apiPatch('/api/v1/members/me/profile-image', formData);
+
+      if (response && response.profile_image) {
+        // 캐시 버스팅을 위한 타임스탬프 추가
+        const newImageUrl = `${response.profile_image}?t=${Date.now()}`;
+
+        setProfile((prev) => ({ ...prev, photo: newImageUrl }));
+
+        // 헤더 등 전역 상태 업데이트를 위해 AuthContext 업데이트
+        if (user) {
+          const updatedUser = { ...user, profile_image: newImageUrl };
+          // 현재 토큰 유지하면서 유저 정보만 업데이트
+          login(updatedUser, localStorage.getItem('access_token'));
+        }
+
+        alert('프로필 사진이 변경되었습니다!');
+        closePhotoModal();
+      }
+    } catch (error) {
+      console.error('Failed to upload profile image:', error);
+      alert('프로필 사진 변경 실패: ' + (error.message || '알 수 없는 오류'));
+    }
+  };
+
+  // 기본 프로필 이미지로 변경
+  const handleResetProfileImage = async () => {
+    if (!window.confirm('정말로 기본 프로필 사진으로 변경하시겠습니까?')) return;
+
+    try {
+      await apiDelete('/api/v1/members/me/profile-image');
+
+      // 상태 업데이트
+      setProfile((prev) => ({ ...prev, photo: '' }));
+
+      // 전역 상태 업데이트
+      if (user) {
+        const updatedUser = { ...user, profile_image: null };
+        login(updatedUser, localStorage.getItem('access_token'));
+      }
+
+      alert('기본 프로필 사진으로 변경되었습니다.');
+      closePhotoModal();
+    } catch (error) {
+      console.error('Failed to reset profile image:', error);
+      alert('기본 이미지 변경 실패: ' + (error.message || '오류 발생'));
+    }
   };
 
   // 프로필 정보 수정 핸들러
@@ -207,10 +286,14 @@ function Profile() {
         major: profile.major,
         self_description: profile.bio,
         tech_stack: profile.techStack,
-        education_status: profile.status.toUpperCase(),
-        github_username: profile.github.replace('https://github.com/', ''),
+        education_status: profile.status,
+        github_username: profile.github.replace('https://github.com/', '').replace('github.com/', ''),
+        baekjoon_username: profile.baekjoon, // Added
         portfolio_link: profile.portfolio,
         current_company: profile.role,
+        join_year: profile.joinYear ? parseInt(profile.joinYear, 10) : null, // Added
+        birth_date: profile.birthDate ? profile.birthDate : null, // Added
+        gender: profile.gender || null, // Added, convert empty string to null
       };
 
       await apiPatch('/api/v1/mypage/profile', updateData);
@@ -272,7 +355,7 @@ function Profile() {
                 className="profile-photo-container mx-auto mb-4 relative group cursor-pointer w-32 h-32"
                 onClick={openPhotoModal}
               >
-                {profile.photo ? (
+                {profile.photo && profile.photo.length > 0 ? (
                   <img
                     src={profile.photo}
                     alt="프로필 이미지"
@@ -304,7 +387,7 @@ function Profile() {
               </div>
               <div className="flex justify-center space-x-4">
                 <a
-                  href={profile.github}
+                  href={profile.github ? (profile.github.startsWith('http') ? profile.github : `https://${profile.github}`) : '#'}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-blue-400 text-xl"
@@ -312,7 +395,7 @@ function Profile() {
                   <FontAwesomeIcon icon={faGithub} />
                 </a>
                 <a
-                  href={profile.portfolio}
+                  href={profile.portfolio ? (profile.portfolio.startsWith('http') ? profile.portfolio : `https://${profile.portfolio}`) : '#'}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-purple-400 text-xl"
@@ -330,6 +413,88 @@ function Profile() {
                 기본 정보
               </h5>
               <div className="space-y-4">
+                {/* Read-only Basic Info */}
+                {/* Basic Info (Student Number, Major, etc) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Name and Email removed from view as per request */}
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      학번
+                    </label>
+                    <input
+                      type="text"
+                      className="editable form-input"
+                      name="studentId"
+                      value={profile.studentId}
+                      maxLength={8}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 8);
+                        handleProfileChange({ target: { name: 'studentId', value: val } });
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      전공
+                    </label>
+                    <input
+                      type="text"
+                      className="editable form-input"
+                      name="major"
+                      value={profile.major}
+                      onChange={handleProfileChange}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      동아리 가입 연도
+                    </label>
+                    <input
+                      type="number"
+                      className="editable form-input"
+                      name="joinYear"
+                      value={profile.joinYear}
+                      onChange={(e) => {
+                        const val = e.target.value.slice(0, 4);
+                        handleProfileChange({ target: { name: 'joinYear', value: val } });
+                      }}
+                      placeholder="예: 2023"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      생년월일
+                    </label>
+                    <input
+                      type="date"
+                      className="editable form-input"
+                      name="birthDate"
+                      value={profile.birthDate}
+                      onChange={handleProfileChange}
+                      max="9999-12-31"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      성별
+                    </label>
+                    <select
+                      className="editable form-input"
+                      name="gender"
+                      value={profile.gender}
+                      onChange={handleProfileChange}
+                    >
+                      <option value="">선택 안 함</option>
+                      <option value="Male">남성</option>
+                      <option value="Female">여성</option>
+                    </select>
+                  </div>
+                </div>
+
+                <hr className="border-gray-700 my-4" />
+
+                {/* Editable Profile Details */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     아이디
@@ -338,27 +503,30 @@ function Profile() {
                     {profile.username}
                   </div>
                 </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    이메일
+                    학적 상태
                   </label>
                   <div className="text-gray-300 text-lg px-3 py-2 border border-gray-700 rounded-md bg-transparent text-left">
                     {profile.email}
                   </div>
                 </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    자기소개
+                    현재 소속 (직장/단체)
                   </label>
-                  <textarea
-                    ref={bioRef}
+                  <input
+                    type="text"
                     className="editable form-input"
-                    rows="3"
-                    name="bio"
-                    value={profile.bio}
+                    name="role"
+                    value={profile.role}
                     onChange={handleProfileChange}
-                  ></textarea>
+                    placeholder="예: 삼성전자, 네이버, 프리랜서"
+                  />
                 </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     기술 스택
@@ -405,26 +573,10 @@ function Profile() {
                     ))}
                   </div>
                 </div>
+                {/* Status Select Moved up */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    현재 상태
-                  </label>
-                  <select
-                    className="editable form-input"
-                    name="status"
-                    value={profile.status}
-                    onChange={handleProfileChange}
-                  >
-                    <option value="student">재학생</option>
-                    <option value="intern">인턴</option>
-                    <option value="employee">취업</option>
-                    <option value="graduate">대학원</option>
-                    <option value="other">기타</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    GitHub
+                    GitHub 주소 (URL)
                   </label>
                   <input
                     type="url"
@@ -436,7 +588,19 @@ function Profile() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    포트폴리오/블로그
+                    백준 아이디 (ID)
+                  </label>
+                  <input
+                    type="text"
+                    className="editable form-input"
+                    name="baekjoon"
+                    value={profile.baekjoon}
+                    onChange={handleProfileChange}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    포트폴리오/블로그 주소 (URL)
                   </label>
                   <input
                     type="url"
@@ -481,6 +645,29 @@ function Profile() {
 
 
             <div className="mb-6">
+              {selectedPhotoSrc && !modalImageError ? (
+                <div className="flex justify-center mb-6">
+                  <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-gray-700 shadow-lg">
+                    <img
+                      src={selectedPhotoSrc}
+                      alt="프로필 미리보기"
+                      className="w-full h-full object-cover"
+                      onError={() => setModalImageError(true)}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex justify-center mb-6">
+                  <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-gray-700 shadow-lg bg-white p-4">
+                    <img
+                      src={defaultProfileImage}
+                      alt="기본 이미지"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                </div>
+              )}
+
               <h4 className="font-semibold text-white mb-4">파일 업로드</h4>
               <div className="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center">
                 <FontAwesomeIcon
@@ -503,6 +690,16 @@ function Profile() {
                   className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-colors"
                 >
                   파일 선택
+                </button>
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleResetProfileImage}
+                  className="text-sm text-gray-400 hover:text-red-400 transition-colors underline"
+                >
+                  기본 프로필 사진으로 변경
                 </button>
               </div>
             </div>

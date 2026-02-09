@@ -34,6 +34,7 @@ export class AccountService {
     }
 
     return {
+      username: user.username,
       name: user.name,
       birthDate: user.birth_date,
       phoneNumber: user.phone_number,
