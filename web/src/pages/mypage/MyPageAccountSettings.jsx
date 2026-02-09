@@ -123,7 +123,7 @@ const MyPageAccountSettings = () => {
                     </div>
                 </section>
 
-
+                <hr className="my-6 border-gray-700" />
 
                 <div className="flex items-center justify-between gap-3">
                     <button type="button" onClick={() => setIsModalOpen(true)} className="px-4 py-2 rounded-lg btn-secondary hover:bg-gray-800">
