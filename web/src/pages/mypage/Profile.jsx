@@ -150,7 +150,13 @@ function Profile() {
           baekjoon: data.baekjoon_username || '', // Added
           portfolio: data.portfolio_link || '',
           joinYear: data.join_year || '', // Added
-          birthDate: data.birth_date ? data.birth_date.split('T')[0].replace(/-/g, '.').replace(/\//g, '.') : '', // Added, format YYYY.MM.DD
+          birthDate: data.birth_date ? (() => {
+            const d = new Date(data.birth_date);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}.${month}.${day}`;
+          })() : '', // Added, format YYYY.MM.DD
           gender: data.gender || '', // Added
         });
         setError(null);
