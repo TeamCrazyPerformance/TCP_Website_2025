@@ -324,7 +324,7 @@ function Recruitment() {
               About TCP
             </h2>
             <div className="max-w-4xl mx-auto">
-              <p className="text-xl text-gray-300 mb-6">
+              <p className="orbitron text-xl text-gray-300 mb-6">
                 TCP (Team Crazy Performance)는 서울과학기술대학교의 개발자 동아리입니다.
               </p>
               <p className="text-lg text-gray-400 mb-8">
