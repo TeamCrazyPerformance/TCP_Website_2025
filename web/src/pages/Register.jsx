@@ -766,7 +766,7 @@ function Register() {
 
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-400">
-                이미 계정이 있으신가요?
+                이미 계정이 있으신가요?{' '}
                 <Link
                   to="/login"
                   className="text-purple-400 hover:text-purple-300 font-medium"

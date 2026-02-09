@@ -180,7 +180,7 @@ function Login() {
             {/* Additional Info */}
             <div className="text-center mt-8 text-sm text-gray-400">
               <p>
-                TCP 부원이 아니신가요?{' '}
+                TCP 부원이 되고싶으신가요?{' '}
                 <Link
                   to="/recruitment"
                   className="text-blue-400 hover:text-blue-300 underline"

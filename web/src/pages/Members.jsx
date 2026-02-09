@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { apiGet } from '../api/client';
 
-import placeholderAvatar from '../assets/images/member_placeholder.webp';
+
 
 function Members() {
   const [members, setMembers] = useState([]);
@@ -21,10 +21,7 @@ function Members() {
         setIsLoading(true);
         const data = await apiGet('/api/v1/members');
         const mapped = (data || []).map((user) => {
-          const image =
-            user.profile_image?.startsWith('http')
-              ? user.profile_image
-              : placeholderAvatar;
+          const image = user.profile_image;
 
           // education_status가 공개된 경우에만 확인, 아니면 기본값 'current'
           const status =
