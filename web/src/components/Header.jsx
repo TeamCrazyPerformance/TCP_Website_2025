@@ -48,7 +48,7 @@ function Header({ isScrolled }) {
               <h1 className="orbitron text-xl font-bold gradient-text text-left">
                 TCP
               </h1>
-              <p className="text-xs text-gray-400 text-left">
+              <p className="orbitron text-xs text-gray-400 text-left">
                 Team Crazy Performance
               </p>
             </div>
@@ -81,23 +81,23 @@ function Header({ isScrolled }) {
             {isAuthenticated ? (
               <>
                 <NavLink to="/mypage" className={getRegisterLinkClass}>
-                  My Page
+                  마이페이지
                 </NavLink>
                 <button
                   type="button"
                   className={logoutButtonClass}
                   onClick={handleLogout}
                 >
-                  Logout
+                  로그아웃
                 </button>
               </>
             ) : (
               <>
                 <NavLink to="/login" className={getLoginLinkClass}>
-                  Login
+                  로그인
                 </NavLink>
                 <NavLink to="/register" className={getRegisterLinkClass}>
-                  Sign Up
+                  회원가입
                 </NavLink>
               </>
             )}

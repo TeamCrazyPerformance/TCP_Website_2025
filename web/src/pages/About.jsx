@@ -182,7 +182,7 @@ function About() {
               <p className="orbitron text-xl md:text-2xl text-gray-300 mb-6">
                 Team Crazy Performance
               </p>
-              <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+              <p className="orbitron text-lg text-gray-400 max-w-2xl mx-auto">
                 다양한 개발자들의 모임, TCP는 뛰어난 열정을 가진 학생 개발자들이 모여
                 함께 성장하고 도전하는 서울과학기술대학교 컴퓨터공학 동아리입니다.
               </p>
@@ -197,7 +197,7 @@ function About() {
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-4">
               TCP 소개
             </h2>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+            <p className="orbitron text-xl text-gray-300 max-w-3xl mx-auto">
               Team Crazy Performance는 다양한 사람들을 연결하고 함께 성장하는
               동아리입니다.
             </p>
@@ -213,10 +213,10 @@ function About() {
                   <i className="fas fa-check-circle text-green-400 mt-1"></i>
                   <div>
                     {/* "포용" h4 태그 왼쪽 정렬 */}
-                    <h4 className="font-semibold mb-1 text-left">
+                    <h4 className="orbitron font-semibold mb-1 text-left">
                       포용 (Inclusion)
                     </h4>
-                    <p className="text-gray-400 text-sm text-left">
+                    <p className="orbitron text-gray-400 text-sm text-left">
                       다양한 배경과 경험을 가진 구성원들이 서로 존중하며 함께 성장하는 환경
                     </p>
                   </div>
@@ -225,10 +225,10 @@ function About() {
                   <i className="fas fa-check-circle text-green-400 mt-1"></i>
                   <div>
                     {/* "탐구" h4 태그 왼쪽 정렬 */}
-                    <h4 className="font-semibold mb-1 text-left">
+                    <h4 className="orbitron font-semibold mb-1 text-left">
                       탐구 (Inquiry)
                     </h4>
-                    <p className="text-gray-400 text-sm text-left">
+                    <p className="orbitron text-gray-400 text-sm text-left">
                       새로운 기술과 아이디어를 향한 끊임없는 호기심과 탐구
                     </p>
                   </div>
@@ -237,10 +237,10 @@ function About() {
                   <i className="fas fa-check-circle text-green-400 mt-1"></i>
                   <div>
                     {/* "협력" h4 태그 왼쪽 정렬 */}
-                    <h4 className="font-semibold mb-1 text-left">
+                    <h4 className="orbitron font-semibold mb-1 text-left">
                       협력 (Collaboration)
                     </h4>
-                    <p className="text-gray-400 text-sm text-left">
+                    <p className="orbitron text-gray-400 text-sm text-left">
                       함께 문제를 해결하고 성과를 만들어가는 과정
                     </p>
                   </div>
@@ -254,7 +254,7 @@ function About() {
               </h3>
               <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-2xl">
                 {/* "TCP의 미션" p 태그 왼쪽 정렬 */}
-                <p className="text-gray-300 leading-relaxed text-left">
+                <p className="orbitron text-gray-300 leading-relaxed text-left">
                   TCP는 특정 분야에 국한되지 않은 개발자들이 모여,
                   공통된 관심사를 중심으로 스터디와 프로젝트·대회에 참여하며
                   서로의 탐구와 협력을 통해 함께 성장하는 것을 목표로 합니다.
@@ -271,7 +271,7 @@ function About() {
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-4">
               현재 현황
             </h2>
-            <p className="text-xl text-gray-300">
+            <p className="orbitron text-xl text-gray-300">
               TCP의 성장과 성과를 한눈에 확인하세요
             </p>
           </div>
@@ -340,7 +340,7 @@ function About() {
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-4">
               연도별 활동 히스토리
             </h2>
-            <p className="text-xl text-gray-300">
+            <p className="orbitron text-xl text-gray-300">
               TCP의 성장 과정과 주요 마일스톤을 확인하세요
             </p>
           </div>

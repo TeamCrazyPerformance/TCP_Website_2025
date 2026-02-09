@@ -221,7 +221,7 @@ function Home() {
                     </p>
                     <p className="text-gray-300 text-sm leading-relaxed">
                       회원가입 시 추가 정보를 입력하지 않으신 분들은<br />
-                      <span className="text-yellow-300 font-medium">(서울과학기술대 학생 및 TCP 부원은 필수!!)</span><br />
+                      <span className="orbitron text-yellow-300 font-medium">(서울과학기술대 학생 및 TCP 부원은 필수!!)</span><br />
                       원활한 활동을 위해 <span className="text-purple-400 font-medium">마이페이지</span>에서 회원 정보를 추가로 입력해주세요.
                     </p>
                   </div>
@@ -269,7 +269,7 @@ function Home() {
               <p className="orbitron text-xl md:text-2xl text-gray-300 mb-6">
                 Team Crazy Performance
               </p>
-              <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+              <p className="orbitron text-lg text-gray-400 max-w-2xl mx-auto">
                 다양한 개발자들의 모임, TCP는 뛰어난 열정을 가진 학생 개발자들이 모여
                 함께 성장하고 도전하는 서울과학기술대학교 컴퓨터공학 동아리입니다.
               </p>
@@ -327,7 +327,7 @@ function Home() {
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-4">
               TCP 소개
             </h2>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+            <p className="orbitron text-xl text-gray-300 max-w-3xl mx-auto">
               Team Crazy Performance는 다양한 사람들을 연결하고 함께 성장하는
               동아리입니다.
             </p>
@@ -343,7 +343,7 @@ function Home() {
                   <i className="fas fa-check-circle text-green-400 mt-1"></i>
                   <div>
                     {/* "포용" h4 태그 왼쪽 정렬 - text-left 추가 */}
-                    <h4 className="font-semibold mb-1 text-left">
+                    <h4 className="orbitronfont-semibold mb-1 text-left">
                       포용 (Inclusion)
                     </h4>
                     <p className="text-gray-400 text-sm text-left">
@@ -355,7 +355,7 @@ function Home() {
                   <i className="fas fa-check-circle text-green-400 mt-1"></i>
                   <div>
                     {/* "탐구" h4 태그 왼쪽 정렬 - text-left 추가 */}
-                    <h4 className="font-semibold mb-1 text-left">
+                    <h4 className="orbitron font-semibold mb-1 text-left">
                       탐구 (Inquiry)
                     </h4>
                     <p className="text-gray-400 text-sm text-left">
@@ -367,7 +367,7 @@ function Home() {
                   <i className="fas fa-check-circle text-green-400 mt-1"></i>
                   <div>
                     {/* "협력" h4 태그 왼쪽 정렬 - text-left 추가 */}
-                    <h4 className="font-semibold mb-1 text-left">
+                    <h4 className="orbitron font-semibold mb-1 text-left">
                       협력 (Collaboration)
                     </h4>
                     <p className="text-gray-400 text-sm text-left">
@@ -422,7 +422,7 @@ function Home() {
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-4">
               주요 활동
             </h2>
-            <p className="text-xl text-gray-300">
+            <p className="orbitron text-xl text-gray-300">
               TCP에서 경험할 수 있는 다양한 활동들을 소개합니다
             </p>
           </div>
@@ -452,7 +452,7 @@ function Home() {
                       <h3 className="orbitron text-lg font-bold text-yellow-300">
                         대회 참가
                       </h3>
-                      <p className="text-sm text-gray-400 mt-2">
+                      <p className="orbitron text-sm text-gray-400 mt-2">
                         Competition Participation
                       </p>
                     </div>
@@ -506,7 +506,9 @@ function Home() {
                       <h3 className="orbitron text-lg font-bold text-blue-300">
                         스터디 세션
                       </h3>
-                      <p className="text-sm text-gray-400 mt-2">Study Sessions</p>
+                      <p className="orbitron text-sm text-gray-400 mt-2">
+                        Study Sessions
+                      </p>
                     </div>
                   </div>
                 )}
@@ -558,7 +560,9 @@ function Home() {
                       <h3 className="orbitron text-lg font-bold text-green-300">
                         멤버십 트레이닝
                       </h3>
-                      <p className="text-sm text-gray-400 mt-2">MT Events</p>
+                      <p className="orbitron text-sm text-gray-400 mt-2">
+                        MT Events
+                      </p>
                     </div>
                   </div>
                 )}

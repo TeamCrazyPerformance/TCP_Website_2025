@@ -140,7 +140,7 @@ function Announcement() {
               <p className="orbitron text-xl md:text-2xl text-gray-300 mb-6">
                 TCP의 중요한 소식을 놓치지 마세요
               </p>
-              <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+              <p className="orbitron text-lg text-gray-400 max-w-2xl mx-auto">
                 동아리 운영, 행사, 프로젝트 등 TCP의 모든 공식 공지사항을 이곳에서 확인하세요.
               </p>
             </div>

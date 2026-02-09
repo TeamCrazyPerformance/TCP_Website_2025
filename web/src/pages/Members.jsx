@@ -191,7 +191,7 @@ function Members() {
               <p className="orbitron text-xl md:text-2xl text-gray-300 mb-6">
                 Team Crazy Performance
               </p>
-              <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+              <p className="orbitron text-lg text-gray-400 max-w-2xl mx-auto">
                 TCP의 멤버들을 만나보세요. 검색과 필터로 원하는 멤버를 찾아보세요.
               </p>
             </div>

@@ -295,7 +295,7 @@ function Recruitment() {
               <p className="orbitron text-xl md:text-2xl text-gray-300 mb-6">
                 Team Crazy Performance
               </p>
-              <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-8">
+              <p className="orbitron text-lg text-gray-400 max-w-2xl mx-auto mb-8">
                 서울과학기술대학교의 개발자 동아리 TCP에서 새로운 사람들과 함께
                 당신의 열정을 실현해보세요.
               </p>
@@ -327,7 +327,7 @@ function Recruitment() {
               <p className="orbitron text-xl text-gray-300 mb-6">
                 TCP (Team Crazy Performance)는 서울과학기술대학교의 개발자 동아리입니다.
               </p>
-              <p className="text-lg text-gray-400 mb-8">
+              <p className="orbitron text-lg text-gray-400 mb-8">
                 우리는 다양한 사람들이 모여, 함께 탐구하고 함께 성장하는 것을 목표로 합니다.
               </p>
             </div>
@@ -562,7 +562,7 @@ function Recruitment() {
               className={`cta-button px-12 py-4 rounded-full text-lg font-bold orbitron text-white transition-colors ${!isRecruitmentActive ? 'opacity-50 cursor-not-allowed bg-gray-600' : 'hover:text-black'}`}
             >
               <FontAwesomeIcon icon={faRocket} className="mr-2" />
-              {isRecruitmentActive ? 'Apply Now' : 'Recruitment Closed'}
+              {isRecruitmentActive ? '지금 지원하기' : '모집 기간이 아닙니다'}
             </button>
             <p className="text-sm text-gray-300 mt-4">
               * 지원 기간: 매 학기 시작 2주 전 ~ 개강 후 1주
