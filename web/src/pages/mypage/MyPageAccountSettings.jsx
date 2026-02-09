@@ -36,9 +36,29 @@ const MyPageAccountSettings = () => {
         setIsDirty(JSON.stringify(formData) !== JSON.stringify(initialData));
     }, [formData, initialData]);
 
+    const formatPhoneNumber = (value) => {
+        const numbers = value.replace(/[^0-9]/g, '');
+        const limited = numbers.slice(0, 11);
+        if (limited.startsWith('02')) {
+            if (limited.length <= 2) return limited;
+            if (limited.length <= 5) return `${limited.slice(0, 2)}-${limited.slice(2)}`;
+            if (limited.length <= 9) return `${limited.slice(0, 2)}-${limited.slice(2, 5)}-${limited.slice(5)}`;
+            return `${limited.slice(0, 2)}-${limited.slice(2, 6)}-${limited.slice(6, 10)}`;
+        }
+        if (limited.length <= 3) return limited;
+        if (limited.length <= 6) return `${limited.slice(0, 3)}-${limited.slice(3)}`;
+        if (limited.length <= 10) return `${limited.slice(0, 3)}-${limited.slice(3, 6)}-${limited.slice(6)}`;
+        return `${limited.slice(0, 3)}-${limited.slice(3, 7)}-${limited.slice(7)}`;
+    };
+
     const handleInputChange = (e) => {
         const { id, value } = e.target;
-        setFormData(prev => ({ ...prev, [id]: value }));
+        if (id === 'phone') {
+            const formatted = formatPhoneNumber(value);
+            setFormData(prev => ({ ...prev, [id]: formatted }));
+        } else {
+            setFormData(prev => ({ ...prev, [id]: value }));
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -103,15 +123,12 @@ const MyPageAccountSettings = () => {
                     </div>
                 </section>
 
-                <hr className="my-6 border-gray-700" />
 
-                <div className="flex items-center justify-center mt-4">
+
+                <div className="flex items-center justify-between gap-3">
                     <button type="button" onClick={() => setIsModalOpen(true)} className="px-4 py-2 rounded-lg btn-secondary hover:bg-gray-800">
                         <i className="fa-solid fa-key mr-2"></i>비밀번호 변경
                     </button>
-                </div>
-
-                <div className="flex items-center justify-end gap-3">
                     <button type="submit" className={`px-5 py-2 rounded-lg btn-primary ${!isDirty && 'opacity-50'}`} disabled={!isDirty}>저장</button>
                 </div>
             </form>
