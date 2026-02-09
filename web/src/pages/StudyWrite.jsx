@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiPost } from '../api/client';
+import { formatBirthDate } from '../utils/dateFormatter';
 
 export default function StudyWrite() {
   const navigate = useNavigate();
@@ -189,12 +190,16 @@ export default function StudyWrite() {
                 모집 마감일
               </label>
               <input
-                type="date"
+                type="text"
                 id="deadline"
                 name="deadline"
                 value={study.deadline}
-                onChange={handleChange}
-                max="9999-12-31" // Prevent years > 9999
+                onChange={(e) => {
+                  const val = formatBirthDate(e.target.value);
+                  handleChange({ target: { name: 'deadline', value: val } });
+                }}
+                maxLength={10}
+                placeholder="YYYY.MM.DD"
                 className="w-full bg-gray-800 border-gray-700 rounded-lg py-3 px-4 text-base focus:ring-2 focus:ring-accent-blue focus:outline-none"
                 required
               />

@@ -23,6 +23,7 @@ import {
   faBook,
 } from '@fortawesome/free-solid-svg-icons';
 import { apiPost, apiGet } from '../api/client';
+import { formatBirthDate } from '../utils/dateFormatter';
 
 // 전화번호 자동 형식화 함수
 const formatPhoneNumber = (value) => {
@@ -789,17 +790,28 @@ function Recruitment() {
                           진행 기간:
                           <div className="flex items-center space-x-2">
                             <input
-                              type="date"
+                              type="text"
                               name="project_start_date"
                               className="form-input mt-1"
-                              max="9999-12-31"
+                              placeholder="YYYY.MM.DD"
+                              maxLength={10}
+                              onChange={(e) => {
+                                e.target.value = formatBirthDate(e.target.value);
+                              }}
                             />
                             <span>~</span>
                             <input
-                              type="date"
+                              type="text"
                               name="project_end_date"
                               className="form-input mt-1"
-                              max="9999-12-31"
+                              placeholder="YYYY.MM.DD"
+                              maxLength={10}
+                              onChange={(e) => {
+                                e.target.value = formatBirthDate(e.target.value);
+                              }}
+                            />
+                            className="form-input mt-1"
+                            max="9999-12-31"
                             />
                           </div>
                         </label>
@@ -876,10 +888,14 @@ function Recruitment() {
                         <label className="block text-sm font-medium text-gray-300 mt-2">
                           수상 년월일:
                           <input
-                            type="date"
+                            type="text"
                             name="award_date"
                             className="form-input mt-1"
-                            max="9999-12-31"
+                            placeholder="YYYY.MM.DD"
+                            maxLength={10}
+                            onChange={(e) => {
+                              e.target.value = formatBirthDate(e.target.value);
+                            }}
                           />
                         </label>
                         <label className="block text-sm font-medium text-gray-300 mt-2">

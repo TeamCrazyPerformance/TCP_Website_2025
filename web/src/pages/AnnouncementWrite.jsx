@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import DOMPurify from 'dompurify';
 import MarkdownIt from 'markdown-it';
 import { apiPost, apiPatch, apiGet } from '../api/client';
+import { formatBirthDate } from '../utils/dateFormatter';
 
 const md = new MarkdownIt({
   html: true,
@@ -76,7 +77,7 @@ function AnnouncementWrite() {
   // 페이지 이탈 경고 (수정 모드일 때는 비활성화)
   useEffect(() => {
     if (isEditMode) return; // 수정 모드에서는 경고하지 않음
-    
+
     const handleBeforeUnload = (e) => {
       if (title || content) {
         e.preventDefault();
@@ -189,7 +190,7 @@ function AnnouncementWrite() {
 
     try {
       setIsSubmitting(true);
-      
+
       if (isEditMode && id) {
         // 수정 모드: PATCH 요청
         await apiPatch(`/api/v1/announcements/${id}`, payload, {
@@ -220,7 +221,7 @@ function AnnouncementWrite() {
     const rawContent = content || '';
     const html = md.render(rawContent);
     const safeHtml = DOMPurify.sanitize(html);
-    
+
     return (
       <article>
         <header className="mb-8">
@@ -235,7 +236,7 @@ function AnnouncementWrite() {
           <h1 className="orbitron text-3xl md:text-5xl font-bold mb-6 gradient-text text-left">
             {title}
           </h1>
-          
+
           {/* Meta: Left aligned content */}
           <div className="article-meta widget-card rounded-lg p-6 mb-8">
             <div className="flex flex-wrap items-center justify-between text-sm text-gray-300">
@@ -254,7 +255,7 @@ function AnnouncementWrite() {
             </div>
           </div>
         </header>
-        
+
         <div className="article-content widget-card rounded-lg p-8 mb-8">
           <div
             className="article-body text-gray-200 text-left"
@@ -262,7 +263,7 @@ function AnnouncementWrite() {
           />
         </div>
       </article>
-    );  
+    );
   };
 
   // 로딩 중일 때
@@ -380,24 +381,27 @@ function AnnouncementWrite() {
               <i className="fas fa-calendar text-green-400 mr-2"></i>게시일 <span className="text-red-500">*</span>
             </label>
             <input
-              type="date"
+              type="text"
               id="date"
               name="date"
               className="form-input px-4 py-3 rounded-lg"
               required
               value={date}
-              onChange={(e) => setDate(e.target.value)}
-              min={new Date().toISOString().split('T')[0]}
-              max={`${new Date().getFullYear() + 10}-12-31`}
+              placeholder="YYYY.MM.DD"
+              maxLength={10}
+              onChange={(e) => {
+                const formatted = formatBirthDate(e.target.value);
+                setDate(formatted);
+              }}
               onInvalid={(e) => {
-                e.target.setCustomValidity('게시일은 오늘 날짜 이후로만 선택할 수 있습니다.');
+                e.target.setCustomValidity('게시일을 입력해주세요.');
               }}
               onInput={(e) => {
                 e.target.setCustomValidity('');
               }}
             />
             <p className="text-sm text-gray-400 mt-2 text-left">
-              공지사항이 게시될 날짜를 선택해주세요.
+              공지사항이 게시될 날짜를 선택해주세요. (YYYY.MM.DD)
             </p>
           </div>
 
@@ -536,8 +540,8 @@ function AnnouncementWrite() {
               disabled={isSubmitting}
             >
               <i className="fas fa-paper-plane mr-2"></i>
-              {isSubmitting 
-                ? (isEditMode ? '수정 중...' : '게시 중...') 
+              {isSubmitting
+                ? (isEditMode ? '수정 중...' : '게시 중...')
                 : (isEditMode ? '수정하기' : '게시하기')
               }
             </button>

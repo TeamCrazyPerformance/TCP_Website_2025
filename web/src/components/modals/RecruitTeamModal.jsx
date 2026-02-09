@@ -3,6 +3,7 @@ import FormInput from '../ui/FormInput';
 import FormTextarea from '../ui/FormTextarea';
 import FormSelect from '../ui/FormSelect';
 import { apiPost, apiPatch } from '../../api/client';
+import { formatBirthDate } from '../../utils/dateFormatter';
 
 export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateTeam, initialData }) {
   const [form, setForm] = useState({
@@ -96,7 +97,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
 
   const onForm = (e) => {
     let value = e.target.value;
-    
+
     // executionType 변환: 한글 -> 영어 (데이터 저장용)
     if (e.target.name === 'executionType') {
       const executionTypeMap = {
@@ -106,10 +107,10 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
       };
       value = executionTypeMap[value] || value;
     }
-    
+
     setForm((f) => ({ ...f, [e.target.name]: value }));
   };
-  
+
   // executionType을 표시용 한글로 변환
   const getExecutionTypeDisplay = () => {
     const executionTypeReverseMap = {
@@ -178,7 +179,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
   // 기존 이미지 삭제 함수
   const deleteOldImage = async (imageUrl) => {
     if (!imageUrl) return;
-    
+
     // 기본 이미지 URL은 삭제하지 않음
     if (imageUrl.includes('unsplash.com') || imageUrl.includes('placeholder')) {
       return;
@@ -194,7 +195,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
         },
         body: JSON.stringify({ imageUrl }),
       });
-      
+
       if (response.ok) {
         // Successfully deleted
       } else {
@@ -329,7 +330,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
       // 이미지 처리
       let projectImageUrl = form.projectImage;
       const oldImageUrl = initialData?.projectImage || '';
-      
+
       // 새 이미지가 선택된 경우
       if (imageFile) {
         // 기존 이미지 삭제 (교체시)
@@ -338,7 +339,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
         }
         // 새 이미지 업로드
         projectImageUrl = await uploadImage();
-      } 
+      }
       // 이미지가 제거된 경우 (form.projectImage가 빈 문자열)
       else if (!form.projectImage && oldImageUrl && isEditMode) {
         await deleteOldImage(oldImageUrl);
@@ -521,39 +522,48 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
                 <label className="block text-sm font-medium text-gray-300 mb-2">진행 기간 (시작 ~ 종료) <span className="text-red-500">*</span></label>
                 <div className="flex gap-2 items-center">
                   <input
-                    type="date"
+                    type="text"
                     name="periodStart"
                     value={form.periodStart}
-                    onChange={onForm}
+                    onChange={(e) => {
+                      const val = formatBirthDate(e.target.value);
+                      onForm({ target: { name: 'periodStart', value: val } });
+                    }}
                     required
                     className="form-input"
                     style={{ maxWidth: '45%' }}
-                    min="0000-01-01"
-                    max="9999-12-31"
+                    placeholder="YYYY.MM.DD"
+                    maxLength={10}
                   />
                   <span className="text-gray-400">~</span>
                   <input
-                    type="date"
+                    type="text"
                     name="periodEnd"
                     value={form.periodEnd}
-                    onChange={onForm}
+                    onChange={(e) => {
+                      const val = formatBirthDate(e.target.value);
+                      onForm({ target: { name: 'periodEnd', value: val } });
+                    }}
                     required
                     className="form-input"
                     style={{ maxWidth: '45%' }}
-                    min="0000-01-01"
-                    max="9999-12-31"
+                    placeholder="YYYY.MM.DD"
+                    maxLength={10}
                   />
                 </div>
               </div>
               <FormInput
                 label={<>지원 마감일 <span className="text-red-500">*</span></>}
                 name="deadline"
-                type="date"
+                type="text"
                 value={form.deadline}
-                onChange={onForm}
+                onChange={(e) => {
+                  const val = formatBirthDate(e.target.value);
+                  onForm({ target: { name: 'deadline', value: val } });
+                }}
                 required
-                min="0000-01-01"
-                max="9999-12-31"
+                placeholder="YYYY.MM.DD"
+                maxLength={10}
               />
             </div>
 
