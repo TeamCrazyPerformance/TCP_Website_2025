@@ -221,7 +221,7 @@ function Home() {
                     </p>
                     <p className="text-gray-300 text-sm leading-relaxed">
                       회원가입 시 추가 정보를 입력하지 않으신 분들은<br />
-                      <span className="text-yellow-300 font-medium">(서울과학기술대 학생 및 TCP 부원은 필수!!)</span><br />
+                      <span className="orbitron text-yellow-300 font-medium">(서울과학기술대 학생 및 TCP 부원은 필수!!)</span><br />
                       원활한 활동을 위해 <span className="text-purple-400 font-medium">마이페이지</span>에서 회원 정보를 추가로 입력해주세요.
                     </p>
                   </div>
@@ -269,9 +269,9 @@ function Home() {
               <p className="orbitron text-xl md:text-2xl text-gray-300 mb-6">
                 Team Crazy Performance
               </p>
-              <p className="text-lg text-gray-400 max-w-2xl mx-auto">
-                엘리트 개발자들의 모임, TCP는 뛰어난 실력을 가진 학생 개발자들이
-                모여 함께 성장하고 도전하는 컴퓨터공학 동아리입니다.
+              <p className="orbitron text-lg text-gray-400 max-w-2xl mx-auto">
+                다양한 개발자들의 모임, TCP는 뛰어난 열정을 가진 학생 개발자들이 모여
+                함께 성장하고 도전하는 서울과학기술대학교 컴퓨터공학 동아리입니다.
               </p>
             </div>
 
@@ -285,8 +285,7 @@ function Home() {
                   개발자를 위한 동아리
                 </h3>
                 <p className="text-sm text-gray-400">
-                  전문적인 개발 역량을 키우고 실무 경험을 쌓을 수 있는 최적의
-                  환경
+                  초보자부터 숙련자까지 개발 역량을 키우고 협업 경험을 쌓을 수 있는 최적의 환경
                 </p>
               </div>
 
@@ -298,8 +297,7 @@ function Home() {
                   다양한 학습 기회
                 </h3>
                 <p className="text-sm text-gray-400">
-                  스터디, 프로젝트, 멘토링을 통한 체계적이고 포괄적인 학습
-                  시스템
+                  스터디, 프로젝트, 멘토링을 통한 포괄적인 학습 시스템
                 </p>
               </div>
 
@@ -318,6 +316,7 @@ function Home() {
           </div>
         </div>
       </section>
+
       {/* 소개 세션 */}
       <section
         id="about"
@@ -328,9 +327,9 @@ function Home() {
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-4">
               TCP 소개
             </h2>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-              Team Crazy Performance는 단순한 동아리가 아닙니다. 우리는
-              개발자로서의 꿈을 현실로 만들어가는 여정을 함께하는 파트너입니다.
+            <p className="orbitron text-xl text-gray-300 max-w-3xl mx-auto">
+              Team Crazy Performance는 다양한 사람들을 연결하고 함께 성장하는
+              동아리입니다.
             </p>
           </div>
 
@@ -343,12 +342,24 @@ function Home() {
                 <li className="flex items-start space-x-3">
                   <i className="fas fa-check-circle text-green-400 mt-1"></i>
                   <div>
-                    {/* "탁월함" h4 태그 왼쪽 정렬 - text-left 추가 */}
-                    <h4 className="font-semibold mb-1 text-left">
-                      Excellence (탁월함)
+                    {/* "포용" h4 태그 왼쪽 정렬 - text-left 추가 */}
+                    <h4 className="orbitronfont-semibold mb-1 text-left">
+                      포용 (Inclusion)
                     </h4>
                     <p className="text-gray-400 text-sm text-left">
-                      최고 수준의 코드 품질과 개발 역량 추구
+                      다양한 배경과 경험을 가진 구성원들이 서로 존중하며 함께 성장하는 환경
+                    </p>
+                  </div>
+                </li>
+                <li className="flex items-start space-x-3">
+                  <i className="fas fa-check-circle text-green-400 mt-1"></i>
+                  <div>
+                    {/* "탐구" h4 태그 왼쪽 정렬 - text-left 추가 */}
+                    <h4 className="orbitron font-semibold mb-1 text-left">
+                      탐구 (Inquiry)
+                    </h4>
+                    <p className="text-gray-400 text-sm text-left">
+                      새로운 기술과 아이디어를 향한 끊임없는 호기심과 탐구
                     </p>
                   </div>
                 </li>
@@ -356,23 +367,11 @@ function Home() {
                   <i className="fas fa-check-circle text-green-400 mt-1"></i>
                   <div>
                     {/* "협력" h4 태그 왼쪽 정렬 - text-left 추가 */}
-                    <h4 className="font-semibold mb-1 text-left">
-                      Collaboration (협력)
+                    <h4 className="orbitron font-semibold mb-1 text-left">
+                      협력 (Collaboration)
                     </h4>
                     <p className="text-gray-400 text-sm text-left">
-                      팀워크를 통한 시너지 효과 극대화
-                    </p>
-                  </div>
-                </li>
-                <li className="flex items-start space-x-3">
-                  <i className="fas fa-check-circle text-green-400 mt-1"></i>
-                  <div>
-                    {/* "혁신" h4 태그 왼쪽 정렬 - text-left 추가 */}
-                    <h4 className="font-semibold mb-1 text-left">
-                      Innovation (혁신)
-                    </h4>
-                    <p className="text-gray-400 text-sm text-left">
-                      새로운 기술과 아이디어를 통한 지속적 발전
+                      함께 문제를 해결하고 성과를 만들어가는 과정
                     </p>
                   </div>
                 </li>
@@ -415,6 +414,7 @@ function Home() {
           </div>
         </div>
       </section>
+
       {/* TCP 활동 소개 세션 */}
       <section className="py-16">
         <div className="container mx-auto px-4">
@@ -422,7 +422,7 @@ function Home() {
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-4">
               주요 활동
             </h2>
-            <p className="text-xl text-gray-300">
+            <p className="orbitron text-xl text-gray-300">
               TCP에서 경험할 수 있는 다양한 활동들을 소개합니다
             </p>
           </div>
@@ -452,7 +452,7 @@ function Home() {
                       <h3 className="orbitron text-lg font-bold text-yellow-300">
                         대회 참가
                       </h3>
-                      <p className="text-sm text-gray-400 mt-2">
+                      <p className="orbitron text-sm text-gray-400 mt-2">
                         Competition Participation
                       </p>
                     </div>
@@ -506,7 +506,9 @@ function Home() {
                       <h3 className="orbitron text-lg font-bold text-blue-300">
                         스터디 세션
                       </h3>
-                      <p className="text-sm text-gray-400 mt-2">Study Sessions</p>
+                      <p className="orbitron text-sm text-gray-400 mt-2">
+                        Study Sessions
+                      </p>
                     </div>
                   </div>
                 )}
@@ -558,7 +560,9 @@ function Home() {
                       <h3 className="orbitron text-lg font-bold text-green-300">
                         멤버십 트레이닝
                       </h3>
-                      <p className="text-sm text-gray-400 mt-2">MT Events</p>
+                      <p className="orbitron text-sm text-gray-400 mt-2">
+                        MT Events
+                      </p>
                     </div>
                   </div>
                 )}
@@ -593,10 +597,10 @@ function Home() {
         <div className="container mx-auto px-4 text-center">
           <div className="max-w-3xl mx-auto">
             <h2 className="orbitron text-4xl md:text-5xl font-black mb-6 text-white">
-              TCP와 함께 개발자의 길을 걸어보세요
+              TCP에서 개발자의 길을 걸어보세요
             </h2>
             <p className="text-xl text-gray-200 mb-8">
-              뛰어난 동료들과 함께 성장하고, 실무 경험을 쌓으며, 개발자로서의
+              뛰어난 동료들과 함께 성장하고, 협업 경험을 쌓으며, 자신의
               꿈을 현실로 만들어보세요.
             </p>
             {/* 지원하기 버튼 수정: /recruitment 경로가 맞음 */}

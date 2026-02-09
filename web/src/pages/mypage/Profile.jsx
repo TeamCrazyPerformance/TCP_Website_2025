@@ -11,6 +11,7 @@ import {
   faBook,
   faUsers,
   faTrophy,
+  faCamera,
 } from '@fortawesome/free-solid-svg-icons';
 import { faGithub } from '@fortawesome/free-brands-svg-icons';
 
@@ -136,7 +137,7 @@ function Profile() {
         // Map backend fields to frontend format
         setProfile({
           photo: data.profile_image || '',
-          nickname: data.name || data.username || '',
+          username: data.username || '',
           major: data.major || '',
           studentId: data.student_number || '',
           role: data.current_company || '',
@@ -282,8 +283,6 @@ function Profile() {
       setSaving(true);
       // Map frontend fields back to backend format
       const updateData = {
-        name: profile.nickname,
-        student_number: profile.studentId,
         major: profile.major,
         self_description: profile.bio,
         tech_stack: profile.techStack,
@@ -338,56 +337,48 @@ function Profile() {
   // No profile loaded
   if (!profile) return null;
 
-  const profileInitial = (profile.nickname || profile.email || 'U')[0].toUpperCase();
+  const profileInitial = (profile.username || profile.email || 'U')[0].toUpperCase();
 
   return (
-    <div className="container mx-auto max-w-7xl">
+    <div className="container mx-auto max-w-3xl">
       {/* Profile Section */}
       <section id="profile" className="mb-8">
         <h3 className="orbitron text-2xl font-bold gradient-text mb-6">
           프로필 정보
         </h3>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="flex flex-col gap-8">
           {/* Profile Card */}
-          <div className="lg:col-span-1">
+          <div className="w-full">
             <div className="widget-card p-6 rounded-xl text-center">
               <div
-                className="w-32 h-32 mx-auto mb-4 relative group cursor-pointer rounded-full overflow-hidden"
+                className="profile-photo-container mx-auto mb-4 relative group cursor-pointer w-32 h-32"
                 onClick={openPhotoModal}
               >
                 {profile.photo && profile.photo.length > 0 ? (
                   <img
                     src={profile.photo}
                     alt="프로필 이미지"
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = defaultProfileImage;
-                      e.target.className = "w-full h-full object-contain bg-white p-2";
-                    }}
+                    className="w-full h-full object-cover rounded-full border-4 border-gray-700 group-hover:border-blue-500 transition-colors"
                   />
                 ) : (
-                  <img
-                    src={defaultProfileImage}
-                    alt="기본 프로필"
-                    className="w-full h-full object-contain bg-white p-2"
-                  />
+                  <div className="w-full h-full rounded-full bg-gray-700 flex items-center justify-center text-white text-xl border-4 border-gray-700 group-hover:border-blue-500 transition-colors">
+                    {profileInitial}
+                  </div>
                 )}
-                <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <FontAwesomeIcon icon={faCloudUploadAlt} className="text-white text-2xl" />
+
+                {/* Hover Overlay */}
+                <div className="absolute inset-0 rounded-full bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="text-white text-sm font-medium">
+                    <FontAwesomeIcon icon={faCamera} className="mb-1 block text-2xl mx-auto" />
+                    변경
+                  </div>
                 </div>
               </div>
-              <button
-                onClick={openPhotoModal}
-                className="mb-4 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-colors text-sm"
-              >
-                <FontAwesomeIcon icon={faCloudUploadAlt} className="mr-2" />
-                프로필 사진 변경
-              </button>
+
               <div className="mb-4">
                 <h4 className="orbitron text-xl font-bold mb-2 text-white">
-                  {profile.nickname}
+                  {profile.username}
                 </h4>
                 <p className="text-blue-300 mb-2">
                   {profile.major} {profile.studentId}
@@ -416,7 +407,7 @@ function Profile() {
           </div>
 
           {/* Profile Details */}
-          <div className="lg:col-span-2">
+          <div className="w-full">
             <div className="widget-card p-6 rounded-xl">
               <h5 className="orbitron text-lg font-bold mb-4 text-white">
                 기본 정보
@@ -506,32 +497,20 @@ function Profile() {
                 {/* Editable Profile Details */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    자기소개
+                    아이디
                   </label>
-                  <textarea
-                    ref={bioRef}
-                    className="editable form-input"
-                    rows="3"
-                    name="bio"
-                    value={profile.bio}
-                    onChange={handleProfileChange}
-                  ></textarea>
+                  <div className="text-gray-300 text-lg px-3 py-2 border border-gray-700 rounded-md bg-transparent text-left">
+                    {profile.username}
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     학적 상태
                   </label>
-                  <select
-                    className="editable form-input"
-                    name="status"
-                    value={profile.status}
-                    onChange={handleProfileChange}
-                  >
-                    <option value="재학">재학</option>
-                    <option value="휴학">휴학</option>
-                    <option value="졸업">졸업</option>
-                  </select>
+                  <div className="text-gray-300 text-lg px-3 py-2 border border-gray-700 rounded-md bg-transparent text-left">
+                    {profile.email}
+                  </div>
                 </div>
 
                 <div>
@@ -632,7 +611,7 @@ function Profile() {
                   />
                 </div>
               </div>
-              <div className="mt-6 flex space-x-4">
+              <div className="mt-6 flex space-x-4 justify-end">
                 <button
                   onClick={saveProfileSettings}
                   className="btn-primary"

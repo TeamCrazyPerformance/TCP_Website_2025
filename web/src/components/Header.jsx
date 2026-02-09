@@ -1,11 +1,17 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import logo from '../logo.svg';
 import { useAuth } from '../context/AuthContext';
 
 function Header({ isScrolled }) {
   const navigate = useNavigate();
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout, user } = useAuth();
+
+  const displayName = useMemo(
+    () => user?.name || user?.username || '사용자',
+    [user]
+  );
+  const avatarInitial = displayName ? displayName[0].toUpperCase() : 'U';
   const getNavLinkClass = ({ isActive }) =>
     `nav-link orbitron text-sm font-medium ${isActive ? 'active' : 'text-gray-300'
     } hover:text-white`;
@@ -48,7 +54,7 @@ function Header({ isScrolled }) {
               <h1 className="orbitron text-xl font-bold gradient-text text-left">
                 TCP
               </h1>
-              <p className="text-xs text-gray-400 text-left">
+              <p className="orbitron text-xs text-gray-400 text-left">
                 Team Crazy Performance
               </p>
             </div>
@@ -80,24 +86,37 @@ function Header({ isScrolled }) {
           <div className="flex space-x-3">
             {isAuthenticated ? (
               <>
-                <NavLink to="/mypage" className={getRegisterLinkClass}>
-                  My Page
+                <NavLink to="/mypage" className="flex items-center space-x-2 px-2 py-1 rounded-lg hover:bg-white/10 transition-colors group">
+                  {user?.profile_image ? (
+                    <img
+                      src={user.profile_image}
+                      alt={displayName}
+                      className="w-8 h-8 rounded-full object-cover border border-gray-600 group-hover:border-gray-400"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs text-white border border-gray-600 group-hover:border-gray-400">
+                      {avatarInitial}
+                    </div>
+                  )}
+                  <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
+                    {displayName}
+                  </span>
                 </NavLink>
                 <button
                   type="button"
                   className={logoutButtonClass}
                   onClick={handleLogout}
                 >
-                  Logout
+                  로그아웃
                 </button>
               </>
             ) : (
               <>
                 <NavLink to="/login" className={getLoginLinkClass}>
-                  Login
+                  로그인
                 </NavLink>
                 <NavLink to="/register" className={getRegisterLinkClass}>
-                  Sign Up
+                  회원가입
                 </NavLink>
               </>
             )}

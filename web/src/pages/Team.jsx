@@ -130,7 +130,7 @@ export default function Team() {
       ...new Set([...splitTags(team.tag), ...splitTags(team.techStack)]),
     ];
     const leaderName = team.leader?.name || team.leader?.username || '팀 리더';
-    const leaderAvatar = team.leader?.profile_image || 
+    const leaderAvatar = team.leader?.profile_image ||
       'https://via.placeholder.com/40/A8C5E6/FFFFFF?text=L';
     const period = `${formatDate(team.periodStart)} – ${formatDate(
       team.periodEnd
@@ -261,7 +261,7 @@ export default function Team() {
 
     const fetchApplicationStatuses = async () => {
       const statusMap = {};
-      
+
       await Promise.all(
         teams.map(async (team) => {
           try {
@@ -388,12 +388,15 @@ export default function Team() {
   return (
     <main className="container mx-auto px-4 py-24">
       <div className="text-center mb-16">
+        <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-teal-400 via-blue-500 to-purple-600 flex items-center justify-center">
+          <i className="fas fa-users text-white text-3xl"></i>
+        </div>
         <h1 className="orbitron text-4xl md:text-5xl font-bold gradient-text mb-4">
           Find Your Team
         </h1>
-        <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-8">
-          함께 성장하고 도전할 최고의 팀원을 찾아보세요. TCP 동아리원뿐만 
-          아니라 누구나 프로젝트, 스터디, 해커톤 팀원을 쉽게 모집하고 지원할 수 있습니다.
+        <p className="orbitron text-lg text-gray-400 max-w-2xl mx-auto mb-8">
+          함께 성장하고 도전할 최고의 팀원을 찾아보세요. TCP 동아리원뿐만
+          아니라 누구나 프로젝트, 스터디, 해커톤 팀원을 쉽게 모집하고 지원할 수 있어요.
         </p>
         <button
           onClick={handleOpenRecruit}
@@ -409,7 +412,7 @@ export default function Team() {
           {/* Search */}
           <div>
             <label htmlFor="search" className="block text-sm font-medium text-gray-300 mb-2">
-              Search
+              검색
             </label>
             <div className="relative">
               <input
@@ -426,7 +429,7 @@ export default function Team() {
           {/* Status */}
           <div>
             <label htmlFor="filter-status" className="block text-sm font-medium text-gray-300 mb-2">
-              Status
+              모집 상태
             </label>
             <select
               id="filter-status"
@@ -442,7 +445,7 @@ export default function Team() {
           {/* Category */}
           <div>
             <label htmlFor="filter-category" className="block text-sm font-medium text-gray-300 mb-2">
-              Category
+              카테고리
             </label>
             <select
               id="filter-category"
@@ -461,7 +464,7 @@ export default function Team() {
           {/* Sort by */}
           <div>
             <label htmlFor="sort-by" className="block text-sm font-medium text-gray-300 mb-2">
-              Sort by
+              날짜순 정렬
             </label>
             <select
               id="sort-by"

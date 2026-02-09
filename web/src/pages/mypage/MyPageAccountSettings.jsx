@@ -16,7 +16,8 @@ const MyPageAccountSettings = () => {
                 const accountData = {
                     username: data.username || '', // Added
                     name: data.name || '',
-                    phone: data.phoneNumber || data.phone_number || '',
+                    birthday: data.birthDate || '',
+                    phone: data.phoneNumber || '',
                     email: data.email || ''
                 };
                 setFormData(accountData);
@@ -36,7 +37,6 @@ const MyPageAccountSettings = () => {
         setIsDirty(JSON.stringify(formData) !== JSON.stringify(initialData));
     }, [formData, initialData]);
 
-    // 전화번호 자동 형식화 함수
     const formatPhoneNumber = (value) => {
         const numbers = value.replace(/[^0-9]/g, '');
         const limited = numbers.slice(0, 11);
@@ -55,7 +55,8 @@ const MyPageAccountSettings = () => {
     const handleInputChange = (e) => {
         const { id, value } = e.target;
         if (id === 'phone') {
-            setFormData(prev => ({ ...prev, [id]: formatPhoneNumber(value) }));
+            const formatted = formatPhoneNumber(value);
+            setFormData(prev => ({ ...prev, [id]: formatted }));
         } else {
             setFormData(prev => ({ ...prev, [id]: value }));
         }
@@ -90,20 +91,18 @@ const MyPageAccountSettings = () => {
 
     return (
         <div className="container mx-auto max-w-4xl">
-            <h3 className="text-2xl font-bold gradient-text mb-6">계정 정보 수정</h3>
+            <h3 className="text-2xl font-bold gradient-text mb-6">개인정보 수정</h3>
             <form onSubmit={handleSubmit} className="widget-card rounded-xl p-6" noValidate>
                 <section aria-labelledby="sec-profile">
-                    <div className="flex items-center justify-between mb-4">
-                        <h4 id="sec-profile" className="text-lg font-bold">프로필</h4>
-                    </div>
+                    <h4 id="sec-profile" className="text-lg font-bold mb-4 text-center">프로필</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div>
-                            <label htmlFor="username" className="label">아이디</label>
-                            <input id="username" name="username" type="text" className="input bg-gray-700 text-gray-400 cursor-not-allowed" value={formData.username} readOnly disabled />
+                            <label htmlFor="name" className="form-label">이름</label>
+                            <input id="name" name="name" type="text" className="form-input" value={formData.name} onChange={handleInputChange} required />
                         </div>
                         <div>
-                            <label htmlFor="name" className="label">이름</label>
-                            <input id="name" name="name" type="text" className="input" value={formData.name} onChange={handleInputChange} required />
+                            <label htmlFor="birthday" className="form-label">생일</label>
+                            <input id="birthday" name="birthday" type="date" className="form-input" value={formData.birthday} onChange={handleInputChange} required />
                         </div>
                     </div>
                 </section>
@@ -111,23 +110,25 @@ const MyPageAccountSettings = () => {
                 <hr className="my-6 border-gray-700" />
 
                 <section aria-labelledby="sec-contacts">
-                    <h4 id="sec-contacts" className="text-lg font-bold mb-4">연락처</h4>
+                    <h4 id="sec-contacts" className="text-lg font-bold mb-4 text-center">연락처</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div>
-                            <label htmlFor="phone" className="label">전화번호</label>
-                            <input id="phone" name="phone" type="tel" className="input" value={formData.phone} onChange={handleInputChange} required />
+                            <label htmlFor="phone" className="form-label">휴대전화</label>
+                            <input id="phone" name="phone" type="tel" className="form-input" value={formData.phone} onChange={handleInputChange} required />
                         </div>
                         <div>
-                            <label htmlFor="email" className="label">이메일</label>
-                            <input id="email" name="email" type="email" className="input" value={formData.email} onChange={handleInputChange} required />
+                            <label htmlFor="email" className="form-label">이메일</label>
+                            <input id="email" name="email" type="email" className="form-input" value={formData.email} onChange={handleInputChange} required />
                         </div>
                     </div>
-
                 </section>
 
                 <hr className="my-6 border-gray-700" />
 
-                <div className="flex items-center justify-end gap-3">
+                <div className="flex items-center justify-between gap-3">
+                    <button type="button" onClick={() => setIsModalOpen(true)} className="px-4 py-2 rounded-lg btn-secondary hover:bg-gray-800">
+                        <i className="fa-solid fa-key mr-2"></i>비밀번호 변경
+                    </button>
                     <button type="submit" className={`px-5 py-2 rounded-lg btn-primary ${!isDirty && 'opacity-50'}`} disabled={!isDirty}>저장</button>
                 </div>
             </form>
@@ -224,68 +225,42 @@ const PasswordChangeModal = ({ isOpen, onClose }) => {
     };
 
     return (
-        <div className="modal show">
-            <div className="modal-panel">
-                <div className="flex items-center justify-between mb-2">
+        <div className="modal active">
+            <div className="modal-content p-6">
+                <div className="flex items-center justify-between mb-4">
                     <h3 className="text-xl font-bold">비밀번호 변경</h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl"><i className="fas fa-times"></i></button>
                 </div>
                 <p className="text-sm text-gray-400 mb-4">아래 순서대로 입력 후 변경을 완료하세요.</p>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label htmlFor="pw-current" className="label">현재 비밀번호</label>
+                        <label htmlFor="pw-current" className="form-label">현재 비밀번호</label>
                         <input
                             id="pw-current"
                             type="password"
-                            className="input"
+                            className="form-input"
                             value={passwordData.currentPassword}
                             onChange={handlePasswordChange}
                             required
                         />
                     </div>
                     <div>
-                        <label htmlFor="pw-new" className="label">새 비밀번호</label>
+                        <label htmlFor="pw-new" className="form-label">새 비밀번호</label>
                         <input
                             id="pw-new"
                             type="password"
-                            className="input"
+                            className="form-input"
                             value={passwordData.newPassword}
                             onChange={handlePasswordChange}
                             required
                         />
-                        {/* Password Strength Indicators */}
-                        {passwordData.newPassword.length > 0 && (
-                            <div className="mt-2 space-y-1 text-left text-sm">
-                                <div className={passwordStrength.minLength ? 'text-green-400' : 'text-red-400'}>
-                                    <i className={`fas ${passwordStrength.minLength ? 'fa-check' : 'fa-times'} mr-2`}></i>
-                                    8자 이상
-                                </div>
-                                <div className={passwordStrength.hasLowercase ? 'text-green-400' : 'text-red-400'}>
-                                    <i className={`fas ${passwordStrength.hasLowercase ? 'fa-check' : 'fa-times'} mr-2`}></i>
-                                    영문 소문자 포함
-                                </div>
-                                <div className={passwordStrength.hasUppercase ? 'text-green-400' : 'text-red-400'}>
-                                    <i className={`fas ${passwordStrength.hasUppercase ? 'fa-check' : 'fa-times'} mr-2`}></i>
-                                    영문 대문자 포함
-                                </div>
-                                <div className={passwordStrength.hasNumber ? 'text-green-400' : 'text-red-400'}>
-                                    <i className={`fas ${passwordStrength.hasNumber ? 'fa-check' : 'fa-times'} mr-2`}></i>
-                                    숫자 포함
-                                </div>
-                                <div className={passwordStrength.hasSpecial ? 'text-green-400' : 'text-red-400'}>
-                                    <i className={`fas ${passwordStrength.hasSpecial ? 'fa-check' : 'fa-times'} mr-2`}></i>
-                                    특수문자 포함 (@$!%*?&)
-                                </div>
-                            </div>
-                        )}
-                        <div className="strength-rail mt-2"><div className="strength-bar"></div></div>
                     </div>
                     <div>
-                        <label htmlFor="pw-confirm" className="label">새 비밀번호 확인</label>
+                        <label htmlFor="pw-confirm" className="form-label">새 비밀번호 확인</label>
                         <input
                             id="pw-confirm"
                             type="password"
-                            className="input"
+                            className="form-input"
                             value={passwordData.confirmPassword}
                             onChange={handlePasswordChange}
                             required
@@ -298,10 +273,16 @@ const PasswordChangeModal = ({ isOpen, onClose }) => {
                         )}
                     </div>
                     <div>
-
+                        <div className="flex items-end gap-3">
+                            <div className="flex-1">
+                                <label htmlFor="pw-code" className="form-label">인증 코드</label>
+                                <input id="pw-code" type="text" className="form-input" required />
+                            </div>
+                            <button type="button" className="px-3 py-2 rounded-lg btn-secondary hover:bg-gray-800">코드 전송</button>
+                        </div>
                     </div>
                     <div className="flex items-center justify-end gap-3 mt-6">
-                        <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg btn-outline hover:bg-gray-800">취소</button>
+                        <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg btn-secondary hover:bg-gray-800">취소</button>
                         <button
                             type="submit"
                             className="px-4 py-2 rounded-lg btn-primary"

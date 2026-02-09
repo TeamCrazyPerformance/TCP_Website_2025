@@ -19,6 +19,8 @@ import {
   faCalendarAlt,
   faUserFriends,
   faAward,
+  faFire,
+  faBook,
 } from '@fortawesome/free-solid-svg-icons';
 import { apiPost, apiGet } from '../api/client';
 
@@ -313,9 +315,9 @@ function Recruitment() {
               <p className="orbitron text-xl md:text-2xl text-gray-300 mb-6">
                 Team Crazy Performance
               </p>
-              <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-8">
-                서울과학기술대학교 선발형 개발자 동아리 TCP와 함께 실용적이고
-                창의적인 소프트웨어 프로젝트를 만들어보세요.
+              <p className="orbitron text-lg text-gray-400 max-w-2xl mx-auto mb-8">
+                서울과학기술대학교의 개발자 동아리 TCP에서 새로운 사람들과 함께
+                당신의 열정을 실현해보세요.
               </p>
               <button
                 id="heroApplyBtn"
@@ -342,13 +344,11 @@ function Recruitment() {
               About TCP
             </h2>
             <div className="max-w-4xl mx-auto">
-              <p className="text-xl text-gray-300 mb-6">
-                TCP (Team Crazy Performance)는 서울과학기술대학교의 매우
-                선발적인 개발자 동아리입니다.
+              <p className="orbitron text-xl text-gray-300 mb-6">
+                TCP (Team Crazy Performance)는 서울과학기술대학교의 개발자 동아리입니다.
               </p>
-              <p className="text-lg text-gray-400 mb-8">
-                우리는 협업, 스터디, 그리고 실험을 통해 실용적이고 창의적인
-                소프트웨어 프로젝트를 구축하는 것을 목표로 합니다.
+              <p className="orbitron text-lg text-gray-400 mb-8">
+                우리는 다양한 사람들이 모여, 함께 탐구하고 함께 성장하는 것을 목표로 합니다.
               </p>
             </div>
           </div>
@@ -360,7 +360,7 @@ function Recruitment() {
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <h2 className="orbitron text-3xl font-bold gradient-text mb-8 text-center">
-              Who Should Apply
+              TCP는 이런 사람들을 환영해요
             </h2>
             <div className="grid md:grid-cols-2 gap-8">
               <div className="scroll-fade">
@@ -372,12 +372,29 @@ function Recruitment() {
                     />
                   </div>
                   <h3 className="orbitron text-xl font-bold mb-4 text-blue-300 text-center">
-                    모든 서울과기대 학생
+                    서울과학기술대학교 학생
                   </h3>
                   <p className="text-gray-300 text-center">
-                    서울과학기술대학교의 모든 학생들을 환영합니다. 전공에
-                    관계없이 개발에 대한 열정이 있다면 누구든지 지원할 수
-                    있습니다.
+                    서울과학기술대학교의 모든 학생들을 환영해요. 전공에
+                    관계없이 개발에 대한 열정과 사랑이 있다면 누구나 지원할 수
+                    있어요.
+                  </p>
+                </div>
+              </div>
+              <div className="scroll-fade">
+                <div className="feature-card p-8 rounded-2xl">
+                  <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center">
+                    <FontAwesomeIcon
+                      icon={faFire}
+                      className="text-white text-2xl"
+                    />
+                  </div>
+                  <h3 className="orbitron text-xl font-bold mb-4 text-red-300 text-center">
+                    열정적인 학습자
+                  </h3>
+                  <p className="text-gray-300 text-center">
+                    개선하고 성장하려는 열정적인 학습자를 특히 찾고 있어요.
+                    함께 배우고 발전해나가는 것을 중요하게 생각해요.
                   </p>
                 </div>
               </div>
@@ -385,17 +402,16 @@ function Recruitment() {
                 <div className="feature-card p-8 rounded-2xl">
                   <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center">
                     <FontAwesomeIcon
-                      icon={faHeart}
+                      icon={faBook}
                       className="text-white text-2xl"
                     />
                   </div>
                   <h3 className="orbitron text-xl font-bold mb-4 text-purple-300 text-center">
-                    열정적인 학습자
+                    실전 경험자
                   </h3>
                   <p className="text-gray-300 text-center">
-                    현재 실력 수준보다는 개선하고 성장하려는 열정적인 학습자를
-                    특히 찾고 있습니다. 함께 배우고 발전해나가는 것이
-                    중요합니다.
+                    실무, 대회, 프로젝트 등에서 얻은 경험을 공유하며,
+                    함께 배우고 도전하는 분위기를 만들어갈 수 있는 사람을 찾아요.
                   </p>
                 </div>
               </div>
@@ -412,7 +428,7 @@ function Recruitment() {
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-8">
-              What We Do
+              TCP는 이런 활동을 해요
             </h2>
           </div>
 
@@ -566,7 +582,7 @@ function Recruitment() {
               className={`cta-button px-12 py-4 rounded-full text-lg font-bold orbitron text-white transition-colors ${!isRecruitmentActive ? 'opacity-50 cursor-not-allowed bg-gray-600' : 'hover:text-black'}`}
             >
               <FontAwesomeIcon icon={faRocket} className="mr-2" />
-              {isRecruitmentActive ? 'Apply Now' : 'Recruitment Closed'}
+              {isRecruitmentActive ? '지금 지원하기' : '모집 기간이 아닙니다'}
             </button>
             <p className="text-sm text-gray-300 mt-4">
               * 지원 기간: 매 학기 시작 2주 전 ~ 개강 후 1주

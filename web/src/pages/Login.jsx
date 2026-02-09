@@ -78,7 +78,7 @@ function Login() {
               <h1 className="orbitron text-3xl font-bold gradient-text mb-2">
                 TCP 로그인
               </h1>
-              <p className="text-gray-400">
+              <p className="orbitron text-gray-400">
                 Team Crazy Performance에 오신 것을 환영합니다
               </p>
             </div>
@@ -180,7 +180,7 @@ function Login() {
             {/* Additional Info */}
             <div className="text-center mt-8 text-sm text-gray-400">
               <p>
-                TCP 부원이 아니신가요?{' '}
+                TCP 부원이 되고싶으신가요?{' '}
                 <Link
                   to="/recruitment"
                   className="text-blue-400 hover:text-blue-300 underline"

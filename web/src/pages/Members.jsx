@@ -2,13 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { apiGet } from '../api/client';
 import defaultProfileImage from '../logo.svg';
 
+
+
 function Members() {
   const [members, setMembers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
-
-  const placeholderAvatar =
-    'https://via.placeholder.com/120/A8C5E6/FFFFFF?text=TCP';
 
   // 필터링 상태 관리
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,7 +22,7 @@ function Members() {
         setIsLoading(true);
         const data = await apiGet('/api/v1/members');
         const mapped = (data || []).map((user) => {
-          const image = user.profile_image || defaultProfileImage;
+          const image = user.profile_image;
 
           // education_status에 따라 구분
           const status =
@@ -186,9 +185,8 @@ function Members() {
               <p className="orbitron text-xl md:text-2xl text-gray-300 mb-6">
                 Team Crazy Performance
               </p>
-              <p className="text-lg text-gray-400 max-w-2xl mx-auto">
-                TCP 팀의 멤버들을 만나보세요. 검색과 필터로 원하는 멤버를
-                찾아보세요.
+              <p className="orbitron text-lg text-gray-400 max-w-2xl mx-auto">
+                TCP의 멤버들을 만나보세요. 검색과 필터로 원하는 멤버를 찾아보세요.
               </p>
             </div>
           </div>
@@ -204,7 +202,7 @@ function Members() {
                 htmlFor="search"
                 className="block text-sm font-medium text-gray-300 mb-2"
               >
-                Search
+                검색
               </label>
               <div className="relative">
                 <input
@@ -220,7 +218,7 @@ function Members() {
             </div>
             <div className="mt-6">
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                Technology Tags
+                태그 필터
               </label>
               <div id="tag-cloud" className="flex flex-wrap gap-2">
                 {[
@@ -259,8 +257,8 @@ function Members() {
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-4">
               현재 멤버
             </h2>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-              TCP 팀의 현재 활동 중인 멤버들입니다.
+            <p className="orbitron text-xl text-gray-300 max-w-3xl mx-auto">
+              현재 활동 중인 TCP 멤버들입니다.
             </p>
           </div>
 
@@ -359,8 +357,8 @@ function Members() {
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-4">
               졸업 멤버
             </h2>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-              TCP 팀을 졸업하여 각자의 길을 걸어가고 있는 멤버들입니다.
+            <p className="orbitron text-xl text-gray-300 max-w-3xl mx-auto">
+              학교를 졸업하여 각자의 길을 걸어가고 있는 TCP 멤버들입니다.
             </p>
           </div>
           <div

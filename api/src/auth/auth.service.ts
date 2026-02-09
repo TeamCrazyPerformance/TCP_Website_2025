@@ -89,7 +89,7 @@ export class AuthService {
       password: hashed,
       birth_date: dto.birth_date ? new Date(dto.birth_date) : null,
       tech_stack: dto.tech_stack ?? null,
-      profile_image: dto.profile_image ?? 'default_profile_image.png',
+      profile_image: dto.profile_image ?? '/images/default_profile.webp',
       is_public_github_username: dto.is_public_github_username ?? false,
       is_public_email: dto.is_public_email ?? false,
     });

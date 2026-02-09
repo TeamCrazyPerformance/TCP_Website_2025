@@ -170,11 +170,10 @@ function Study() {
                 <span className="gradient-text">TCP Study</span>
               </h1>
               <p className="orbitron text-xl md:text-2xl text-gray-300 mb-6">
-                함께 배우고 성장하는 개발 커뮤니티
+                다른 TCP 부원들과 함께 성장해요
               </p>
               <p className="text-lg text-gray-400 max-w-2xl mx-auto">
-                TCP는 다양한 기술 스터디를 통해 멤버들의 개발 역량을 강화하고,
-                최신 기술 트렌드를 함께 탐구합니다.
+                스터디를 개설하여 자신의 지식을 나누고 스터디에 참여하여 함께 성장해 보세요.
               </p>
             </div>
           </div>

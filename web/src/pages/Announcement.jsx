@@ -32,12 +32,12 @@ function Announcement() {
         const sorted = mapped.sort((a, b) => {
           const dateA = new Date(a.publishAt || a.createdAt);
           const dateB = new Date(b.publishAt || b.createdAt);
-          
+
           // publishAt 비교
           if (dateB.getTime() !== dateA.getTime()) {
             return dateB - dateA;
           }
-          
+
           // publishAt이 같으면 createdAt으로 비교
           return new Date(b.createdAt) - new Date(a.createdAt);
         });
@@ -138,11 +138,10 @@ function Announcement() {
                 <span className="gradient-text">Announcements</span>
               </h1>
               <p className="orbitron text-xl md:text-2xl text-gray-300 mb-6">
-                TCP의 중요한 소식을 놓치지 마세요!
+                TCP의 중요한 소식을 놓치지 마세요
               </p>
-              <p className="text-lg text-gray-400 max-w-2xl mx-auto">
-                동아리 운영, 행사, 프로젝트 등 TCP의 모든 공식 공지사항을
-                이곳에서 확인하실 수 있습니다.
+              <p className="orbitron text-lg text-gray-400 max-w-2xl mx-auto">
+                동아리 운영, 행사, 프로젝트 등 TCP의 모든 공식 공지사항을 이곳에서 확인하세요.
               </p>
             </div>
           </div>
@@ -197,8 +196,8 @@ function Announcement() {
                     <span className="text-sm text-gray-400">
                       {announcement.date
                         ? new Date(announcement.date).toLocaleDateString(
-                            'ko-KR'
-                          )
+                          'ko-KR'
+                        )
                         : ''}
                     </span>
                   </div>
@@ -227,11 +226,10 @@ function Announcement() {
                 return (
                   <button
                     key={page}
-                    className={`px-4 py-2 rounded-lg font-bold transition-colors ${
-                      currentPage === page
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                    }`}
+                    className={`px-4 py-2 rounded-lg font-bold transition-colors ${currentPage === page
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      }`}
                     onClick={() => handlePageChange(page)}
                   >
                     {page}

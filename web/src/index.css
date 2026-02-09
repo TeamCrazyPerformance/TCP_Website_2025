@@ -597,6 +597,12 @@ body {
   /* 로그인 카드 뒷 배경 블러 효과 */
 }
 
+.register-card {
+  background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
 .input-field {
   background: rgba(42, 42, 42, 0.5);
   /* light-gray의 50% 투명도 */

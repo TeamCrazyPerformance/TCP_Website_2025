@@ -15,13 +15,13 @@ export class ProfileService {
     const user = await this.userRepository.findOne({
       where: { id: userId },
       select: [
+        'username',
         'name',
         'username',
         'student_number',
         'major',
         'current_company',
         'profile_image',
-        'email',
         'tech_stack',
         'education_status',
         'github_username',
