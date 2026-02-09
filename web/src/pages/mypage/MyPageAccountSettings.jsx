@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiGet, apiPatch } from '../../api/client';
+import { formatBirthDate } from '../../utils/dateFormatter';
 
 const MyPageAccountSettings = () => {
     const [formData, setFormData] = useState({ username: '', name: '', phone: '', email: '' });
@@ -16,7 +17,7 @@ const MyPageAccountSettings = () => {
                 const accountData = {
                     username: data.username || '', // Added
                     name: data.name || '',
-                    birthday: data.birthDate || '',
+                    birthday: (data.birthDate || '').split('T')[0].replace(/-/g, '.'),
                     phone: data.phoneNumber || '',
                     email: data.email || ''
                 };
@@ -56,6 +57,9 @@ const MyPageAccountSettings = () => {
         const { id, value } = e.target;
         if (id === 'phone') {
             const formatted = formatPhoneNumber(value);
+            setFormData(prev => ({ ...prev, [id]: formatted }));
+        } else if (id === 'birthday') {
+            const formatted = formatBirthDate(value);
             setFormData(prev => ({ ...prev, [id]: formatted }));
         } else {
             setFormData(prev => ({ ...prev, [id]: value }));
@@ -102,7 +106,17 @@ const MyPageAccountSettings = () => {
                         </div>
                         <div>
                             <label htmlFor="birthday" className="form-label">생일</label>
-                            <input id="birthday" name="birthday" type="date" className="form-input" value={formData.birthday} onChange={handleInputChange} required />
+                            <input
+                                id="birthday"
+                                name="birthday"
+                                type="text"
+                                className="form-input"
+                                value={formData.birthday}
+                                onChange={handleInputChange}
+                                placeholder="YYYY.MM.DD"
+                                maxLength={10}
+                                required
+                            />
                         </div>
                     </div>
                 </section>
