@@ -730,14 +730,18 @@ function Register() {
                   />
                   <span className="ml-2 text-sm text-gray-300">
                     <Link
-                      to="#"
+                      to="/terms"
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="text-purple-400 hover:text-purple-300 underline"
                     >
                       이용약관
                     </Link>{' '}
                     및
                     <Link
-                      to="#"
+                      to="/privacy"
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="text-purple-400 hover:text-purple-300 underline"
                     >
                       개인정보처리방침
