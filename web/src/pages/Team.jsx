@@ -380,6 +380,9 @@ export default function Team() {
   return (
     <main className="container mx-auto px-4 py-24">
       <div className="text-center mb-16">
+        <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-teal-400 via-blue-500 to-purple-600 flex items-center justify-center">
+          <i className="fas fa-users text-white text-3xl"></i>
+        </div>
         <h1 className="orbitron text-4xl md:text-5xl font-bold gradient-text mb-4">
           Find Your Team
         </h1>
