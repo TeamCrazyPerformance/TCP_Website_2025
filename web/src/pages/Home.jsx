@@ -343,7 +343,7 @@ function Home() {
                   <i className="fas fa-check-circle text-green-400 mt-1"></i>
                   <div>
                     {/* "포용" h4 태그 왼쪽 정렬 - text-left 추가 */}
-                    <h4 className="orbitronfont-semibold mb-1 text-left">
+                    <h4 className="orbitron font-semibold mb-1 text-left">
                       포용 (Inclusion)
                     </h4>
                     <p className="text-gray-400 text-sm text-left">
