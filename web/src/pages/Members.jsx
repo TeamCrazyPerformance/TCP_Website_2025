@@ -1,13 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { apiGet } from '../api/client';
 
+import placeholderAvatar from '../assets/images/member_placeholder.webp';
+
 function Members() {
   const [members, setMembers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
-
-  const placeholderAvatar =
-    'https://via.placeholder.com/120/A8C5E6/FFFFFF?text=TCP';
 
   // 필터링 상태 관리
   const [searchTerm, setSearchTerm] = useState('');
@@ -210,7 +209,7 @@ function Members() {
                 htmlFor="search"
                 className="block text-sm font-medium text-gray-300 mb-2"
               >
-                Search
+                검색
               </label>
               <div className="relative">
                 <input
@@ -226,7 +225,7 @@ function Members() {
             </div>
             <div className="mt-6">
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                Technology Tags
+                태그 필터
               </label>
               <div id="tag-cloud" className="flex flex-wrap gap-2">
                 {[
@@ -265,7 +264,7 @@ function Members() {
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-4">
               현재 멤버
             </h2>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+            <p className="orbitron text-xl text-gray-300 max-w-3xl mx-auto">
               TCP 팀의 현재 활동 중인 멤버들입니다.
             </p>
           </div>
@@ -363,7 +362,7 @@ function Members() {
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-4">
               졸업 멤버
             </h2>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+            <p className="orbitron text-xl text-gray-300 max-w-3xl mx-auto">
               TCP 팀을 졸업하여 각자의 길을 걸어가고 있는 멤버들입니다.
             </p>
           </div>
