@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import logo from '../logo.svg';
 import { useAuth } from '../context/AuthContext';
@@ -6,6 +6,11 @@ import { useAuth } from '../context/AuthContext';
 function Header({ isScrolled }) {
   const navigate = useNavigate();
   const { isAuthenticated, logout, user } = useAuth();
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [user?.profile_image]);
 
   const displayName = useMemo(
     () => user?.name || user?.username || '사용자',
@@ -87,11 +92,12 @@ function Header({ isScrolled }) {
             {isAuthenticated ? (
               <>
                 <NavLink to="/mypage" className="flex items-center space-x-2 px-2 py-1 rounded-lg hover:bg-white/10 transition-colors group">
-                  {user?.profile_image ? (
+                  {user?.profile_image && !imgError ? (
                     <img
                       src={user.profile_image}
                       alt={displayName}
                       className="w-8 h-8 rounded-full object-cover border border-gray-600 group-hover:border-gray-400"
+                      onError={() => setImgError(true)}
                     />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs text-white border border-gray-600 group-hover:border-gray-400">

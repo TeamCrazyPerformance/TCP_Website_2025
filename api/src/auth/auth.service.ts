@@ -25,7 +25,7 @@ export class AuthService {
     let profile_image: string | null = user.profile_image;
 
     if (profile_image && profile_image !== 'default_profile_image.png') {
-      if (!profile_image.startsWith('http')) {
+      if (!profile_image.startsWith('http') && !profile_image.startsWith('/')) {
         profile_image = `/profiles/${profile_image}`;
       }
     } else {
