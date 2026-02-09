@@ -810,9 +810,6 @@ function Recruitment() {
                                 e.target.value = formatBirthDate(e.target.value);
                               }}
                             />
-                            className="form-input mt-1"
-                            max="9999-12-31"
-                            />
                           </div>
                         </label>
                         <label className="block text-sm font-medium text-gray-300 mt-2">
