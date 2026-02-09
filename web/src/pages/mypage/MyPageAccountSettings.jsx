@@ -101,14 +101,15 @@ const MyPageAccountSettings = () => {
                             <input id="email" name="email" type="email" className="form-input" value={formData.email} onChange={handleInputChange} required />
                         </div>
                     </div>
-                    <div className="mt-4">
-                        <button type="button" onClick={() => setIsModalOpen(true)} className="px-4 py-2 rounded-lg btn-secondary hover:bg-gray-800">
-                            <i className="fa-solid fa-key mr-2"></i>비밀번호 변경
-                        </button>
-                    </div>
                 </section>
 
                 <hr className="my-6 border-gray-700" />
+
+                <div className="flex items-center justify-center mt-4">
+                    <button type="button" onClick={() => setIsModalOpen(true)} className="px-4 py-2 rounded-lg btn-secondary hover:bg-gray-800">
+                        <i className="fa-solid fa-key mr-2"></i>비밀번호 변경
+                    </button>
+                </div>
 
                 <div className="flex items-center justify-end gap-3">
                     <button type="submit" className={`px-5 py-2 rounded-lg btn-primary ${!isDirty && 'opacity-50'}`} disabled={!isDirty}>저장</button>
