@@ -35,11 +35,17 @@ export const normalizeDate = (dateStr) => {
     if (parts.length === 3) {
         // Check if first part is year (4 digits)
         if (parts[0].length === 4) {
-            return parts.join('.'); // YYYY.MM.DD
+            const y = parts[0];
+            const m = parts[1].padStart(2, '0');
+            const d = parts[2].padStart(2, '0');
+            return `${y}.${m}.${d}`;
         }
         // Check if last part is year (4 digits), assume MM.DD.YYYY
         if (parts[2].length === 4) {
-            return `${parts[2]}.${parts[0]}.${parts[1]}`;
+            const y = parts[2];
+            const m = parts[0].padStart(2, '0');
+            const d = parts[1].padStart(2, '0');
+            return `${y}.${m}.${d}`;
         }
     }
     return cleanStr;
