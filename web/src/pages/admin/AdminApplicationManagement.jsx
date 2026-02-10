@@ -27,8 +27,8 @@ const ApplicationModal = ({ app, onClose, onUpdateStatus, onSaveComment }) => {
             onClick={handleBackdropClick}
         >
             <div
-                className="bg-gray-900 rounded-2xl overflow-y-auto border border-gray-700 shadow-2xl"
-                style={{ width: '1000px', height: '800px', maxWidth: '95vw', maxHeight: '90vh' }}
+                className="bg-gray-900 rounded-2xl overflow-y-auto border border-gray-700 shadow-2xl w-full"
+                style={{ width: 'min(1000px, 95vw)', height: 'min(800px, 90vh)', maxWidth: '95vw', maxHeight: '90vh' }}
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="bg-gray-900/95 backdrop-blur border-b border-gray-700 p-4 flex justify-between items-center">

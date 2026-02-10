@@ -375,40 +375,42 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
                 지원 멤버 ({team.applicants.length}명)
               </h4>
               <div className="bg-gray-800 bg-opacity-50 rounded-lg overflow-hidden">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-gray-700 bg-opacity-50">
-                    <tr>
-                      <th className="px-4 py-3 font-semibold text-gray-300">이름</th>
-                      <th className="px-4 py-3 font-semibold text-gray-300">지원역할</th>
-                      <th className="px-4 py-3 font-semibold text-gray-300">전화</th>
-                      <th className="px-4 py-3 font-semibold text-gray-300">이메일</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-700">
-                    {team.applicants.map((applicant) => (
-                      <tr key={applicant.id} className="hover:bg-gray-700 hover:bg-opacity-30 transition-colors">
-                        <td className="px-4 py-3 text-white font-medium">{applicant.name}</td>
-                        <td className="px-4 py-3 text-gray-300">{applicant.role?.roleName || applicant.role?.name || '역할 미정'}</td>
-                        <td className="px-4 py-3">
-                          <a 
-                            href={`tel:${applicant.phoneNumber}`}
-                            className="text-blue-400 hover:text-blue-300 transition-colors"
-                          >
-                            {applicant.phoneNumber}
-                          </a>
-                        </td>
-                        <td className="px-4 py-3">
-                          <a 
-                            href={`mailto:${applicant.email}`}
-                            className="text-blue-400 hover:text-blue-300 transition-colors break-all"
-                          >
-                            {applicant.email}
-                          </a>
-                        </td>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm min-w-[620px]">
+                    <thead className="bg-gray-700 bg-opacity-50">
+                      <tr>
+                        <th className="px-4 py-3 font-semibold text-gray-300">이름</th>
+                        <th className="px-4 py-3 font-semibold text-gray-300">지원역할</th>
+                        <th className="px-4 py-3 font-semibold text-gray-300">전화</th>
+                        <th className="px-4 py-3 font-semibold text-gray-300">이메일</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-700">
+                      {team.applicants.map((applicant) => (
+                        <tr key={applicant.id} className="hover:bg-gray-700 hover:bg-opacity-30 transition-colors">
+                          <td className="px-4 py-3 text-white font-medium">{applicant.name}</td>
+                          <td className="px-4 py-3 text-gray-300">{applicant.role?.roleName || applicant.role?.name || '역할 미정'}</td>
+                          <td className="px-4 py-3">
+                            <a
+                              href={`tel:${applicant.phoneNumber}`}
+                              className="text-blue-400 hover:text-blue-300 transition-colors"
+                            >
+                              {applicant.phoneNumber}
+                            </a>
+                          </td>
+                          <td className="px-4 py-3">
+                            <a
+                              href={`mailto:${applicant.email}`}
+                              className="text-blue-400 hover:text-blue-300 transition-colors break-all"
+                            >
+                              {applicant.email}
+                            </a>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </section>
           )}

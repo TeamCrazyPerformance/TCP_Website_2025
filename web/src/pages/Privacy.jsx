@@ -38,7 +38,7 @@ const Privacy = () => {
             <h2 className="text-4xl md:text-5xl font-black gradient-text">개인정보처리방침</h2>
             <p className="text-gray-400 mt-2">Team Crazy Performance 개인정보처리방침입니다.</p>
           </div>
-          <div className="doc-card p-4 rounded-xl min-w-[260px] self-stretch lg:self-auto">
+          <div className="doc-card p-4 rounded-xl w-full lg:w-auto lg:min-w-[260px] self-stretch lg:self-auto">
             <div className="flex items-center justify-between">
               <span className="text-gray-400 text-sm">버전</span>
               <span className="text-white font-semibold">v1.0</span>

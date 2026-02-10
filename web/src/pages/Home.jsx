@@ -123,14 +123,13 @@ function Home() {
           onClick={closeModal}
         >
           <div
-            className="bg-gray-900 rounded-2xl max-w-[95vw] overflow-y-auto border border-gray-700 shadow-2xl transform transition-all duration-300 scale-100"
-            style={{ width: '1000px' }}
+            className="bg-gray-900 rounded-2xl w-full max-w-[1000px] max-h-[90vh] overflow-y-auto border border-gray-700 shadow-2xl transform transition-all duration-300 scale-100"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-1">
               <div
                 className="relative w-full rounded-t-xl bg-black group"
-                style={{ height: '500px' }}
+                style={{ height: 'min(500px, 55vh)' }}
               >
                 <button
                   onClick={closeModal}

@@ -673,7 +673,9 @@ body {
     border: 1px solid rgba(255, 255, 255, .1);
     background: #0b1220cc;
     backdrop-filter: blur(6px);
-    min-width: 280px;
+    min-width: min(280px, calc(100vw - 2rem));
+    max-width: min(420px, calc(100vw - 2rem));
+    word-break: break-word;
 }
 
 .toast.success {
