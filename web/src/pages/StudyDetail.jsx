@@ -153,6 +153,17 @@ export default function StudyDetail() {
     };
   }, [id]);
 
+  // Filtered members for search (must be before early returns per Rules of Hooks)
+  const filteredMembers = useMemo(() => {
+    if (!memberSearch.trim()) return members;
+    const term = memberSearch.toLowerCase();
+    return members.filter(m =>
+      m.name.toLowerCase().includes(term) ||
+      m.role.toLowerCase().includes(term) ||
+      (m.major && m.major.toLowerCase().includes(term))
+    );
+  }, [members, memberSearch]);
+
 
   if (isLoading) {
     return (
@@ -344,17 +355,6 @@ export default function StudyDetail() {
       </div>
     );
   };
-
-  // Filtered members for search
-  const filteredMembers = useMemo(() => {
-    if (!memberSearch.trim()) return members;
-    const term = memberSearch.toLowerCase();
-    return members.filter(m =>
-      m.name.toLowerCase().includes(term) ||
-      m.role.toLowerCase().includes(term) ||
-      (m.major && m.major.toLowerCase().includes(term))
-    );
-  }, [members, memberSearch]);
 
   return (
     <main className="container mx-auto px-4 py-24">
@@ -721,8 +721,8 @@ export default function StudyDetail() {
                         style={{ background: 'rgba(42,42,42,0.3)' }}
                       >
                         <i className={`fas ${resource.format === 'pdf' ? 'fa-file-pdf text-red-400'
-                            : resource.format === 'docx' ? 'fa-file-word text-blue-400'
-                              : 'fa-file text-gray-400'
+                          : resource.format === 'docx' ? 'fa-file-word text-blue-400'
+                            : 'fa-file text-gray-400'
                           } text-lg`}></i>
                         <div className="flex-1">
                           <p className="font-medium text-white">{resource.name}</p>
