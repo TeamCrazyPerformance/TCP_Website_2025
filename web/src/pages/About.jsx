@@ -10,76 +10,173 @@ function About() {
   // 연도별 활동 히스토리 데이터
   const historyData = [
     {
-      year: 2024,
-      tag: '24',
-      gradientClass: 'gradient-blue-purple', // 새로운 CSS 클래스로 변경
-      title: '2024년',
-      subtitle: '시스템 혁신 및 규모 확장의 해',
-      achievements: [
-        '내부 코드 리뷰 시스템 런칭',
-        'AI 기반 학습 플랫폼 개발',
-        '50명 돌파 (역대 최대 규모)',
+      year: 2026,
+      tag: '26',
+      gradientClass: 'gradient-blue-purple',
+      title: '2026년 (계획)',
+      subtitle: '스터디 및 동아리원 간 교류 중심 운영',
+      highlights: [
+        '웹/보안/머신러닝 등 실전형 스터디 운영',
+        '1학년 및 신입부원 대상 개발자 튜토리얼 진행',
+        '동아리 MT',
+      ],
+      studies: [
+        '웹 개발 스터디 (HTML/CSS/JS)',
+        'C 스터디',
+        '전공 강의 스터디',
+        '보안 스터디 (Dreamhack)',
+        '머신러닝 스터디',
+        '개발자 튜토리얼',
       ],
       activities: [
-        { name: '시스템 개발', type: 'project' },
-        { name: 'AI/ML 스터디', type: 'study' },
-        { name: '신입생 환영회', type: 'event' },
-        { name: '국제 해커톤', type: 'competition' },
+        '개발자 튜토리얼',
+        '동아리 MT',
+      ],
+    },
+    {
+      year: 2025,
+      tag: '25',
+      gradientClass: 'gradient-purple-pink',
+      title: '2025년',
+      subtitle: '실전 중심 스터디와 프로젝트 확장의 해',
+      highlights: [
+        '동아리 연합 해커톤 진행 (TCP-EC-NL)',
+        'TCP_WEBSITE_2025 프로젝트 진행',
+        '1학년 및 신입부원 대상 개발자 튜토리얼 진행',
+        'CS 현직자 세미나(카카오 엔터, Theori, 슈퍼캣)',
+        '동아리 MT',
+      ],
+      studies: [
+        '웹 개발 스터디 (HTML/CSS/JS)',
+        '보안 스터디 (Dreamhack)',
+        'C 스터디',
+        '안드로이드 스터디',
+        '블록체인 스터디',
+        '개발자 튜토리얼',
+      ],
+      activities: [
+        '개발자 튜토리얼',
+        'TCP-EC-NL 연합 해커톤',
+        'CS 현직자 세미나',
+      ],
+    },
+    {
+      year: 2024,
+      tag: '24',
+      gradientClass: 'gradient-blue-purple',
+      title: '2024년',
+      subtitle: '수준별 학습 체계와 대외 성과의 해',
+      highlights: [
+        '2024 제 12회 K-hackathon 본선 진출',
+        '2024 MATLAB 대학생 AI 경진대회 본선 진출',
+        '2024 동계 SCI 음성인식 부트캠프 최우수상 수상',
+        'CS 현직자 세미나 진행 (토스페이, 와드, 와이즈라이트, 카카오 엔터 등)',
+        'TCP주최 해커톤 TCPC 2024 진행',
+        '동아리 MT',
+      ],
+      studies: [
+        '수준별 코스 (스타터, 재활, 부스터)',
+        '백엔드 스터디',
+        '웹 개발 스터디',
+        '알고리즘 스터디',
+        '블록체인 스터디',
+      ],
+      activities: [
+        'CS 현직자 세미나',
+        'TCP주최 해커톤 TCPC 2024',
+        '동아리 MT',
       ],
     },
     {
       year: 2023,
       tag: '23',
-      gradientClass: 'gradient-green-blue', // 새로운 CSS 클래스로 변경
+      gradientClass: 'gradient-green-blue',
       title: '2023년',
-      subtitle: '팀워크 강화 및 네트워킹 확대',
-      achievements: [
-        '인제 MT 성공적 개최',
-        '30명 회원 달성',
-        '오픈소스 프로젝트 3개 출시',
+      subtitle: '조별 프로젝트와 해커톤 중심 성장의 해',
+      highlights: [
+        '2023 Glitch 해커톤 참여',
+        'Seoul Web3 Festival 2023 해커톤 참여',
+        "SW개발 공모전 '피우다 프로젝트' 본선 진출",
+        '비욘드 바운더리스 해커톤 참여 및 본선 진출',
+        '관광데이터 활용 공모전 참여 및 장려상 수상',
+        '대구 광역시 ABB 해커톤 참여 및 최우수상 수상',
+        '현직자 선배님들과의 만남과 강연 (책걸이)',
+        'TCP주최 해커톤 TCPC 2023',
+        '동아리 MT',
+      ],
+      studies: [
+        '게임 (Unity, Unreal) 스터디',
+        '백엔드 스터디',
+        '프로그래밍 언어 (C++, Java) 스터디',
+        '수준별 알고리즘 스터디',
+        '컴퓨터과학 (CS) 지식 스터디',
+        '한 주 한 글 스터디',
+        '알고리즘 조별 스터디',
+        '개발 관련 독서 스터디',
       ],
       activities: [
-        { name: '인제 MT', type: 'event' },
-        { name: '오픈소스 개발', type: 'project' },
-        { name: '웹 개발 스터디', type: 'study' },
-        { name: '창업 경진대회', type: 'competition' },
+        'JS/TS 조별 스터디 및 프로젝트',
+        '파이썬 조별 스터디 및 프로젝트',
+        'Java조 조별 스터디 및 프로젝트',
+        '현직자 선배님들과의 만남과 강연 (책걸이)',
+        'TCP주최 해커톤 TCPC 2023 진행',
       ],
     },
     {
       year: 2022,
       tag: '22',
-      gradientClass: 'gradient-yellow-red', // 새로운 CSS 클래스로 변경
+      gradientClass: 'gradient-yellow-red',
       title: '2022년',
-      subtitle: '대외활동 확장 및 수상 성과',
-      achievements: [
-        '전국 AI 해커톤 1위 수상',
-        '첫 번째 대형 프로젝트 완료',
-        '멘토-멘티 시스템 구축',
+      subtitle: '기초 스터디 확대와 인프라 구축의 해',
+      highlights: [
+        '컴공 연합 유니티 게임 개발 프로젝트',
+        '실습장비 대여사업 (종료)',
+        '동아리 MT'
       ],
-      activities: [
-        { name: 'AI 해커톤 1위', type: 'achievement' },
-        { name: '대형 프로젝트', type: 'project' },
-        { name: '알고리즘 스터디', type: 'study' },
-        { name: '멘토링 시스템', type: 'event' },
+      studies: [
+        '유니티 스터디',
+        '백엔드 스터디',
+        '웹 크롤링- 웹 기초',
+        '알고리즘 스터디',
+        '웹 프론트 스터디',
+        '한 주 한 글 스터디',
+      ],
+      activities: ['컴공 연합 유니티 게임 개발 프로젝트'],
+      infra: [
+        'iOS 개발을 위한 맥북 (2대)',
+        '공유 모니터 (DELL UltraSharp U2722DE 6대)',
+        '딥러닝 워크스테이션 (AMD R9 5950X, DDR4 128G, RTX 3090)',
+        '동아리 서버',
       ],
     },
     {
       year: 2021,
       tag: '21',
-      gradientClass: 'gradient-purple-pink', // 새로운 CSS 클래스로 변경
+      gradientClass: 'gradient-purple-pink',
       title: '2021년',
-      subtitle: 'TCP 창립 및 기반 구축',
-      achievements: [
-        'TCP 동아리 공식 창립',
-        '초기 멤버 15명 모집',
-        '첫 번째 스터디 그룹 운영',
+      subtitle: '기초 역량 강화와 대외 활동 확장의 해',
+      highlights: [
+        '1학년 및 신입부원 대상 개발자 튜토리얼 진행',
+        'SCOFE 2021 참여',
+        '제 9회 엔지니어링산업설계대전 참여',
+        '제 3회 오픈인프라경진대회 참여',
+        '한이음 공모전 참여',
+        '정보통신대학교 공모전 참여',
+        '동아리 MT'
       ],
-      activities: [
-        { name: '동아리 창립', type: 'event' },
-        { name: '기초 스터디', type: 'study' },
-        { name: '첫 프로젝트', type: 'project' },
-        { name: '창립 파티', type: 'event' },
+      studies: [
+        'Git 스터디',
+        'JS 스터디',
+        '북 스터디: 도메인 개발',
+        'C 스터디',
+        '기술 인터뷰 스터디',
+        '디자인 패턴 스터디',
+        '개발자 튜토리얼',
+        '리팩토링 스터디',
+        '하루 한 번 잔디 심기 스터디',
+        '알고리즘 스터디',
       ],
+      activities: ['멘토/멘티 프로그램', 'TCP 취업 세미나', '외부 활동', '개발자 튜토리얼'],
     },
   ];
 
@@ -382,53 +479,58 @@ function About() {
                   <div className="accordion-body">
                     <div className="grid md:grid-cols-2 gap-6">
                       <div>
-                        <h4
-                          className={`font-semibold mb-3 ${data.year === 2024 ? 'text-blue-300' : data.year === 2023 ? 'text-green-300' : data.year === 2022 ? 'text-yellow-300' : 'text-purple-300'}`}
-                        >
-                          주요 성과
+                        <h4 className="history-section-title history-section-title-achievement">
+                          핵심 성과
                         </h4>
-                        <ul className="space-y-2 text-sm">
-                          {data.achievements.map((achievement, i) => (
-                            <li key={i} className="flex items-center space-x-2">
-                              {achievement.includes('수상') ? (
-                                <i className="fas fa-trophy text-yellow-400"></i>
-                              ) : achievement.includes('창립') ? (
-                                <i className="fas fa-star text-purple-400"></i>
-                              ) : (
-                                <i className="fas fa-check text-green-400"></i>
-                              )}
+                        <ul className="space-y-2 text-sm text-left">
+                          {data.highlights.map((achievement, i) => (
+                            <li key={i} className="history-highlight-item">
+                              <i className="fas fa-award"></i>
                               <span>{achievement}</span>
                             </li>
                           ))}
                         </ul>
                       </div>
                       <div>
-                        {/* 주요 활동 h4 태그 색상 변경 로직 유지, text-left 추가 */}
-                        <h4
-                          className="font-semibold mb-3 text-left"
-                          style={{
-                            color:
-                              data.year === 2024
-                                ? 'var(--accent-purple)'
-                                : data.year === 2023
-                                  ? 'var(--accent-blue)'
-                                  : data.year === 2022
-                                    ? 'var(--accent-pink)'
-                                    : 'var(--accent-green)',
-                          }}
-                        >
-                          주요 활동
+                        <h4 className="history-section-title history-section-title-study">
+                          스터디/활동
                         </h4>
-                        <div className="flex flex-wrap gap-2">
-                          {data.activities.map((activity, i) => (
-                            <span
-                              key={i}
-                              className={`activity-tag tag-${activity.type}`}
-                            >
-                              {activity.name}
-                            </span>
-                          ))}
+                        <div className="history-subsection">
+                          <div className="history-subsection-label">
+                            <i className="fas fa-book-open"></i> 스터디
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {data.studies.map((study, i) => (
+                              <span key={i} className="activity-tag history-tag-study-strong">
+                                {study}
+                              </span>
+                            ))}
+                          </div>
                         </div>
+                        <div className="history-subsection">
+                          <div className="history-subsection-label">
+                            <i className="fas fa-users"></i> 주요 활동
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {data.activities.map((activity, i) => (
+                              <span key={i} className="activity-tag tag-event">
+                                {activity}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        {data.infra?.length ? (
+                          <div className="history-infra-card text-left">
+                            <div className="history-infra-title">
+                              <i className="fas fa-server"></i> 인프라/운영 (참고)
+                            </div>
+                            <ul className="history-infra-list">
+                              {data.infra.map((item, i) => (
+                                <li key={i}>{item}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   </div>
