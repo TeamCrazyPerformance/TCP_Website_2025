@@ -408,7 +408,7 @@ function About() {
             </div>
 
             <div className="stat-card">
-              <div className="text-3xl font-bold gradient-text mb-2 counter">
+              <div className="text-3xl font-bold gradient-text mb-2">
                 {mainStats.totalMembers}+
               </div>
               <div className="text-sm text-gray-400">
@@ -426,7 +426,7 @@ function About() {
             </div>
 
             <div className="stat-card">
-              <div className="text-3xl font-bold gradient-text mb-2 counter">
+              <div className="text-3xl font-bold gradient-text mb-2">
                 {mainStats.awards}+
               </div>
               <div className="text-sm text-gray-400">국내외 대회 수상</div>
@@ -436,7 +436,7 @@ function About() {
 
           <div className="grid md:grid-cols-2 gap-6 mt-6">
             <div className="stat-card">
-              <div className="text-3xl font-bold gradient-text mb-2 counter">
+              <div className="text-3xl font-bold gradient-text mb-2">
                 {mainStats.projects}+
               </div>
               <div className="text-sm text-gray-400">
@@ -446,7 +446,7 @@ function About() {
             </div>
 
             <div className="stat-card">
-              <div className="text-3xl font-bold gradient-text mb-2 counter">
+              <div className="text-3xl font-bold gradient-text mb-2">
                 {mainStats.employmentRate}%
               </div>
               <div className="text-sm text-gray-400">졸업생 IT 취업률</div>
