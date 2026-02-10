@@ -72,7 +72,7 @@ const ImageEditorModal = ({
     if (!isOpen) return null;
 
     return (
-        <div className="modal active" style={{ zIndex: 1100 }}> {/* Ensure it's above other modals */}
+        <div className="modal active" style={{ zIndex: 2000 }}> {/* Ensure it's above other modals */}
             <div
                 className="modal-content"
                 style={{
