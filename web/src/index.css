@@ -195,6 +195,73 @@ body {
   color: #fde68a;
 }
 
+/* About history hierarchy tuning */
+.history-section-title {
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  text-align: left;
+}
+
+.history-section-title-achievement {
+  color: #fbbf24;
+}
+
+.history-section-title-study {
+  color: #93c5fd;
+}
+
+.history-highlight-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  color: #e5e7eb;
+}
+
+.history-highlight-item i {
+  color: #fbbf24;
+  margin-top: 0.2rem;
+}
+
+.history-subsection {
+  margin-bottom: 0.75rem;
+}
+
+.history-subsection-label {
+  font-size: 0.8rem;
+  color: #cbd5e1;
+  margin-bottom: 0.5rem;
+  text-align: left;
+}
+
+.history-tag-study-strong {
+  background: rgba(59, 130, 246, 0.24);
+  border: 1px solid rgba(147, 197, 253, 0.45);
+  color: #dbeafe;
+  font-weight: 600;
+}
+
+.history-infra-card {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 0.65rem;
+  border: 1px dashed rgba(148, 163, 184, 0.45);
+  background: rgba(30, 41, 59, 0.26);
+}
+
+.history-infra-title {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin-bottom: 0.35rem;
+}
+
+.history-infra-list {
+  margin: 0;
+  padding-left: 1rem;
+  color: #94a3b8;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
 /* Member Card Styles */
 .member-card {
   background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
