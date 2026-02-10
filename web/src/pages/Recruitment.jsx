@@ -70,6 +70,7 @@ function Recruitment() {
   const [awards, setAwards] = useState([{}]); // Initial single empty award
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRecruitmentActive, setIsRecruitmentActive] = useState(false); // New state
+  const [recruitmentPeriod, setRecruitmentPeriod] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [studentNumber, setStudentNumber] = useState('');
@@ -81,9 +82,25 @@ function Recruitment() {
       try {
         const data = await apiGet('/api/v1/recruitment/status');
         setIsRecruitmentActive(data.is_application_enabled);
+
+        if (data.start_date && data.end_date) {
+          const formatDate = (dateString) => {
+            const date = new Date(dateString);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}.${month}.${day}`;
+          };
+          setRecruitmentPeriod(
+            `${formatDate(data.start_date)} ~ ${formatDate(data.end_date)}`
+          );
+        } else {
+          setRecruitmentPeriod('');
+        }
       } catch (error) {
         console.error('Failed to check recruitment status:', error);
         setIsRecruitmentActive(false);
+        setRecruitmentPeriod('');
       }
     };
     checkStatus();
@@ -586,7 +603,7 @@ function Recruitment() {
               {isRecruitmentActive ? '지금 지원하기' : '모집 기간이 아닙니다'}
             </button>
             <p className="text-sm text-gray-300 mt-4">
-              * 지원 기간: 매 학기 시작 2주 전 ~ 개강 후 1주
+              * 지원 기간: {recruitmentPeriod || '추후 공지'}
             </p>
           </div>
         </div>
