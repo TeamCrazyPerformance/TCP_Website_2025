@@ -347,9 +347,9 @@ export default function StudyDetail() {
         {(userRole === 'guest') && (
           <button
             onClick={handleJoin}
-            className="cta-button text-white font-bold py-2 px-6 rounded-lg"
+            className="cta-button px-6 py-3 rounded-lg font-bold text-white hover:text-black transition-colors flex items-center"
           >
-            가입 신청하기
+            <i className="fas fa-user-plus mr-2"></i> 스터디 참여
           </button>
         )}
       </div>
@@ -357,11 +357,12 @@ export default function StudyDetail() {
   };
 
   return (
-    <main className="container mx-auto px-4 py-24">
+    <main className="container mx-auto px-4 py-24 max-w-6xl">
       {/* Back Navigation */}
-      <div className="mb-6">
-        <Link to="/study" className="text-gray-400 hover:text-white transition-colors inline-flex items-center">
-          <i className="fas fa-arrow-left mr-2"></i> 스터디 목록으로
+      <div className="mb-8">
+        <Link to="/study" className="back-button inline-flex items-center px-6 py-3 rounded-lg text-sm font-medium">
+          <i className="fas fa-arrow-left mr-2"></i>
+          스터디 목록으로 돌아가기
         </Link>
       </div>
 
@@ -431,7 +432,7 @@ export default function StudyDetail() {
           </div>
 
           {/* Tech Stack (Derived from tags for now or static placeholder if not in DB) */}
-          <div className="mt-6 pt-6 border-t border-gray-700">
+          <div className="mt-6">
             <h3 className="text-lg font-bold text-white mb-3">🛠️ 기술 스택</h3>
             <p className="text-gray-300">
               {study.tags.join(', ')}
@@ -611,7 +612,7 @@ export default function StudyDetail() {
                   </div>
                 )}
                 {filteredMembers.map(member => (
-                  <div key={member.id} className="member-card p-4 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors">
+                  <div key={member.id} className="member-card p-4 rounded-lg">
                     <div className="flex items-center space-x-3 mb-3">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center text-white font-bold overflow-hidden">
                         {member.avatar && member.avatar !== 'https://via.placeholder.com/40' ? (
@@ -626,22 +627,20 @@ export default function StudyDetail() {
                       </div>
                     </div>
                     <div className="text-xs text-gray-400 mb-2">
-                      {/* Placeholder for Major/Year since api doesn't send it yet */}
-                      컴퓨터공학과 • 3학년
+                      {member.major || '전공 미입력'} {member.studentNumber ? `${member.studentNumber}학번` : ''}
                     </div>
                     <p className="text-sm text-gray-300 mb-3">
-                      {/* Placeholder for bio */}
-                      안녕하세요, {member.name}입니다.
+                      {member.bio || `안녕하세요, ${member.name}입니다.`}
                     </p>
                     <div className="flex flex-wrap gap-1">
-                      <span className="tag tag-devops text-xs">MEMBER</span>
+                      <span className="tag tag-devops text-xs">{member.role || 'MEMBER'}</span>
                     </div>
 
                     {/* Kick button for Leader */}
                     {(userRole === 'leader' || currentUser?.role === 'ADMIN') && member.id !== currentUser?.id && (
-                      <div className="mt-3 text-right">
-                        <button className="text-xs text-red-500 hover:text-red-300">
-                          내보내기
+                      <div className="flex justify-end mt-3">
+                        <button className="text-xs px-3 py-1 rounded border border-red-800 hover:border-red-500 text-red-400 hover:text-red-300 transition-colors">
+                          <i className="fas fa-user-minus mr-1"></i>방출
                         </button>
                       </div>
                     )}
@@ -656,14 +655,13 @@ export default function StudyDetail() {
       {/* Article Modal */}
       {selectedProgress && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+          className="modal active"
           onClick={(e) => { if (e.target === e.currentTarget) setSelectedProgress(null); }}
         >
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto p-8 relative" style={{ background: 'linear-gradient(135deg, #1a1a1a, #2a2a2a)' }}>
+          <div className="modal-content" style={{ overflowY: 'auto' }}>
             <button
               onClick={() => setSelectedProgress(null)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white text-xl transition-colors z-10"
+              className="close-modal"
             >
               <i className="fas fa-times"></i>
             </button>
@@ -679,7 +677,7 @@ export default function StudyDetail() {
                   {selectedProgress.title}
                 </h1>
 
-                <div className="bg-gray-800 bg-opacity-50 rounded-lg p-4 mb-6">
+                <div className="article-meta rounded-lg p-4 mb-6">
                   <div className="flex flex-wrap items-center justify-between text-sm text-gray-300">
                     <div className="flex items-center space-x-4 mb-2 md:mb-0">
                       <div className="flex items-center space-x-2">
@@ -699,7 +697,7 @@ export default function StudyDetail() {
                 </div>
               </header>
 
-              <div className="rounded-lg p-6 mb-6" style={{ background: 'rgba(42,42,42,0.5)' }}>
+              <div className="article-content rounded-lg p-6 mb-6">
                 <div
                   className="article-body text-gray-200 text-left"
                   dangerouslySetInnerHTML={{
@@ -717,8 +715,7 @@ export default function StudyDetail() {
                       <button
                         key={resource.id}
                         onClick={() => handleDownload(resource.id, resource.name)}
-                        className="flex items-center space-x-3 p-3 rounded-lg w-full text-left hover:bg-gray-800 transition-colors"
-                        style={{ background: 'rgba(42,42,42,0.3)' }}
+                        className="attachment-item flex items-center space-x-3 p-3 rounded-lg w-full text-left"
                       >
                         <i className={`fas ${resource.format === 'pdf' ? 'fa-file-pdf text-red-400'
                           : resource.format === 'docx' ? 'fa-file-word text-blue-400'
