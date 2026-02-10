@@ -487,6 +487,21 @@ body {
   border-color: transparent;
 }
 
+/* Back Button Badge Style */
+.back-button {
+  background: var(--secondary-gray);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #d1d5db;
+  transition: all 0.3s ease;
+}
+
+.back-button:hover {
+  background: var(--light-gray);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
 .checkbox-container {
   display: flex;
   align-items: center;
