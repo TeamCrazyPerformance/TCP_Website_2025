@@ -187,6 +187,11 @@ function Profile() {
     setSelectedPhotoSrc(profile.photo || '');
     setSelectedFile(null);
   };
+
+  const closePhotoModal = () => {
+    setIsPhotoModalOpen(false);
+  };
+
   // 파일 업로드 처리 (수정됨: 에디터 열기)
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0];
