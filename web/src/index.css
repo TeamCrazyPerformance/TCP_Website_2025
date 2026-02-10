@@ -1061,6 +1061,19 @@ input[type="date"] {
   box-shadow: 0 4px 12px rgba(168, 197, 230, 0.3);
 }
 
+/* Search Input */
+.search-input {
+  background-color: var(--light-gray);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.search-input:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(168, 197, 230, 0.1);
+  outline: none;
+}
+
 /* Week Card Styles */
 .week-card {
   background: var(--secondary-gray);

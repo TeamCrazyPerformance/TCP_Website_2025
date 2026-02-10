@@ -1,7 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { apiGet, apiPost, apiDelete } from '../api/client';
+import DOMPurify from 'dompurify';
+import MarkdownIt from 'markdown-it';
 import defaultProfileImage from '../logo.svg';
+
+const md = new MarkdownIt({ html: true, linkify: true, breaks: true });
 
 export default function StudyDetail() {
   const { id } = useParams();
@@ -22,6 +26,9 @@ export default function StudyDetail() {
   const [progressContent, setProgressContent] = useState('');
   const [isSubmittingProgress, setIsSubmittingProgress] = useState(false);
   const [selectedProgress, setSelectedProgress] = useState(null); // For Modal
+
+  // Member search state
+  const [memberSearch, setMemberSearch] = useState('');
 
   // Resource upload state
   const fileInputRef = useRef(null);
@@ -338,8 +345,26 @@ export default function StudyDetail() {
     );
   };
 
+  // Filtered members for search
+  const filteredMembers = useMemo(() => {
+    if (!memberSearch.trim()) return members;
+    const term = memberSearch.toLowerCase();
+    return members.filter(m =>
+      m.name.toLowerCase().includes(term) ||
+      m.role.toLowerCase().includes(term) ||
+      (m.major && m.major.toLowerCase().includes(term))
+    );
+  }, [members, memberSearch]);
+
   return (
     <main className="container mx-auto px-4 py-24">
+      {/* Back Navigation */}
+      <div className="mb-6">
+        <Link to="/study" className="text-gray-400 hover:text-white transition-colors inline-flex items-center">
+          <i className="fas fa-arrow-left mr-2"></i> 스터디 목록으로
+        </Link>
+      </div>
+
       {/* Study Overview */}
       <section className="mb-12 scroll-fade visible">
         <div className="feature-card rounded-xl p-8">
@@ -435,7 +460,7 @@ export default function StudyDetail() {
             {progress.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {progress.map((item) => (
-                  <div key={item.id} className="week-card p-6 rounded-xl relative group">
+                  <div key={item.id} className="week-card p-6 rounded-xl relative group" onClick={() => setSelectedProgress(item)}>
                     <div className="flex items-center justify-between mb-3">
                       <span className="tag tag-blue text-xs">Week {item.weekNo || '?'}</span>
                       <span className="text-sm text-gray-400">
@@ -564,10 +589,28 @@ export default function StudyDetail() {
       {
         (userRole !== 'guest' || currentUser?.role === 'ADMIN') && (
           <section className="mb-12 scroll-fade visible">
-            <h2 className="text-3xl font-bold gradient-text mb-8">👥 스터디원</h2>
+            <h2 className="text-3xl font-bold gradient-text mb-8">👥 스터디원 검색</h2>
             <div className="feature-card rounded-xl p-8">
+              {/* Search Input */}
+              <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={memberSearch}
+                    onChange={(e) => setMemberSearch(e.target.value)}
+                    className="search-input w-full px-4 py-3 rounded-lg text-white placeholder-gray-400"
+                    placeholder="이름, 역할, 전공으로 검색..."
+                  />
+                </div>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {members.map(member => (
+                {filteredMembers.length === 0 && (
+                  <div className="col-span-full text-center py-8 text-gray-500">
+                    <i className="fas fa-user-slash text-4xl mb-4 block"></i>
+                    <p className="text-lg">검색 결과가 없습니다.</p>
+                  </div>
+                )}
+                {filteredMembers.map(member => (
                   <div key={member.id} className="member-card p-4 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors">
                     <div className="flex items-center space-x-3 mb-3">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center text-white font-bold overflow-hidden">
@@ -609,6 +652,92 @@ export default function StudyDetail() {
           </section>
         )
       }
-    </main >
+
+      {/* Article Modal */}
+      {selectedProgress && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setSelectedProgress(null); }}
+        >
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto p-8 relative" style={{ background: 'linear-gradient(135deg, #1a1a1a, #2a2a2a)' }}>
+            <button
+              onClick={() => setSelectedProgress(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white text-xl transition-colors z-10"
+            >
+              <i className="fas fa-times"></i>
+            </button>
+
+            <article>
+              <header className="mb-6">
+                <div className="mb-4">
+                  <span className="tag tag-blue px-3 py-1 rounded-full text-xs">
+                    Week {selectedProgress.weekNo || '?'}
+                  </span>
+                </div>
+                <h1 className="text-2xl md:text-3xl font-bold mb-4 gradient-text">
+                  {selectedProgress.title}
+                </h1>
+
+                <div className="bg-gray-800 bg-opacity-50 rounded-lg p-4 mb-6">
+                  <div className="flex flex-wrap items-center justify-between text-sm text-gray-300">
+                    <div className="flex items-center space-x-4 mb-2 md:mb-0">
+                      <div className="flex items-center space-x-2">
+                        <i className="fas fa-user text-blue-400"></i>
+                        <span>스터디장: {study.leader ? study.leader.name : '알 수 없음'}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <i className="fas fa-calendar text-purple-400"></i>
+                        <span>
+                          {selectedProgress.progressDate
+                            ? new Date(selectedProgress.progressDate).toISOString().split('T')[0].replace(/-/g, '.')
+                            : ''}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </header>
+
+              <div className="rounded-lg p-6 mb-6" style={{ background: 'rgba(42,42,42,0.5)' }}>
+                <div
+                  className="article-body text-gray-200 text-left"
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(md.render(selectedProgress.content || '')),
+                  }}
+                />
+              </div>
+
+              {/* Attachments */}
+              {selectedProgress.resources && selectedProgress.resources.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="text-lg font-bold text-white mb-4">📎 첨부 파일</h3>
+                  <div className="space-y-3">
+                    {selectedProgress.resources.map((resource) => (
+                      <button
+                        key={resource.id}
+                        onClick={() => handleDownload(resource.id, resource.name)}
+                        className="flex items-center space-x-3 p-3 rounded-lg w-full text-left hover:bg-gray-800 transition-colors"
+                        style={{ background: 'rgba(42,42,42,0.3)' }}
+                      >
+                        <i className={`fas ${resource.format === 'pdf' ? 'fa-file-pdf text-red-400'
+                            : resource.format === 'docx' ? 'fa-file-word text-blue-400'
+                              : 'fa-file text-gray-400'
+                          } text-lg`}></i>
+                        <div className="flex-1">
+                          <p className="font-medium text-white">{resource.name}</p>
+                          <p className="text-sm text-gray-400 uppercase">{resource.format}</p>
+                        </div>
+                        <i className="fas fa-download text-gray-400"></i>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </article>
+          </div>
+        </div>
+      )}
+    </main>
   );
 }
