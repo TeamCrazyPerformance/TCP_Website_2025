@@ -5,6 +5,8 @@ import FormSelect from '../ui/FormSelect';
 import { apiPost, apiPatch } from '../../api/client';
 import { formatBirthDate } from '../../utils/dateFormatter';
 
+import ImageEditorModal from '../common/ImageEditorModal';
+
 export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateTeam, initialData }) {
   const [form, setForm] = useState({
     title: '',
@@ -29,6 +31,10 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
   const [imagePreview, setImagePreview] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const isEditMode = !!initialData;
+
+  // Image Editor State
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [originalImageSrc, setOriginalImageSrc] = useState('');
 
   useEffect(() => {
     if (isOpen && initialData) {
@@ -166,14 +172,24 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
       return;
     }
 
-    setImageFile(file);
-
-    // 미리보기 생성
+    // Read file for editor
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result);
+    reader.onload = (ev) => {
+      setOriginalImageSrc(ev.target.result);
+      setIsEditorOpen(true);
+      e.target.value = ''; // Reset input
     };
     reader.readAsDataURL(file);
+  };
+
+  // 에디터 저장 핸들러
+  const handleEditorSave = (blob) => {
+    const file = new File([blob], "project_image.jpg", { type: "image/jpeg" });
+    const previewUrl = URL.createObjectURL(blob);
+
+    setImageFile(file);
+    setImagePreview(previewUrl);
+    setIsEditorOpen(false);
   };
 
   // 기존 이미지 삭제 함수
@@ -707,6 +723,14 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
           </form>
         </div>
       </div>
+      <ImageEditorModal
+        isOpen={isEditorOpen}
+        onClose={() => setIsEditorOpen(false)}
+        imageSrc={originalImageSrc}
+        onSave={handleEditorSave}
+        aspect={16 / 9}
+        shape="rect"
+      />
     </div>
   );
 }

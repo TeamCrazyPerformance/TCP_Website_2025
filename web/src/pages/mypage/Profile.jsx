@@ -16,6 +16,8 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { faGithub } from '@fortawesome/free-brands-svg-icons';
 
+import ImageEditorModal from '../../components/common/ImageEditorModal';
+
 function Profile() {
   // 프로필 정보 상태 관리
   const [profile, setProfile] = useState(null);
@@ -31,6 +33,10 @@ function Profile() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [modalImageError, setModalImageError] = useState(false);
   const fileInputRef = useRef(null);
+
+  // 이미지 에디터 상태
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [editorImageSrc, setEditorImageSrc] = useState('');
 
   // textarea 자동 높이 조절을 위한 ref
   const bioRef = useRef(null);
@@ -181,22 +187,34 @@ function Profile() {
     setSelectedPhotoSrc(profile.photo || '');
     setSelectedFile(null);
   };
-  const closePhotoModal = () => {
-    setIsPhotoModalOpen(false);
-  };
-
-  // 파일 업로드 처리
+  // 파일 업로드 처리 (수정됨: 에디터 열기)
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setSelectedFile(file); //파일 객체 저장
+      // 이미지 에디터를 위해 파일을 읽어서 URL로 변환
       const reader = new FileReader();
-      reader.onload = (e) => {
-        setSelectedPhotoSrc(e.target.result);
-        setModalImageError(false); // 새 이미지 로드 시 에러 초기화
+      reader.onload = (ev) => {
+        setEditorImageSrc(ev.target.result);
+        setIsEditorOpen(true);
+        // 파일 입력 초기화 (같은 파일 다시 선택 가능하도록)
+        e.target.value = '';
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  // 에디터 저장 핸들러
+  const handleEditorSave = (blob) => {
+    // Blob을 File 객체로 변환 (서버 전송용)
+    const file = new File([blob], "profile_image.jpg", { type: "image/jpeg" });
+
+    // 미리보기를 위해 Blob URL 생성
+    const previewUrl = URL.createObjectURL(blob);
+
+    setSelectedFile(file);
+    setSelectedPhotoSrc(previewUrl);
+    setModalImageError(false);
+    setIsEditorOpen(false);
   };
 
   // 프로필 사진 변경 저장
@@ -726,6 +744,16 @@ function Profile() {
           </div>
         </div>
       )}
+      {/* Image Editor Modal */}
+      <ImageEditorModal
+        isOpen={isEditorOpen}
+        onClose={() => setIsEditorOpen(false)}
+        imageSrc={editorImageSrc}
+        onSave={handleEditorSave}
+        aspect={1}
+        shape="round"
+      />
+
     </div>
   );
 }

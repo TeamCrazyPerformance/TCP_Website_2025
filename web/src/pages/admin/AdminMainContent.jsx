@@ -17,9 +17,15 @@ import {
   faSpinner,
 } from '@fortawesome/free-solid-svg-icons';
 
+import ImageEditorModal from '../../components/common/ImageEditorModal';
+
 function AdminMainContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // 이미지 에디터 상태
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [editingImage, setEditingImage] = useState({ type: null, src: '' });
 
   // 통계 상태 관리
   const [stats, setStats] = useState({
@@ -161,17 +167,31 @@ function AdminMainContent() {
     fileInputRefs[type].current.click();
   };
 
-  // 사진 프리뷰 및 파일 저장
+  // 사진 프리뷰 및 파일 저장 (수정됨: 에디터 열기)
   const handlePreviewPhoto = (e, type) => {
     const file = e.target.files[0];
     if (file) {
-      setFiles(prev => ({ ...prev, [type]: file })); // 파일 객체 저장
       const reader = new FileReader();
-      reader.onload = (e) => {
-        setPhotos((prevPhotos) => ({ ...prevPhotos, [type]: e.target.result }));
+      reader.onload = (ev) => {
+        setEditingImage({ type, src: ev.target.result });
+        setIsEditorOpen(true);
+        e.target.value = ''; // Reset input to allow re-selecting same file
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  // 에디터 저장 핸들러
+  const handleEditorSave = (blob) => {
+    const type = editingImage.type;
+    if (!type) return;
+
+    const file = new File([blob], `${type}.jpg`, { type: "image/jpeg" });
+    const previewUrl = URL.createObjectURL(blob);
+
+    setFiles(prev => ({ ...prev, [type]: file }));
+    setPhotos(prevPhotos => ({ ...prevPhotos, [type]: previewUrl }));
+    setIsEditorOpen(false);
   };
 
   // 사진 제거
@@ -790,6 +810,15 @@ function AdminMainContent() {
         accept=".json"
         multiple
         onChange={handleImportFileChange}
+      />
+      {/* Image Editor Modal */}
+      <ImageEditorModal
+        isOpen={isEditorOpen}
+        onClose={() => setIsEditorOpen(false)}
+        imageSrc={editingImage.src}
+        onSave={handleEditorSave}
+        aspect={16 / 9}
+        shape="rect"
       />
     </div>
   );
