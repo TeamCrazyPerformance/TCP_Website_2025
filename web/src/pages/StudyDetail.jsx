@@ -338,275 +338,277 @@ export default function StudyDetail() {
     );
   };
 
-  {/* Study Overview */ }
-  <section className="mb-12 scroll-fade visible">
-    <div className="feature-card rounded-xl p-8">
-      {/* Title Area */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6 mb-6">
-        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-400 via-blue-400 to-purple-400 flex items-center justify-center flex-shrink-0">
-          <i className="fas fa-network-wired text-white text-2xl"></i>
-        </div>
-        <div className="flex-1">
-          <h1 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-2">
-            {study.title}
-          </h1>
-          <p className="text-lg text-gray-300 mb-4">{study.description}</p>
-          <div className="flex flex-wrap gap-2">
-            {study.tags.map((tag, index) => {
-              // Simple logic to assign colors based on tag name or index
-              const colors = ['tag-blue', 'tag-purple', 'tag-green', 'tag-yellow', 'tag-red'];
-              const colorClass = colors[index % colors.length];
-              return (
-                <span key={tag} className={`tag ${colorClass}`}>
-                  {tag}
-                </span>
-              );
-            })}
+  return (
+    <main className="container mx-auto px-4 py-24">
+      {/* Study Overview */}
+      <section className="mb-12 scroll-fade visible">
+        <div className="feature-card rounded-xl p-8">
+          {/* Title Area */}
+          <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6 mb-6">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-400 via-blue-400 to-purple-400 flex items-center justify-center flex-shrink-0">
+              <i className="fas fa-network-wired text-white text-2xl"></i>
+            </div>
+            <div className="flex-1">
+              <h1 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-2">
+                {study.title}
+              </h1>
+              <p className="text-lg text-gray-300 mb-4">{study.description}</p>
+              <div className="flex flex-wrap gap-2">
+                {study.tags.map((tag, index) => {
+                  // Simple logic to assign colors based on tag name or index
+                  const colors = ['tag-blue', 'tag-purple', 'tag-green', 'tag-yellow', 'tag-red'];
+                  const colorClass = colors[index % colors.length];
+                  return (
+                    <span key={tag} className={`tag ${colorClass}`}>
+                      {tag}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="ml-auto flex flex-col gap-2">
+              <ActionButtons />
+            </div>
+          </div>
+
+          {/* Info Grid */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 text-gray-300">
+            <div>
+              <h3 className="text-lg font-bold text-white mb-2">📅 진행 기간</h3>
+              <p>{study.period}</p>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white mb-2">📍 진행 방식</h3>
+              <p>{study.method}</p>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white mb-2">🔄 주기</h3>
+              <p>매주 1회 (협의 예정)</p>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white mb-2">🏢 장소</h3>
+              <p>{study.location}</p>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white mb-2">👨‍💻 스터디장</h3>
+              <p>
+                <strong>{study.leader ? study.leader.name : '공석'}</strong>
+                {study.leader && <span className="block text-sm text-gray-400">"{study.leader.quote}"</span>}
+              </p>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white mb-2">👥 참여 인원</h3>
+              <p>
+                <span className="text-accent-blue font-bold">{study.memberCount}</span>명 / {study.recruitCount}명
+                {study.memberCount >= study.recruitCount ? ' (모집 완료)' : ' (모집 중)'}
+              </p>
+            </div>
+          </div>
+
+          {/* Tech Stack (Derived from tags for now or static placeholder if not in DB) */}
+          <div className="mt-6 pt-6 border-t border-gray-700">
+            <h3 className="text-lg font-bold text-white mb-3">🛠️ 기술 스택</h3>
+            <p className="text-gray-300">
+              {study.tags.join(', ')}
+            </p>
           </div>
         </div>
-        <div className="ml-auto flex flex-col gap-2">
-          <ActionButtons />
-        </div>
-      </div>
+      </section>
 
-      {/* Info Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 text-gray-300">
-        <div>
-          <h3 className="text-lg font-bold text-white mb-2">📅 진행 기간</h3>
-          <p>{study.period}</p>
-        </div>
-        <div>
-          <h3 className="text-lg font-bold text-white mb-2">📍 진행 방식</h3>
-          <p>{study.method}</p>
-        </div>
-        <div>
-          <h3 className="text-lg font-bold text-white mb-2">🔄 주기</h3>
-          <p>매주 1회 (협의 예정)</p>
-        </div>
-        <div>
-          <h3 className="text-lg font-bold text-white mb-2">🏢 장소</h3>
-          <p>{study.location}</p>
-        </div>
-        <div>
-          <h3 className="text-lg font-bold text-white mb-2">👨‍💻 스터디장</h3>
-          <p>
-            <strong>{study.leader ? study.leader.name : '공석'}</strong>
-            {study.leader && <span className="block text-sm text-gray-400">"{study.leader.quote}"</span>}
-          </p>
-        </div>
-        <div>
-          <h3 className="text-lg font-bold text-white mb-2">👥 참여 인원</h3>
-          <p>
-            <span className="text-accent-blue font-bold">{study.memberCount}</span>명 / {study.recruitCount}명
-            {study.memberCount >= study.recruitCount ? ' (모집 완료)' : ' (모집 중)'}
-          </p>
-        </div>
-      </div>
+      {/* Weekly Progress Section */}
+      {
+        (userRole !== 'guest' || currentUser?.role === 'ADMIN') && (
+          <section className="mb-12 scroll-fade visible">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-3xl font-bold gradient-text">📚 주차별 진행 현황</h2>
+              {(userRole === 'leader' || currentUser?.role === 'ADMIN') && (
+                <Link
+                  to={`/study/${id}/progress/write`}
+                  className="cta-button px-4 py-2 rounded-lg font-bold text-white hover:text-black transition-colors inline-flex items-center"
+                >
+                  <i className="fas fa-plus mr-2"></i> 새 글 작성
+                </Link>
+              )}
+            </div>
 
-      {/* Tech Stack (Derived from tags for now or static placeholder if not in DB) */}
-      <div className="mt-6 pt-6 border-t border-gray-700">
-        <h3 className="text-lg font-bold text-white mb-3">🛠️ 기술 스택</h3>
-        <p className="text-gray-300">
-          {study.tags.join(', ')}
-        </p>
-      </div>
-    </div>
-  </section>
+            {/* Weeks Grid */}
+            {progress.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {progress.map((item) => (
+                  <div key={item.id} className="week-card p-6 rounded-xl relative group">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="tag tag-blue text-xs">Week {item.weekNo || '?'}</span>
+                      <span className="text-sm text-gray-400">
+                        {item.progressDate ? new Date(item.progressDate).toISOString().split('T')[0].replace(/-/g, '.') : ''}
+                      </span>
+                    </div>
 
-  {/* Weekly Progress Section */ }
-  {
-    (userRole !== 'guest' || currentUser?.role === 'ADMIN') && (
-      <section className="mb-12 scroll-fade visible">
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-3xl font-bold gradient-text">📚 주차별 진행 현황</h2>
-          {(userRole === 'leader' || currentUser?.role === 'ADMIN') && (
-            <Link
-              to={`/study/${id}/progress/write`}
-              className="cta-button px-4 py-2 rounded-lg font-bold text-white hover:text-black transition-colors inline-flex items-center"
-            >
-              <i className="fas fa-plus mr-2"></i> 새 글 작성
-            </Link>
-          )}
-        </div>
+                    <h3 className="text-lg font-bold mb-2 text-white line-clamp-2">{item.title}</h3>
 
-        {/* Weeks Grid */}
-        {progress.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {progress.map((item) => (
-              <div key={item.id} className="week-card p-6 rounded-xl relative group">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="tag tag-blue text-xs">Week {item.weekNo || '?'}</span>
-                  <span className="text-sm text-gray-400">
-                    {item.progressDate ? new Date(item.progressDate).toISOString().split('T')[0].replace(/-/g, '.') : ''}
-                  </span>
-                </div>
+                    {/* Content Preview - strip HTML tags if needed or just show substring */}
+                    <div className="text-sm text-gray-400 mb-3 line-clamp-3">
+                      {item.content.replace(/<[^>]*>?/gm, '')}
+                    </div>
 
-                <h3 className="text-lg font-bold mb-2 text-white line-clamp-2">{item.title}</h3>
+                    {/* Hover Content / Actions */}
+                    <div className="hover-content absolute inset-x-0 bottom-0 p-6 bg-gray-800/90 backdrop-blur-sm rounded-b-xl border-t border-gray-700">
+                      {(userRole === 'leader' || currentUser?.role === 'ADMIN') ? (
+                        <div className="flex justify-between items-center">
+                          <div className="flex gap-2">
+                            <Link
+                              to={`/study/${id}/progress/${item.id}/edit`}
+                              className="text-xs px-3 py-1 rounded border border-gray-500 hover:border-white text-gray-300 hover:text-white transition-colors"
+                            >
+                              <i className="fas fa-pen mr-1"></i>편집
+                            </Link>
+                            <button
+                              onClick={async (e) => {
+                                e.preventDefault();
+                                if (!window.confirm('정말 삭제하시겠습니까?')) return;
+                                try {
+                                  await apiDelete(`/api/v1/study/${id}/progress/${item.id}`);
+                                  window.location.reload();
+                                } catch (err) { alert('삭제 실패'); }
+                              }}
+                              className="text-xs px-3 py-1 rounded border border-red-900 hover:border-red-500 text-red-400 hover:text-red-300 transition-colors"
+                            >
+                              <i className="fas fa-trash mr-1"></i>삭제
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-300">클릭하여 자세히 보기</p>
+                      )}
+                    </div>
 
-                {/* Content Preview - strip HTML tags if needed or just show substring */}
-                <div className="text-sm text-gray-400 mb-3 line-clamp-3">
-                  {item.content.replace(/<[^>]*>?/gm, '')}
-                </div>
-
-                {/* Hover Content / Actions */}
-                <div className="hover-content absolute inset-x-0 bottom-0 p-6 bg-gray-800/90 backdrop-blur-sm rounded-b-xl border-t border-gray-700">
-                  {(userRole === 'leader' || currentUser?.role === 'ADMIN') ? (
-                    <div className="flex justify-between items-center">
-                      <div className="flex gap-2">
-                        <Link
-                          to={`/study/${id}/progress/${item.id}/edit`}
-                          className="text-xs px-3 py-1 rounded border border-gray-500 hover:border-white text-gray-300 hover:text-white transition-colors"
-                        >
-                          <i className="fas fa-pen mr-1"></i>편집
-                        </Link>
-                        <button
-                          onClick={async (e) => {
-                            e.preventDefault();
-                            if (!window.confirm('정말 삭제하시겠습니까?')) return;
-                            try {
-                              await apiDelete(`/api/v1/study/${id}/progress/${item.id}`);
-                              window.location.reload();
-                            } catch (err) { alert('삭제 실패'); }
-                          }}
-                          className="text-xs px-3 py-1 rounded border border-red-900 hover:border-red-500 text-red-400 hover:text-red-300 transition-colors"
-                        >
-                          <i className="fas fa-trash mr-1"></i>삭제
-                        </button>
+                    <div className="mt-4 flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        {item.resources && item.resources.length > 0 && (
+                          <>
+                            <i className="fas fa-paperclip text-blue-400"></i>
+                            <span className="text-xs text-gray-400">{item.resources.length}개 첨부</span>
+                          </>
+                        )}
                       </div>
                     </div>
-                  ) : (
-                    <p className="text-xs text-gray-300">클릭하여 자세히 보기</p>
-                  )}
-                </div>
-
-                <div className="mt-4 flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    {item.resources && item.resources.length > 0 && (
-                      <>
-                        <i className="fas fa-paperclip text-blue-400"></i>
-                        <span className="text-xs text-gray-400">{item.resources.length}개 첨부</span>
-                      </>
-                    )}
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 bg-gray-900 rounded-lg border border-gray-800 border-dashed">
-            <i className="fas fa-book-open text-4xl text-gray-600 mb-4"></i>
-            <p className="text-gray-400">아직 등록된 진행사항이 없습니다.</p>
-          </div>
-        )}
-      </section>
-    )
-  }
+            ) : (
+              <div className="text-center py-12 bg-gray-900 rounded-lg border border-gray-800 border-dashed">
+                <i className="fas fa-book-open text-4xl text-gray-600 mb-4"></i>
+                <p className="text-gray-400">아직 등록된 진행사항이 없습니다.</p>
+              </div>
+            )}
+          </section>
+        )
+      }
 
-  {/* General Resources Section */ }
-  {
-    (userRole !== 'guest' || currentUser?.role === 'ADMIN') && (
-      <section className="mb-12 scroll-fade visible">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl font-bold gradient-text">📂 공유 자료</h2>
-          {(userRole === 'leader' || currentUser?.role === 'ADMIN') && (
-            <>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleResourceUpload}
-                accept=".pdf,.docx,.pptx"
-                className="hidden"
-              />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploadingResource}
-                className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
-              >
-                <i className="fas fa-upload mr-2"></i>
-                {isUploadingResource ? '업로드 중...' : '자료 업로드'}
-              </button>
-            </>
-          )}
-        </div>
-        {/* List layout for resources as per current simple design, or could be grid. Keeping list for file names. */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-          {resources.length > 0 ? (
-            <ul className="space-y-3">
-              {resources.map((resource) => (
-                <li key={resource.id} className="flex items-center justify-between bg-gray-800 p-4 rounded-lg hover:bg-gray-750 transition-colors">
-                  <div className="flex items-center">
-                    <i className={`fas ${resource.format === 'pdf' ? 'fa-file-pdf text-red-400' : resource.format === 'docx' ? 'fa-file-word text-blue-400' : 'fa-file-powerpoint text-orange-400'} text-2xl mr-4`}></i>
-                    <div>
-                      <p className="font-semibold text-white">{resource.name}</p>
-                      <p className="text-sm text-gray-400 uppercase">{resource.format}</p>
-                    </div>
-                  </div>
+      {/* General Resources Section */}
+      {
+        (userRole !== 'guest' || currentUser?.role === 'ADMIN') && (
+          <section className="mb-12 scroll-fade visible">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-3xl font-bold gradient-text">📂 공유 자료</h2>
+              {(userRole === 'leader' || currentUser?.role === 'ADMIN') && (
+                <>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleResourceUpload}
+                    accept=".pdf,.docx,.pptx"
+                    className="hidden"
+                  />
                   <button
-                    onClick={() => handleDownload(resource.id, resource.name)}
-                    className="text-gray-400 hover:text-white transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingResource}
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
                   >
-                    <i className="fas fa-download text-xl"></i>
+                    <i className="fas fa-upload mr-2"></i>
+                    {isUploadingResource ? '업로드 중...' : '자료 업로드'}
                   </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-gray-500 text-center">공유된 자료가 없습니다.</p>
-          )}
-        </div>
-      </section>
-    )
-  }
+                </>
+              )}
+            </div>
+            {/* List layout for resources as per current simple design, or could be grid. Keeping list for file names. */}
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+              {resources.length > 0 ? (
+                <ul className="space-y-3">
+                  {resources.map((resource) => (
+                    <li key={resource.id} className="flex items-center justify-between bg-gray-800 p-4 rounded-lg hover:bg-gray-750 transition-colors">
+                      <div className="flex items-center">
+                        <i className={`fas ${resource.format === 'pdf' ? 'fa-file-pdf text-red-400' : resource.format === 'docx' ? 'fa-file-word text-blue-400' : 'fa-file-powerpoint text-orange-400'} text-2xl mr-4`}></i>
+                        <div>
+                          <p className="font-semibold text-white">{resource.name}</p>
+                          <p className="text-sm text-gray-400 uppercase">{resource.format}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDownload(resource.id, resource.name)}
+                        className="text-gray-400 hover:text-white transition-colors"
+                      >
+                        <i className="fas fa-download text-xl"></i>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-500 text-center">공유된 자료가 없습니다.</p>
+              )}
+            </div>
+          </section>
+        )
+      }
 
-  {/* Member Search / List Section */ }
-  {
-    (userRole !== 'guest' || currentUser?.role === 'ADMIN') && (
-      <section className="mb-12 scroll-fade visible">
-        <h2 className="text-3xl font-bold gradient-text mb-8">👥 스터디원</h2>
-        <div className="feature-card rounded-xl p-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {members.map(member => (
-              <div key={member.id} className="member-card p-4 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors">
-                <div className="flex items-center space-x-3 mb-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center text-white font-bold overflow-hidden">
-                    {member.avatar && member.avatar !== 'https://via.placeholder.com/40' ? (
-                      <img src={member.avatar} alt={member.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <span>{member.name.charAt(0)}</span>
+      {/* Member Search / List Section */}
+      {
+        (userRole !== 'guest' || currentUser?.role === 'ADMIN') && (
+          <section className="mb-12 scroll-fade visible">
+            <h2 className="text-3xl font-bold gradient-text mb-8">👥 스터디원</h2>
+            <div className="feature-card rounded-xl p-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {members.map(member => (
+                  <div key={member.id} className="member-card p-4 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors">
+                    <div className="flex items-center space-x-3 mb-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center text-white font-bold overflow-hidden">
+                        {member.avatar && member.avatar !== 'https://via.placeholder.com/40' ? (
+                          <img src={member.avatar} alt={member.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <span>{member.name.charAt(0)}</span>
+                        )}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-white">{member.name}</h4>
+                        <p className="text-sm text-gray-400">{member.role}</p>
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-400 mb-2">
+                      {/* Placeholder for Major/Year since api doesn't send it yet */}
+                      컴퓨터공학과 • 3학년
+                    </div>
+                    <p className="text-sm text-gray-300 mb-3">
+                      {/* Placeholder for bio */}
+                      안녕하세요, {member.name}입니다.
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      <span className="tag tag-devops text-xs">MEMBER</span>
+                    </div>
+
+                    {/* Kick button for Leader */}
+                    {(userRole === 'leader' || currentUser?.role === 'ADMIN') && member.id !== currentUser?.id && (
+                      <div className="mt-3 text-right">
+                        <button className="text-xs text-red-500 hover:text-red-300">
+                          내보내기
+                        </button>
+                      </div>
                     )}
                   </div>
-                  <div>
-                    <h4 className="font-bold text-white">{member.name}</h4>
-                    <p className="text-sm text-gray-400">{member.role}</p>
-                  </div>
-                </div>
-                <div className="text-xs text-gray-400 mb-2">
-                  {/* Placeholder for Major/Year since api doesn't send it yet */}
-                  컴퓨터공학과 • 3학년
-                </div>
-                <p className="text-sm text-gray-300 mb-3">
-                  {/* Placeholder for bio */}
-                  안녕하세요, {member.name}입니다.
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  <span className="tag tag-devops text-xs">MEMBER</span>
-                </div>
-
-                {/* Kick button for Leader */}
-                {(userRole === 'leader' || currentUser?.role === 'ADMIN') && member.id !== currentUser?.id && (
-                  <div className="mt-3 text-right">
-                    <button className="text-xs text-red-500 hover:text-red-300">
-                      내보내기
-                    </button>
-                  </div>
-                )}
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-    )
-  }
+            </div>
+          </section>
+        )
+      }
     </main >
   );
 }
