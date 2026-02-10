@@ -1060,3 +1060,80 @@ input[type="date"] {
   transform: translateY(-3px);
   box-shadow: 0 4px 12px rgba(168, 197, 230, 0.3);
 }
+
+/* Week Card Styles */
+.week-card {
+  background: var(--secondary-gray);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  min-height: 180px;
+}
+
+.week-card:hover {
+  background-color: var(--light-gray);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(168, 197, 230, 0.15);
+}
+
+.week-card:hover .hover-content {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.hover-content {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.3s ease;
+}
+
+/* Domain Specific Tags */
+.tag-ai {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+
+.tag-ml {
+  background-color: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+}
+
+.tag-generative {
+  background-color: rgba(168, 85, 247, 0.2);
+  color: #a855f7;
+}
+
+.tag-python {
+  background-color: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+}
+
+.tag-pytorch {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.tag-k8s {
+  background-color: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.tag-devops {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.tag-ci {
+  background-color: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+.tag-docker {
+  background-color: rgba(14, 165, 233, 0.2);
+  color: #38bdf8;
+}
+
+.tag-cloud {
+  background-color: rgba(168, 85, 247, 0.2);
+  color: #d8b4fe;
+}
