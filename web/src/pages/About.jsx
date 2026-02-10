@@ -10,6 +10,30 @@ function About() {
   // 연도별 활동 히스토리 데이터
   const historyData = [
     {
+      year: 2026,
+      tag: '26',
+      gradientClass: 'gradient-blue-purple',
+      title: '2026년 (계획)',
+      subtitle: '스터디 및 동아리원 간 교류 중심 운영',
+      highlights: [
+        '웹/보안/머신러닝 등 실전형 스터디 운영',
+        '1학년 및 신입부원 대상 개발자 튜토리얼 진행',
+        '동아리 MT',
+      ],
+      studies: [
+        '웹 개발 스터디 (HTML/CSS/JS)',
+        'C 스터디',
+        '전공 강의 스터디',
+        '보안 스터디 (Dreamhack)',
+        '머신러닝 스터디',
+        '개발자 튜토리얼',
+      ],
+      activities: [
+        '개발자 튜토리얼',
+        '동아리 MT',
+      ],
+    },
+    {
       year: 2025,
       tag: '25',
       gradientClass: 'gradient-purple-pink',
@@ -18,18 +42,21 @@ function About() {
       highlights: [
         '동아리 연합 해커톤 진행 (TCP-EC-NL)',
         'TCP_WEBSITE_2025 프로젝트 진행',
-        'CS 현직자 세미나',
+        '1학년 및 신입부원 대상 개발자 튜토리얼 진행',
+        'CS 현직자 세미나(카카오 엔터, Theori, 슈퍼캣)',
+        '동아리 MT',
       ],
       studies: [
         '웹 개발 스터디 (HTML/CSS/JS)',
         '보안 스터디 (Dreamhack)',
         'C 스터디',
-        '안드로이드 스터디 (with EC)',
+        '안드로이드 스터디',
         '블록체인 스터디',
+        '개발자 튜토리얼',
       ],
       activities: [
         '개발자 튜토리얼',
-        '동아리 연합 해커톤 진행 (TCP-EC-NL)',
+        'TCP-EC-NL 연합 해커톤',
         'CS 현직자 세미나',
       ],
     },
@@ -55,8 +82,8 @@ function About() {
         '블록체인 스터디',
       ],
       activities: [
-        'CS 현직자 세미나 진행',
-        'TCP주최 해커톤 TCPC 2024 진행',
+        'CS 현직자 세미나',
+        'TCP주최 해커톤 TCPC 2024',
         '동아리 MT',
       ],
     },
@@ -74,7 +101,7 @@ function About() {
         '관광데이터 활용 공모전 참여 및 장려상 수상',
         '대구 광역시 ABB 해커톤 참여 및 최우수상 수상',
         '현직자 선배님들과의 만남과 강연 (책걸이)',
-        'TCP주최 해커톤 TCPC 2023 진행',
+        'TCP주최 해커톤 TCPC 2023',
         '동아리 MT',
       ],
       studies: [
@@ -93,7 +120,6 @@ function About() {
         'Java조 조별 스터디 및 프로젝트',
         '현직자 선배님들과의 만남과 강연 (책걸이)',
         'TCP주최 해커톤 TCPC 2023 진행',
-        '동아리 MT',
       ],
     },
     {
