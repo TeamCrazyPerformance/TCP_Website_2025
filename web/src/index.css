@@ -1173,3 +1173,19 @@ input[type="date"] {
   background-color: rgba(168, 85, 247, 0.2);
   color: #d8b4fe;
 }
+
+/* Back Button Styles */
+.back-button {
+  background: var(--secondary-gray);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transition: all 0.3s ease;
+  color: #d1d5db;
+  /* gray-300 */
+}
+
+.back-button:hover {
+  background: var(--light-gray);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  transform: translateY(-2px);
+}

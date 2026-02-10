@@ -398,7 +398,7 @@ export default function StudyDetail() {
           </div>
 
           {/* Info Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 text-gray-300">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 text-gray-300 text-left">
             <div>
               <h3 className="text-lg font-bold text-white mb-2">📅 진행 기간</h3>
               <p>{study.period}</p>
@@ -409,7 +409,7 @@ export default function StudyDetail() {
             </div>
             <div>
               <h3 className="text-lg font-bold text-white mb-2">🔄 주기</h3>
-              <p>매주 1회 (협의 예정)</p>
+              <p>Placeholder</p>
             </div>
             <div>
               <h3 className="text-lg font-bold text-white mb-2">🏢 장소</h3>
@@ -530,61 +530,7 @@ export default function StudyDetail() {
         )
       }
 
-      {/* General Resources Section */}
-      {
-        (userRole !== 'guest' || currentUser?.role === 'ADMIN') && (
-          <section className="mb-12 scroll-fade visible">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-3xl font-bold gradient-text">📂 공유 자료</h2>
-              {(userRole === 'leader' || currentUser?.role === 'ADMIN') && (
-                <>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleResourceUpload}
-                    accept=".pdf,.docx,.pptx"
-                    className="hidden"
-                  />
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploadingResource}
-                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    <i className="fas fa-upload mr-2"></i>
-                    {isUploadingResource ? '업로드 중...' : '자료 업로드'}
-                  </button>
-                </>
-              )}
-            </div>
-            {/* List layout for resources as per current simple design, or could be grid. Keeping list for file names. */}
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-              {resources.length > 0 ? (
-                <ul className="space-y-3">
-                  {resources.map((resource) => (
-                    <li key={resource.id} className="flex items-center justify-between bg-gray-800 p-4 rounded-lg hover:bg-gray-750 transition-colors">
-                      <div className="flex items-center">
-                        <i className={`fas ${resource.format === 'pdf' ? 'fa-file-pdf text-red-400' : resource.format === 'docx' ? 'fa-file-word text-blue-400' : 'fa-file-powerpoint text-orange-400'} text-2xl mr-4`}></i>
-                        <div>
-                          <p className="font-semibold text-white">{resource.name}</p>
-                          <p className="text-sm text-gray-400 uppercase">{resource.format}</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleDownload(resource.id, resource.name)}
-                        className="text-gray-400 hover:text-white transition-colors"
-                      >
-                        <i className="fas fa-download text-xl"></i>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-gray-500 text-center">공유된 자료가 없습니다.</p>
-              )}
-            </div>
-          </section>
-        )
-      }
+      {/* General Resources Section - REMOVED per user request */}
 
       {/* Member Search / List Section */}
       {
@@ -603,6 +549,9 @@ export default function StudyDetail() {
                     placeholder="이름, 역할, 전공으로 검색..."
                   />
                 </div>
+                <button className="cta-button px-6 py-3 rounded-lg font-bold text-white hover:text-black transition-colors flex items-center justify-center shrink-0">
+                  <i className="fas fa-search mr-2"></i> 검색
+                </button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredMembers.length === 0 && (
