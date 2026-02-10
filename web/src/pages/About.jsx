@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import logo from '../logo.svg';
-import { stats } from '../data/stats';
+import { stats as staticStats } from '../data/stats';
 
 function About() {
   // 아코디언 인덱스 상태 관리
   const [openAccordion, setOpenAccordion] = useState(0); // 첫 번째 아코디언 실행
+  const [mainStats, setMainStats] = useState({
+    totalMembers: 0,
+    projects: 0,
+    awards: 0,
+    employmentRate: 0,
+  });
 
   // 연도별 활동 히스토리 데이터
   const historyData = [
@@ -248,6 +254,25 @@ function About() {
       counterObserver.observe(counter);
     });
 
+    // 메인 페이지와 동일한 백엔드 통계 소스 사용
+    const fetchMainStatistics = async () => {
+      try {
+        const response = await fetch('/api/v1/main/statistics');
+        if (!response.ok) return;
+        const data = await response.json();
+        setMainStats({
+          totalMembers: data.totalMembers ?? 0,
+          projects: data.projects ?? 0,
+          awards: data.awards ?? 0,
+          employmentRate: data.employmentRate ?? 0,
+        });
+      } catch (error) {
+        console.error('Failed to fetch main statistics for About:', error);
+      }
+    };
+
+    fetchMainStatistics();
+
     // 컴포넌트 언마운트 시 클린업
     return () => {
       observer.disconnect(); // IntersectionObserver 연결 해제
@@ -376,7 +401,7 @@ function About() {
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="stat-card">
               <div className="text-3xl font-bold gradient-text mb-2 counter">
-                {stats.foundingYear}
+                {staticStats.foundingYear}
               </div>
               <div className="text-sm text-gray-400">창립년도</div>
               <i className="fas fa-calendar-alt text-blue-400 text-2xl mt-3"></i>
@@ -384,7 +409,7 @@ function About() {
 
             <div className="stat-card">
               <div className="text-3xl font-bold gradient-text mb-2 counter">
-                {stats.totalMembers}+
+                {mainStats.totalMembers}+
               </div>
               <div className="text-sm text-gray-400">
                 총 멤버수 (활동 + 졸업생)
@@ -394,7 +419,7 @@ function About() {
 
             <div className="stat-card">
               <div className="text-3xl font-bold gradient-text mb-2 counter">
-                {stats.studyGroups}+
+                {staticStats.studyGroups}+
               </div>
               <div className="text-sm text-gray-400">스터디 그룹</div>
               <i className="fas fa-book text-green-400 text-2xl mt-3"></i>
@@ -402,7 +427,7 @@ function About() {
 
             <div className="stat-card">
               <div className="text-3xl font-bold gradient-text mb-2 counter">
-                {stats.awards}+
+                {mainStats.awards}+
               </div>
               <div className="text-sm text-gray-400">국내외 대회 수상</div>
               <i className="fas fa-trophy text-yellow-400 text-2xl mt-3"></i>
@@ -412,7 +437,7 @@ function About() {
           <div className="grid md:grid-cols-2 gap-6 mt-6">
             <div className="stat-card">
               <div className="text-3xl font-bold gradient-text mb-2 counter">
-                {stats.projects}+
+                {mainStats.projects}+
               </div>
               <div className="text-sm text-gray-400">
                 프로젝트 완료 (내부 + 오픈소스)
@@ -422,7 +447,7 @@ function About() {
 
             <div className="stat-card">
               <div className="text-3xl font-bold gradient-text mb-2 counter">
-                {stats.employmentRate}%
+                {mainStats.employmentRate}%
               </div>
               <div className="text-sm text-gray-400">졸업생 IT 취업률</div>
               <i className="fas fa-briefcase text-cyan-400 text-2xl mt-3"></i>
