@@ -358,13 +358,13 @@ function Recruitment() {
       {/* 지원자 세션 */}
       <section id="who-should-apply" className="py-16">
         <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-6xl mx-auto">
             <h2 className="orbitron text-3xl font-bold gradient-text mb-8 text-center">
               TCP는 이런 사람들을 환영해요
             </h2>
-            <div className="grid md:grid-cols-2 gap-8">
-              <div className="scroll-fade">
-                <div className="feature-card p-8 rounded-2xl">
+            <div className="grid md:grid-cols-3 gap-8">
+              <div className="scroll-fade h-full">
+                <div className="feature-card p-8 rounded-2xl h-full flex flex-col">
                   <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
                     <FontAwesomeIcon
                       icon={faGraduationCap}
@@ -374,15 +374,15 @@ function Recruitment() {
                   <h3 className="orbitron text-xl font-bold mb-4 text-blue-300 text-center">
                     서울과학기술대학교 학생
                   </h3>
-                  <p className="text-gray-300 text-center">
+                  <p className="text-gray-300 text-center flex-1">
                     서울과학기술대학교의 모든 학생들을 환영해요. 전공에
                     관계없이 개발에 대한 열정과 사랑이 있다면 누구나 지원할 수
                     있어요.
                   </p>
                 </div>
               </div>
-              <div className="scroll-fade">
-                <div className="feature-card p-8 rounded-2xl">
+              <div className="scroll-fade h-full">
+                <div className="feature-card p-8 rounded-2xl h-full flex flex-col">
                   <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center">
                     <FontAwesomeIcon
                       icon={faFire}
@@ -392,14 +392,14 @@ function Recruitment() {
                   <h3 className="orbitron text-xl font-bold mb-4 text-red-300 text-center">
                     열정적인 학습자
                   </h3>
-                  <p className="text-gray-300 text-center">
+                  <p className="text-gray-300 text-center flex-1">
                     개선하고 성장하려는 열정적인 학습자를 특히 찾고 있어요.
                     함께 배우고 발전해나가는 것을 중요하게 생각해요.
                   </p>
                 </div>
               </div>
-              <div className="scroll-fade">
-                <div className="feature-card p-8 rounded-2xl">
+              <div className="scroll-fade h-full">
+                <div className="feature-card p-8 rounded-2xl h-full flex flex-col">
                   <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center">
                     <FontAwesomeIcon
                       icon={faBook}
@@ -409,7 +409,7 @@ function Recruitment() {
                   <h3 className="orbitron text-xl font-bold mb-4 text-purple-300 text-center">
                     실전 경험자
                   </h3>
-                  <p className="text-gray-300 text-center">
+                  <p className="text-gray-300 text-center flex-1">
                     실무, 대회, 프로젝트 등에서 얻은 경험을 공유하며,
                     함께 배우고 도전하는 분위기를 만들어갈 수 있는 사람을 찾아요.
                   </p>
@@ -433,10 +433,10 @@ function Recruitment() {
           </div>
 
           <div className="max-w-6xl mx-auto">
-            {/* 2024 성과 */}
+            {/* 2024-2025 성과 */}
             <div className="mb-12 scroll-fade">
               <h3 className="orbitron text-2xl font-bold mb-6 text-center text-blue-300">
-                2024 주요 성과
+                2024-2025 주요 성과
               </h3>
               <div className="grid md:grid-cols-3 gap-6">
                 <div className="achievement-card">
@@ -446,13 +446,16 @@ function Recruitment() {
                       className="text-3xl text-yellow-400 mb-4"
                     />
                     <h4 className="orbitron font-bold text-lg mb-2">
-                      대회 성과
+                      대회/해커톤 성과
                     </h4>
                     <p className="text-gray-300 text-sm">
-                      • ICPC 지역 예선 본선 진출
+                      • 동아리 연합 해커톤 진행 (TCP-EC-NL)
                       <br />
-                      • 해커톤 대회 3회 수상
-                      <br />• 창업 경진대회 우수상
+                      • TCPC 2024 진행
+                      <br />
+                      • 2024 제 12회 K-hackathon 본선 진출
+                      <br />
+                      • 2024 동계 SCI 음성인식 부트캠프 최우수상 수상
                     </p>
                   </div>
                 </div>
@@ -463,40 +466,45 @@ function Recruitment() {
                       className="text-3xl text-green-400 mb-4"
                     />
                     <h4 className="orbitron font-bold text-lg mb-2">
-                      프로젝트 완료
+                      스터디 운영
                     </h4>
                     <p className="text-gray-300 text-sm">
-                      • 웹 서비스 프로젝트 8개
+                      • 웹 개발 스터디 (HTML/CSS/JS)
                       <br />
-                      • 모바일 앱 프로젝트 5개
-                      <br />• AI/ML 프로젝트 3개
+                      • 보안 스터디 (Dreamhack)
+                      <br />
+                      • 백엔드 스터디
+                      <br />
+                      • 알고리즘 스터디
+                      <br />
+                      • 블록체인 스터디 등
                     </p>
                   </div>
                 </div>
                 <div className="achievement-card">
                   <div className="text-center">
                     <FontAwesomeIcon
-                      icon={faBriefcase}
+                      icon={faBook}
                       className="text-3xl text-purple-400 mb-4"
                     />
                     <h4 className="orbitron font-bold text-lg mb-2">
-                      취업 성과
+                      세미나·커뮤니티 활동
                     </h4>
                     <p className="text-gray-300 text-sm">
-                      • 네이버, 카카오 등 대기업 취업
+                      • CS 현직자 세미나 진행
                       <br />
-                      • 스타트업 창업 2팀
-                      <br />• 인턴십 경험 15명
+                      • 개발자 튜토리얼 운영 (신입/1학년 대상)
+                      <br />• 동아리 MT 및 멘토/멘티 프로그램
                     </p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* 2024 스터디 활동 */}
+            {/* 2024-2025 스터디 활동 */}
             <div className="scroll-fade">
               <h3 className="orbitron text-2xl font-bold mb-6 text-center text-purple-300">
-                2024 스터디 활동
+                2024-2025 스터디 활동
               </h3>
               <div className="grid md:grid-cols-2 gap-8">
                 <div className="feature-card p-6 rounded-2xl">
@@ -509,28 +517,28 @@ function Recruitment() {
                         icon={faCode}
                         className="text-blue-400"
                       />
-                      <span>알고리즘 & 자료구조 스터디 (매주 목요일)</span>
+                      <span>웹 개발 스터디 (HTML/CSS/JS, 실습 중심)</span>
                     </li>
                     <li className="flex items-center space-x-2">
                       <FontAwesomeIcon
                         icon={faGlobe}
                         className="text-green-400"
                       />
-                      <span>웹 개발 스터디 (React, Node.js)</span>
+                      <span>보안 스터디 (Dreamhack 실습 중심)</span>
                     </li>
                     <li className="flex items-center space-x-2">
                       <FontAwesomeIcon
                         icon={faMobileAlt}
                         className="text-purple-400"
                       />
-                      <span>모바일 앱 개발 스터디 (Flutter, React Native)</span>
+                      <span>알고리즘 스터디 (수준별 문제 해결)</span>
                     </li>
                     <li className="flex items-center space-x-2">
                       <FontAwesomeIcon
                         icon={faBrain}
                         className="text-pink-400"
                       />
-                      <span>AI/ML 스터디 (PyTorch, TensorFlow)</span>
+                      <span>안드로이드 스터디</span>
                     </li>
                   </ul>
                 </div>
@@ -544,28 +552,28 @@ function Recruitment() {
                         icon={faUsers}
                         className="text-blue-400"
                       />
-                      <span>팀 프로젝트 (4-6명 팀으로 구성)</span>
+                      <span>JS/TS · Python · Java 조별 스터디 및 프로젝트</span>
                     </li>
                     <li className="flex items-center space-x-2">
                       <FontAwesomeIcon
                         icon={faCalendarAlt}
                         className="text-green-400"
                       />
-                      <span>월간 프로젝트 발표회</span>
+                      <span>CS 현직자 세미나 (토스페이, 와드, 와이즈라이트 등)</span>
                     </li>
                     <li className="flex items-center space-x-2">
                       <FontAwesomeIcon
                         icon={faUserFriends}
                         className="text-purple-400"
                       />
-                      <span>선배 멘토링 프로그램</span>
+                      <span>개발자 튜토리얼 (신입/1학년 대상 기초 온보딩)</span>
                     </li>
                     <li className="flex items-center space-x-2">
                       <FontAwesomeIcon
                         icon={faAward}
                         className="text-pink-400"
                       />
-                      <span>우수 프로젝트 시상 및 포트폴리오 지원</span>
+                      <span>TCPC 및 연합 해커톤으로 실전 협업 경험 강화</span>
                     </li>
                   </ul>
                 </div>
