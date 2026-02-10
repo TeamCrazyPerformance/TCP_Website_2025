@@ -3,6 +3,33 @@ import { Link } from 'react-router-dom';
 import logo from '../logo.svg';
 import { stats as staticStats } from '../data/stats';
 
+function useCountUp(target, duration = 1200) {
+  const [value, setValue] = useState(0);
+
+  useEffect(() => {
+    const startValue = value;
+    const delta = target - startValue;
+    const startTime = performance.now();
+    let frameId = null;
+
+    const animate = (now) => {
+      const progress = Math.min((now - startTime) / duration, 1);
+      const nextValue = Math.round(startValue + delta * progress);
+      setValue(nextValue);
+      if (progress < 1) {
+        frameId = requestAnimationFrame(animate);
+      }
+    };
+
+    frameId = requestAnimationFrame(animate);
+    return () => {
+      if (frameId) cancelAnimationFrame(frameId);
+    };
+  }, [target, duration]);
+
+  return value;
+}
+
 function About() {
   // 아코디언 인덱스 상태 관리
   const [openAccordion, setOpenAccordion] = useState(0); // 첫 번째 아코디언 실행
@@ -12,6 +39,12 @@ function About() {
     awards: 0,
     employmentRate: 0,
   });
+  const animatedFoundingYear = useCountUp(staticStats.foundingYear, 1200);
+  const animatedStudyGroups = useCountUp(staticStats.studyGroups, 1200);
+  const animatedTotalMembers = useCountUp(mainStats.totalMembers, 1200);
+  const animatedProjects = useCountUp(mainStats.projects, 1200);
+  const animatedAwards = useCountUp(mainStats.awards, 1200);
+  const animatedEmploymentRate = useCountUp(mainStats.employmentRate, 1200);
 
   // 연도별 활동 히스토리 데이터
   const historyData = [
@@ -206,54 +239,6 @@ function About() {
       observer.observe(el);
     });
 
-    // 카운트 업 애니메이션
-    const counterObserverOptions = {
-      threshold: 0.5, // 카운터 애니매이션 시작 임계값
-    };
-
-    const counterObserver = new IntersectionObserver(
-      (entries, observerInstance) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const counter = entry.target;
-            const originalText = counter.textContent;
-            const target = parseInt(originalText.replace(/[^0-9]/g, ''));
-            const suffix = originalText.replace(/[0-9]/g, '');
-
-            if (isNaN(target)) return;
-
-            let startTime = null;
-            const duration = 2000; // 애니메이션 지속 시간
-
-            const animate = (timestamp) => {
-              if (!startTime) startTime = timestamp;
-              const progress = timestamp - startTime;
-              const current = Math.min(
-                Math.floor((progress / duration) * target),
-                target
-              );
-
-              counter.textContent = current + suffix;
-
-              if (progress < duration) {
-                requestAnimationFrame(animate);
-              } else {
-                counter.textContent = originalText; // 애니메이션 완료 후 원래 텍스트로 복원
-              }
-            };
-
-            requestAnimationFrame(animate);
-            observerInstance.unobserve(counter); // 한 번 실행 후 관찰 해제
-          }
-        });
-      },
-      counterObserverOptions
-    );
-
-    document.querySelectorAll('.counter').forEach((counter) => {
-      counterObserver.observe(counter);
-    });
-
     // 메인 페이지와 동일한 백엔드 통계 소스 사용
     const fetchMainStatistics = async () => {
       try {
@@ -276,7 +261,6 @@ function About() {
     // 컴포넌트 언마운트 시 클린업
     return () => {
       observer.disconnect(); // IntersectionObserver 연결 해제
-      counterObserver.disconnect(); // Counter IntersectionObserver 연결 해제
     };
   }, []); // 빈 배열을 의존성으로 설정하여 컴포넌트가 마운트될 때만 실행
 
@@ -400,8 +384,8 @@ function About() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="stat-card">
-              <div className="text-3xl font-bold gradient-text mb-2 counter">
-                {staticStats.foundingYear}
+              <div className="text-3xl font-bold gradient-text mb-2">
+                {animatedFoundingYear}
               </div>
               <div className="text-sm text-gray-400">창립년도</div>
               <i className="fas fa-calendar-alt text-blue-400 text-2xl mt-3"></i>
@@ -409,7 +393,7 @@ function About() {
 
             <div className="stat-card">
               <div className="text-3xl font-bold gradient-text mb-2">
-                {mainStats.totalMembers}+
+                {animatedTotalMembers}+
               </div>
               <div className="text-sm text-gray-400">
                 총 멤버수 (활동 + 졸업생)
@@ -418,8 +402,8 @@ function About() {
             </div>
 
             <div className="stat-card">
-              <div className="text-3xl font-bold gradient-text mb-2 counter">
-                {staticStats.studyGroups}+
+              <div className="text-3xl font-bold gradient-text mb-2">
+                {animatedStudyGroups}+
               </div>
               <div className="text-sm text-gray-400">스터디 그룹</div>
               <i className="fas fa-book text-green-400 text-2xl mt-3"></i>
@@ -427,7 +411,7 @@ function About() {
 
             <div className="stat-card">
               <div className="text-3xl font-bold gradient-text mb-2">
-                {mainStats.awards}+
+                {animatedAwards}+
               </div>
               <div className="text-sm text-gray-400">국내외 대회 수상</div>
               <i className="fas fa-trophy text-yellow-400 text-2xl mt-3"></i>
@@ -437,7 +421,7 @@ function About() {
           <div className="grid md:grid-cols-2 gap-6 mt-6">
             <div className="stat-card">
               <div className="text-3xl font-bold gradient-text mb-2">
-                {mainStats.projects}+
+                {animatedProjects}+
               </div>
               <div className="text-sm text-gray-400">
                 프로젝트 완료 (내부 + 오픈소스)
@@ -447,7 +431,7 @@ function About() {
 
             <div className="stat-card">
               <div className="text-3xl font-bold gradient-text mb-2">
-                {mainStats.employmentRate}%
+                {animatedEmploymentRate}%
               </div>
               <div className="text-sm text-gray-400">졸업생 IT 취업률</div>
               <i className="fas fa-briefcase text-cyan-400 text-2xl mt-3"></i>
