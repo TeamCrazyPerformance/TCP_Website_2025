@@ -208,6 +208,22 @@ function Profile() {
     }
   };
 
+  // 드래그 앤 드롭 핸들러
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) return;
+
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setEditorImageSrc(ev.target.result);
+        setIsEditorOpen(true);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   // 에디터 저장 핸들러
   const handleEditorSave = (blob) => {
     // Blob을 File 객체로 변환 (서버 전송용)
@@ -672,64 +688,51 @@ function Profile() {
             </div>
 
 
-            <div className="mb-6">
-              {selectedPhotoSrc && !modalImageError ? (
-                <div className="flex justify-center mb-6">
-                  <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-gray-700 shadow-lg">
-                    <img
-                      src={selectedPhotoSrc}
-                      alt="프로필 미리보기"
-                      className="w-full h-full object-cover"
-                      onError={() => setModalImageError(true)}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="flex justify-center mb-6">
-                  <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-gray-700 shadow-lg bg-white p-4">
-                    <img
-                      src={defaultProfileImage}
-                      alt="기본 이미지"
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <h4 className="font-semibold text-white mb-4">파일 업로드</h4>
-              <div className="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center">
-                <FontAwesomeIcon
-                  icon={faCloudUploadAlt}
-                  className="text-4xl text-gray-400 mb-4"
+            <div className="mb-8 flex flex-col items-center">
+              <div
+                className="relative w-64 h-64 rounded-full overflow-hidden border-4 border-gray-700 shadow-xl cursor-pointer group hover:border-blue-500 transition-colors"
+                onClick={() => fileInputRef.current.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleDrop}
+              >
+                <img
+                  src={selectedPhotoSrc || defaultProfileImage}
+                  alt="프로필 미리보기"
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  onError={(e) => {
+                    if (e.target.src !== defaultProfileImage) {
+                      e.target.src = defaultProfileImage;
+                    }
+                  }}
                 />
-                <p className="text-gray-400 mb-4">
-                  이미지를 드래그하거나 클릭하여 업로드
-                </p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  id="photo-upload"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handlePhotoUpload}
-                />
-                <button
-                  onClick={() => fileInputRef.current.click()}
-                  className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-colors"
-                >
-                  파일 선택
-                </button>
+                <div className="absolute inset-0 bg-black bg-opacity-30 group-hover:bg-opacity-60 transition-all duration-300 flex flex-col items-center justify-center backdrop-blur-sm group-hover:backdrop-blur-none">
+                  <FontAwesomeIcon
+                    icon={faCloudUploadAlt}
+                    className="text-4xl text-white mb-2 opacity-80 group-hover:opacity-100 transform group-hover:-translate-y-1 transition-all"
+                  />
+                  <p className="text-white text-sm font-medium text-center px-4 opacity-90 group-hover:opacity-100">
+                    이미지를 드래그하거나<br />클릭하여 업로드
+                  </p>
+                </div>
               </div>
 
-              <div className="mt-4 flex justify-end">
-                <button
-                  type="button"
-                  onClick={handleResetProfileImage}
-                  className="text-sm text-gray-400 hover:text-red-400 transition-colors underline"
-                >
-                  기본 프로필 사진으로 변경
-                </button>
-              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                id="photo-upload"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePhotoUpload}
+              />
+
+              <button
+                type="button"
+                onClick={handleResetProfileImage}
+                className="mt-6 text-sm text-gray-400 hover:text-red-400 transition-colors flex items-center gap-2"
+              >
+                <FontAwesomeIcon icon={faTrash} />
+                기본 프로필 사진으로 변경
+              </button>
             </div>
 
             <div className="flex space-x-4">
