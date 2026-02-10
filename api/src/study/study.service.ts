@@ -143,7 +143,6 @@ export class StudyService {
           user_id: leaderMember.user.id,
           name: leaderMember.user.name,
           role: StudyMemberRole.LEADER,
-          intro: leaderMember.user.self_description || null,
         }
         : null,
       members: visibleMembers.map((member) => ({
@@ -153,8 +152,6 @@ export class StudyService {
         profile_image: member.user.profile_image && !member.user.profile_image.startsWith('http')
           ? `/profiles/${member.user.profile_image}`
           : member.user.profile_image,
-        major: member.user.major || null,
-        self_description: member.user.self_description || null,
       })),
       resources: study.resources
         .filter((r) => r.deleted_at === null)

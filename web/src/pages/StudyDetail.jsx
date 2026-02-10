@@ -89,18 +89,18 @@ export default function StudyDetail() {
           leader: data.leader ? {
             id: data.leader.user_id,
             name: data.leader.name || '알 수 없음',
-            quote: data.leader.intro || '함께 성장하는 스터디를 만들어갑시다!',
+            quote: data.leader.intro || '함께 성장하는 스터디를 만들어갑시다!', // Fallback quote if not in API
           } : null,
         };
         // Filter out PENDING members, show MEMBER and LEADER
         const approvedMembers = (data.members || []).filter(m => m.role === 'MEMBER' || m.role === 'LEADER');
         const mappedMembers = approvedMembers.map((member) => ({
           id: member.user_id,
-          name: member.user?.name || member.name,
+          name: member.user?.name || member.name, // Access user relation if available
           role: member.role === 'LEADER' ? '스터디장' : '스터디원',
-          avatar: member.user?.profile_image || member.profile_image || null,
-          major: member.user?.major || member.major || '전공 미입력',
-          bio: member.user?.self_description || member.self_description || '',
+          avatar: member.user?.profile_image || member.profile_image || 'https://via.placeholder.com/40',
+          major: member.user?.major || '전공 미입력',
+          techStack: member.user?.tech_stack || [],
         }));
 
         if (isMounted) {
@@ -109,8 +109,7 @@ export default function StudyDetail() {
           setUserRole(role);
           setErrorMessage('');
 
-          // For members/leaders/admins: fetch rich progress data from dedicated endpoint
-          // For guests: use the basic progress included in the study response
+          // Fetch progress if user is member, leader_nominee or leader
           if (role !== 'guest') {
             try {
               const progressData = await apiGet(`/api/v1/study/${id}/progress`, {
@@ -120,10 +119,10 @@ export default function StudyDetail() {
               });
               setProgress(progressData || []);
             } catch {
-              setProgress(data.progress || []);
+              setProgress([]);
             }
 
-            // Fetch resources (members/leaders only)
+            // Fetch resources
             try {
               const resourceData = await apiGet(`/api/v1/study/${id}/resources`, {
                 headers: {
@@ -134,9 +133,6 @@ export default function StudyDetail() {
             } catch {
               setResources([]);
             }
-          } else {
-            // Guests use inline progress from study detail response
-            setProgress(data.progress || []);
           }
         }
       } catch (error) {
@@ -402,7 +398,7 @@ export default function StudyDetail() {
           </div>
 
           {/* Info Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 text-gray-300 text-left">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 text-gray-300">
             <div>
               <h3 className="text-lg font-bold text-white mb-2">📅 진행 기간</h3>
               <p>{study.period}</p>
@@ -445,93 +441,94 @@ export default function StudyDetail() {
         </div>
       </section>
 
-      {/* Weekly Progress Section — visible to all, but modal only for non-guests */}
-      <section className="mb-12 scroll-fade visible">
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-3xl font-bold gradient-text">📚 주차별 진행 현황</h2>
-          {(userRole === 'leader' || currentUser?.role === 'ADMIN') && (
-            <Link
-              to={`/study/${id}/progress/write`}
-              className="cta-button px-4 py-2 rounded-lg font-bold text-white hover:text-black transition-colors inline-flex items-center"
-            >
-              <i className="fas fa-plus mr-2"></i> 새 글 작성
-            </Link>
-          )}
-        </div>
+      {/* Weekly Progress Section */}
+      {
+        (userRole !== 'guest' || currentUser?.role === 'ADMIN') && (
+          <section className="mb-12 scroll-fade visible">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-3xl font-bold gradient-text">📚 주차별 진행 현황</h2>
+              {(userRole === 'leader' || currentUser?.role === 'ADMIN') && (
+                <Link
+                  to={`/study/${id}/progress/write`}
+                  className="cta-button px-4 py-2 rounded-lg font-bold text-white hover:text-black transition-colors inline-flex items-center"
+                >
+                  <i className="fas fa-plus mr-2"></i> 새 글 작성
+                </Link>
+              )}
+            </div>
 
-        {/* Weeks Grid */}
-        {progress.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {progress.map((item) => (
-              <div key={item.id} className="week-card p-6 rounded-xl relative group" onClick={() => { if (userRole !== 'guest') setSelectedProgress(item); }} style={{ cursor: userRole === 'guest' ? 'default' : 'pointer' }}>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="tag tag-blue text-xs">Week {item.weekNo || '?'}</span>
-                  <span className="text-sm text-gray-400">
-                    {item.progressDate ? new Date(item.progressDate).toISOString().split('T')[0].replace(/-/g, '.') : ''}
-                  </span>
-                </div>
+            {/* Weeks Grid */}
+            {progress.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {progress.map((item) => (
+                  <div key={item.id} className="week-card p-6 rounded-xl relative group" onClick={() => setSelectedProgress(item)}>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="tag tag-blue text-xs">Week {item.weekNo || '?'}</span>
+                      <span className="text-sm text-gray-400">
+                        {item.progressDate ? new Date(item.progressDate).toISOString().split('T')[0].replace(/-/g, '.') : ''}
+                      </span>
+                    </div>
 
-                <h3 className="text-lg font-bold mb-2 text-white line-clamp-2">{item.title}</h3>
+                    <h3 className="text-lg font-bold mb-2 text-white line-clamp-2">{item.title}</h3>
 
-                {/* Content Preview */}
-                <div className="text-sm text-gray-400 mb-3 line-clamp-3">
-                  {item.content.replace(/<[^>]*>?/gm, '')}
-                </div>
+                    {/* Content Preview - strip HTML tags if needed or just show substring */}
+                    <div className="text-sm text-gray-400 mb-3 line-clamp-3">
+                      {item.content.replace(/<[^>]*>?/gm, '')}
+                    </div>
 
-                {/* Hover Content / Actions — only for non-guests */}
-                {userRole !== 'guest' && (
-                  <div className="hover-content absolute inset-x-0 bottom-0 p-6 bg-gray-800/90 backdrop-blur-sm rounded-b-xl border-t border-gray-700">
-                    {(userRole === 'leader' || currentUser?.role === 'ADMIN') ? (
-                      <div className="flex justify-between items-center">
-                        <div className="flex gap-2">
-                          <Link
-                            to={`/study/${id}/progress/${item.id}/edit`}
-                            className="text-xs px-3 py-1 rounded border border-gray-500 hover:border-white text-gray-300 hover:text-white transition-colors"
-                          >
-                            <i className="fas fa-pen mr-1"></i>편집
-                          </Link>
-                          <button
-                            onClick={async (e) => {
-                              e.preventDefault();
-                              if (!window.confirm('정말 삭제하시겠습니까?')) return;
-                              try {
-                                await apiDelete(`/api/v1/study/${id}/progress/${item.id}`);
-                                window.location.reload();
-                              } catch (err) { alert('삭제 실패'); }
-                            }}
-                            className="text-xs px-3 py-1 rounded border border-red-900 hover:border-red-500 text-red-400 hover:text-red-300 transition-colors"
-                          >
-                            <i className="fas fa-trash mr-1"></i>삭제
-                          </button>
+                    {/* Hover Content / Actions */}
+                    <div className="hover-content absolute inset-x-0 bottom-0 p-6 bg-gray-800/90 backdrop-blur-sm rounded-b-xl border-t border-gray-700">
+                      {(userRole === 'leader' || currentUser?.role === 'ADMIN') ? (
+                        <div className="flex justify-between items-center">
+                          <div className="flex gap-2">
+                            <Link
+                              to={`/study/${id}/progress/${item.id}/edit`}
+                              className="text-xs px-3 py-1 rounded border border-gray-500 hover:border-white text-gray-300 hover:text-white transition-colors"
+                            >
+                              <i className="fas fa-pen mr-1"></i>편집
+                            </Link>
+                            <button
+                              onClick={async (e) => {
+                                e.preventDefault();
+                                if (!window.confirm('정말 삭제하시겠습니까?')) return;
+                                try {
+                                  await apiDelete(`/api/v1/study/${id}/progress/${item.id}`);
+                                  window.location.reload();
+                                } catch (err) { alert('삭제 실패'); }
+                              }}
+                              className="text-xs px-3 py-1 rounded border border-red-900 hover:border-red-500 text-red-400 hover:text-red-300 transition-colors"
+                            >
+                              <i className="fas fa-trash mr-1"></i>삭제
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-gray-300">클릭하여 자세히 보기</p>
-                    )}
-                  </div>
-                )}
+                      ) : (
+                        <p className="text-xs text-gray-300">클릭하여 자세히 보기</p>
+                      )}
+                    </div>
 
-                <div className="mt-4 flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    {item.resources && item.resources.length > 0 && (
-                      <>
-                        <i className="fas fa-paperclip text-blue-400"></i>
-                        <span className="text-xs text-gray-400">{item.resources.length}개 첨부</span>
-                      </>
-                    )}
+                    <div className="mt-4 flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        {item.resources && item.resources.length > 0 && (
+                          <>
+                            <i className="fas fa-paperclip text-blue-400"></i>
+                            <span className="text-xs text-gray-400">{item.resources.length}개 첨부</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <span className="text-gray-500">→</span>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 bg-gray-900 rounded-lg border border-gray-800 border-dashed">
-            <i className="fas fa-book-open text-4xl text-gray-600 mb-4"></i>
-            <p className="text-gray-400">아직 등록된 진행사항이 없습니다.</p>
-          </div>
-        )}
-      </section>
+            ) : (
+              <div className="text-center py-12 bg-gray-900 rounded-lg border border-gray-800 border-dashed">
+                <i className="fas fa-book-open text-4xl text-gray-600 mb-4"></i>
+                <p className="text-gray-400">아직 등록된 진행사항이 없습니다.</p>
+              </div>
+            )}
+          </section>
+        )
+      }
 
       {/* General Resources Section */}
       {
@@ -589,67 +586,71 @@ export default function StudyDetail() {
         )
       }
 
-      {/* Member Search / List Section — visible to all */}
-      <section className="mb-12 scroll-fade visible">
-        <h2 className="text-3xl font-bold gradient-text mb-8">👥 스터디원 검색</h2>
-        <div className="feature-card rounded-xl p-8">
-          {/* Search Input */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="flex-1">
-              <input
-                type="text"
-                value={memberSearch}
-                onChange={(e) => setMemberSearch(e.target.value)}
-                className="search-input w-full px-4 py-3 rounded-lg text-white placeholder-gray-400"
-                placeholder="이름, 역할, 전공으로 검색..."
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredMembers.length === 0 && (
-              <div className="col-span-full text-center py-8 text-gray-500">
-                <i className="fas fa-user-slash text-4xl mb-4 block"></i>
-                <p className="text-lg">검색 결과가 없습니다.</p>
+      {/* Member Search / List Section */}
+      {
+        (userRole !== 'guest' || currentUser?.role === 'ADMIN') && (
+          <section className="mb-12 scroll-fade visible">
+            <h2 className="text-3xl font-bold gradient-text mb-8">👥 스터디원 검색</h2>
+            <div className="feature-card rounded-xl p-8">
+              {/* Search Input */}
+              <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={memberSearch}
+                    onChange={(e) => setMemberSearch(e.target.value)}
+                    className="search-input w-full px-4 py-3 rounded-lg text-white placeholder-gray-400"
+                    placeholder="이름, 역할, 전공으로 검색..."
+                  />
+                </div>
               </div>
-            )}
-            {filteredMembers.map(member => (
-              <div key={member.id} className="member-card p-4 rounded-lg">
-                <div className="flex items-center space-x-3 mb-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center text-white font-bold overflow-hidden">
-                    {member.avatar && member.avatar !== 'https://via.placeholder.com/40' ? (
-                      <img src={member.avatar} alt={member.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <span>{member.name.charAt(0)}</span>
-                    )}
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-white">{member.name}</h4>
-                    <p className="text-sm text-gray-400">{member.role}</p>
-                  </div>
-                </div>
-                <div className="text-xs text-gray-400 mb-2">
-                  {member.major || '전공 미입력'}
-                </div>
-                <p className="text-sm text-gray-300 mb-3">
-                  {member.bio || `안녕하세요, ${member.name}입니다.`}
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  <span className="tag tag-devops text-xs">{member.role}</span>
-                </div>
-
-                {/* Kick button for Leader */}
-                {(userRole === 'leader' || currentUser?.role === 'ADMIN') && member.id !== currentUser?.id && (
-                  <div className="flex justify-end mt-3">
-                    <button className="text-xs px-3 py-1 rounded border border-red-800 hover:border-red-500 text-red-400 hover:text-red-300 transition-colors">
-                      <i className="fas fa-user-minus mr-1"></i>방출
-                    </button>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredMembers.length === 0 && (
+                  <div className="col-span-full text-center py-8 text-gray-500">
+                    <i className="fas fa-user-slash text-4xl mb-4 block"></i>
+                    <p className="text-lg">검색 결과가 없습니다.</p>
                   </div>
                 )}
+                {filteredMembers.map(member => (
+                  <div key={member.id} className="member-card p-4 rounded-lg">
+                    <div className="flex items-center space-x-3 mb-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center text-white font-bold overflow-hidden">
+                        {member.avatar && member.avatar !== 'https://via.placeholder.com/40' ? (
+                          <img src={member.avatar} alt={member.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <span>{member.name.charAt(0)}</span>
+                        )}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-white">{member.name}</h4>
+                        <p className="text-sm text-gray-400">{member.role}</p>
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-400 mb-2">
+                      {member.major || '전공 미입력'} {member.studentNumber ? `${member.studentNumber}학번` : ''}
+                    </div>
+                    <p className="text-sm text-gray-300 mb-3">
+                      {member.bio || `안녕하세요, ${member.name}입니다.`}
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      <span className="tag tag-devops text-xs">{member.role || 'MEMBER'}</span>
+                    </div>
+
+                    {/* Kick button for Leader */}
+                    {(userRole === 'leader' || currentUser?.role === 'ADMIN') && member.id !== currentUser?.id && (
+                      <div className="flex justify-end mt-3">
+                        <button className="text-xs px-3 py-1 rounded border border-red-800 hover:border-red-500 text-red-400 hover:text-red-300 transition-colors">
+                          <i className="fas fa-user-minus mr-1"></i>방출
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
+            </div>
+          </section>
+        )
+      }
 
       {/* Article Modal */}
       {selectedProgress && (
