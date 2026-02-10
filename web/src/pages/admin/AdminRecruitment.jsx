@@ -540,6 +540,17 @@ function AdminRecruitment() {
                       }
                     </span>
                   </div>
+                  <div className="mt-3 pt-3 border-t border-purple-800 border-opacity-50">
+                    <p className="text-xs text-purple-200">
+                      <FontAwesomeIcon icon={faInfoCircle} className="mr-1" />
+                      자정 기준 동작 안내
+                    </p>
+                    <ul className="list-disc pl-4 mt-1 text-xs text-gray-400 space-y-1">
+                      <li>시작일: 해당 날짜의 <strong>00시 00분</strong>부터 시작</li>
+                      <li>종료일: 해당 날짜의 <strong>23시 59분</strong>에 종료</li>
+                      <li>(예: 2월 20일 종료 설정 시, 20일 하루 종일 모집이 진행됩니다)</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
             </div>

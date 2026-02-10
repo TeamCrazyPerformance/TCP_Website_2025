@@ -55,10 +55,22 @@ export class RecruitmentSettingsService {
         const settings = await this.getOrCreateSettings();
 
         if (dto.start_date !== undefined) {
-            settings.start_date = dto.start_date ? new Date(dto.start_date) : null;
+            if (dto.start_date) {
+                const startDate = new Date(dto.start_date);
+                startDate.setHours(0, 0, 0, 0);
+                settings.start_date = startDate;
+            } else {
+                settings.start_date = null;
+            }
         }
         if (dto.end_date !== undefined) {
-            settings.end_date = dto.end_date ? new Date(dto.end_date) : null;
+            if (dto.end_date) {
+                const endDate = new Date(dto.end_date);
+                endDate.setHours(23, 59, 59, 999);
+                settings.end_date = endDate;
+            } else {
+                settings.end_date = null;
+            }
         }
         if (dto.is_application_enabled !== undefined) {
             settings.is_application_enabled = dto.is_application_enabled;
@@ -81,23 +93,24 @@ export class RecruitmentSettingsService {
      */
     async startNow(): Promise<{ success: boolean; message: string; start_date: Date; end_date: Date }> {
         const settings = await this.getOrCreateSettings();
-        
+
         // 오늘 날짜 (시간은 00:00:00으로 설정)
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
+
         // 3주 후 날짜
         const threeWeeksLater = new Date(today);
         threeWeeksLater.setDate(threeWeeksLater.getDate() + 21);
-        
+
         settings.start_date = today;
+        threeWeeksLater.setHours(23, 59, 59, 999);
         settings.end_date = threeWeeksLater;
         settings.is_application_enabled = true;
         await this.settingsRepository.save(settings);
 
         this.logger.log('Recruitment started immediately with 3-week period');
-        return { 
-            success: true, 
+        return {
+            success: true,
             message: '모집이 시작되었습니다. (오늘부터 3주간)',
             start_date: today,
             end_date: threeWeeksLater
@@ -109,18 +122,18 @@ export class RecruitmentSettingsService {
      */
     async stopNow(): Promise<{ success: boolean; message: string; end_date: Date }> {
         const settings = await this.getOrCreateSettings();
-        
+
         // 오늘 날짜 (시간은 00:00:00으로 설정)
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
+
         settings.end_date = today;
         settings.is_application_enabled = false;
         await this.settingsRepository.save(settings);
 
         this.logger.log('Recruitment stopped immediately, end date set to today');
-        return { 
-            success: true, 
+        return {
+            success: true,
             message: '모집이 중단되었습니다. (종료일: 오늘)',
             end_date: today
         };
