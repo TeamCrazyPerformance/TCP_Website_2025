@@ -164,7 +164,7 @@ export default function StudyWrite() {
                 htmlFor="members"
                 className="block text-lg font-semibold text-gray-100 mb-3"
               >
-                모집 인원
+                스터디 인원 (본인 포함)
               </label>
               <input
                 type="number"
