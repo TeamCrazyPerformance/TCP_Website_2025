@@ -13,6 +13,7 @@ import {
   faUsers,
   faTrophy,
   faCamera,
+  faTrash,
 } from '@fortawesome/free-solid-svg-icons';
 import { faGithub } from '@fortawesome/free-brands-svg-icons';
 
