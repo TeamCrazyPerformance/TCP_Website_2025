@@ -299,7 +299,7 @@ function About() {
               <div className="text-3xl font-bold gradient-text mb-2 counter">
                 {stats.studyGroups}+
               </div>
-              <div className="text-sm text-gray-400">기술 스터디 그룹</div>
+              <div className="text-sm text-gray-400">스터디 그룹</div>
               <i className="fas fa-book text-green-400 text-2xl mt-3"></i>
             </div>
 
