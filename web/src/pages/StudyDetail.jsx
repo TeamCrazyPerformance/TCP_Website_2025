@@ -371,14 +371,12 @@ export default function StudyDetail() {
         <div className="feature-card rounded-xl p-8">
           {/* Title Area */}
           <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6 mb-6">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-400 via-blue-400 to-purple-400 flex items-center justify-center flex-shrink-0">
-              <i className="fas fa-network-wired text-white text-2xl"></i>
-            </div>
-            <div className="flex-1">
-              <h1 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-2">
+
+            <div className="flex-1 text-left">
+              <h1 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-2 text-left">
                 {study.title}
               </h1>
-              <p className="text-lg text-gray-300 mb-4">{study.description}</p>
+              <p className="text-lg text-gray-300 mb-4 text-left">{study.description}</p>
               <div className="flex flex-wrap gap-2">
                 {study.tags.map((tag, index) => {
                   // Simple logic to assign colors based on tag name or index
@@ -431,13 +429,7 @@ export default function StudyDetail() {
             </div>
           </div>
 
-          {/* Tech Stack (Derived from tags for now or static placeholder if not in DB) */}
-          <div className="mt-6">
-            <h3 className="text-lg font-bold text-white mb-3">🛠️ 기술 스택</h3>
-            <p className="text-gray-300">
-              {study.tags.join(', ')}
-            </p>
-          </div>
+
         </div>
       </section>
 
