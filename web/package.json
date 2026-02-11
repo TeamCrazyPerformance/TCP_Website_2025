@@ -18,10 +18,10 @@
     "react": "^19.1.0",
     "react-chartjs-2": "^5.3.0",
     "react-dom": "^19.1.0",
+    "react-easy-crop": "^5.5.6",
     "react-router-dom": "^7.7.0",
     "react-scripts": "5.0.1",
-    "web-vitals": "^2.1.0",
-    "react-easy-crop": "^5.0.0"
+    "web-vitals": "^2.1.0"
   },
   "scripts": {
     "start": "react-scripts start",

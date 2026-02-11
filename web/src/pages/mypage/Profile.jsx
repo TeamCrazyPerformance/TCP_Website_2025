@@ -324,6 +324,7 @@ function Profile() {
       setSaving(true);
       // Map frontend fields back to backend format
       const updateData = {
+        student_number: profile.studentId,
         major: profile.major,
         self_description: profile.bio,
         tech_stack: profile.techStack,
@@ -553,9 +554,16 @@ function Profile() {
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     학적 상태
                   </label>
-                  <div className="text-gray-300 text-lg px-3 py-2 border border-gray-700 rounded-md bg-transparent text-left">
-                    {profile.email}
-                  </div>
+                  <select
+                    className="editable form-input"
+                    name="status"
+                    value={profile.status}
+                    onChange={handleProfileChange}
+                  >
+                    <option value="재학">재학</option>
+                    <option value="휴학">휴학</option>
+                    <option value="졸업">졸업</option>
+                  </select>
                 </div>
 
                 <div>
@@ -569,6 +577,22 @@ function Profile() {
                     value={profile.role}
                     onChange={handleProfileChange}
                     placeholder="예: 삼성전자, 네이버, 프리랜서"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    자기소개
+                  </label>
+                  <textarea
+                    ref={bioRef}
+                    className="editable form-input"
+                    name="bio"
+                    value={profile.bio}
+                    onChange={handleProfileChange}
+                    placeholder="자기소개를 입력해주세요"
+                    rows={4}
+                    style={{ resize: 'vertical', minHeight: '100px' }}
                   />
                 </div>
 
