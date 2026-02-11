@@ -1,0 +1,93 @@
+# ======================= 개발(dev) vs 배포(prod) 환경 차이 =======================
+# 이 파일(docker-compose.dev.yml)은 docker-compose.yml(배포용)을 '덮어쓰기(override)'하는
+# 개발 환경 전용 설정입니다. 아래와 같은 차이가 있습니다:
+#
+# 1) 코드 반영 방식
+#   - dev: 소스코드를 컨테이너에 bind-mount 하여 파일 변경 시 즉시 반영됩니다.
+#   - prod: 이미지 빌드 결과를 사용하며, 컨테이너 재시작 없이 코드 변경이 반영되지 않습니다.
+#
+# 2) 포트 노출
+#   - dev: 로컬 테스트를 위해 web/api 등의 포트를 호스트에 직접 노출합니다.
+#   - prod: 외부 공개는 reverse-proxy(80/443)만 사용하고 내부 서비스 포트는 숨깁니다.
+#
+# 3) 리버스 프록시(HTTPS)
+#   - dev: 인증서 없이 HTTP만 사용합니다. (80 -> 443 리다이렉트 비활성화)
+#   - prod: HTTPS(443) 사용, 80에서 443으로 강제 리다이렉트합니다.
+#
+# 4) 환경변수/비밀정보
+#   - dev: .env, .env.dev 등의 개발용 값 사용(로컬 비밀정보).
+#   - prod: 배포 전용 env 파일/시크릿을 사용(운영 DB, 운영 API 키 등).
+#
+# 5) 성능/안정성 옵션
+#   - dev: 빠른 재시작, 디버그 로그, 소스 마운트 등 개발 편의 위주.
+#   - prod: restart 정책, 리소스 제한, 로그 최소화 등 안정성 위주.
+#
+# 6) 데이터 지속성
+#   - dev: 필요 시 볼륨을 단순화하거나 초기화가 쉬운 구조.
+#   - prod: DB/스토리지 볼륨을 영구 보존(백업 정책 적용).
+# ================================================================================
+
+# Dev overrides: bind-mount code, expose ports for local testing
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+services:
+  # API (NestJS)
+  api:
+    command: npm run start:dev
+    env_file:
+      - ./envs/api.env
+      - ./envs/db_dev.env
+    environment:
+      # DB (db_dev.env 의 실제 값이 우선이지만, 컨테이너 네트워크용 host는 여기서 고정)
+      DB_HOST: db
+      DB_PORT: 5432
+
+      # Logstash
+      LOGSTASH_HOST: logstash
+      LOGSTASH_PORT: 5000
+
+      NODE_ENV: development
+      PORT: 3000
+      CHOKIDAR_USEPOLLING: "1"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./api:/var/app
+      - /var/app/node_modules
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/health/live || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+
+  # PostgreSQL
+  db:
+    env_file:
+      - ./envs/db_dev.env
+    ports:
+      - "5432:5432"
+
+  # Static web (nginx로 dist 서빙)
+  web:
+    ports:
+      - "8080:80"
+
+  # Reverse proxy (dev에서는 HTTPS/리다이렉트 없이 HTTP로만)
+  reverse-proxy:
+    ports:
+      - "80:80"
+    # NOTE: docker-compose.yml 의 default.conf 는 HTTP->HTTPS 리다이렉트가 들어있으니,
+    # dev에서는 아래 dev용 conf로 덮어쓰는 걸 권장.
+    volumes:
+      - ./reverse-proxy/default.dev.conf:/etc/nginx/conf.d/default.conf:ro
+
+  # Elasticsearch (dev: disable security for simpler healthcheck)
+  elasticsearch:
+    environment:
+      - xpack.security.enabled=false
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health || exit 1"]
+
+  # Filebeat (dev: relax config ownership check)
+  filebeat:
+    command: ["-e", "-strict.perms=false"]

@@ -7,6 +7,7 @@ import { Repository } from 'typeorm';
 import { User } from '../../src/members/entities/user.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { UserGender } from '../../src/members/entities/enums/user-gender.enum';
+import { UserRole } from '../../src/members/entities/enums/user-role.enum';
 import { EducationStatus } from '../../src/members/entities/enums/education-status.enum';
 
 describe('MembersController (e2e)', () => {
@@ -24,8 +25,11 @@ describe('MembersController (e2e)', () => {
     userRepository = moduleFixture.get<Repository<User>>(getRepositoryToken(User));
   });
 
-  afterAll(async () => {
+  beforeEach(async () => {
     await userRepository.query(`DELETE FROM "user";`);
+  });
+
+  afterAll(async () => {
     jest.restoreAllMocks();
     await app.close();
   });
@@ -38,31 +42,35 @@ describe('MembersController (e2e)', () => {
 
   it('이메일 공개 여부가 true일 때 200 상태 코드와 email 필드 포함된 멤버 리스트 반환', async () => {
     await userRepository.save({
-      username: 'test2',
-      password: '1234',
+      username: 'test1',
+      password: 'TestPassword123!',
       name: '이순신',
       student_number: '20250002',
       profile_image: '',
       phone_number: '010-3333-4444',
-      email: 'test2@example.com',
+      email: 'test1@example.com',
       major: 'CS',
       join_year: 2025,
       birth_date: new Date('2000-02-02'),
       gender: UserGender.Male,
+      role: UserRole.MEMBER,
       education_status: EducationStatus.Enrolled,
-      is_public_email: false,
+      is_public_email: true,
     });
 
     const response = await request(app.getHttpServer()).get('/api/v1/members');
 
     expect(response.status).toBe(200);
-    expect(response.body[0].email).toBe('test1@example.com');
+    const member = response.body.find(
+      (m) => m.name === '이순신',
+    );
+    expect(member.email).toBe('test1@example.com');
   });
 
   it('이메일 공개 여부가 false일 때 200 상태 코드와 email 필드가 제외된 멤버 리스트 반환', async () => {
     await userRepository.save({
       username: 'test2',
-      password: '1234',
+      password: 'TestPassword123!',
       name: '이순신',
       student_number: '20250002',
       profile_image: 'img.png',
@@ -72,6 +80,7 @@ describe('MembersController (e2e)', () => {
       join_year: 2025,
       birth_date: new Date('2000-02-02'),
       gender: UserGender.Male,
+      role: UserRole.MEMBER,
       education_status: EducationStatus.Enrolled,
       is_public_email: false,
     });
@@ -79,7 +88,10 @@ describe('MembersController (e2e)', () => {
     const response = await request(app.getHttpServer()).get('/api/v1/members');
 
     expect(response.status).toBe(200);
-    expect(response.body[1].email).toBeUndefined();
+    const member = response.body.find(
+      (m) => m.name === '이순신',
+    );
+    expect(member.email).toBeUndefined();
   });
 
   it('서비스 내부 예외 시 500 반환', async () => {

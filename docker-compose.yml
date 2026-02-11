@@ -1,0 +1,186 @@
+﻿services:
+  # Reverse proxy (외부 공개, public entrypoint -> web/api)
+  reverse-proxy:
+    image: nginx:1.25-alpine
+    container_name: reverse-proxy
+    depends_on:
+      - api
+      - web
+    ports:
+      - "80:80"
+      - "443:443" # HTTPS용 443 포트
+    volumes:
+      - ./reverse-proxy/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./reverse-proxy/certs:/etc/nginx/certs:ro # HTTPS용 SSL 인증서 매핑
+    healthcheck:
+      test: ["CMD-SHELL", "wget -S -qO- http://127.0.0.1/ 2>&1 | head -n 1 | grep -q ' 301 ' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [public, internal]
+    restart: unless-stopped
+
+  # Static web (정적 자산 서빙, serves built frontend from ./web/dist)
+  web:
+    image: nginx:1.25-alpine
+    container_name: web
+    # 프론트엔드 빌드 산출물(ex. React/Vite의 dist)을 아래 경로에 지정
+    volumes:
+      - ./web/dist:/usr/share/nginx/html:ro
+      # 필요 시 커스텀 캐시/압축 설정
+      - ./web/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    expose:
+      - "80"
+    networks: [internal]
+    restart: unless-stopped
+
+  # API (NestJS)
+  api:
+    build: ./api
+    container_name: api
+    # 프로덕션에서 직접 공개하지 않고 reverse-proxy 통해 접근하도록 expose 사용
+    expose:
+      - "3000"
+    env_file:
+      - ./envs/api.env
+      - ./envs/db_prod.env
+    environment:
+      # DB 설정 (db_prod.env 의존)
+      # Logstash (윈스턴 TCP/UDP 전송 시 사용)
+      LOGSTASH_HOST: logstash
+      LOGSTASH_PORT: 5000
+      NODE_ENV: production
+      PORT: 3000
+    volumes:
+      - ./api/uploads:/var/app/uploads
+      - ./logs/app:/var/app/logs
+      - ./api/json:/var/app/json
+    depends_on:
+      db:
+        condition: service_healthy
+      logstash:
+        condition: service_started
+    command: node dist/main.js
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/health/live || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+    networks: [internal]
+    restart: unless-stopped
+
+  # PostgreSQL
+  db:
+    image: postgres:16-alpine
+    container_name: db
+    env_file:
+      - ./envs/db_prod.env
+    # DB 설정 (db_prod.env 의존)
+    # 내부 네트워크에서만 접근 가능 (보안)
+    expose:
+      - "5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./db/backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -U $$POSTGRES_USER -d $$POSTGRES_DB || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [internal]
+    restart: unless-stopped
+
+  # Logstash (pipeline in ./elk/logstash)
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.9.0
+    container_name: logstash
+    env_file:
+      - ./envs/elk.env
+    # 내부 네트워크에서만 접근 가능 (보안)
+    expose:
+      - "5000"
+    volumes:
+      - ./elk/logstash:/usr/share/logstash/pipeline:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9600/_node/pipelines || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      - elasticsearch
+    networks: [internal]
+    restart: unless-stopped
+
+  # Elasticsearch single-node (secured)
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.9.0
+    container_name: elasticsearch
+    env_file:
+      - ./envs/elk.env
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      # X-Pack 보안 활성화 (프로덕션)
+      - xpack.security.enabled=true
+    # 내부 네트워크에서만 접근 가능 (보안)
+    expose:
+      - "9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+      - ./elk/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -u elastic:$$ELASTIC_PASSWORD http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+    restart: unless-stopped
+
+  # Kibana
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.9.0
+    container_name: kibana
+    env_file:
+      - ./envs/elk.env
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    volumes:
+      - ./elk/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5601/api/status || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+    expose:
+      - "5601"
+    networks: [internal]
+    restart: unless-stopped
+
+  # Filebeat (collects container logs to Elasticsearch)
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.9.0
+    container_name: filebeat
+    user: root # Docker 소켓 접근을 위해 root 권한 필요
+    env_file:
+      - ./envs/elk.env
+    volumes:
+      - ./elk/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - elasticsearch
+    networks: [internal]
+    restart: unless-stopped
+
+# 네트워크
+networks:
+  public:   { driver: bridge }
+  internal: { driver: bridge }
+
+# 볼륨
+volumes:
+  db-data:
+  es-data:

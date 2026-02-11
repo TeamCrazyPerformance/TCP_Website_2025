@@ -1,0 +1,60 @@
+# =============================================================================
+# Filebeat Configuration for Docker Container Logs
+# =============================================================================
+
+filebeat.inputs:
+  # Docker container logs
+  - type: container
+    paths:
+      - '/var/lib/docker/containers/*/*.log'
+    processors:
+      - add_docker_metadata:
+          host: "unix:///var/run/docker.sock"
+
+# =============================================================================
+# Processors (Global)
+# =============================================================================
+
+processors:
+  - add_docker_metadata:
+      host: "unix:///var/run/docker.sock"
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  # Exclude NestJS API (already sent via Winston TCP to Logstash)
+  - drop_event:
+      when:
+        equals:
+          container.name: "api"
+  # Exclude filebeat's own logs
+  - drop_event:
+      when:
+        equals:
+          container.name: "filebeat"
+
+# =============================================================================
+# Output to Elasticsearch
+# =============================================================================
+
+output.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+  username: "elastic"
+  password: "${ELASTIC_PASSWORD}"
+  index: "docker-logs-%{+yyyy.MM.dd}"
+
+# Index template settings
+setup.template.name: "docker-logs"
+setup.template.pattern: "docker-logs-*"
+setup.template.settings:
+  index.number_of_shards: 1
+  index.number_of_replicas: 0
+
+# Disable ILM (Index Lifecycle Management) for simplicity
+setup.ilm.enabled: false
+
+# =============================================================================
+# Logging
+# =============================================================================
+
+logging.level: info
+logging.to_files: false
+logging.to_stderr: true

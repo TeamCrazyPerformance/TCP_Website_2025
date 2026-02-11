@@ -7,7 +7,7 @@ import {
 } from 'typeorm';
 import { Resume } from './resume.entity';
 
-@Entity({ name: 'Award' })
+@Entity({ name: 'award' })
 export class Award {
   @PrimaryGeneratedColumn({ comment: 'PK' })
   id: number;

@@ -35,7 +35,7 @@ export class Announcement {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @ManyToOne(() => User, (user) => user.announcements, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, (user) => user.announcements, { onDelete: 'CASCADE', nullable: false })
   @JoinColumn({ name: 'user_id' })
   author: User;
 }

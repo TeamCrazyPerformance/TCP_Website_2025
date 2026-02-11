@@ -5,15 +5,19 @@ import {
   OneToMany,
   CreateDateColumn,
   UpdateDateColumn,
+  DeleteDateColumn,
 } from 'typeorm';
 import { EducationStatus } from './enums/education-status.enum';
-import { UserGender } from './enums/user-gender.enum'
+import { UserGender } from './enums/user-gender.enum';
+import { UserRole } from './enums/user-role.enum';
 import { Announcement } from '../../announcement/entities/announcement.entity';
+import { StudyMember } from '../../study/entities/study-member.entity';
+import { RefreshToken } from '../../auth/entities/refresh-token.entity';
 
 @Entity('user')
 export class User {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ type: 'varchar', length: 50, unique: true })
   username: string;
@@ -24,8 +28,8 @@ export class User {
   @Column({ type: 'varchar', length: 50 })
   name: string;
 
-  @Column({ type: 'varchar', length: 20, unique: true })
-  student_number: string;
+  @Column({ type: 'varchar', length: 20, unique: true, nullable: true })
+  student_number: string | null;
 
   @Column({ type: 'varchar', length: 255, default: 'default_profile_image.png' }) // TODO 기본 프로필 이미지 추가해야 함
   profile_image: string;
@@ -36,38 +40,46 @@ export class User {
   @Column({ type: 'varchar', length: 255, unique: true })
   email: string;
 
-  @Column({ type: 'varchar', length: 100 })
-  major: string;
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  major: string | null;
 
-  @Column({ type: 'smallint' })
-  join_year: number;
+  @Column({ type: 'smallint', nullable: true })
+  join_year: number | null;
 
-  @Column({ type: 'date' })
-  birth_date: Date;
+  @Column({ type: 'date', nullable: true })
+  birth_date: Date | null;
 
   @Column({
     type: 'enum',
     enum: UserGender,
-    default: UserGender.Male,
+    nullable: true,
   })
-  gender: UserGender;
+  gender: UserGender | null;
+
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    default: UserRole.GUEST,
+  })
+  role: UserRole;
 
   @Column('text', { array: true, nullable: true })
   tech_stack: string[] | null;
 
-  @Column({ 
-    type: 'enum', 
-    enum: EducationStatus, 
-    default: EducationStatus.Enrolled })
-  education_status: EducationStatus;
+  @Column({
+    type: 'enum',
+    enum: EducationStatus,
+    nullable: true,
+  })
+  education_status: EducationStatus | null;
 
   @Column({ type: 'varchar', nullable: true, length: 255 })
   current_company: string;
 
-  @Column({ type: 'varchar', nullable: true,  length: 255 })
+  @Column({ type: 'varchar', nullable: true, length: 255 })
   baekjoon_username: string;
 
-  @Column({ type: 'varchar', nullable: true,  length: 255 })
+  @Column({ type: 'varchar', nullable: true, length: 255 })
   github_username: string;
 
   @Column({ type: 'text', nullable: true })
@@ -76,23 +88,14 @@ export class User {
   @Column({ type: 'varchar', length: 255, nullable: true })
   portfolio_link: string | null;
 
-  @Column({ default: false })
-  is_public_current_company: boolean;
-
-  @Column({ default: false })
+  @Column({ type: 'boolean', default: false })
   is_public_github_username: boolean;
 
-  @Column({ default: false })
-  is_public_baekjoon_username: boolean;
-
-  @Column({ default: false })
+  @Column({ type: 'boolean', default: false })
   is_public_email: boolean;
 
   @Column({ type: 'boolean', default: false })
   is_public_tech_stack: boolean;
-
-  @Column({ type: 'boolean', default: false })
-  is_public_education_status: boolean;
 
   @Column({ type: 'boolean', default: false })
   is_public_portfolio_link: boolean;
@@ -103,9 +106,15 @@ export class User {
   @UpdateDateColumn()
   updated_at: Date;
 
-
-
+  @DeleteDateColumn()
+  deleted_at: Date | null;
 
   @OneToMany(() => Announcement, (announcement) => announcement.author)
   announcements: Announcement[];
+
+  @OneToMany(() => StudyMember, (studyMember) => studyMember.user)
+  studyMembers: StudyMember[];
+
+  @OneToMany(() => RefreshToken, (token) => token.user)
+  refreshTokens: RefreshToken[];
 }

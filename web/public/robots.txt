@@ -1,0 +1,54 @@
+# https://www.robotstxt.org/robotstxt.html
+
+# =========================
+# Allow major search engines
+# =========================
+
+# Google 허용
+User-agent: Googlebot
+Allow: /
+
+# Bing 허용
+User-agent: Bingbot
+Allow: /
+
+# NAVER 허용
+User-agent: Yeti
+Allow: /
+
+# =========================
+# Block AI training crawlers
+# =========================
+
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ChatGPT-User
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: AnthropicBot
+Disallow: /
+
+User-agent: Amazonbot
+Disallow: /
+
+User-agent: Applebot-Extended
+Disallow: /
+
+# =========================
+# Default: allow others
+# =========================
+
+User-agent: *
+Allow: /
+
+# =========================
+# Sitemap
+# =========================
+Sitemap: https://teamcrazyperformance.com/sitemap.xml

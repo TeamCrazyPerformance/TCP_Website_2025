@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TCP - Kubernetes & DevOps | Study Detail</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href='https://spoqa.github.io/spoqa-han-sans/css/SpoqaHanSansNeo.css' rel='stylesheet' type='text/css'>
+    <style>
+        :root {
+            --primary-black: #0a0a0a;
+            --secondary-gray: #1a1a1a;
+            --light-gray: #2a2a2a;
+            --accent-blue: #a8c5e6;
+            --accent-purple: #c5a8e6;
+            --accent-green: #a8e6c5;
+            --accent-pink: #e6a8c5;
+        }
+        
+        body {
+            font-family: 'Spoqa Han Sans Neo', sans-serif;
+            background-color: var(--primary-black);
+            color: #ffffff;
+        }
+        
+        .orbitron {
+            font-family: 'Orbitron', monospace;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(168, 197, 230, 0.2);
+        }
+        
+        .nav-link {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+            transition: width 0.3s ease;
+        }
+        
+        .nav-link:hover::after {
+            width: 100%;
+        }
+        
+        .cta-button {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            transition: all 0.3s ease;
+        }
+        
+        .cta-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(168, 197, 230, 0.3);
+        }
+        
+        .feature-card {
+            background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .week-card {
+            background: var(--secondary-gray);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            min-height: 180px;
+        }
+
+        .week-card:hover {
+            background-color: var(--light-gray);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(168, 197, 230, 0.15);
+        }
+
+        .week-card:hover .hover-content {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .hover-content {
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+        }
+
+        .scroll-fade {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s ease;
+        }
+        
+        .scroll-fade.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            justify-content: center;
+            align-items: flex-start;
+            overflow-y: auto;
+            padding: 2rem 0;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            padding: 2rem;
+            width: 90%;
+            max-width: 800px;
+            position: relative;
+            animation: fadeInScale 0.3s ease-out;
+            margin: auto;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: #ffffff;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: color 0.3s ease;
+            z-index: 10;
+        }
+        
+        .close-modal:hover {
+            color: var(--accent-blue);
+        }
+
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .tag-k8s { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+        .tag-devops { background-color: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .tag-ci { background-color: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        .tag-docker { background-color: rgba(14, 165, 233, 0.2); color: #38bdf8; }
+        .tag-cloud { background-color: rgba(168, 85, 247, 0.2); color: #d8b4fe; }
+
+        .member-card {
+            background: var(--secondary-gray);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .member-card:hover {
+            background-color: var(--light-gray);
+            transform: translateY(-2px);
+        }
+
+        .article-content {
+            background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .article-meta {
+            background: var(--light-gray);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .article-body {
+            line-height: 1.8;
+        }
+        
+        .article-body p {
+            margin-bottom: 1.5rem;
+        }
+        
+        .article-body h3 {
+            color: var(--accent-blue);
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .attachment-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .attachment-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .back-button {
+            background: linear-gradient(135deg, var(--light-gray), var(--secondary-gray));
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .back-button:hover {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(168, 197, 230, 0.3);
+        }
+
+        .search-input {
+            background: var(--secondary-gray);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(168, 197, 230, 0.1);
+        }
+
+        .image-placeholder {
+            background: linear-gradient(135deg, var(--light-gray), var(--secondary-gray));
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9ca3af;
+            font-style: italic;
+        }
+
+        @media print {
+            body { -webkit-print-color-adjust: exact; }
+            .modal { position: relative !important; display: block !important; }
+            .modal-content { box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+    <header class="fixed top-0 left-0 right-0 z-40 bg-black bg-opacity-90 backdrop-blur-md border-b border-gray-800">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <a href="index.html" class="flex items-center space-x-3">
+                    <div class="w-10 h-10">
+                        <img src="logo.svg" alt="TCP 로고" class="w-full h-full object-contain">
+                    </div>
+                    <div>
+                        <h1 class="orbitron text-xl font-bold gradient-text">TCP</h1>
+                        <p class="text-xs text-gray-400">Team Crazy Performance</p>
+                    </div>
+                </a>
+                
+                <nav class="hidden md:flex space-x-6">
+                    <a href="about.html" class="nav-link orbitron text-sm font-medium text-gray-300 hover:text-white">About</a>
+                    <a href="members.html" class="nav-link orbitron text-sm font-medium text-gray-300 hover:text-white">Members</a>
+                    <a href="recruitment.html" class="nav-link orbitron text-sm font-medium text-gray-300 hover:text-white">Recruitment</a>
+                    <a href="announcement.html" class="nav-link orbitron text-sm font-medium text-gray-300 hover:text-white">Announcement</a>
+                    <a href="study.html" class="nav-link orbitron text-sm font-medium text-white">Study</a>
+                    <a href="team.html" class="nav-link orbitron text-sm font-medium text-gray-300 hover:text-white">Find Your Team</a>
+                </nav>
+                
+                <div class="flex items-center space-x-4">
+                    <button class="text-gray-400 hover:text-white"><i class="fas fa-bell"></i></button>
+                    <div class="flex items-center space-x-2">
+                        <a href="mypage.html"><img src="https://i.pravatar.cc/40?u=admin" alt="Admin" class="w-8 h-8 rounded-full"></a>
+                        <a href="mypage.html"><span class="text-sm font-medium">이DevOps</span></a>
+                    </div>
+                    <button class="px-4 py-2 text-sm border border-gray-600 rounded-lg hover:border-gray-400 transition-colors">로그아웃</button>
+                </div>
+                
+                <button class="md:hidden">
+                    <i class="fas fa-bars text-white"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="pt-20 pb-16">
+        <div class="container mx-auto px-4 max-w-6xl">
+            <!-- Back to studies button -->
+            <div class="mb-8 scroll-fade">
+                <a href="study.html" class="back-button inline-flex items-center px-6 py-3 rounded-lg text-sm font-medium">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    스터디 목록으로 돌아가기
+                </a>
+            </div>
+
+            <!-- Study Overview -->
+            <section class="mb-12 scroll-fade">
+                <div class="feature-card rounded-xl p-8">
+                    <div class="flex flex-col lg:flex-row items-start lg:items-center gap-6 mb-6">
+                        <div class="w-16 h-16 rounded-full bg-gradient-to-br from-green-400 via-blue-400 to-purple-400 flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-network-wired text-white text-2xl"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h1 class="text-3xl md:text-4xl font-bold gradient-text mb-2">Kubernetes & DevOps</h1>
+                            <p class="text-lg text-gray-300 mb-4">컨테이너 오케스트레이션과 CI/CD 파이프라인 구축을 실습으로 배우는 스터디입니다.</p>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="tag tag-k8s">Kubernetes</span>
+                                <span class="tag tag-docker">Docker</span>
+                                <span class="tag tag-devops">DevOps</span>
+                                <span class="tag tag-ci">CI/CD</span>
+                                <span class="tag tag-cloud">Cloud</span>
+                            </div>
+                        </div>
+                        <div class="ml-auto">
+                            <button
+                                id="join-button"
+                                onclick="joinStudy(study?.id ?? 'kubernetes-devops')"
+                                class="cta-button px-6 py-3 rounded-lg font-bold text-white hover:text-black transition-colors flex items-center"
+                            >
+                                <i class="fas fa-user-plus mr-2"></i> 스터디 참여
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 text-gray-300">
+                        <div>
+                            <h3 class="text-lg font-bold text-white mb-2">📅 진행 기간</h3>
+                            <p>2025.04 - 2025.08 (5개월)</p>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white mb-2">📍 진행 방식</h3>
+                            <p>주 1회 온라인 (Discord) + 실습 리포지토리</p>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white mb-2">🔄 주기</h3>
+                            <p>매주 수요일 오후 7시</p>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white mb-2">🏢 장소</h3>
+                            <p>Discord & TCP 랩실 (월 1회 오프라인)</p>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white mb-2">👨‍💻 스터디장</h3>
+                            <p><strong>이DevOps</strong> - "실무형 클러스터 운영 감각을 함께 길러봅시다!"</p>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white mb-2">👥 참여 인원</h3>
+                            <p><span id="participants-count">5</span>명 (모집 중)</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <h3 class="text-lg font-bold text-white mb-3">🛠️ 기술 스택</h3>
+                        <p class="text-gray-300">Docker, Kubernetes, Helm, Kustomize, GitHub Actions, Argo CD, Prometheus, Grafana, Loki, AWS(EKS) / GCP(GKE)</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Weekly Progress Cards -->
+            <section class="mb-12 scroll-fade">
+                <h2 class="text-3xl font-bold gradient-text mb-4">📚 주차별 진행 현황</h2>
+                <div class="flex justify-end mb-4">
+                    <a href="study_write.html"
+                       class="cta-button px-4 py-2 rounded-lg font-bold text-white hover:text-black transition-colors inline-flex items-center">
+                       <i class="fas fa-plus mr-2"></i> 새 글 작성
+                    </a>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="weeks-grid">
+                    <!-- Week cards will be generated by JavaScript -->
+                </div>
+            </section>
+
+            <!-- Member Search -->
+            <section class="mb-12 scroll-fade">
+                <h2 class="text-3xl font-bold gradient-text mb-8">👥 스터디원 검색</h2>
+                <div class="feature-card rounded-xl p-8">
+                    <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                        <div class="flex-1">
+                            <input type="text" id="member-search" class="search-input w-full px-4 py-3 rounded-lg text-white placeholder-gray-400" placeholder="이름, 역할, 태그로 검색...">
+                        </div>
+                        <button onclick="searchMembers()" class="cta-button px-6 py-3 rounded-lg font-bold text-white hover:text-black transition-colors">
+                            <i class="fas fa-search mr-2"></i>검색
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="members-grid">
+                        <!-- Member cards will be generated by JavaScript -->
+                    </div>
+                    <div id="no-members-found" class="hidden text-center py-8 text-gray-500">
+                        <i class="fas fa-user-slash text-4xl mb-4"></i>
+                        <p class="text-lg">검색 결과가 없습니다.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Article Modal -->
+    <div id="article-modal" class="modal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeArticle()">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <article>
+                <header class="mb-6">
+                    <div class="mb-4">
+                        <span id="article-tag" class="tag tag-k8s px-3 py-1 rounded-full text-xs"></span>
+                    </div>
+                    <h1 id="article-title" class="text-2xl md:text-3xl font-bold mb-4 gradient-text"></h1>
+                    
+                    <div class="article-meta rounded-lg p-4 mb-6">
+                        <div class="flex flex-wrap items-center justify-between text-sm text-gray-300">
+                            <div class="flex items-center space-x-4 mb-2 md:mb-0">
+                                <div class="flex items-center space-x-2">
+                                    <i class="fas fa-user text-blue-400"></i>
+                                    <span id="article-author">스터디장: 이DevOps</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <i class="fas fa-calendar text-purple-400"></i>
+                                    <span id="article-date"></span>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-4">
+                                <div class="flex items-center space-x-2">
+                                    <i class="fas fa-clock text-green-400"></i>
+                                    <span id="article-duration">2시간</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                <div class="article-content rounded-lg p-6 mb-6">
+                    <div id="article-body" class="article-body text-gray-200">
+                        <!-- Article content will be inserted here -->
+                    </div>
+                    
+                    <div id="article-images" class="grid grid-cols-1 md:grid-cols-2 gap-4 my-6 hidden">
+                        <!-- Images will be inserted here -->
+                    </div>
+                    
+                    <div id="article-attachments" class="mt-6 hidden">
+                        <h3 class="text-lg font-bold text-white mb-4">📎 첨부 파일</h3>
+                        <div class="space-y-3" id="attachments-list">
+                            <!-- Attachments will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </div>
+
+    <!-- Member POC Modal (기사 모달 '밖'으로 이동) -->
+    <div id="poc-modal" class="modal">
+        <div class="modal-content max-w-md">
+            <button class="close-modal" onclick="closePOC()">
+            <i class="fas fa-times"></i>
+            </button>
+            <div class="mb-4">
+            <h2 class="text-2xl font-bold gradient-text">POC 정보</h2>
+            <p class="text-gray-400 text-sm">스터디원 연락처 (스터디장 이상 공개)</p>
+            </div>
+            <div class="article-content rounded-lg p-4">
+            <div class="flex items-center space-x-3 mb-4">
+                <div id="poc-avatar" class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center text-white font-bold"></div>
+                <div>
+                <div id="poc-name" class="text-lg font-bold text-white"></div>
+                <div id="poc-role" class="text-sm text-gray-400"></div>
+                </div>
+            </div>
+            <div class="space-y-2 text-gray-200">
+                <div class="flex items-center space-x-2"><i class="fas fa-phone text-green-400"></i><span id="poc-phone"></span></div>
+                <div class="flex items-center space-x-2"><i class="fas fa-envelope text-blue-400"></i><span id="poc-email"></span></div>
+            </div>
+            </div>
+        </div>
+    </div>
+
+
+    <footer class="bg-black border-t border-gray-800 py-12">
+        <div class="container mx-auto px-4">
+            <div class="grid md:grid-cols-4 gap-8">
+                <div>
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="w-10 h-10">
+                            <img src="logo.svg" alt="TCP 로고" class="w-full h-full object-contain">
+                        </div>
+                        <h3 class="orbitron text-lg font-bold gradient-text">TCP</h3>
+                    </div>
+                    <p class="text-sm text-gray-400">
+                        Team Crazy Performance<br>
+                        컴퓨터공학 동아리
+                    </p>
+                </div>
+                <div>
+                    <h4 class="text-lg font-bold mb-4 text-white">임원진</h4>
+                    <div class="space-y-2 text-sm text-gray-400">
+                        <div><span class="text-blue-300">회장:</span> 김TCP</div>
+                        <div><span class="text-purple-300">부회장:</span> 이Performance</div>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-lg font-bold mb-4 text-white">연락처</h4>
+                    <div class="space-y-2 text-sm text-gray-400">
+                        <div class="flex items-center space-x-2"><i class="fas fa-phone text-blue-400"></i><span>010-1234-5678</span></div>
+                        <div class="flex items-center space-x-2"><i class="fas fa-envelope text-purple-400"></i><span>tcp@university.ac.kr</span></div>
+                        <div class="flex items-center space-x-2"><i class="fab fa-instagram text-pink-400"></i><a href="#" class="hover:text-pink-300 transition-colors">@tcp_official</a></div>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-lg font-bold mb-4 text-white">법적 정보</h4>
+                    <div class="space-y-2 text-sm">
+                        <div><a href="terms.html" class="text-gray-400 hover:text-white transition-colors">이용약관</a></div>
+                        <div><a href="privacy.html" class="text-gray-400 hover:text-white transition-colors">개인정보처리방침</a></div>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 mt-8 pt-8 text-center">
+                <p class="text-sm text-gray-400">© 2024 TCP (Team Crazy Performance). All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Study data
+        const study = {
+            id: "kubernetes-devops",
+            name: "Kubernetes & DevOps",
+            description: "컨테이너 오케스트레이션과 CI/CD 파이프라인 구축을 실습으로 배우는 스터디",
+            format: "주 1회 온라인 + 과제",
+            keywords: ["Kubernetes", "Docker", "DevOps", "CI/CD", "Cloud"],
+            leader: "이DevOps",
+            leaderQuote: "실무형 클러스터 운영 감각을 함께 길러봅시다!",
+            period: "2025.04 - 2025.08",
+            cadence: "매주 수요일 오후 7시",
+            location: "Discord & TCP 랩실",
+            techStack: "Docker, Kubernetes, Helm, GitHub Actions, Argo CD, Prometheus/Grafana",
+            membersCount: 5
+        };
+
+        // Weekly data
+        const weeks = [
+            {
+                id: 0,
+                title: "Week 0: 킥오프 & 환경 구성",
+                date: "2025.04.02",
+                summary: "스터디 소개, 리포지토리 구조, 로컬 K8s 세팅(Kind/Minikube)",
+                hoverContent: ["목표/규칙 정하기", "Kind/Minikube 설치", "kubectl 기본 명령"],
+                content: `
+                    <p>Kubernetes & DevOps 스터디의 첫 시간입니다. 진행 방식과 규칙을 합의하고, 로컬 개발 클러스터를 준비했습니다.</p>
+                    <h3>✅ 오늘 한 일</h3>
+                    <p>1) Kind/Minikube로 로컬 클러스터 준비 2) kubectl 설치 및 기본 명령 실습 3) 실습용 리포지토리 구조 잡기</p>
+                `,
+                images: [],
+                attachments: [
+                    { name: "kickoff-agenda.pdf", icon: "fas fa-file-pdf", type: "PDF", size: "210KB" },
+                    { name: "local-k8s-setup.md", icon: "fas fa-file-alt", type: "Markdown", size: "8KB" }
+                ]
+            },
+            {
+                id: 1,
+                title: "Week 1: Docker 기본기 & 이미지 빌드",
+                date: "2025.04.09",
+                summary: "Dockerfile 작성, 멀티스테이지 빌드, 이미지 최적화",
+                hoverContent: ["레이어 캐시", "멀티스테이지", "이미지 스캔"],
+                content: `
+                    <p>컨테이너의 작동 원리와 Dockerfile 베스트 프랙티스를 익혔습니다.</p>
+                    <h3>🧱 핵심</h3>
+                    <p>멀티스테이지 빌드와 캐시 전략으로 이미지 크기를 60% 절감했습니다.</p>
+                `,
+                images: [],
+                attachments: [
+                    { name: "demo-app.Dockerfile", icon: "fas fa-file-code", type: "Dockerfile", size: "2KB" }
+                ]
+            },
+            {
+                id: 2,
+                title: "Week 2: Kubernetes 핵심 오브젝트",
+                date: "2025.04.16",
+                summary: "Pod, Deployment, Service, ConfigMap/Secret",
+                hoverContent: ["RollingUpdate", "Probe", "리소스 요청"],
+                content: `
+                    <p>기본 리소스 오브젝트를 정의하고 배포/스케일을 실습했습니다.</p>
+                    <h3>📦 실습</h3>
+                    <p>liveness/readiness probe와 Resource Requests/Limits 설정을 통해 안정성을 확인했습니다.</p>
+                `,
+                images: [],
+                attachments: []
+            },
+            {
+                id: 3,
+                title: "Week 3: 네트워킹 & Ingress",
+                date: "2025.04.23",
+                summary: "Service 타입, Ingress Controller(NGINX), TLS",
+                hoverContent: ["ClusterIP/NodePort", "Ingress 규칙", "Let's Encrypt"],
+                content: `
+                    <p>서비스 노출 전략과 Ingress를 학습하고, 도메인-기반 라우팅을 구성했습니다.</p>
+                `,
+                images: [],
+                attachments: [
+                    { name: "ingress-sample.yaml", icon: "fas fa-file-code", type: "YAML", size: "1KB" }
+                ]
+            },
+            {
+                id: 4,
+                title: "Week 4: Helm & 템플릿",
+                date: "2025.04.30",
+                summary: "Chart 구조, values 관리, 템플릿 함수",
+                hoverContent: ["helm install/upgrade", "values 계층", "chart 재사용"],
+                content: `
+                    <p>Helm Chart로 배포 자동화를 경험했습니다. values 파일 분리로 환경별 설정을 깔끔히 관리했습니다.</p>
+                `,
+                images: [],
+                attachments: []
+            },
+            {
+                id: 5,
+                title: "Week 5: CI 파이프라인 (GitHub Actions)",
+                date: "2025.05.07",
+                summary: "빌드/테스트/이미지 푸시 자동화",
+                hoverContent: ["Workflow 작성", "캐시 전략", "보안 시크릿"],
+                content: `
+                    <p>PR 시 자동 빌드/테스트/도커 이미지 푸시가 동작하도록 구성했습니다.</p>
+                `,
+                images: [],
+                attachments: [
+                    { name: ".github/workflows/ci.yml", icon: "fas fa-file-code", type: "YAML", size: "1.4KB" }
+                ]
+            },
+            {
+                id: 6,
+                title: "Week 6: CD & GitOps (Argo CD)",
+                date: "2025.05.14",
+                summary: "Argo CD로 선언적 배포, Rollback/Promotion",
+                hoverContent: ["App of Apps", "자동 동기화", "Helm/Kustomize"],
+                content: `
+                    <p>Git 저장소를 Single Source of Truth로 두고 자동 배포/롤백을 실습했습니다.</p>
+                `,
+                images: [],
+                attachments: []
+            },
+            {
+                id: 7,
+                title: "Week 7: 관측성 (Prometheus, Grafana, Loki)",
+                date: "2025.05.21",
+                summary: "메트릭/로그 수집과 대시보드, 알림",
+                hoverContent: ["Alertmanager", "Grafana Dashboard", "리소스 모니터링"],
+                content: `
+                    <p>메트릭 기반 모니터링과 로그 집계를 구성하고 기본 알림 정책을 설정했습니다.</p>
+                `,
+                images: [],
+                attachments: []
+            },
+            {
+                id: 8,
+                title: "Week 8: 보안 & 베스트 프랙티스",
+                date: "2025.05.28",
+                summary: "RBAC, 네임스페이스 격리, 네트워크 폴리시",
+                hoverContent: ["이미지 서명", "비밀관리", "취약점 스캔"],
+                content: `
+                    <p>RBAC 최소 권한, NetworkPolicy, 이미지 스캐닝으로 기본 보안 가이드를 적용했습니다.</p>
+                `,
+                images: [],
+                attachments: []
+            }
+        ];
+
+        // Members data
+        const members = [
+            { id: 1, name: "이DevOps", role: "스터디장", tags: ["Argo CD", "Helm", "EKS"], major: "컴퓨터공학과", year: "4학년", experience: "클라우드/플랫폼 엔지니어 인턴" },
+            { id: 2, name: "김클라우드", role: "부스터디장", tags: ["AWS", "Terraform", "Observability"], major: "데이터사이언스과", year: "3학년", experience: "AWS 자격 보유, 프로젝트 3개" },
+            { id: 3, name: "박컨테이너", role: "팀원", tags: ["Docker", "Kustomize", "CI"], major: "컴퓨터공학과", year: "2학년", experience: "웹서비스 운영 동아리 경험" },
+            { id: 4, name: "최네트워크", role: "팀원", tags: ["Ingress", "TLS", "NGINX"], major: "전자공학과", year: "3학년", experience: "네트워크 스터디 1년" },
+            { id: 5, name: "윤모니터", role: "팀원", tags: ["Prometheus", "Grafana", "Loki"], major: "통계학과", year: "4학년", experience: "시각화 대회 입상" }
+        ];
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            renderWeeks();
+            renderMembers();
+            
+            // Scroll animations
+            const observerOptions = {
+                threshold: 0.1,
+                rootMargin: '0px 0px -50px 0px'
+            };
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    }
+                });
+            }, observerOptions);
+
+            document.querySelectorAll('.scroll-fade').forEach(el => {
+                observer.observe(el);
+            });
+
+            // Header background on scroll
+            window.addEventListener('scroll', () => {
+                const header = document.querySelector('header');
+                if (window.scrollY > 50) {
+                    header.style.backgroundColor = 'rgba(0, 0, 0, 0.95)';
+                } else {
+                    header.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+                }
+            });
+
+            // Member search input event
+            document.getElementById('member-search').addEventListener('input', searchMembers);
+            document.getElementById('member-search').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchMembers();
+                }
+            });
+        });
+
+        // Render week cards
+        function renderWeeks() {
+            const weeksGrid = document.getElementById('weeks-grid');
+            weeksGrid.innerHTML = '';
+
+            weeks.forEach(week => {
+                const weekCard = document.createElement('div');
+                weekCard.className = 'week-card p-6 rounded-xl card-hover';
+                weekCard.onclick = () => openArticle(week);
+                
+                weekCard.innerHTML = `<div class="flex items-center justify-between mb-3">
+  <div></div>
+  <div class="space-x-2">
+    <a href="study_post_edit.html?id=${week.id}&study=kubernetes-devops" class="text-xs px-3 py-1 rounded border border-gray-600 hover:border-gray-400" onclick="event.stopPropagation();">
+      <i class='fas fa-pen mr-1'></i>편집
+    </a>
+    <button class="text-xs px-3 py-1 rounded border border-red-600 hover:border-red-400 text-red-400" onclick="event.stopPropagation(); deleteWeek(${week.id});">
+      <i class='fas fa-trash mr-1'></i>삭제
+    </button>
+  </div>
+</div>
+
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="tag tag-k8s text-xs">Week ${week.id}</span>
+                        <span class="text-sm text-gray-400">${week.date}</span>
+                    </div>
+                    <h3 class="text-lg font-bold mb-2 text-white">${week.title}</h3>
+                    <p class="text-sm text-gray-400 mb-3">${week.summary}</p>
+                    <div class="hover-content">
+                        ${week.hoverContent.map(item => `<p class="text-xs text-gray-300">• ${item}</p>`).join('')}
+                    </div>
+                    <div class="mt-4 flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            ${week.attachments.length > 0 ? `<i class="fas fa-paperclip text-blue-400"></i><span class="text-xs text-gray-400">${week.attachments.length}개 첨부</span>` : ''}
+                        </div>
+                        <button class="text-blue-400 hover:text-blue-300 transition-colors">
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                `;
+                
+                weeksGrid.appendChild(weekCard);
+            });
+        }
+
+        // Render member cards
+        function renderMembers(filteredMembers = members) {
+            const membersGrid = document.getElementById('members-grid');
+            const noMembersFound = document.getElementById('no-members-found');
+            
+            membersGrid.innerHTML = '';
+            
+            if (filteredMembers.length === 0) {
+                noMembersFound.classList.remove('hidden');
+                return;
+            } else {
+                noMembersFound.classList.add('hidden');
+            }
+
+            filteredMembers.forEach(member => {
+                const memberCard = document.createElement('div');
+                memberCard.className = 'member-card p-4 rounded-lg cursor-pointer';
+memberCard.onclick = (e) => { if(!(e.target && e.target.dataset && e.target.dataset.role==='expel')) openPOC(member); };
+                
+                memberCard.innerHTML = `
+                    <div class="flex items-center space-x-3 mb-3">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center text-white font-bold">
+                            ${member.name.charAt(0)}
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-white">${member.name}</h4>
+                            <p class="text-sm text-gray-400">${member.role}</p>
+                        </div>
+                    </div>
+                    <div class="text-xs text-gray-400 mb-2">
+                        ${member.major} ${member.year}
+                    </div>
+                    <p class="text-sm text-gray-300 mb-3">${member.experience}</p>
+                    <div class="flex flex-wrap gap-1 mb-3">
+                        ${member.tags.map(tag => `<span class="tag tag-devops text-xs">${tag}</span>`).join('')}
+                    </div>
+                    <div class="flex justify-end">
+                        <button data-role="expel" class="text-xs px-3 py-1 rounded border border-red-600 hover:border-red-400 text-red-400"
+                                onclick="event.stopPropagation(); expelMember(${member.id});">
+                            <i class='fas fa-user-minus mr-1'></i>방출
+                        </button>
+                    </div>
+                `;
+                
+                membersGrid.appendChild(memberCard);
+            });
+        }
+
+        // Search members
+        function searchMembers() {
+            const searchTerm = document.getElementById('member-search').value.toLowerCase().trim();
+            
+            if (!searchTerm) {
+                renderMembers();
+                return;
+            }
+
+            const filteredMembers = members.filter(member => {
+                return member.name.toLowerCase().includes(searchTerm) ||
+                       member.role.toLowerCase().includes(searchTerm) ||
+                       member.tags.some(tag => tag.toLowerCase().includes(searchTerm)) ||
+                       member.major.toLowerCase().includes(searchTerm);
+            });
+
+            renderMembers(filteredMembers);
+        }
+
+        // Open article modal
+        function openArticle(week) {
+            document.getElementById('article-tag').textContent = `Week ${week.id}`;
+            document.getElementById('article-title').textContent = week.title;
+            document.getElementById('article-date').textContent = week.date;
+            document.getElementById('article-body').innerHTML = week.content;
+
+            // Handle images
+            const imagesContainer = document.getElementById('article-images');
+            if (week.images && week.images.length > 0) {
+                imagesContainer.classList.remove('hidden');
+                imagesContainer.innerHTML = week.images.map(img => `
+                    <div class="image-placeholder h-48 rounded-lg">
+                        <div class="text-center">
+                            <i class="fas fa-image text-2xl mb-2"></i>
+                            <p>${img.caption}</p>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                imagesContainer.classList.add('hidden');
+            }
+
+            // Handle attachments
+            const attachmentsContainer = document.getElementById('article-attachments');
+            const attachmentsList = document.getElementById('attachments-list');
+            if (week.attachments && week.attachments.length > 0) {
+                attachmentsContainer.classList.remove('hidden');
+                attachmentsList.innerHTML = week.attachments.map(attachment => `
+                    <a href="#" class="attachment-item flex items-center space-x-3 p-3 rounded-lg block hover:bg-opacity-20" download="${attachment.name}">
+                        <i class="${attachment.icon} text-blue-400 text-lg"></i>
+                        <div class="flex-1">
+                            <p class="font-medium text-white">${attachment.name}</p>
+                            <p class="text-sm text-gray-400">${attachment.type} • ${attachment.size}</p>
+                        </div>
+                        <i class="fas fa-download text-gray-400"></i>
+                    </a>
+                `).join('');
+            } else {
+                attachmentsContainer.classList.add('hidden');
+            }
+
+            document.getElementById('article-modal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Close article modal
+        function closeArticle() {
+            document.getElementById('article-modal').classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Close modal on background click
+        document.getElementById('article-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeArticle();
+            }
+        });
+
+        // Placeholder: joinStudy function (structure preserved: called by button)
+        function joinStudy(studyId) {
+            // 로그인 여부와 최종 확인은 실제 백엔드 검증 시 구현됩니다.
+            if (!confirm("참여하신 이후 탈퇴는 스터디장에게 문의하셔야 합니다. 정말 참여하시겠습니까?")) return;
+            alert("참여 신청이 접수되었습니다. (mock)");
+        }
+        // Delete a week (admin only - mock)
+        function deleteWeek(weekId) {
+            if (!confirm('해당 주차 글을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
+            const idx = weeks.findIndex(w => w.id === weekId);
+            if (idx >= 0) {
+                weeks.splice(idx, 1);
+                renderWeeks();
+            }
+        }
+
+        // Open POC modal
+        function openPOC(member) {
+            document.getElementById('poc-name').textContent = member.name;
+            document.getElementById('poc-role').textContent = member.role;
+            document.getElementById('poc-phone').textContent = member.phone || '-';
+            document.getElementById('poc-email').textContent = member.email || '-';
+            const av = document.getElementById('poc-avatar');
+            av.textContent = member.name.charAt(0);
+            document.getElementById('poc-modal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+        function closePOC() {
+            document.getElementById('poc-modal').classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+        document.getElementById('poc-modal').addEventListener('click', function(e) {
+            if (e.target === this) closePOC();
+        });
+
+        // Expel member (admin only - mock)
+        function expelMember(memberId) {
+            const m = members.find(m => m.id === memberId);
+            if (!m) return;
+            if (!confirm(`${m.name} 스터디원을 방출하시겠습니까?`)) return;
+            const idx = members.findIndex(m => m.id === memberId);
+            if (idx >= 0) {
+                members.splice(idx, 1);
+                renderMembers();
+                // update participants count display
+                const cnt = document.getElementById('participants-count');
+                if (cnt) cnt.textContent = members.length;
+            }
+        }
+
+    </script>
+</body>
+</html>

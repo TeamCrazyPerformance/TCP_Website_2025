@@ -1,13 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { StreamableFile } from '@nestjs/common';
 import { StudyController } from '../../src/study/study.controller';
 import { StudyService } from '../../src/study/study.service';
 import { CreateStudyDto } from '../../src/study/dto/request/create-study.dto';
+import { UpdateStudyDto } from '../../src/study/dto/request/update-study.dto';
 import { UpdateStudyLeaderDto } from '../../src/study/dto/request/update-study-leader.dto';
 import { AddStudyMemberDto } from '../../src/study/dto/request/add-study-member.dto';
 import { CreateProgressDto } from '../../src/study/dto/request/create-progress.dto';
 import { UpdateProgressDto } from '../../src/study/dto/request/update-progress.dto';
 import { SearchAvailableMembersQueryDto } from '../../src/study/dto/request/search-available-members-query.dto';
 import { GetStudiesQueryDto } from '../../src/study/dto/request/get-studies-query.dto';
+import { StudyMemberRole } from '../../src/study/entities/enums/study-member-role.enum';
+import { StudyRolesGuard } from '../../src/study/guards/study-roles.guard';
+import { RolesGuard } from '../../src/auth/guards/roles.guard';
 import { AuthGuard } from '@nestjs/passport';
 import { Reflector } from '@nestjs/core';
 
@@ -21,7 +26,9 @@ describe('StudyController', () => {
     findById: jest.fn(),
     create: jest.fn(),
     delete: jest.fn(),
+    updateStudy: jest.fn(),
     findMembersByStudyId: jest.fn(),
+    findMemberDetailByStudyId: jest.fn(),
     updateLeader: jest.fn(),
     addMember: jest.fn(),
     removeMember: jest.fn(),
@@ -32,8 +39,16 @@ describe('StudyController', () => {
     findResourcesByStudyId: jest.fn(),
     uploadResource: jest.fn(),
     deleteResource: jest.fn(),
+    downloadResource: jest.fn(),
     searchAvailableMembers: jest.fn(),
+    applyToStudy: jest.fn(),
+    approveMember: jest.fn(),
+    leaveStudy: jest.fn(),
   };
+
+  // Mock guards that always allow access
+  const mockStudyRolesGuard = { canActivate: jest.fn(() => true) };
+  const mockRolesGuard = { canActivate: jest.fn(() => true) };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -45,7 +60,12 @@ describe('StudyController', () => {
         },
         Reflector,
       ],
-    }).compile();
+    })
+      .overrideGuard(StudyRolesGuard)
+      .useValue(mockStudyRolesGuard)
+      .overrideGuard(RolesGuard)
+      .useValue(mockRolesGuard)
+      .compile();
 
     controller = module.get<StudyController>(StudyController);
     reflector = module.get<Reflector>(Reflector);
@@ -126,7 +146,8 @@ describe('StudyController', () => {
         study_name: 'New Study',
         start_year: 2025,
         study_description: 'New Description',
-        leader_id: 1,
+        leader_id: 'test-uuid-1',
+        apply_deadline: '2025-12-31',
       };
       const mockResponse = { success: true, id: 1 };
       mockStudyService.create.mockResolvedValue(mockResponse);
@@ -185,13 +206,13 @@ describe('StudyController', () => {
 
   describe('updateLeader', () => {
     it('should update study leader', async () => {
-      const updateDto: UpdateStudyLeaderDto = { user_id: 2 };
+      const updateDto: UpdateStudyLeaderDto = { user_id: 'test-uuid-2' };
       const mockResponse = { success: true };
       mockStudyService.updateLeader.mockResolvedValue(mockResponse);
 
       const result = await controller.updateLeader(1, updateDto);
 
-      expect(mockStudyService.updateLeader).toHaveBeenCalledWith(1, 2);
+      expect(mockStudyService.updateLeader).toHaveBeenCalledWith(1, 'test-uuid-2');
       expect(result).toEqual(mockResponse);
     });
 
@@ -205,15 +226,15 @@ describe('StudyController', () => {
   describe('addMember', () => {
     it('should add a member to study', async () => {
       const addMemberDto: AddStudyMemberDto = {
-        user_id: 3,
-        role_name: 'Member',
+        user_id: 'test-uuid-3',
+        role: StudyMemberRole.MEMBER,
       };
       const mockResponse = { success: true };
       mockStudyService.addMember.mockResolvedValue(mockResponse);
 
       const result = await controller.addMember(1, addMemberDto);
 
-      expect(mockStudyService.addMember).toHaveBeenCalledWith(1, 3, 'Member');
+      expect(mockStudyService.addMember).toHaveBeenCalledWith(1, 'test-uuid-3', StudyMemberRole.MEMBER);
       expect(result).toEqual(mockResponse);
     });
 
@@ -229,9 +250,9 @@ describe('StudyController', () => {
       const mockResponse = { success: true };
       mockStudyService.removeMember.mockResolvedValue(mockResponse);
 
-      const result = await controller.removeMember(1, 2);
+      const result = await controller.removeMember(1, 'test-uuid-2');
 
-      expect(mockStudyService.removeMember).toHaveBeenCalledWith(1, 2);
+      expect(mockStudyService.removeMember).toHaveBeenCalledWith(1, 'test-uuid-2');
       expect(result).toEqual(mockResponse);
     });
 
@@ -427,6 +448,131 @@ describe('StudyController', () => {
 
     it('should have JWT AuthGuard applied', () => {
       const guards = reflector.get('__guards__', controller.searchAvailableMembers);
+      expect(guards).toBeDefined();
+      expect(guards).toContain(AuthGuard('jwt'));
+    });
+  });
+
+  describe('downloadResource', () => {
+    it('should download a resource file', async () => {
+      const mockStreamableFile = new StreamableFile(Buffer.from('test'));
+      const mockRes = {
+        set: jest.fn(),
+      };
+      mockStudyService.downloadResource.mockResolvedValue(mockStreamableFile);
+
+      const result = await controller.downloadResource(1, 1, mockRes as any);
+
+      expect(mockStudyService.downloadResource).toHaveBeenCalledWith(1, 1, mockRes);
+      expect(result).toEqual(mockStreamableFile);
+    });
+
+    it('should have JWT AuthGuard applied', () => {
+      const guards = reflector.get('__guards__', controller.downloadResource);
+      expect(guards).toBeDefined();
+      expect(guards).toContain(AuthGuard('jwt'));
+    });
+  });
+
+  describe('updateStudy', () => {
+    it('should update a study', async () => {
+      const updateStudyDto: UpdateStudyDto = {
+        study_name: 'Updated Study Name',
+      };
+      const mockResponse = { success: true };
+      mockStudyService.updateStudy.mockResolvedValue(mockResponse);
+
+      const result = await controller.updateStudy(1, updateStudyDto);
+
+      expect(mockStudyService.updateStudy).toHaveBeenCalledWith(1, updateStudyDto);
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should have JWT AuthGuard applied', () => {
+      const guards = reflector.get('__guards__', controller.updateStudy);
+      expect(guards).toBeDefined();
+      expect(guards).toContain(AuthGuard('jwt'));
+    });
+  });
+
+  describe('findMemberDetail', () => {
+    it('should return detailed member information', async () => {
+      const mockMemberDetail = {
+        user_id: 1,
+        name: 'Test User',
+        role: StudyMemberRole.MEMBER,
+        student_number: '20210001',
+        phone_number: '010-1234-5678',
+        email: 'test@example.com',
+        major: 'Computer Science',
+        profile_image: null,
+      };
+      mockStudyService.findMemberDetailByStudyId.mockResolvedValue(mockMemberDetail);
+
+      const result = await controller.findMemberDetail(1, 'test-uuid-1');
+
+      expect(mockStudyService.findMemberDetailByStudyId).toHaveBeenCalledWith(1, 'test-uuid-1');
+      expect(result).toEqual(mockMemberDetail);
+    });
+
+    it('should have JWT AuthGuard applied', () => {
+      const guards = reflector.get('__guards__', controller.findMemberDetail);
+      expect(guards).toBeDefined();
+      expect(guards).toContain(AuthGuard('jwt'));
+    });
+  });
+
+  describe('apply', () => {
+    it('should allow a user to apply to a study', async () => {
+      const mockReq = { user: { userId: 1 } };
+      const mockResponse = { success: true };
+      mockStudyService.applyToStudy.mockResolvedValue(mockResponse);
+
+      const result = await controller.apply(1, mockReq);
+
+      expect(mockStudyService.applyToStudy).toHaveBeenCalledWith(1, 1);
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should have JWT AuthGuard applied', () => {
+      const guards = reflector.get('__guards__', controller.apply);
+      expect(guards).toBeDefined();
+      expect(guards).toContain(AuthGuard('jwt'));
+    });
+  });
+
+  describe('approveMember', () => {
+    it('should approve a pending member', async () => {
+      const mockResponse = { success: true };
+      mockStudyService.approveMember.mockResolvedValue(mockResponse);
+
+      const result = await controller.approveMember(1, 'test-uuid-2');
+
+      expect(mockStudyService.approveMember).toHaveBeenCalledWith(1, 'test-uuid-2');
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should have JWT AuthGuard applied', () => {
+      const guards = reflector.get('__guards__', controller.approveMember);
+      expect(guards).toBeDefined();
+      expect(guards).toContain(AuthGuard('jwt'));
+    });
+  });
+
+  describe('leave', () => {
+    it('should allow a user to leave a study', async () => {
+      const mockReq = { user: { userId: 1 } };
+      const mockResponse = { success: true };
+      mockStudyService.leaveStudy.mockResolvedValue(mockResponse);
+
+      const result = await controller.leave(1, mockReq);
+
+      expect(mockStudyService.leaveStudy).toHaveBeenCalledWith(1, 1);
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should have JWT AuthGuard applied', () => {
+      const guards = reflector.get('__guards__', controller.leave);
       expect(guards).toBeDefined();
       expect(guards).toContain(AuthGuard('jwt'));
     });

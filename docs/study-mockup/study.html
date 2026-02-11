@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TCP - Team Crazy Performance | Study</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href='https://spoqa.github.io/spoqa-han-sans/css/SpoqaHanSansNeo.css' rel='stylesheet' type='text/css'>
+    <style>
+        :root {
+            --primary-black: #0a0a0a;
+            --secondary-gray: #1a1a1a;
+            --light-gray: #2a2a2a;
+            --accent-blue: #a8c5e6;
+            --accent-purple: #c5a8e6;
+            --accent-green: #a8e6c5;
+            --accent-pink: #e6a8c5;
+        }
+        
+        body {
+            font-family: 'Spoqa Han Sans Neo', sans-serif;
+            background-color: var(--primary-black);
+            color: #ffffff;
+        }
+        
+        .orbitron {
+            font-family: 'Orbitron', monospace;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(168, 197, 230, 0.2);
+        }
+        
+        .nav-link {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+            transition: width 0.3s ease;
+        }
+        
+        .nav-link:hover::after {
+            width: 100%;
+        }
+        
+        .cta-button {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            transition: all 0.3s ease;
+        }
+        
+        .cta-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(168, 197, 230, 0.3);
+        }
+        
+        .feature-card {
+            background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .study-item {
+            background: var(--secondary-gray);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .study-item:hover {
+            background-color: var(--light-gray);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(168, 197, 230, 0.15);
+        }
+
+        .scroll-fade {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s ease;
+        }
+        
+        .scroll-fade.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            padding: 2rem;
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+            animation: fadeInScale 0.3s ease-out;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: #ffffff;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        
+        .close-modal:hover {
+            color: var(--accent-blue);
+        }
+
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 9999px; /* Tailwind's rounded-full */
+            font-size: 0.75rem; /* Tailwind's text-xs */
+            font-weight: 500;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .tag-blue { background-color: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+        .tag-purple { background-color: rgba(168, 85, 247, 0.2); color: #d8b4fe; }
+        .tag-green { background-color: rgba(34, 197, 94, 0.2); color: #86efac; }
+        .tag-yellow { background-color: rgba(245, 158, 11, 0.2); color: #fde68a; }
+        .tag-red { background-color: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+    </style>
+</head>
+<body>
+    <header class="fixed top-0 left-0 right-0 z-50 bg-black bg-opacity-90 backdrop-blur-md border-b border-gray-800">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <a href="index.html" class="flex items-center space-x-3">
+                    <div class="w-10 h-10">
+                        <img src="logo.svg" alt="TCP 로고" class="w-full h-full object-contain">
+                    </div>
+                    <div>
+                        <h1 class="orbitron text-xl font-bold gradient-text">TCP</h1>
+                        <p class="text-xs text-gray-400">Team Crazy Performance</p>
+                    </div>
+                </a>
+                
+                <nav class="hidden md:flex space-x-6">
+                    <a href="about.html" class="nav-link orbitron text-sm font-medium text-gray-300 hover:text-white">About</a>
+                    <a href="members.html" class="nav-link orbitron text-sm font-medium text-gray-300 hover:text-white">Members</a>
+                    <a href="recruitment.html" class="nav-link orbitron text-sm font-medium text-gray-300 hover:text-white">Recruitment</a>
+                    <a href="announcement.html" class="nav-link orbitron text-sm font-medium text-gray-300 hover:text-white">Announcement</a>
+                    <a href="study.html" class="nav-link orbitron text-sm font-medium text-white">Study</a>
+                    <a href="team.html" class="nav-link orbitron text-sm font-medium text-gray-300 hover:text-white">Find Your Team</a>
+                </nav>
+                
+                <div class="flex items-center space-x-4">
+                    <button class="text-gray-400 hover:text-white"><i class="fas fa-bell"></i></button>
+                    <div class="flex items-center space-x-2">
+                        <a href="mypage.html"><img src="https://i.pravatar.cc/40?u=admin" alt="Admin" class="w-8 h-8 rounded-full"></a>
+                        <a href="mypage.html"><span class="text-sm font-medium">Admin Kim</span></a>
+                    </div>
+                    <button class="px-4 py-2 text-sm border border-gray-600 rounded-lg hover:border-gray-400 transition-colors">로그아웃</button>
+                </div>
+                
+                <button class="md:hidden">
+                    <i class="fas fa-bars text-white"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <section class="pt-24 pb-16">
+        <div class="container mx-auto px-4">
+            <div class="text-center">
+                <div class="mb-8">
+                    <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-green-400 via-blue-400 to-purple-400 flex items-center justify-center">
+                        <i class="fas fa-book-open text-white text-3xl"></i>
+                    </div>
+                    <h1 class="orbitron text-5xl md:text-7xl font-black mb-4">
+                        <span class="gradient-text">TCP Study</span>
+                    </h1>
+                    <p class="text-xl md:text-2xl text-gray-300 mb-6">함께 배우고 성장하는 개발 커뮤니티</p>
+                    <p class="text-lg text-gray-400 max-w-2xl mx-auto">
+                        <span class="orbitron">TCP</span>는 다양한 기술 스터디를 통해 멤버들의 개발 역량을 강화하고, 최신 기술 트렌드를 함께 탐구합니다.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="study-list" class="py-16 bg-gradient-to-b from-transparent to-gray-900">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-12 space-y-4 md:space-y-0">
+                <h2 class="text-3xl md:text-4xl font-bold gradient-text">스터디 목록</h2>
+                <div class="relative w-full md:w-auto">
+                    <label for="year-select" class="sr-only">년도 선택</label>
+                    <select id="year-select" class="w-full md:w-48 bg-gray-800 border border-gray-700 rounded-lg py-2 px-4 text-white focus:ring-2 focus:ring-accent-blue focus:outline-none">
+                        <option value="all">전체 년도</option>
+                        <option value="2025" selected>2025년</option>
+                        <option value="2024">2024년</option>
+                        <option value="2023">2023년</option>
+                        <option value="2022">2022년</option>
+                        <option value="2021">2021년</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="study-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                </div>
+
+            <div id="no-studies-message" class="hidden text-center py-12 text-gray-500">
+                <i class="fas fa-exclamation-circle text-5xl mb-4"></i>
+                <p class="text-xl">해당 년도에는 등록된 스터디가 없습니다.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer class="bg-black border-t border-gray-800 py-12">
+        <div class="container mx-auto px-4">
+            <div class="grid md:grid-cols-4 gap-8">
+                <div>
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="w-10 h-10">
+                            <img src="logo.svg" alt="TCP 로고" class="w-full h-full object-contain">
+                        </div>
+                        <h3 class="orbitron text-lg font-bold gradient-text">TCP</h3>
+                    </div>
+                    <p class="text-sm text-gray-400">
+                        Team Crazy Performance<br>
+                        컴퓨터공학 동아리
+                    </p>
+                </div>
+                <div>
+                    <h4 class="text-lg font-bold mb-4 text-white">임원진</h4>
+                    <div class="space-y-2 text-sm text-gray-400">
+                        <div><span class="text-blue-300">회장:</span> 김TCP</div>
+                        <div><span class="text-purple-300">부회장:</span> 이Performance</div>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-lg font-bold mb-4 text-white">연락처</h4>
+                    <div class="space-y-2 text-sm text-gray-400">
+                        <div class="flex items-center space-x-2"><i class="fas fa-phone text-blue-400"></i><span>010-1234-5678</span></div>
+                        <div class="flex items-center space-x-2"><i class="fas fa-envelope text-purple-400"></i><span>tcp@university.ac.kr</span></div>
+                        <div class="flex items-center space-x-2"><i class="fab fa-instagram text-pink-400"></i><a href="#" class="hover:text-pink-300 transition-colors">@tcp_official</a></div>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-lg font-bold mb-4 text-white">법적 정보</h4>
+                    <div class="space-y-2 text-sm">
+                        <div><a href="terms.html" class="text-gray-400 hover:text-white transition-colors">이용약관</a></div>
+                        <div><a href="privacy.html" class="text-gray-400 hover:text-white transition-colors">개인정보처리방침</a></div>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 mt-8 pt-8 text-center">
+                <p class="text-sm text-gray-400">© 2024 TCP (Team Crazy Performance). All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <div id="studyDetailModal" class="modal">
+        <div class="modal-content">
+            <button class="close-modal" id="closeStudyModal">
+                <i class="fas fa-times"></i>
+            </button>
+            <h3 id="modal-study-title" class="text-2xl font-bold gradient-text mb-4"></h3>
+            <div class="space-y-3 text-gray-300">
+                <p><strong class="text-white">기간:</strong> <span id="modal-study-duration"></span></p>
+                <p><strong class="text-white">진행 방식:</strong> <span id="modal-study-method"></span></p>
+                <p><strong class="text-white">장소:</strong> <span id="modal-study-location"></span></p>
+                <p><strong class="text-white">참여 인원:</strong> <span id="modal-study-members"></span></p>
+                <p><strong class="text-white">기술 스택:</strong> <span id="modal-study-techstack"></span></p>
+                <p class="pt-2"><strong class="text-white">설명:</strong> <span id="modal-study-description" class="block mt-1 text-gray-400"></span></p>
+            </div>
+            <div id="modal-study-tags" class="flex flex-wrap mt-4"></div>
+            <div class="mt-6 text-right">
+                <a id="modal-study-link" href="#" target="_blank" class="cta-button px-6 py-2 rounded-lg text-sm font-bold text-white hover:text-black transition-colors">
+                    <i class="fas fa-external-link-alt mr-2"></i> 자세히 보기
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]:not(#modal-study-link)').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+
+        // Scroll animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.scroll-fade').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Header background on scroll
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('header');
+            if (window.scrollY > 50) {
+                header.style.backgroundColor = 'rgba(0, 0, 0, 0.95)';
+            } else {
+                header.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+            }
+        });
+
+        // Study Data (Dummy Data for demonstration)
+        const allStudies = [
+            // 2025 Studies
+            {
+                year: 2025,
+                title: "심화 알고리즘 & 코딩 테스트",
+                period: "2025.03 - 2025.06 (1학기)",
+                method: "주 2회 온라인/오프라인 병행",
+                location: "Zoom & 동아리실",
+                members: "8명",
+                techstack: "Python, C++, Java",
+                description: "고급 알고리즘 문제 풀이 및 실제 코딩 테스트 대비 스터디입니다. 백준 플래티넘 이상 목표.",
+                tags: ["알고리즘", "코딩테스트", "심화"],
+                link: "#"
+            },
+            {
+                year: 2025,
+                title: "Next.js 기반 풀스택 웹 개발",
+                period: "2025.03 - 2025.07 (1학기)",
+                method: "주 1회 오프라인",
+                location: "동아리실",
+                members: "6명",
+                techstack: "Next.js, TypeScript, NestJS, MongoDB",
+                description: "Next.js 프레임워크를 활용한 웹 서비스 기획부터 배포까지 풀스택 개발 과정을 학습합니다. 개인 프로젝트 병행.",
+                tags: ["웹개발", "풀스택", "Next.js"],
+                link: "#"
+            },
+            {
+                year: 2025,
+                title: "Kubernetes & DevOps",
+                period: "2025.04 - 2025.08",
+                method: "주 1회 온라인",
+                location: "Discord",
+                members: "5명",
+                techstack: "Kubernetes, Docker, CI/CD, AWS",
+                description: "컨테이너 오케스트레이션 도구 Kubernetes를 중심으로 DevOps 파이프라인 구축을 학습합니다.",
+                tags: ["DevOps", "클라우드", "Kubernetes"],
+                link: "#"
+            },
+            {
+                year: 2025,
+                title: "Generative AI 프로젝트 스터디",
+                period: "2025.05 - 2025.09",
+                method: "주 1회 오프라인",
+                location: "동아리실",
+                members: "7명",
+                techstack: "Python, PyTorch, TensorFlow, Hugging Face",
+                description: "최신 Generative AI 모델(LLM, Diffusion Model)을 활용한 미니 프로젝트를 진행하며 실습 위주로 학습합니다.",
+                tags: ["AI", "머신러닝", "생성형AI"],
+                link: "study_study0.html"
+            },
+            // 2024 Studies
+            {
+                year: 2024,
+                title: "기초 알고리즘 & 자료구조",
+                period: "2024.03 - 2024.06 (1학기)",
+                method: "주 2회 온라인",
+                location: "Gather Town",
+                members: "10명",
+                techstack: "Python, C++",
+                description: "컴퓨터공학 기본인 알고리즘과 자료구조를 탄탄하게 다지는 스터디입니다.",
+                tags: ["알고리즘", "자료구조", "기초"],
+                link: "#"
+            },
+            {
+                year: 2024,
+                title: "Spring Boot 웹 서비스 개발",
+                period: "2024.03 - 2024.07 (1학기)",
+                method: "주 1회 오프라인",
+                location: "동아리실",
+                members: "7명",
+                techstack: "Spring Boot, Java, MySQL",
+                description: "실제 웹 서비스를 개발하며 백엔드 프레임워크 Spring Boot의 핵심 개념을 익힙니다.",
+                tags: ["웹개발", "백엔드", "Spring"],
+                link: "#"
+            },
+            {
+                year: 2024,
+                title: "iOS 앱 개발 (Swift)",
+                period: "2024.09 - 2024.12 (2학기)",
+                method: "주 1회 오프라인",
+                location: "동아리실",
+                members: "6명",
+                techstack: "Swift, UIKit, SwiftUI",
+                description: "Swift 언어와 Apple 프레임워크를 이용한 iOS 앱 개발 기초부터 실전까지.",
+                tags: ["모바일", "iOS", "Swift"],
+                link: "#"
+            },
+            {
+                year: 2024,
+                title: "React 기초 및 실습",
+                period: "2024.09 - 2024.12 (2학기)",
+                method: "주 1회 온라인",
+                location: "Google Meet",
+                members: "8명",
+                techstack: "React, JavaScript, HTML, CSS",
+                description: "프론트엔드 라이브러리 React의 기본 개념을 익히고 실습 프로젝트를 진행합니다.",
+                tags: ["웹개발", "프론트엔드", "React"],
+                link: "#"
+            },
+            // 2023 Studies
+            {
+                year: 2023,
+                title: "파이썬 데이터 분석",
+                period: "2023.03 - 2023.06 (1학기)",
+                method: "주 1회 온라인",
+                location: "Zoom",
+                members: "12명",
+                techstack: "Python, Pandas, NumPy, Matplotlib",
+                description: "파이썬을 이용한 데이터 수집, 가공, 분석 및 시각화 기법 학습.",
+                tags: ["데이터분석", "파이썬", "초급"],
+                link: "#"
+            },
+            {
+                year: 2023,
+                title: "Unity 3D 게임 개발",
+                period: "2023.09 - 2023.12 (2학기)",
+                method: "주 1회 오프라인",
+                location: "동아리실",
+                members: "5명",
+                techstack: "Unity, C#",
+                description: "Unity 엔진을 활용하여 3D 게임을 개발하는 프로젝트 스터디.",
+                tags: ["게임개발", "Unity", "C#"],
+                link: "#"
+            },
+            // 2022 Studies
+            {
+                year: 2022,
+                title: "Java 프로그래밍 기초",
+                period: "2022.03 - 2022.06 (1학기)",
+                method: "주 2회 오프라인",
+                location: "강의실",
+                members: "15명",
+                techstack: "Java",
+                description: "프로그래밍 첫 걸음을 위한 Java 기초 문법 및 객체지향 개념 학습.",
+                tags: ["Java", "기초", "프로그래밍"],
+                link: "#"
+            },
+            {
+                year: 2022,
+                title: "데이터베이스 설계 및 SQL",
+                period: "2022.09 - 2022.12 (2학기)",
+                method: "주 1회 온라인",
+                location: "Google Meet",
+                members: "10명",
+                techstack: "MySQL, PostgreSQL, SQL",
+                description: "관계형 데이터베이스 설계 원리 및 SQL 활용법 학습.",
+                tags: ["데이터베이스", "SQL"],
+                link: "#"
+            },
+            // 2021 Studies
+            {
+                year: 2021,
+                title: "C언어 프로그래밍 입문",
+                period: "2021.09 - 2021.12 (2학기)",
+                method: "주 2회 오프라인",
+                location: "강의실",
+                members: "20명",
+                techstack: "C",
+                description: "TCP 창립 후 첫 번째 스터디로, C언어 기초 문법을 다룹니다.",
+                tags: ["C언어", "기초", "입문"],
+                link: "#"
+            }
+        ];
+
+        const studyContainer = document.getElementById('study-container');
+        const yearSelect = document.getElementById('year-select');
+        const noStudiesMessage = document.getElementById('no-studies-message');
+        const studyDetailModal = document.getElementById('studyDetailModal');
+        const closeStudyModalBtn = document.getElementById('closeStudyModal');
+
+        // Function to render studies based on selected year
+        function renderStudies(selectedYear) {
+            studyContainer.innerHTML = ''; // Clear previous studies
+            let hasStudies = false;
+
+            const filteredStudies = selectedYear === 'all' 
+                ? allStudies 
+                : allStudies.filter(study => study.year.toString() === selectedYear);
+
+            if (filteredStudies.length > 0) {
+                noStudiesMessage.classList.add('hidden');
+                hasStudies = true;
+                filteredStudies.sort((a, b) => { // Sort by period, newest first
+                    const parsePeriod = (period) => {
+                        const match = period.match(/(\d{4})\.(\d{2})/);
+                        return match ? new Date(parseInt(match[1]), parseInt(match[2]) - 1) : new Date(0);
+                    };
+                    return parsePeriod(b.period).getTime() - parsePeriod(a.period).getTime();
+                });
+
+                filteredStudies.forEach(study => {
+                    const studyItem = document.createElement('div');
+                    studyItem.className = 'study-item p-6 rounded-xl card-hover scroll-fade';
+                    studyItem.innerHTML = `
+                        <h3 class="text-xl font-bold mb-2 text-white">${study.title}</h3>
+                        <p class="text-gray-400 mb-2">${study.period}</p>
+                        <p class="text-sm text-gray-500">${study.description.substring(0, 80)}...</p>
+                        <div class="flex flex-wrap mt-3">
+                            ${study.tags.map(tag => `<span class="tag tag-blue">${tag}</span>`).join('')}
+                        </div>
+                    `;
+                    studyItem.addEventListener('click', () => openStudyModal(study));
+                    studyContainer.appendChild(studyItem);
+                });
+                // Re-observe for scroll animations after new elements are added
+                document.querySelectorAll('.scroll-fade').forEach(el => {
+                    observer.unobserve(el); // Stop observing if already observed
+                    observer.observe(el);
+                });
+            } else {
+                noStudiesMessage.classList.remove('hidden');
+            }
+        }
+
+        // Function to open study detail modal
+        function openStudyModal(study) {
+            document.getElementById('modal-study-title').textContent = study.title;
+            document.getElementById('modal-study-duration').textContent = study.period;
+            document.getElementById('modal-study-method').textContent = study.method;
+            document.getElementById('modal-study-location').textContent = study.location;
+            document.getElementById('modal-study-members').textContent = study.members;
+            document.getElementById('modal-study-techstack').textContent = study.techstack;
+            document.getElementById('modal-study-description').textContent = study.description;
+            
+            const tagsContainer = document.getElementById('modal-study-tags');
+            tagsContainer.innerHTML = '';
+            study.tags.forEach(tag => {
+                const tagSpan = document.createElement('span');
+                tagSpan.className = 'tag tag-blue'; // Use a consistent tag color in modal or define per tag
+                tagSpan.textContent = tag;
+                tagsContainer.appendChild(tagSpan);
+            });
+
+            document.getElementById('modal-study-link').href = study.link; // Set the link for "자세히 보기"
+            
+            studyDetailModal.classList.add('active');
+            document.body.style.overflow = 'hidden'; // Prevent scrolling background
+        }
+
+        // Function to close study detail modal
+        function closeStudyModal() {
+            studyDetailModal.classList.remove('active');
+            document.body.style.overflow = 'auto'; // Restore scrolling
+        }
+
+        // Event listener for year select box
+        yearSelect.addEventListener('change', (event) => {
+            renderStudies(event.target.value);
+        });
+
+        // Event listener for closing modal
+        closeStudyModalBtn.addEventListener('click', closeStudyModal);
+        studyDetailModal.addEventListener('click', (e) => {
+            if (e.target === studyDetailModal) {
+                closeStudyModal();
+            }
+        });
+
+        // Initial render on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set default selected year to current year if studies exist, otherwise 'all'
+            const currentYear = new Date().getFullYear().toString();
+            if (allStudies.some(study => study.year.toString() === currentYear)) {
+                yearSelect.value = currentYear;
+                renderStudies(currentYear);
+            } else {
+                yearSelect.value = 'all';
+                renderStudies('all');
+            }
+        });
+    </script>
+</body>
+</html>

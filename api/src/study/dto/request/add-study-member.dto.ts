@@ -1,10 +1,12 @@
-import { IsNotEmpty, IsNumber } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsUUID } from 'class-validator';
+import { StudyMemberRole } from '../../entities/enums/study-member-role.enum';
 
 export class AddStudyMemberDto {
-  @IsNumber()
+  @IsUUID()
   @IsNotEmpty()
-  user_id: number;
+  user_id: string;
 
+  @IsEnum(StudyMemberRole)
   @IsNotEmpty()
-  role_name: string;
+  role: StudyMemberRole; // PENDING, MEMBER, LEADER
 }

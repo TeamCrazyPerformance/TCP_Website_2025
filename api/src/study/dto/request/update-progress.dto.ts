@@ -1,13 +1,4 @@
-import { IsOptional, IsString, IsNotEmpty } from 'class-validator';
+import { PartialType } from '@nestjs/mapped-types';
+import { CreateProgressDto } from './create-progress.dto';
 
-export class UpdateProgressDto {
-  @IsOptional()
-  @IsString()
-  @IsNotEmpty()
-  title?: string;
-
-  @IsOptional()
-  @IsString()
-  @IsNotEmpty()
-  content?: string;
-}
+export class UpdateProgressDto extends PartialType(CreateProgressDto) { }

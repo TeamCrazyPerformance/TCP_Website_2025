@@ -37,10 +37,10 @@ describe('POST /api/v1/teams/:id/apply (e2e)', () => {
 
         // --- 유저 생성 ---
         const applicantRes = await request(app.getHttpServer())
-                .post('/auth/register')
+                .post('/api/v1/auth/register')
                 .send({
                     username: 'applicant',
-                    password: 'password',
+                    password: 'TestPassword123!',
                     name: '지원자',
                     student_number: '20231111',
                     profile_image: '',
@@ -48,7 +48,7 @@ describe('POST /api/v1/teams/:id/apply (e2e)', () => {
                     email: 'applicant@example.com',
                     major: '컴퓨터공학과',
                     join_year: 2023,
-                    birth_date: new Date('2000-01-01'),
+                    birth_date: '2000-01-01',
                     gender: UserGender.Male,
                     tech_stack: [],
                     education_status: EducationStatus.Enrolled,
@@ -56,9 +56,7 @@ describe('POST /api/v1/teams/:id/apply (e2e)', () => {
                     baekjoon_username: 'applicant',
                     github_username: 'applicant',
                     self_description: '테스트 지원자',
-                    is_public_current_company: false,
                     is_public_github_username: false,
-                    is_public_baekjoon_username: false,
                     is_public_email: false,
                 });
 
@@ -66,8 +64,8 @@ describe('POST /api/v1/teams/:id/apply (e2e)', () => {
 
         // 로그인
         const userLogin = await request(app.getHttpServer())
-           .post('/auth/login')
-           .send({ username: 'applicant', password: 'password' });
+           .post('/api/v1/auth/login')
+           .send({ username: 'applicant', password: 'TestPassword123!' });
         userToken = userLogin.body.access_token;
     });
 
@@ -75,6 +73,12 @@ describe('POST /api/v1/teams/:id/apply (e2e)', () => {
         await dataSource.query(
             `TRUNCATE TABLE team_member, team_role, team, "user" RESTART IDENTITY CASCADE;`,
         );
+        
+        // DataSource 연결 닫기
+        if (dataSource && dataSource.isInitialized) {
+            await dataSource.destroy();
+        }
+        
         await app.close();
     });
 

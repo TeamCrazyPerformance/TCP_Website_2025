@@ -6,8 +6,10 @@ import {
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
 import { Study } from './study.entity';
+import { Resource } from './resource.entity';
 
 @Entity('Progress')
 export class Progress {
@@ -20,6 +22,12 @@ export class Progress {
   @Column({ type: 'text', nullable: true })
   content: string;
 
+  @Column({ type: 'int', nullable: true })
+  week_no: number;
+
+  @Column({ type: 'timestamp', nullable: true })
+  progress_date: Date;
+
   @CreateDateColumn()
   created_at: Date;
 
@@ -29,4 +37,7 @@ export class Progress {
   @ManyToOne(() => Study, (study) => study.progress)
   @JoinColumn({ name: 'study_id' })
   study_id: Study;
+
+  @OneToMany(() => Resource, (resource) => resource.progress)
+  resources: Resource[];
 }

@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsArray } from 'class-validator';
 
 export class CreateProgressDto {
   @IsString()
@@ -8,4 +8,14 @@ export class CreateProgressDto {
   @IsString()
   @IsNotEmpty()
   content: string;
+
+  @IsNotEmpty()
+  weekNo: number;
+
+  @IsNotEmpty()
+  progressDate: Date;
+
+  @IsOptional()
+  @IsArray()
+  resourceIds?: number[];
 }

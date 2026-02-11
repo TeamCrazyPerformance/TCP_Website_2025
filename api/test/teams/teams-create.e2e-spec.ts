@@ -29,10 +29,10 @@ describe('POST /api/v1/teams (e2e)', () => {
 
         // --- 일반 사용자 계정 생성(회원가입) ---
         const registerRes = await request(app.getHttpServer())
-            .post('/auth/register')
+            .post('/api/v1/auth/register')
             .send({
                 username: 'user1',
-                password: 'userpassword',
+                password: 'UserPassword123!',
                 name: '일반사용자',
                 student_number: '20231111',
                 profile_image: '',
@@ -40,7 +40,7 @@ describe('POST /api/v1/teams (e2e)', () => {
                 email: 'user@example.com',
                 major: '컴퓨터공학과',
                 join_year: 2023,
-                birth_date: new Date('2001-01-01'),
+                birth_date: '2001-01-01',
                 gender: UserGender.Male,
                 tech_stack: [],
                 education_status: EducationStatus.Enrolled,
@@ -48,9 +48,7 @@ describe('POST /api/v1/teams (e2e)', () => {
                 baekjoon_username: 'user1',
                 github_username: 'user1',
                 self_description: '일반 테스트 유저입니다.',
-                is_public_current_company: false,
                 is_public_github_username: false,
-                is_public_baekjoon_username: false,
                 is_public_email: false,
             });
 
@@ -59,8 +57,8 @@ describe('POST /api/v1/teams (e2e)', () => {
 
         // 로그인
         const userLogin = await request(app.getHttpServer())
-            .post('/auth/login')
-            .send({ username: 'user1', password: 'userpassword' });
+            .post('/api/v1/auth/login')
+            .send({ username: 'user1', password: 'UserPassword123!' });
 
         token = userLogin.body.access_token;
     });
@@ -69,6 +67,12 @@ describe('POST /api/v1/teams (e2e)', () => {
         await dataSource.query(
             `TRUNCATE TABLE team_member, team_role, team, "user" RESTART IDENTITY CASCADE;`
         );
+        
+        // DataSource 연결 닫기
+        if (dataSource && dataSource.isInitialized) {
+            await dataSource.destroy();
+        }
+        
         await app.close();
     });
 

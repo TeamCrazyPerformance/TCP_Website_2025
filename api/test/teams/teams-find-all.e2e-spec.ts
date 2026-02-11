@@ -23,6 +23,11 @@ describe('GET /api/v1/teams (e2e)', () => {
     });
 
     afterAll(async () => {
+        // DataSource 연결 닫기
+        if (dataSource && dataSource.isInitialized) {
+            await dataSource.destroy();
+        }
+        
         await app.close();
     });
 

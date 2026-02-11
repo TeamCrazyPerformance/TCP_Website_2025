@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TCP - Generative AI Project Study | Study Detail</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href='https://spoqa.github.io/spoqa-han-sans/css/SpoqaHanSansNeo.css' rel='stylesheet' type='text/css'>
+    <style>
+        :root {
+            --primary-black: #0a0a0a;
+            --secondary-gray: #1a1a1a;
+            --light-gray: #2a2a2a;
+            --accent-blue: #a8c5e6;
+            --accent-purple: #c5a8e6;
+            --accent-green: #a8e6c5;
+            --accent-pink: #e6a8c5;
+        }
+        
+        body {
+            font-family: 'Spoqa Han Sans Neo', sans-serif;
+            background-color: var(--primary-black);
+            color: #ffffff;
+        }
+        
+        .orbitron {
+            font-family: 'Orbitron', monospace;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(168, 197, 230, 0.2);
+        }
+        
+        .nav-link {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+            transition: width 0.3s ease;
+        }
+        
+        .nav-link:hover::after {
+            width: 100%;
+        }
+        
+        .cta-button {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            transition: all 0.3s ease;
+        }
+        
+        .cta-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(168, 197, 230, 0.3);
+        }
+        
+        .feature-card {
+            background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .week-card {
+            background: var(--secondary-gray);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            min-height: 180px;
+        }
+
+        .week-card:hover {
+            background-color: var(--light-gray);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(168, 197, 230, 0.15);
+        }
+
+        .week-card:hover .hover-content {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .hover-content {
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+        }
+
+        .scroll-fade {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s ease;
+        }
+        
+        .scroll-fade.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            justify-content: center;
+            align-items: flex-start;
+            overflow-y: auto;
+            padding: 2rem 0;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            padding: 2rem;
+            width: 90%;
+            max-width: 800px;
+            position: relative;
+            animation: fadeInScale 0.3s ease-out;
+            margin: auto;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: #ffffff;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: color 0.3s ease;
+            z-index: 10;
+        }
+        
+        .close-modal:hover {
+            color: var(--accent-blue);
+        }
+
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .tag-ai { background-color: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .tag-ml { background-color: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+        .tag-generative { background-color: rgba(168, 85, 247, 0.2); color: #a855f7; }
+        .tag-python { background-color: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .tag-pytorch { background-color: rgba(239, 68, 68, 0.2); color: #ef4444; }
+
+        .member-card {
+            background: var(--secondary-gray);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .member-card:hover {
+            background-color: var(--light-gray);
+            transform: translateY(-2px);
+        }
+
+        .article-content {
+            background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .article-meta {
+            background: var(--light-gray);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .article-body {
+            line-height: 1.8;
+        }
+        
+        .article-body p {
+            margin-bottom: 1.5rem;
+        }
+        
+        .article-body h3 {
+            color: var(--accent-blue);
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .attachment-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .attachment-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .back-button {
+            background: linear-gradient(135deg, var(--light-gray), var(--secondary-gray));
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .back-button:hover {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(168, 197, 230, 0.3);
+        }
+
+        .search-input {
+            background: var(--secondary-gray);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(168, 197, 230, 0.1);
+        }
+
+        .image-placeholder {
+            background: linear-gradient(135deg, var(--light-gray), var(--secondary-gray));
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9ca3af;
+            font-style: italic;
+        }
+
+        @media print {
+            body { -webkit-print-color-adjust: exact; }
+            .modal { position: relative !important; display: block !important; }
+            .modal-content { box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+    <header class="fixed top-0 left-0 right-0 z-40 bg-black bg-opacity-90 backdrop-blur-md border-b border-gray-800">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <a href="index.html" class="flex items-center space-x-3">
+                    <div class="w-10 h-10">
+                        <img src="logo.svg" alt="TCP 로고" class="w-full h-full object-contain">
+                    </div>
+                    <div>
+                        <h1 class="orbitron text-xl font-bold gradient-text">TCP</h1>
+                        <p class="text-xs text-gray-400">Team Crazy Performance</p>
+                    </div>
+                </a>
+                
+                <nav class="hidden md:flex space-x-6">
+                    <a href="about.html" class="nav-link orbitron text-sm font-medium text-gray-300 hover:text-white">About</a>
+                    <a href="members.html" class="nav-link orbitron text-sm font-medium text-gray-300 hover:text-white">Members</a>
+                    <a href="recruitment.html" class="nav-link orbitron text-sm font-medium text-gray-300 hover:text-white">Recruitment</a>
+                    <a href="announcement.html" class="nav-link orbitron text-sm font-medium text-gray-300 hover:text-white">Announcement</a>
+                    <a href="study.html" class="nav-link orbitron text-sm font-medium text-white">Study</a>
+                    <a href="team.html" class="nav-link orbitron text-sm font-medium text-gray-300 hover:text-white">Find Your Team</a>
+                </nav>
+                
+                <div class="flex items-center space-x-4">
+                    <button class="text-gray-400 hover:text-white"><i class="fas fa-bell"></i></button>
+                    <div class="flex items-center space-x-2">
+                        <a href="mypage.html"><img src="https://i.pravatar.cc/40?u=admin" alt="Admin" class="w-8 h-8 rounded-full"></a>
+                        <a href="mypage.html"><span class="text-sm font-medium">Admin Kim</span></a>
+                    </div>
+                    <button class="px-4 py-2 text-sm border border-gray-600 rounded-lg hover:border-gray-400 transition-colors">로그아웃</button>
+                </div>
+                
+                <button class="md:hidden">
+                    <i class="fas fa-bars text-white"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="pt-20 pb-16">
+        <div class="container mx-auto px-4 max-w-6xl">
+            <!-- Back to studies button -->
+            <div class="mb-8 scroll-fade">
+                <a href="study.html" class="back-button inline-flex items-center px-6 py-3 rounded-lg text-sm font-medium">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    스터디 목록으로 돌아가기
+                </a>
+            </div>
+
+            <!-- Study Overview -->
+            <section class="mb-12 scroll-fade">
+                <div class="feature-card rounded-xl p-8">
+                    <div class="flex flex-col lg:flex-row items-start lg:items-center gap-6 mb-6">
+                        <div class="w-16 h-16 rounded-full bg-gradient-to-br from-green-400 via-blue-400 to-purple-400 flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-robot text-white text-2xl"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h1 class="text-3xl md:text-4xl font-bold gradient-text mb-2">Generative AI Project Study</h1>
+                            <p class="text-lg text-gray-300 mb-4">LLM과 Diffusion Model을 활용한 생성형 AI 프로젝트 스터디입니다.</p>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="tag tag-ai">AI</span>
+                                <span class="tag tag-ml">머신러닝</span>
+                                <span class="tag tag-generative">생성형AI</span>
+                                <span class="tag tag-python">Python</span>
+                                <span class="tag tag-pytorch">PyTorch</span>
+                            </div>
+                        </div>
+                            <div class="ml-auto">
+                                <button
+                                id="join-button"
+                                onclick="joinStudy(study?.id ?? 'generative-ai-project')"
+                                class="cta-button px-6 py-3 rounded-lg font-bold text-white hover:text-black transition-colors flex items-center"
+                                >
+                                <i class="fas fa-user-plus mr-2"></i> 스터디 참여
+                                </button>
+                            </div>
+                    </div>
+
+                    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 text-gray-300">
+                        <div>
+                            <h3 class="text-lg font-bold text-white mb-2">📅 진행 기간</h3>
+                            <p>2025.05 - 2025.09 (4개월)</p>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white mb-2">📍 진행 방식</h3>
+                            <p>협력 학습 (Co-learning)</p>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white mb-2">🔄 주기</h3>
+                            <p>매주 토요일 오후 2시</p>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white mb-2">🏢 장소</h3>
+                            <p>TCP 랩실 & Discord</p>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white mb-2">👨‍💻 스터디장</h3>
+                            <p><strong>김AI</strong> - "생성형 AI의 무한한 가능성을 탐구해봅시다!"</p>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white mb-2">👥 참여 인원</h3>
+                            <p><span id="participants-count">7</span>명 (모집 완료)</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <h3 class="text-lg font-bold text-white mb-3">🛠️ 기술 스택</h3>
+                        <p class="text-gray-300">Python, PyTorch, TensorFlow, Hugging Face Transformers, Langchain, OpenAI API, Stable Diffusion, Jupyter Notebook</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Weekly Progress Cards -->
+            <section class="mb-12 scroll-fade">
+                <h2 class="text-3xl font-bold gradient-text mb-8">📚 주차별 진행 현황</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="weeks-grid">
+                    <!-- Week cards will be generated by JavaScript -->
+                </div>
+            </section>
+
+            <!-- Member Search -->
+            <section class="mb-12 scroll-fade">
+                <h2 class="text-3xl font-bold gradient-text mb-8">👥 스터디원 검색</h2>
+                <div class="feature-card rounded-xl p-8">
+                    <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                        <div class="flex-1">
+                            <input type="text" id="member-search" class="search-input w-full px-4 py-3 rounded-lg text-white placeholder-gray-400" placeholder="이름, 역할, 태그로 검색...">
+                        </div>
+                        <button onclick="searchMembers()" class="cta-button px-6 py-3 rounded-lg font-bold text-white hover:text-black transition-colors">
+                            <i class="fas fa-search mr-2"></i>검색
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="members-grid">
+                        <!-- Member cards will be generated by JavaScript -->
+                    </div>
+                    <div id="no-members-found" class="hidden text-center py-8 text-gray-500">
+                        <i class="fas fa-user-slash text-4xl mb-4"></i>
+                        <p class="text-lg">검색 결과가 없습니다.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Article Modal -->
+    <div id="article-modal" class="modal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeArticle()">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <article>
+                <header class="mb-6">
+                    <div class="mb-4">
+                        <span id="article-tag" class="tag tag-ai px-3 py-1 rounded-full text-xs"></span>
+                    </div>
+                    <h1 id="article-title" class="text-2xl md:text-3xl font-bold mb-4 gradient-text"></h1>
+                    
+                    <div class="article-meta rounded-lg p-4 mb-6">
+                        <div class="flex flex-wrap items-center justify-between text-sm text-gray-300">
+                            <div class="flex items-center space-x-4 mb-2 md:mb-0">
+                                <div class="flex items-center space-x-2">
+                                    <i class="fas fa-user text-blue-400"></i>
+                                    <span id="article-author">스터디장: 김AI</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <i class="fas fa-calendar text-purple-400"></i>
+                                    <span id="article-date"></span>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-4">
+                                <div class="flex items-center space-x-2">
+                                    <i class="fas fa-clock text-green-400"></i>
+                                    <span id="article-duration">2시간</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                <div class="article-content rounded-lg p-6 mb-6">
+                    <div id="article-body" class="article-body text-gray-200">
+                        <!-- Article content will be inserted here -->
+                    </div>
+                    
+                    <div id="article-images" class="grid grid-cols-1 md:grid-cols-2 gap-4 my-6 hidden">
+                        <!-- Images will be inserted here -->
+                    </div>
+                    
+                    <div id="article-attachments" class="mt-6 hidden">
+                        <h3 class="text-lg font-bold text-white mb-4">📎 첨부 파일</h3>
+                        <div class="space-y-3" id="attachments-list">
+                            <!-- Attachments will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </div>
+
+    <footer class="bg-black border-t border-gray-800 py-12">
+        <div class="container mx-auto px-4">
+            <div class="grid md:grid-cols-4 gap-8">
+                <div>
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="w-10 h-10">
+                            <img src="logo.svg" alt="TCP 로고" class="w-full h-full object-contain">
+                        </div>
+                        <h3 class="orbitron text-lg font-bold gradient-text">TCP</h3>
+                    </div>
+                    <p class="text-sm text-gray-400">
+                        Team Crazy Performance<br>
+                        컴퓨터공학 동아리
+                    </p>
+                </div>
+                <div>
+                    <h4 class="text-lg font-bold mb-4 text-white">임원진</h4>
+                    <div class="space-y-2 text-sm text-gray-400">
+                        <div><span class="text-blue-300">회장:</span> 김TCP</div>
+                        <div><span class="text-purple-300">부회장:</span> 이Performance</div>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-lg font-bold mb-4 text-white">연락처</h4>
+                    <div class="space-y-2 text-sm text-gray-400">
+                        <div class="flex items-center space-x-2"><i class="fas fa-phone text-blue-400"></i><span>010-1234-5678</span></div>
+                        <div class="flex items-center space-x-2"><i class="fas fa-envelope text-purple-400"></i><span>tcp@university.ac.kr</span></div>
+                        <div class="flex items-center space-x-2"><i class="fab fa-instagram text-pink-400"></i><a href="#" class="hover:text-pink-300 transition-colors">@tcp_official</a></div>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-lg font-bold mb-4 text-white">법적 정보</h4>
+                    <div class="space-y-2 text-sm">
+                        <div><a href="terms.html" class="text-gray-400 hover:text-white transition-colors">이용약관</a></div>
+                        <div><a href="privacy.html" class="text-gray-400 hover:text-white transition-colors">개인정보처리방침</a></div>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 mt-8 pt-8 text-center">
+                <p class="text-sm text-gray-400">© 2024 TCP (Team Crazy Performance). All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Study data
+        const study = {
+            name: "Generative AI Project Study",
+            description: "LLM과 Diffusion Model을 활용한 생성형 AI 프로젝트 스터디",
+            format: "협력 학습 (Co-learning)",
+            keywords: ["AI", "머신러닝", "생성형AI", "Python", "PyTorch"],
+            leader: "김AI",
+            leaderQuote: "생성형 AI의 무한한 가능성을 탐구해봅시다!",
+            period: "2025.05 - 2025.09",
+            cadence: "매주 토요일 오후 2시",
+            location: "TCP 랩실 & Discord",
+            techStack: "Python, PyTorch, TensorFlow, Hugging Face",
+            membersCount: 7
+        };
+
+        // Weekly data
+        const weeks = [
+            {
+                id: 0,
+                title: "Week 0: 킥오프 & 환경 설정",
+                date: "2025.05.03",
+                summary: "스터디 오리엔테이션 및 개발환경 구축",
+                hoverContent: ["팀 소개 및 목표 설정", "Python 개발환경 구축 가이드"],
+                content: `
+                    <p>안녕하세요! Generative AI Project Study의 첫 번째 시간입니다.</p>
+                    
+                    <h3>🎯 오늘의 목표</h3>
+                    <p>팀원들과 만나고 앞으로 4개월간 진행할 스터디의 방향성을 설정하겠습니다. 또한 모든 팀원들이 동일한 개발환경에서 작업할 수 있도록 환경 구축을 진행합니다.</p>
+                    
+                    <h3>📋 진행 내용</h3>
+                    <p>1. 팀원 소개 및 각자의 AI 관련 경험 공유<br>
+                    2. 스터디 목표 및 최종 프로젝트 아이디어 논의<br>
+                    3. Python 개발환경 구축 (Anaconda, Jupyter, PyTorch)<br>
+                    4. Git 협업 워크플로우 설정</p>
+                    
+                    <h3>🎉 성과</h3>
+                    <p>모든 팀원들이 성공적으로 개발환경을 구축했고, 각자의 관심 분야를 공유하며 좋은 시너지를 만들어낼 수 있을 것 같습니다!</p>
+                `,
+                images: [],
+                attachments: [
+                    { name: "kickoff-agenda.pdf", icon: "fas fa-file-pdf", type: "PDF", size: "245KB" },
+                    { name: "env-setup-guide.pdf", icon: "fas fa-file-pdf", type: "PDF", size: "1.2MB" }
+                ]
+            },
+            {
+                id: 1,
+                title: "Week 1: 프롬프트 엔지니어링 & RAG 데모",
+                date: "2025.05.10",
+                summary: "효과적인 프롬프트 작성법과 RAG 시스템 구현",
+                hoverContent: ["ChatGPT/Claude API 활용법", "RAG 시스템 구현 데모"],
+                content: `
+                    <p>이번 주는 생성형 AI의 기본기인 프롬프트 엔지니어링과 최신 트렌드인 RAG(Retrieval-Augmented Generation) 시스템에 대해 학습했습니다.</p>
+                    
+                    <h3>🔍 프롬프트 엔지니어링 핵심</h3>
+                    <p>효과적인 프롬프트를 작성하는 방법을 실습을 통해 익혔습니다. Zero-shot, Few-shot, Chain-of-Thought 등 다양한 프롬프팅 기법을 적용해보았습니다.</p>
+                    
+                    <h3>🚀 RAG 시스템 구현</h3>
+                    <p>Langchain과 Vector Database를 활용하여 간단한 RAG 시스템을 구현해보았습니다. 문서 임베딩부터 검색, 생성까지의 전체 파이프라인을 경험했습니다.</p>
+                    
+                    <h3>💡 배운 점</h3>
+                    <p>단순히 API를 호출하는 것을 넘어서, 프롬프트 설계의 중요성과 외부 지식을 활용한 생성의 가능성을 체감할 수 있었습니다.</p>
+                `,
+                images: [
+                    { url: "placeholder", alt: "프롬프트 엔지니어링 예제", caption: "다양한 프롬프팅 기법 비교" },
+                    { url: "placeholder", alt: "RAG 시스템 아키텍처", caption: "RAG 시스템의 전체 구조" }
+                ],
+                attachments: [
+                    { name: "week1-slides.pdf", icon: "fas fa-file-pdf", type: "PDF", size: "3.1MB" },
+                    { name: "rag-demo.zip", icon: "fas fa-file-archive", type: "ZIP", size: "567KB" }
+                ]
+            },
+            {
+                id: 2,
+                title: "Week 2: Diffusion 모델 101",
+                date: "2025.05.17",
+                summary: "Stable Diffusion의 원리와 이미지 생성 실습",
+                hoverContent: ["Diffusion 모델 이론 학습", "Stable Diffusion 실습"],
+                content: `
+                    <p>이번 주는 이미지 생성의 혁명을 가져온 Diffusion 모델에 대해 깊이 있게 탐구했습니다.</p>
+                    
+                    <h3>📖 이론 학습</h3>
+                    <p>Diffusion 모델의 핵심 개념인 Forward Process와 Reverse Process에 대해 학습했습니다. 노이즈를 점진적으로 제거하여 이미지를 생성하는 원리를 이해했습니다.</p>
+                    
+                    <h3>🎨 Stable Diffusion 실습</h3>
+                    <p>Hugging Face의 Diffusers 라이브러리를 활용하여 다양한 이미지 생성 실습을 진행했습니다. Text-to-Image, Image-to-Image, Inpainting 등을 직접 구현해보았습니다.</p>
+                    
+                    <h3>🔧 파인튜닝 실험</h3>
+                    <p>LoRA(Low-Rank Adaptation)를 활용한 가벼운 파인튜닝 방법도 실험해보았습니다. 각자의 스타일에 맞는 이미지 생성이 가능함을 확인했습니다.</p>
+                `,
+                images: [],
+                attachments: [
+                    { name: "diffusion-notes.pdf", icon: "fas fa-file-pdf", type: "PDF", size: "2.8MB" }
+                ]
+            },
+            {
+                id: 3,
+                title: "Week 3: LLM 파인튜닝",
+                date: "2025.05.24",
+                summary: "작은 언어모델 파인튜닝 및 성능 평가",
+                hoverContent: ["LoRA를 활용한 효율적 파인튜닝", "모델 성능 평가 지표 학습"],
+                content: `
+                    <p>이번 주는 사전 훈련된 언어모델을 우리만의 태스크에 맞게 파인튜닝하는 방법을 학습했습니다.</p>
+                    
+                    <h3>🔧 LoRA 파인튜닝</h3>
+                    <p>Parameter-Efficient Fine-tuning의 대표적인 방법인 LoRA를 실습했습니다. 적은 파라미터로도 효과적인 파인튜닝이 가능함을 확인했습니다.</p>
+                    
+                    <h3>📊 성능 평가</h3>
+                    <p>BLEU, ROUGE, BERTScore 등 다양한 평가 지표를 활용하여 모델의 성능을 객관적으로 측정하는 방법을 익혔습니다.</p>
+                `,
+                images: [],
+                attachments: []
+            },
+            {
+                id: 4,
+                title: "Week 4: 멀티모달 AI",
+                date: "2025.05.31",
+                summary: "CLIP, BLIP 등 멀티모달 모델 활용법",
+                hoverContent: ["이미지-텍스트 연결 모델", "Vision-Language 태스크 실습"],
+                content: `
+                    <p>텍스트와 이미지를 동시에 이해하는 멀티모달 AI 모델들을 탐구했습니다.</p>
+                    
+                    <h3>🔗 CLIP & BLIP</h3>
+                    <p>OpenAI의 CLIP과 Salesforce의 BLIP 모델을 활용하여 이미지 검색, 캡션 생성 등 다양한 멀티모달 태스크를 실습했습니다.</p>
+                `,
+                images: [],
+                attachments: []
+            },
+            {
+                id: 5,
+                title: "Week 5: 중간 프로젝트 기획",
+                date: "2025.06.07",
+                summary: "팀별 중간 프로젝트 주제 선정 및 계획 수립",
+                hoverContent: ["프로젝트 아이디어 브레인스토밍", "기술 스택 및 일정 계획"],
+                content: `
+                    <p>지금까지 학습한 내용을 바탕으로 중간 프로젝트를 기획하는 시간을 가졌습니다.</p>
+                    
+                    <h3>💡 아이디어 발굴</h3>
+                    <p>각 팀별로 창의적인 아이디어를 제안하고, 실현 가능성을 검토했습니다. AI 스토리텔링, 개인화 학습 도우미 등 다양한 주제가 나왔습니다.</p>
+                `,
+                images: [],
+                attachments: []
+            },
+            {
+                id: 6,
+                title: "Week 6: 중간 프로젝트 개발",
+                date: "2025.06.14",
+                summary: "실제 프로젝트 개발 및 코드 리뷰",
+                hoverContent: ["프로젝트 개발 진행", "코드 리뷰 및 멘토링"],
+                content: `
+                    <p>각 팀별로 중간 프로젝트 개발을 본격적으로 진행했습니다.</p>
+                    
+                    <h3>⚙️ 개발 진행</h3>
+                    <p>계획된 기능들을 하나씩 구현해나가며, 중간중간 서로의 코드를 리뷰하고 피드백을 주고받았습니다.</p>
+                `,
+                images: [],
+                attachments: []
+            },
+            {
+                id: 7,
+                title: "Week 7: 중간 프로젝트 발표",
+                date: "2025.06.21",
+                summary: "중간 프로젝트 결과 발표 및 피드백 세션",
+                hoverContent: ["프로젝트 데모 및 발표", "동료 평가 및 피드백"],
+                content: `
+                    <p>각 팀이 개발한 중간 프로젝트를 발표하고 서로 피드백을 나누는 시간이었습니다.</p>
+                    
+                    <h3>🎉 발표 및 데모</h3>
+                    <p>모든 팀이 인상적인 결과물을 선보였으며, 특히 창의적인 아이디어와 기술적 구현 능력이 돋보였습니다.</p>
+                `,
+                images: [],
+                attachments: []
+            },
+            {
+                id: 8,
+                title: "Week 8: 최종 프로젝트 계획",
+                date: "2025.06.28",
+                summary: "최종 프로젝트 주제 확정 및 개발 계획 수립",
+                hoverContent: ["최종 프로젝트 기획", "향후 계획 및 일정 조정"],
+                content: `
+                    <p>스터디의 마지막을 장식할 최종 프로젝트를 계획하는 시간입니다.</p>
+                    
+                    <h3>🚀 최종 프로젝트 기획</h3>
+                    <p>지금까지의 학습 내용을 종합하여 더욱 도전적이고 의미있는 프로젝트를 기획했습니다. 각 팀의 강점을 살린 차별화된 주제들이 선정되었습니다.</p>
+                `,
+                images: [],
+                attachments: []
+            }
+        ];
+
+        // Members data
+        const members = [
+            {
+                id: 1,
+                name: "김AI",
+                role: "스터디장",
+                tags: ["PyTorch", "NLP", "리더십"],
+                major: "컴퓨터공학과",
+                year: "3학년",
+                experience: "AI 관련 프로젝트 5개 경험"
+            },
+            {
+                id: 2,
+                name: "이머신러닝",
+                role: "부스터디장",
+                tags: ["TensorFlow", "Computer Vision", "멘토링"],
+                major: "데이터사이언스과",
+                year: "4학년",
+                experience: "인턴 경험, 논문 1편"
+            },
+            {
+                id: 3,
+                name: "박생성형",
+                role: "팀원",
+                tags: ["Diffusion", "이미지생성", "창의성"],
+                major: "전자공학과",
+                year: "2학년",
+                experience: "아트+테크 프로젝트 다수"
+            },
+            {
+                id: 4,
+                name: "최자연어",
+                role: "팀원",
+                tags: ["LLM", "프롬프트", "언어학"],
+                major: "언어학과",
+                year: "3학년",
+                experience: "언어학 + AI 융합 연구"
+            },
+            {
+                id: 5,
+                name: "정풀스택",
+                role: "팀원",
+                tags: ["웹개발", "API", "배포"],
+                major: "컴퓨터공학과",
+                year: "3학년",
+                experience: "풀스택 개발 2년"
+            },
+            {
+                id: 6,
+                name: "윤데이터",
+                role: "팀원",
+                tags: ["데이터분석", "시각화", "통계"],
+                major: "통계학과",
+                year: "4학년",
+                experience: "데이터 분석 프로젝트 다수"
+            },
+            {
+                id: 7,
+                name: "장멀티모달",
+                role: "팀원",
+                tags: ["CLIP", "Vision", "멀티모달"],
+                major: "컴퓨터공학과",
+                year: "2학년",
+                experience: "컴퓨터 비전 경진대회 입상"
+            }
+        ];
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            renderWeeks();
+            renderMembers();
+            
+            // Scroll animations
+            const observerOptions = {
+                threshold: 0.1,
+                rootMargin: '0px 0px -50px 0px'
+            };
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    }
+                });
+            }, observerOptions);
+
+            document.querySelectorAll('.scroll-fade').forEach(el => {
+                observer.observe(el);
+            });
+
+            // Header background on scroll
+            window.addEventListener('scroll', () => {
+                const header = document.querySelector('header');
+                if (window.scrollY > 50) {
+                    header.style.backgroundColor = 'rgba(0, 0, 0, 0.95)';
+                } else {
+                    header.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+                }
+            });
+
+            // Member search input event
+            document.getElementById('member-search').addEventListener('input', searchMembers);
+            document.getElementById('member-search').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchMembers();
+                }
+            });
+        });
+
+        // Render week cards
+        function renderWeeks() {
+            const weeksGrid = document.getElementById('weeks-grid');
+            weeksGrid.innerHTML = '';
+
+            weeks.forEach(week => {
+                const weekCard = document.createElement('div');
+                weekCard.className = 'week-card p-6 rounded-xl card-hover';
+                weekCard.onclick = () => openArticle(week);
+                
+                weekCard.innerHTML = `
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="tag tag-ai text-xs">Week ${week.id}</span>
+                        <span class="text-sm text-gray-400">${week.date}</span>
+                    </div>
+                    <h3 class="text-lg font-bold mb-2 text-white">${week.title}</h3>
+                    <p class="text-sm text-gray-400 mb-3">${week.summary}</p>
+                    <div class="hover-content">
+                        ${week.hoverContent.map(item => `<p class="text-xs text-gray-300">• ${item}</p>`).join('')}
+                    </div>
+                    <div class="mt-4 flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            ${week.attachments.length > 0 ? `<i class="fas fa-paperclip text-blue-400"></i><span class="text-xs text-gray-400">${week.attachments.length}개 첨부</span>` : ''}
+                        </div>
+                        <button class="text-blue-400 hover:text-blue-300 transition-colors">
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                `;
+                
+                weeksGrid.appendChild(weekCard);
+            });
+        }
+
+        // Render member cards
+        function renderMembers(filteredMembers = members) {
+            const membersGrid = document.getElementById('members-grid');
+            const noMembersFound = document.getElementById('no-members-found');
+            
+            membersGrid.innerHTML = '';
+            
+            if (filteredMembers.length === 0) {
+                noMembersFound.classList.remove('hidden');
+                return;
+            } else {
+                noMembersFound.classList.add('hidden');
+            }
+
+            filteredMembers.forEach(member => {
+                const memberCard = document.createElement('div');
+                memberCard.className = 'member-card p-4 rounded-lg';
+                
+                memberCard.innerHTML = `
+                    <div class="flex items-center space-x-3 mb-3">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center text-white font-bold">
+                            ${member.name.charAt(0)}
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-white">${member.name}</h4>
+                            <p class="text-sm text-gray-400">${member.role}</p>
+                        </div>
+                    </div>
+                    <div class="text-xs text-gray-400 mb-2">
+                        ${member.major} ${member.year}
+                    </div>
+                    <p class="text-sm text-gray-300 mb-3">${member.experience}</p>
+                    <div class="flex flex-wrap gap-1">
+                        ${member.tags.map(tag => `<span class="tag tag-ai text-xs">${tag}</span>`).join('')}
+                    </div>
+                `;
+                
+                membersGrid.appendChild(memberCard);
+            });
+        }
+
+        // Search members
+        function searchMembers() {
+            const searchTerm = document.getElementById('member-search').value.toLowerCase().trim();
+            
+            if (!searchTerm) {
+                renderMembers();
+                return;
+            }
+
+            const filteredMembers = members.filter(member => {
+                return member.name.toLowerCase().includes(searchTerm) ||
+                       member.role.toLowerCase().includes(searchTerm) ||
+                       member.tags.some(tag => tag.toLowerCase().includes(searchTerm)) ||
+                       member.major.toLowerCase().includes(searchTerm);
+            });
+
+            renderMembers(filteredMembers);
+        }
+
+        // Open article modal
+        function openArticle(week) {
+            document.getElementById('article-tag').textContent = `Week ${week.id}`;
+            document.getElementById('article-title').textContent = week.title;
+            document.getElementById('article-date').textContent = week.date;
+            document.getElementById('article-body').innerHTML = week.content;
+
+            // Handle images
+            const imagesContainer = document.getElementById('article-images');
+            if (week.images && week.images.length > 0) {
+                imagesContainer.classList.remove('hidden');
+                imagesContainer.innerHTML = week.images.map(img => `
+                    <div class="image-placeholder h-48 rounded-lg">
+                        <div class="text-center">
+                            <i class="fas fa-image text-2xl mb-2"></i>
+                            <p>${img.caption}</p>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                imagesContainer.classList.add('hidden');
+            }
+
+            // Handle attachments
+            const attachmentsContainer = document.getElementById('article-attachments');
+            const attachmentsList = document.getElementById('attachments-list');
+            if (week.attachments && week.attachments.length > 0) {
+                attachmentsContainer.classList.remove('hidden');
+                attachmentsList.innerHTML = week.attachments.map(attachment => `
+                    <a href="#" class="attachment-item flex items-center space-x-3 p-3 rounded-lg block hover:bg-opacity-20" download="${attachment.name}">
+                        <i class="${attachment.icon} text-blue-400 text-lg"></i>
+                        <div class="flex-1">
+                            <p class="font-medium text-white">${attachment.name}</p>
+                            <p class="text-sm text-gray-400">${attachment.type} • ${attachment.size}</p>
+                        </div>
+                        <i class="fas fa-download text-gray-400"></i>
+                    </a>
+                `).join('');
+            } else {
+                attachmentsContainer.classList.add('hidden');
+            }
+
+            document.getElementById('article-modal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Close article modal
+        function closeArticle() {
+            document.getElementById('article-modal').classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Close modal on background click
+        document.getElementById('article-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeArticle();
+            }
+        });
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeArticle();
+            }
+        });
+
+
+        // 스터디 참여 기능
+        // (선택) 스터디에 내부 id가 없으면 하나 추가해 둡니다.
+        study.id = study.id || "generative-ai-project"; // 슬러그 등으로 맞춰도 됩니다.
+
+        // 프론트엔드 로그인 여부 판별 (실 서비스에 맞게 교체)
+        // - 예: window.currentUser에 로그인 정보가 실려 있다고 가정
+        function isLoggedInFront() {
+        try {
+            return !!(window.currentUser && window.currentUser.id);
+        } catch (e) {
+            return false;
+        }
+        }
+
+        // 백엔드 세션 검증 (쿠키 세션/토큰 등 환경에 맞게 교체)
+        // - 200이면 유효 로그인, 401/403이면 미로그인/무효 세션
+        async function isLoggedInBack() {
+        try {
+            const res = await fetch('/api/auth/session', { credentials: 'include' });
+            return res.ok;
+        } catch (e) {
+            return false;
+        }
+        }
+
+        // 스터디 참여 플로우
+        async function joinStudy(studyId) {
+        // 1) 로그인 확인 (프론트)
+        if (!isLoggedInFront()) {
+            alert('로그인이 필요합니다. 먼저 로그인해 주세요.');
+            // 로그인 페이지가 있다면 리다이렉트 (선택)
+            // location.href = '/login?redirect=' + encodeURIComponent(location.pathname + location.search);
+            return;
+        }
+
+        // 1-1) 로그인 확인 (백엔드 세션)
+        const backOK = await isLoggedInBack();
+        if (!backOK) {
+            alert('세션이 만료되었거나 로그인되지 않았습니다. 다시 로그인해 주세요.');
+            return;
+        }
+
+        // 2) 최종 확인 문구
+        const ok = confirm('참여하신 이후 탈퇴는 스터디장에게 문의하셔야 합니다. 정말 참여하시겠습니까?');
+        if (!ok) return;
+
+        // 3) 참여 요청 (백엔드 API에 맞춰 경로/바디 수정)
+        try {
+            const res = await fetch(`/api/studies/${encodeURIComponent(studyId)}/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include', // 쿠키 세션을 쓰는 경우 필요
+            body: JSON.stringify({}) // 필요 시 추가 필드
+            });
+
+            if (res.status === 401 || res.status === 403) {
+            alert('세션이 만료되었습니다. 다시 로그인해 주세요.');
+            return;
+            }
+
+            if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            alert('참여에 실패했습니다. ' + (err.message || `오류 코드: ${res.status}`));
+            return;
+            }
+
+            // 성공 처리
+            alert('참여가 완료되었습니다!');
+
+            // (선택) UI 갱신: 참여 인원 수 증가
+            const countEl = document.getElementById('participants-count');
+            if (countEl) {
+            const n = parseInt(countEl.textContent.replace(/\D/g, ''), 10);
+            if (!isNaN(n)) countEl.textContent = (n + 1).toString();
+            }
+
+            // (선택) 버튼 상태 변경
+            const btn = document.getElementById('join-button');
+            if (btn) {
+            btn.disabled = true;
+            btn.classList.add('opacity-70', 'cursor-not-allowed');
+            btn.innerHTML = '<i class="fas fa-check mr-2"></i> 참여 완료';
+            }
+        } catch (e) {
+            console.error(e);
+            alert('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+        }
+        }
+
+        // 모집 인원 초과시 버튼 잠구기
+        document.addEventListener('DOMContentLoaded', () => {
+        const btn = document.getElementById('join-button');
+        const capacityClosed = true; // 백엔드 데이터로 대체
+        if (btn && capacityClosed) {
+            btn.disabled = true;
+            btn.classList.add('opacity-70', 'cursor-not-allowed');
+            btn.innerHTML = '<i class="fas fa-lock mr-2"></i> 모집 종료';
+        }
+        });
+    </script>
+</body>
+</html>

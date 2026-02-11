@@ -8,8 +8,9 @@ import {
 } from 'typeorm';
 import { Project } from './project.entity';
 import { Award } from './award.entity';
+import { ReviewStatus } from './enums/review-status.enum';
 
-@Entity({ name: 'Resume' })
+@Entity({ name: 'resume' })
 export class Resume {
   @PrimaryGeneratedColumn({ comment: 'PK' })
   id: number;
@@ -40,6 +41,21 @@ export class Resume {
 
   @Column({ type: 'smallint', comment: '지원년도' })
   submit_year: number;
+
+  // 심사 관련 필드
+  @Column({
+    type: 'enum',
+    enum: ReviewStatus,
+    default: ReviewStatus.PENDING,
+    comment: '심사 결정',
+  })
+  review_status: ReviewStatus;
+
+  @Column({ type: 'text', nullable: true, comment: '검토 의견' })
+  review_comment?: string | null;
+
+  @Column({ type: 'timestamp', nullable: true, comment: '검토 시간' })
+  reviewed_at?: Date | null;
 
   @CreateDateColumn({
     name: 'created_at',

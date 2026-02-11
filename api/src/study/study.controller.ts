@@ -6,6 +6,7 @@ import {
   ValidationPipe,
   Param,
   ParseIntPipe,
+  ParseUUIDPipe,
   Post,
   Body,
   HttpCode,
@@ -15,21 +16,26 @@ import {
   UploadedFile,
   ParseFilePipe,
   MaxFileSizeValidator,
-  FileTypeValidator,
   UseGuards,
+  Req,
+  Res,
+  StreamableFile,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { StudyService } from './study.service';
 
 import { GetStudiesQueryDto } from './dto/request/get-studies-query.dto';
 import { CreateStudyDto } from './dto/request/create-study.dto';
 import { UpdateStudyLeaderDto } from './dto/request/update-study-leader.dto';
+import { UpdateStudyDto } from './dto/request/update-study.dto';
 import { AddStudyMemberDto } from './dto/request/add-study-member.dto';
 import { SuccessResponseDto } from './dto/response/success-response.dto';
 import { CreateStudyResponseDto } from './dto/response/create-study-response.dto';
 import { StudyResponseDto } from './dto/response/study-response.dto';
 import { StudyDetailResponseDto } from './dto/response/study-detail-response.dto';
 import { StudyMemberResponseDto } from './dto/response/study-member.response.dto';
+import { StudyMemberDetailResponseDto } from './dto/response/study-member-detail.response.dto';
 import { AddStudyMemberResponseDto } from './dto/response/add-study-member-response.dto';
 import { StudyProgressResponseDto } from './dto/response/study-progress.response.dto';
 import { CreateProgressDto } from './dto/request/create-progress.dto';
@@ -39,12 +45,18 @@ import { StudyResourceResponseDto } from './dto/response/study-resource.response
 import { SearchAvailableMembersQueryDto } from './dto/request/search-available-members-query.dto';
 import { SearchAvailableMembersResponseDto } from './dto/response/search-available-members-response.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { Roles } from 'src/auth/decorators/roles.decorator';
+import { UserRole } from 'src/members/entities/enums/user-role.enum';
+import { StudyRolesGuard } from './guards/study-roles.guard';
+import { StudyRoles } from './decorators/study-roles.decorator';
+import { StudyMemberRole } from './entities/enums/study-member-role.enum';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
 
 @Controller('api/v1/study')
 export class StudyController {
-  constructor(private readonly studyService: StudyService) {}
+  constructor(private readonly studyService: StudyService) { }
 
-  /** 1
+  /**
    * @description Retrieves a list of studies, with an option to filter by year.
    * @param query A DTO containing query parameters, such as the optional 'year'.
    * @returns A promise that resolves to an array of study summary DTOs.
@@ -56,8 +68,8 @@ export class StudyController {
     return this.studyService.findAll(query.year);
   }
 
-  /** 2
-   * @description Retrieves detailed information for a specific study.
+  /**
+   * @description Retrieves detailed information for a specific study. (스터디원, 스터디장, 관리자)
    * @param id The ID of the study to retrieve.
    * @returns A promise that resolves to a detailed DTO of the study.
    */
@@ -69,56 +81,93 @@ export class StudyController {
     return this.studyService.findById(id);
   }
 
-  /** 3
+  /**
    * @description Creates a new study. (Admin only)
    * @param createStudyDto The data required to create a new study.
    * @returns A promise that resolves to an object containing the success status and the new study's ID.
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN)
   async create(
     @Body() createStudyDto: CreateStudyDto,
   ): Promise<CreateStudyResponseDto> {
     return this.studyService.create(createStudyDto);
   }
 
-  /** 4
+  /**
    * @description Deletes a specific study by its ID. (Admin only)
    * @param id The ID of the study to delete.
    * @returns A promise that resolves to a DTO indicating success.
    */
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN)
   async delete(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<SuccessResponseDto> {
     return this.studyService.delete(id);
   }
 
-  /** 5
+  /**
    * @description Retrieves the list of members for a specific study. (Admin/Leader/Member only)
    * @param id The ID of the study.
    * @returns A promise that resolves to an array of study member DTOs.
    */
   @Get(':id/members')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
+  @StudyRoles(StudyMemberRole.LEADER, StudyMemberRole.MEMBER)
   async findMembers(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<StudyMemberResponseDto[]> {
     return this.studyService.findMembersByStudyId(id);
   }
 
-  /** 6
+  /**
+   * @description Retrieves detailed information of a specific member in a study. (Admin/Leader only)
+   * @param id The ID of the study.
+   * @param userId The ID of the user to get details for.
+   * @returns A promise that resolves to detailed member information.
+   */
+  @Get(':id/members/:userId')
+  @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
+  @StudyRoles(StudyMemberRole.LEADER)
+  async findMemberDetail(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('userId', ParseUUIDPipe) userId: string,
+  ): Promise<StudyMemberDetailResponseDto> {
+    return this.studyService.findMemberDetailByStudyId(id, userId);
+  }
+
+  /**
+   * @description Updates a study's information. (Admin/Leader only)
+   * @param id The ID of the study to update.
+   * @param updateStudyDto A DTO containing the fields to update.
+   * @returns A promise that resolves to a DTO indicating success.
+   */
+  @Patch(':id')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
+  @StudyRoles(StudyMemberRole.LEADER)
+  async updateStudy(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateStudyDto: UpdateStudyDto,
+  ): Promise<SuccessResponseDto> {
+    return this.studyService.updateStudy(id, updateStudyDto);
+  }
+
+  /**
    * @description Appoints or changes the leader of a study. (Admin only)
    * @param id The ID of the study to update.
    * @param updateStudyLeaderDto A DTO containing the new leader's user ID.
    * @returns A promise that resolves to a DTO indicating success.
    */
-  @Patch(':id')
+  @Patch(':id/leader')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN)
   async updateLeader(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateStudyLeaderDto: UpdateStudyLeaderDto,
@@ -126,7 +175,7 @@ export class StudyController {
     return this.studyService.updateLeader(id, updateStudyLeaderDto.user_id);
   }
 
-  /** 7
+  /**
    * @description Adds a new member to a specific study. (Admin/Leader only)
    * @param id The ID of the study.
    * @param addStudyMemberDto A DTO containing the user ID of the member to add.
@@ -134,7 +183,8 @@ export class StudyController {
    */
   @Post(':id/members')
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
+  @StudyRoles(StudyMemberRole.LEADER)
   async addMember(
     @Param('id', ParseIntPipe) id: number,
     @Body() addStudyMemberDto: AddStudyMemberDto,
@@ -142,11 +192,11 @@ export class StudyController {
     return this.studyService.addMember(
       id,
       addStudyMemberDto.user_id,
-      addStudyMemberDto.role_name,
+      addStudyMemberDto.role,
     );
   }
 
-  /** 8
+  /**
    * @description Removes a member from a specific study. (Admin/Leader only)
    * @param id The ID of the study.
    * @param userId The ID of the user to remove from the study.
@@ -154,28 +204,30 @@ export class StudyController {
    */
   @Delete(':id/members/:userId')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
+  @StudyRoles(StudyMemberRole.LEADER)
   async removeMember(
     @Param('id', ParseIntPipe) id: number,
-    @Param('userId', ParseIntPipe) userId: number,
+    @Param('userId', ParseUUIDPipe) userId: string,
   ): Promise<SuccessResponseDto> {
     return await this.studyService.removeMember(id, userId);
   }
 
-  /** 9
+  /**
    * @description Gets the progress list for a specific study. (Admin/Leader/Member only)
    * @param id The ID of the study.
    * @returns A promise that resolves to a list of the study's progress entries.
    */
   @Get(':id/progress')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
+  @StudyRoles(StudyMemberRole.LEADER, StudyMemberRole.MEMBER)
   async findProgressByStudyId(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<StudyProgressResponseDto[]> {
     return this.studyService.findProgressByStudyId(id);
   }
 
-  /** 10
+  /**
    * @description Adds a new progress entry to a specific study. (Admin/Leader only)
    * @param id The ID of the study.
    * @param createProgressDto The data for the new progress entry.
@@ -183,7 +235,8 @@ export class StudyController {
    */
   @Post(':id/progress')
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
+  @StudyRoles(StudyMemberRole.LEADER)
   async createProgress(
     @Param('id', ParseIntPipe) id: number,
     @Body() createProgressDto: CreateProgressDto,
@@ -191,7 +244,7 @@ export class StudyController {
     return this.studyService.createProgress(id, createProgressDto);
   }
 
-  /** 11
+  /**
    * @description Updates a specific progress entry. (Admin/Leader only)
    * @param id The ID of the study.
    * @param progressId The ID of the progress entry to update.
@@ -199,7 +252,8 @@ export class StudyController {
    * @returns A promise that resolves to a DTO indicating success.
    */
   @Patch(':id/progress/:progressId')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
+  @StudyRoles(StudyMemberRole.LEADER)
   async updateProgress(
     @Param('id', ParseIntPipe) id: number,
     @Param('progressId', ParseIntPipe) progressId: number,
@@ -208,7 +262,7 @@ export class StudyController {
     return this.studyService.updateProgress(id, progressId, updateProgressDto);
   }
 
-  /** 12
+  /**
    * @description Deletes a specific progress entry. (Admin/Leader only)
    * @param id The ID of the study.
    * @param progressId The ID of the progress entry to delete.
@@ -216,7 +270,8 @@ export class StudyController {
    */
   @Delete(':id/progress/:progressId')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
+  @StudyRoles(StudyMemberRole.LEADER)
   async deleteProgress(
     @Param('id', ParseIntPipe) id: number,
     @Param('progressId', ParseIntPipe) progressId: number,
@@ -224,20 +279,21 @@ export class StudyController {
     return this.studyService.deleteProgress(id, progressId);
   }
 
-  /** 13
+  /**
    * @description Gets the resource list for a specific study. (Admin/Leader/Member only)
    * @param id The ID of the study.
    * @returns A promise that resolves to a list of the study's resources.
    */
   @Get(':id/resources')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
+  @StudyRoles(StudyMemberRole.LEADER, StudyMemberRole.MEMBER)
   async findResourcesByStudyId(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<StudyResourceResponseDto[]> {
     return this.studyService.findResourcesByStudyId(id);
   }
 
-  /** 14
+  /**
    * @description Uploads a resource file for a study. (Admin/Leader only)
    * @param id The ID of the study.
    * @param file The uploaded file.
@@ -245,15 +301,15 @@ export class StudyController {
    */
   @Post(':id/resources')
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
+  @StudyRoles(StudyMemberRole.LEADER)
   @UseInterceptors(FileInterceptor('file'))
   async uploadResource(
     @Param('id', ParseIntPipe) id: number,
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }), // 10MB limit
-          new FileTypeValidator({ fileType: /(pdf|docx|pptx)$/ }), // pdf, docx, pptx allowed
+          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }), // 10MB limit (backup check)
         ],
       }),
     )
@@ -262,7 +318,7 @@ export class StudyController {
     return await this.studyService.uploadResource(id, file);
   }
 
-  /** 15
+  /**
    * @description Deletes a specific resource from a study. (Admin/Leader only)
    * @param id The ID of the study.
    * @param resourceId The ID of the resource to delete.
@@ -270,7 +326,8 @@ export class StudyController {
    */
   @Delete(':id/resources/:resourceId')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
+  @StudyRoles(StudyMemberRole.LEADER)
   async deleteResource(
     @Param('id', ParseIntPipe) id: number,
     @Param('resourceId', ParseIntPipe) resourceId: number,
@@ -278,18 +335,133 @@ export class StudyController {
     return this.studyService.deleteResource(id, resourceId);
   }
 
-  /** 16
+  /**
+   * @description Downloads a specific resource file from a study. (Admin/Leader/Member only)
+   * @param id The ID of the study.
+   * @param resourceId The ID of the resource to download.
+   * @param res The Express response object.
+   * @returns A StreamableFile of the resource.
+   */
+  @Get(':id/resources/:resourceId/download')
+  @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
+  @StudyRoles(StudyMemberRole.LEADER, StudyMemberRole.MEMBER)
+  async downloadResource(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('resourceId', ParseIntPipe) resourceId: number,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    return this.studyService.downloadResource(id, resourceId, res);
+  }
+
+  /**
    * @description Searches for users available to be added to a specific study. (Admin/Leader only)
    * @param id The ID of the study.
    * @param query The DTO containing the search keyword.
    * @returns A promise that resolves to a list of found users.
    */
   @Get(':id/available-members')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
+  @StudyRoles(StudyMemberRole.LEADER)
   async searchAvailableMembers(
     @Param('id', ParseIntPipe) id: number,
     @Query() query: SearchAvailableMembersQueryDto,
   ): Promise<SearchAvailableMembersResponseDto[]> {
     return this.studyService.searchAvailableMembers(id, query.search);
+  }
+
+  /**
+   * @description Allows a member to apply to a study. The user will be added with PENDING status.
+   * @param id The ID of the study to apply to.
+   * @param req The request object containing the authenticated user.
+   * @returns A promise that resolves to a DTO indicating success.
+   */
+  @Post(':id/apply')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.MEMBER, UserRole.ADMIN)
+  async apply(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: any,
+  ): Promise<SuccessResponseDto> {
+    const userId = req.user.userId;
+    return this.studyService.applyToStudy(id, userId);
+  }
+
+  /**
+   * @description Approves a pending study applicant, changing their role to MEMBER. (Admin/Leader only)
+   * @param id The ID of the study.
+   * @param userId The ID of the user to approve.
+   * @returns A promise that resolves to a DTO indicating success.
+   */
+  @Patch(':id/members/:userId/approve')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
+  @StudyRoles(StudyMemberRole.LEADER)
+  async approveMember(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('userId', ParseUUIDPipe) userId: string,
+  ): Promise<SuccessResponseDto> {
+    return this.studyService.approveMember(id, userId);
+  }
+
+  /**
+   * @description Allows a member to leave a study on their own.
+   * @param id The ID of the study to leave.
+   * @param req The request object containing the authenticated user.
+   * @returns A promise that resolves to a DTO indicating success.
+   */
+  @Delete(':id/leave')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthGuard('jwt'))
+  async leave(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: any,
+  ): Promise<SuccessResponseDto> {
+    const userId = req.user.userId;
+    return this.studyService.leaveStudy(id, userId);
+  }
+
+  /**
+   * @description Nominates a member to become a leader. (Admin/Leader only)
+   */
+  @Post(':id/members/:userId/nominate')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
+  @StudyRoles(StudyMemberRole.LEADER)
+  async nominateLeader(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('userId', ParseUUIDPipe) userId: string,
+  ): Promise<SuccessResponseDto> {
+    return this.studyService.nominateLeader(id, userId);
+  }
+
+  /**
+   * @description Accepts the leadership nomination.
+   */
+  @Post(':id/accept-leadership')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
+  @StudyRoles(StudyMemberRole.NOMINEE)
+  async acceptLeaderNomination(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: any,
+  ): Promise<SuccessResponseDto> {
+    const userId = req.user.userId;
+    return this.studyService.acceptLeaderNomination(id, userId);
+  }
+
+  /**
+   * @description Declines the leadership nomination.
+   */
+  @Post(':id/decline-leadership')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
+  @StudyRoles(StudyMemberRole.NOMINEE)
+  async declineLeaderNomination(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: any,
+  ): Promise<SuccessResponseDto> {
+    const userId = req.user.userId;
+    return this.studyService.declineLeaderNomination(id, userId);
   }
 }
