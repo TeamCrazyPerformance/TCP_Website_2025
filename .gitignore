@@ -1,34 +1,84 @@
 # =============================================================================
-# Root .gitignore (Infrastructure / ELK)
+# Root .gitignore (Infrastructure / ELK / Global)
 # =============================================================================
 
-# Environment files with secrets
-# *.env
-
-# OS
+# -----------------------------------------------------------------------------
+# Operating System Files
+# -----------------------------------------------------------------------------
 .DS_Store
 Thumbs.db
+Desktop.ini
+._*
 
-# Logs
+# -----------------------------------------------------------------------------
+# Editors & IDEs
+# -----------------------------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+.settings/
+.classpath
+.project
+
+# -----------------------------------------------------------------------------
+# Logs & Databases
+# -----------------------------------------------------------------------------
 logs/
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# Docker volumes data (if stored locally)
+# -----------------------------------------------------------------------------
+# Dependency Directories
+# -----------------------------------------------------------------------------
+node_modules/
+# Explicitly ignore nested node_modules just in case
+**/node_modules/
+
+# -----------------------------------------------------------------------------
+# Environment Variables & Secrets
+# -----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Ignore environment files in 'envs' directory
+envs/*.env
+envs/*.json
+
+# Nested env files
+web/.env*
+api/.env*
+
+# -----------------------------------------------------------------------------
+# Build Artifacts & Output
+# -----------------------------------------------------------------------------
+dist/
+build/
+out/
+coverage/
+.next/
+.nuxt/
+.output/
+
+# -----------------------------------------------------------------------------
+# Docker & Local Infrastructure Data
+# -----------------------------------------------------------------------------
 db-data/
 es-data/
 redis-data/
+postgres-data/
+mysql-data/
 
-# Node / frontend build artifacts
-node_modules/
-web/node_modules/
-api/node_modules/
-web/dist/
-web/build/
-web/.env*
-api/.env*
-package-lock.json
-web/package-lock.json
-api/package-lock.json
-yarn.lock
-web/yarn.lock
-api/yarn.lock
+# -----------------------------------------------------------------------------
+# Miscellaneous
+# -----------------------------------------------------------------------------
+.turbolint-history
+.vercel
+build-warnings.txt
