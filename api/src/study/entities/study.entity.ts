@@ -42,6 +42,9 @@ export class Study {
   @Column({ type: 'varchar', length: 100, nullable: true })
   way: string;
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  frequency: string;
+
   @CreateDateColumn()
   created_at: Date;
 

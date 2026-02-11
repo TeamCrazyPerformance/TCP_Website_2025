@@ -37,4 +37,8 @@ export class UpdateStudyDto {
     @IsString()
     @IsOptional()
     way?: string;
+
+    @IsString()
+    @IsOptional()
+    frequency?: string;
 }

@@ -79,6 +79,7 @@ export default function StudyDetail() {
           year: data.start_year,
           title: data.study_name,
           period: data.period || `${data.start_year}년`,
+          frequency: data.frequency || '정보 없음',
           method: data.way || '정보 없음',
           location: data.place || '정보 없음',
           recruitCount: data.recruit_count || 0,
@@ -407,7 +408,7 @@ export default function StudyDetail() {
             </div>
             <div>
               <h3 className="text-lg font-bold text-white mb-2">🔄 주기</h3>
-              <p>Placeholder</p>
+              <p>{study.frequency}</p>
             </div>
             <div>
               <h3 className="text-lg font-bold text-white mb-2">🏢 장소</h3>

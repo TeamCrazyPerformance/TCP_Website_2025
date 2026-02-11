@@ -8,14 +8,15 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
     const [form, setForm] = useState({
         title: '',
         startYear: new Date().getFullYear(),
-        periodStart: '',
-        periodEnd: '',
-        deadline: '',
-        recruitCount: 2,
+        periodStart: '', // YYYY.MM.DD
+        periodEnd: '',   // YYYY.MM.DD
+        deadline: '',    // YYYY.MM.DD
+        recruitCount: 2, // Changed from 'members' to 'recruitCount' for consistency
         way: '',
         place: '',
         tags: '',
-        description: '',
+        content: '', // Changed from 'description' to 'content' for consistency
+        frequency: '', // Added cycle field
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -32,7 +33,8 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                 way: '',
                 place: '',
                 tags: '',
-                description: '',
+                content: '',
+                frequency: '',
             });
         }
     }, [isOpen]);
@@ -197,7 +199,7 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                             maxLength={10}
                         />
 
-                        {/* Way & Place */}
+                        {/* Way & Frequency */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <FormInput
                                 label="진행 방식"
@@ -207,13 +209,22 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                                 placeholder="예: 온라인, 오프라인"
                             />
                             <FormInput
-                                label="장소"
-                                name="place"
-                                value={form.place}
+                                label="주기"
+                                name="frequency"
+                                value={form.frequency}
                                 onChange={onForm}
-                                placeholder="예: 디스코드, 도서관"
+                                placeholder="예: 매주 월요일 19시"
                             />
                         </div>
+
+                        {/* Place */}
+                        <FormInput
+                            label="장소"
+                            name="place"
+                            value={form.place}
+                            onChange={onForm}
+                            placeholder="예: 디스코드, 도서관"
+                        />
 
                         {/* Tags */}
                         <FormInput
