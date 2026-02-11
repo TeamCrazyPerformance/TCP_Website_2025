@@ -164,22 +164,22 @@ function Header({ isScrolled }) {
         {isMobileMenuOpen && (
           <div className="md:hidden border-t border-gray-800 py-3">
             <nav className="flex flex-col gap-1 mb-3">
-              <NavLink to="/about" className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10" onClick={closeMobileMenu}>
+              <NavLink to="/about" className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10 orbitron" onClick={closeMobileMenu}>
                 About
               </NavLink>
-              <NavLink to="/members" className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10" onClick={closeMobileMenu}>
+              <NavLink to="/members" className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10 orbitron" onClick={closeMobileMenu}>
                 Members
               </NavLink>
-              <NavLink to="/recruitment" className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10" onClick={closeMobileMenu}>
+              <NavLink to="/recruitment" className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10 orbitron" onClick={closeMobileMenu}>
                 Recruitment
               </NavLink>
-              <NavLink to="/announcement" className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10" onClick={closeMobileMenu}>
+              <NavLink to="/announcement" className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10 orbitron" onClick={closeMobileMenu}>
                 Announcement
               </NavLink>
-              <NavLink to="/study" className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10" onClick={closeMobileMenu}>
+              <NavLink to="/study" className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10 orbitron" onClick={closeMobileMenu}>
                 Study
               </NavLink>
-              <NavLink to="/team" className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10" onClick={closeMobileMenu}>
+              <NavLink to="/team" className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10 orbitron" onClick={closeMobileMenu}>
                 Find Your Team
               </NavLink>
             </nav>
