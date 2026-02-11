@@ -98,3 +98,61 @@
 *   **로그 파일명:** `execution_YYYY-MM-DD.log` (일자별 자동 생성)
 *   **기록 내용:** 실행 시간, 실행 유저, 스크립트 이름, 상태(STARTED 등)
 *   **자동 관리:** 30일이 지난 로그 파일은 자동 삭제됩니다.
+
+---
+
+## 🏗️ 서버 구축 및 제거 (`ServerSetupRemove/`)
+
+이 스크립트들은 서버의 **초기 구축** 또는 **완전 삭제**와 같은 대규모 작업을 수행합니다. `CICDtools/ServerSetupRemove/` 디렉토리에 위치합니다.
+
+### 9. 🚀 운영 서버 초기 구축 (`prodserver_quicksetup.sh`)
+*   **기능:** 운영(Production) 환경을 처음부터 자동으로 구축합니다.
+*   **포함 단계:**
+    1.  권한 설정 및 필수 패키지 확인
+    2.  `set_env.sh`를 호출하여 환경변수 설정 (대화형)
+    3.  프론트엔드/백엔드 빌드
+    4.  Docker 컨테이너 실행 및 DB 초기화 (Migration, Seed)
+*   **사용 시점:** 새로운 서버를 프로비저닝 할 때 (최초 1회).
+*   **실행 방법:**
+    ```bash
+    ./CICDtools/ServerSetupRemove/prodserver_quicksetup.sh
+    ```
+    *(주의: `SETUP` 키워드 입력 및 3단계 인증 필요)*
+*   **기대 효과:**
+    *   빈 서버가 서비스 가능한 상태로 완벽하게 세팅됩니다.
+
+### 10. 🛠️ 개발 서버 초기 구축 (`devserver_quicksetup.sh`)
+*   **기능:** 개발(Dev) 환경을 구축합니다. `docker-compose.dev.yml`을 사용합니다.
+*   **사용 시점:** 로컬이나 개발용 서버에서 테스트 환경을 만들 때.
+*   **실행 방법:**
+    ```bash
+    ./CICDtools/ServerSetupRemove/devserver_quicksetup.sh
+    ```
+    *(주의: `SETUP` 키워드 입력 및 3단계 인증 필요)*
+*   **기대 효과:**
+    *   코드 변경 사항을 즉시 반영할 수 있는 개발 환경이 구성됩니다.
+
+### 11. 🔥 서버 완전 삭제 (`server_quickremove.sh`)
+*   **기능:** 모든 Docker 컨테이너, 볼륨, 프로젝트 파일을 삭제하고 서버를 **초기화(재부팅)** 합니다.
+*   **사용 시점:** 서버를 폐기하거나, 완전히 새로 세팅하기 위해 데이터를 날릴 때.
+*   **실행 방법:**
+    ```bash
+    ./CICDtools/ServerSetupRemove/server_quickremove.sh
+    ```
+    *(주의: `DESTROY` 키워드 입력 및 3단계 인증 필요. **데이터 복구 불가**)*
+*   **기대 효과:**
+    *   프로젝트와 관련된 모든 데이터가 영구적으로 삭제됩니다.
+    *   시스템이 재부팅되어 클린 상태가 됩니다.
+
+### 12. 🔧 환경변수 설정 마법사 (`set_env.sh`)
+*   **기능:** `envs/` 디렉토리의 환경변수 파일(`api.env`, `db_prod.env`)을 대화형으로 생성합니다.
+*   **특징:**
+    *   **JWT Secret:** 자동 생성 (보안 강화)
+    *   **DB Password:** 공개 입력 (입력값 화면 표시)
+    *   **Admin Account:** 관리자 계정 정보 필수 입력 강제
+*   **사용 시점:** `prodserver_quicksetup.sh` 실행 시 자동으로 호출되거나, 수동으로 환경변수를 재설정할 때.
+*   **실행 방법:**
+    ```bash
+    ./CICDtools/ServerSetupRemove/set_env.sh
+    ```
+
