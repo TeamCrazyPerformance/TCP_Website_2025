@@ -75,14 +75,7 @@ const ImageEditorModal = ({
         <div className="modal active" style={{ zIndex: 2000 }}> {/* Ensure it's above other modals */}
             <div
                 className="modal-content"
-                style={{
-                    maxWidth: '800px',
-                    height: '90vh',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    background: 'var(--secondary-gray)',
-                    overflow: 'hidden'
-                }}
+                style={{}}
             >
                 {/* Header */}
                 <div style={{
@@ -99,12 +92,7 @@ const ImageEditorModal = ({
                 </div>
 
                 {/* Cropper Area */}
-                <div style={{
-                    flex: 1,
-                    position: 'relative',
-                    background: '#000',
-                    minHeight: '300px'
-                }}>
+                <div className="image-editor-cropper">
                     <Cropper
                         image={imageSrc}
                         crop={crop}
@@ -125,27 +113,10 @@ const ImageEditorModal = ({
                             `scaleY(${flip.vertical ? -1 : 1})`,
                         ].join(' ')}
                     />
-                    {/* Custom Transform for flip needed because react-easy-crop doesn't support flip prop natively in older versions or strictly API */}
-                    {/* Actually react-easy-crop handles rotation. Flip is usually done via CSS transform on the Image or custom Logic. 
-               react-easy-crop docs say: "To flip the image, you can use the transform prop... wait, no transform prop." 
-               Actually, we can pass `transform` in style? No.
-               
-               Correction: `react-easy-crop` does NOT natively support flip. 
-               We need to apply scale(-1, 1) to the rotation logic or similar. 
-               However, `getCroppedImg` utility handles the actual output flip.
-               Visualizing flip in `Cropper` is tricky without `transform` support on the image style. 
-               
-               Strategy: We will toggle a CSS class or inline style on the user side if possible? 
-               Wait, `react-easy-crop` exposes `style` prop for container, media area, media.
-           */}
                 </div>
 
                 {/* Controls */}
-                <div style={{
-                    padding: '1.5rem',
-                    background: 'var(--secondary-gray)',
-                    borderTop: '1px solid rgba(255, 255, 255, 0.1)'
-                }}>
+                <div className="image-editor-controls">
 
                     {/* Zoom Control */}
                     <div className="form-group">
@@ -211,10 +182,6 @@ const ImageEditorModal = ({
                             }}
                             onClick={() => {
                                 setFlip(f => ({ ...f, horizontal: !f.horizontal }));
-                                // Note: Visual feedback for flip in Cropper might be limited without direct support,
-                                // but we ensure the OUTPUT is flipped using our utility.
-                                // For visual, we might need to inject styles into the Cropper media if standard props fail.
-                                // But let's assume standard usage for now.
                             }}
                         >
                             <FontAwesomeIcon icon={faArrowsLeftRight} /> 좌우 반전
@@ -282,31 +249,72 @@ const ImageEditorModal = ({
                     </div>
                 </div>
             </div>
-            {/* CSS to visually flip the image within the cropper if possible. 
-           react-easy-crop applies transform to the image. 
-           We can target the image class if we knew it, or pass style via `mediaProps` (if available in version).
-           Recent versions support `transform` in `style`? No. 
-           
-           Actually, we can pass `style` object to `Cropper`.
-           `mediaProps={{ style: { transform: ... } }}` is supported in newer versions.
-       */}
+            {/* Styles */}
             <style>{`
-         /* Helper to ensure range inputs look good */
-         input[type=range] {
-            width: 100%;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 3px;
-            appearance: none;
-         }
-         input[type=range]::-webkit-slider-thumb {
-            appearance: none;
-            width: 18px;
-            height: 18px;
-            background: var(--accent-blue);
-            border-radius: 50%;
-            cursor: pointer;
-         }
+                .image-editor-content {
+                    max-width: 800px;
+                    height: 90vh;
+                    display: flex;
+                    flex-direction: column;
+                    background: var(--secondary-gray);
+                    overflow: hidden;
+                }
+
+                .image-editor-cropper {
+                    flex: 1;
+                    position: relative;
+                    background: #000;
+                    min-height: 300px;
+                }
+
+                .image-editor-controls {
+                    padding: 1.5rem;
+                    background: var(--secondary-gray);
+                    border-top: 1px solid rgba(255, 255, 255, 0.1);
+                }
+
+                /* Mobile Optimization */
+                @media (max-width: 768px) {
+                    .image-editor-content {
+                        height: 95vh;
+                        max-height: 95vh;
+                        width: 95%;
+                    }
+                    
+                    .image-editor-cropper {
+                        min-height: 200px;
+                        flex-basis: 40%; /* Give it some base height */
+                    }
+
+                    .image-editor-controls {
+                        padding: 1rem;
+                        overflow-y: auto;
+                        flex: 1; /* Allow controls to take remaining space if needed */
+                        min-height: 0; /* Important for flex child scrolling */
+                    }
+                    
+                    /* Make buttons stack or smaller on very small screens */
+                    .image-editor-controls .form-group {
+                        margin-bottom: 1rem;
+                    }
+                }
+
+                /* Helper to ensure range inputs look good */
+                input[type=range] {
+                    width: 100%;
+                    height: 6px;
+                    background: rgba(255, 255, 255, 0.2);
+                    border-radius: 3px;
+                    appearance: none;
+                }
+                input[type=range]::-webkit-slider-thumb {
+                    appearance: none;
+                    width: 18px;
+                    height: 18px;
+                    background: var(--accent-blue);
+                    border-radius: 50%;
+                    cursor: pointer;
+                }
        `}</style>
         </div>
     );
