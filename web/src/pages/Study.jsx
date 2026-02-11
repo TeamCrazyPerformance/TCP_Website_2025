@@ -267,10 +267,10 @@ function Study() {
                   </h3>
                   <p className="text-gray-400 mb-2 text-left">{study.period}</p>
                   <p className="text-sm text-gray-500 text-left">
-                    {study.description.substring(0, 80)}...
+                    {(study.description || '').substring(0, 80)}...
                   </p>
                   <div className="flex flex-wrap mt-3">
-                    {study.tags.map((tag, tagIndex) => (
+                    {(study.tags || []).map((tag, tagIndex) => (
                       <span
                         key={tagIndex}
                         className={`tag ${getTagClassName(tag)}`}
