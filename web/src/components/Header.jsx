@@ -7,10 +7,15 @@ function Header({ isScrolled }) {
   const navigate = useNavigate();
   const { isAuthenticated, logout, user } = useAuth();
   const [imgError, setImgError] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     setImgError(false);
   }, [user?.profile_image]);
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [isAuthenticated, user?.profile_image]);
 
   const displayName = useMemo(
     () => user?.name || user?.username || '사용자',
@@ -23,21 +28,26 @@ function Header({ isScrolled }) {
     } hover:text-white`;
 
   const getLoginLinkClass = ({ isActive }) =>
-    `px-4 py-2 text-sm border ${isActive ? 'border-gray-400 text-white' : 'border-gray-600 text-gray-300'
+    `px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border ${isActive ? 'border-gray-400 text-white' : 'border-gray-600 text-gray-300'
     } rounded-lg hover:border-gray-400 transition-colors`;
 
   const getRegisterLinkClass = ({ isActive }) =>
-    `px-4 py-2 text-sm rounded-lg transition-colors ${isActive
+    `px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-lg transition-colors ${isActive
       ? 'bg-gradient-to-r from-blue-600 to-purple-600'
       : 'bg-gradient-to-r from-blue-500 to-purple-500'
     } hover:from-blue-600 hover:to-purple-600 text-white`;
 
   const logoutButtonClass =
-    'px-4 py-2 text-sm border border-gray-600 text-gray-300 rounded-lg hover:border-gray-400 transition-colors';
+    'px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-600 text-gray-300 rounded-lg hover:border-gray-400 transition-colors';
 
   const handleLogout = async () => {
     await logout();
+    setIsMobileMenuOpen(false);
     navigate('/');
+  };
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
   };
 
   return (
@@ -60,7 +70,7 @@ function Header({ isScrolled }) {
               <h1 className="orbitron text-xl font-bold gradient-text text-left">
                 TCP
               </h1>
-              <p className="orbitron text-xs text-gray-400 text-left">
+              <p className="orbitron text-xs text-gray-400 text-left hidden sm:block">
                 Team Crazy Performance
               </p>
             </div>
@@ -89,10 +99,10 @@ function Header({ isScrolled }) {
           </nav>
 
           {/* Login/Sign Up Links */}
-          <div className="flex space-x-3">
+          <div className="flex items-center space-x-1 sm:space-x-3">
             {isAuthenticated ? (
               <>
-                <NavLink to="/mypage" className="flex items-center space-x-2 px-2 py-1 rounded-lg hover:bg-white/10 transition-colors group">
+                <NavLink to="/mypage" className="flex items-center space-x-2 px-1.5 sm:px-2 py-1 rounded-lg hover:bg-white/10 transition-colors group">
                   {!imgError ? (
                     <img
                       src={user?.profile_image || logo}
@@ -105,7 +115,7 @@ function Header({ isScrolled }) {
                       {avatarInitial}
                     </div>
                   )}
-                  <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
+                  <span className="hidden sm:inline text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
                     {displayName}
                   </span>
                 </NavLink>
@@ -130,10 +140,41 @@ function Header({ isScrolled }) {
           </div>
 
           {/* Mobile Menu Button */}
-          <button className="md:hidden">
-            <i className="fas fa-bars text-white"></i>
+          <button
+            type="button"
+            className="md:hidden w-9 h-9 sm:w-10 sm:h-10 rounded-lg border border-gray-700 text-white hover:border-gray-500 transition-colors flex items-center justify-center ml-1"
+            onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+            aria-label="모바일 메뉴 열기"
+            aria-expanded={isMobileMenuOpen}
+          >
+            <i className={`fas ${isMobileMenuOpen ? 'fa-times' : 'fa-bars'} text-white`}></i>
           </button>
         </div>
+
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t border-gray-800 py-3">
+            <nav className="flex flex-col gap-1 mb-3">
+              <NavLink to="/about" className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10" onClick={closeMobileMenu}>
+                About
+              </NavLink>
+              <NavLink to="/members" className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10" onClick={closeMobileMenu}>
+                Members
+              </NavLink>
+              <NavLink to="/recruitment" className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10" onClick={closeMobileMenu}>
+                Recruitment
+              </NavLink>
+              <NavLink to="/announcement" className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10" onClick={closeMobileMenu}>
+                Announcement
+              </NavLink>
+              <NavLink to="/study" className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10" onClick={closeMobileMenu}>
+                Study
+              </NavLink>
+              <NavLink to="/team" className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10" onClick={closeMobileMenu}>
+                Find Your Team
+              </NavLink>
+            </nav>
+          </div>
+        )}
       </div>
     </header>
   );
