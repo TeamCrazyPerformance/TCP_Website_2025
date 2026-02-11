@@ -122,7 +122,7 @@ function Study() {
   const filteredStudies = useMemo(() => {
     return selectedYear === 'all'
       ? studies
-      : studies.filter((study) => study.year.toString() === selectedYear);
+      : studies.filter((study) => study.year?.toString() === selectedYear);
   }, [studies, selectedYear]);
 
   filteredStudies.sort((a, b) => {
