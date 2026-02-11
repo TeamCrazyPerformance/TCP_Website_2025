@@ -56,7 +56,7 @@ function Header({ isScrolled }) {
         } backdrop-blur-md border-b border-gray-800 transition-colors duration-300`}
     >
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center h-16">
           {/* Logo and Title */}
           <NavLink to="/" className="flex items-center space-x-3 flex-shrink-0">
             <div className="w-10 h-10">
@@ -77,7 +77,7 @@ function Header({ isScrolled }) {
           </NavLink>
 
           {/* Navigation */}
-          <nav className="hidden md:flex space-x-6">
+          <nav className="hidden md:flex space-x-6 md:ml-10">
             <NavLink to="/about" className={getNavLinkClass}>
               About
             </NavLink>
@@ -98,57 +98,59 @@ function Header({ isScrolled }) {
             </NavLink>
           </nav>
 
-          {/* Login/Sign Up Links */}
-          <div className="flex items-center space-x-1 sm:space-x-3">
-            {isAuthenticated ? (
-              <>
-                <NavLink to="/mypage" className="flex items-center space-x-2 px-1.5 sm:px-2 py-1 rounded-lg hover:bg-white/10 transition-colors group">
-                  {!imgError ? (
-                    <img
-                      src={user?.profile_image || logo}
-                      alt={displayName}
-                      className="w-8 h-8 rounded-full object-cover border border-gray-600 group-hover:border-gray-400 bg-gray-700"
-                      onError={() => setImgError(true)}
-                    />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs text-white border border-gray-600 group-hover:border-gray-400">
-                      {avatarInitial}
-                    </div>
-                  )}
-                  <span className="hidden sm:inline text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
-                    {displayName}
-                  </span>
-                </NavLink>
-                <button
-                  type="button"
-                  className={logoutButtonClass}
-                  onClick={handleLogout}
-                >
-                  로그아웃
-                </button>
-              </>
-            ) : (
-              <>
-                <NavLink to="/login" className={getLoginLinkClass}>
-                  로그인
-                </NavLink>
-                <NavLink to="/register" className={getRegisterLinkClass}>
-                  회원가입
-                </NavLink>
-              </>
-            )}
-          </div>
+          <div className="ml-auto flex items-center gap-1 sm:gap-2">
+            {/* Login/Sign Up Links */}
+            <div className="flex items-center space-x-1 sm:space-x-3">
+              {isAuthenticated ? (
+                <>
+                  <NavLink to="/mypage" className="flex items-center space-x-2 px-1.5 sm:px-2 py-1 rounded-lg hover:bg-white/10 transition-colors group">
+                    {!imgError ? (
+                      <img
+                        src={user?.profile_image || logo}
+                        alt={displayName}
+                        className="w-8 h-8 rounded-full object-cover border border-gray-600 group-hover:border-gray-400 bg-gray-700"
+                        onError={() => setImgError(true)}
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs text-white border border-gray-600 group-hover:border-gray-400">
+                        {avatarInitial}
+                      </div>
+                    )}
+                    <span className="hidden sm:inline text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
+                      {displayName}
+                    </span>
+                  </NavLink>
+                  <button
+                    type="button"
+                    className={logoutButtonClass}
+                    onClick={handleLogout}
+                  >
+                    로그아웃
+                  </button>
+                </>
+              ) : (
+                <>
+                  <NavLink to="/login" className={getLoginLinkClass}>
+                    로그인
+                  </NavLink>
+                  <NavLink to="/register" className={getRegisterLinkClass}>
+                    회원가입
+                  </NavLink>
+                </>
+              )}
+            </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            type="button"
-            className="md:hidden w-9 h-9 sm:w-10 sm:h-10 rounded-lg border border-gray-700 text-white hover:border-gray-500 transition-colors flex items-center justify-center ml-1"
-            onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-            aria-label="모바일 메뉴 열기"
-            aria-expanded={isMobileMenuOpen}
-          >
-            <i className={`fas ${isMobileMenuOpen ? 'fa-times' : 'fa-bars'} text-white`}></i>
-          </button>
+            {/* Mobile Menu Button */}
+            <button
+              type="button"
+              className="md:hidden w-9 h-9 sm:w-10 sm:h-10 rounded-lg border border-gray-700 text-white hover:border-gray-500 transition-colors flex items-center justify-center"
+              onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+              aria-label="모바일 메뉴 열기"
+              aria-expanded={isMobileMenuOpen}
+            >
+              <i className={`fas ${isMobileMenuOpen ? 'fa-times' : 'fa-bars'} text-white`}></i>
+            </button>
+          </div>
         </div>
 
         {isMobileMenuOpen && (
