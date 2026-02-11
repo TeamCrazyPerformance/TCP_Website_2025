@@ -28,11 +28,11 @@ function Header({ isScrolled }) {
     } hover:text-white`;
 
   const getLoginLinkClass = ({ isActive }) =>
-    `px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border ${isActive ? 'border-gray-500 text-white bg-white/5' : 'border-gray-700 text-gray-200 bg-transparent'
+    `px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border whitespace-nowrap inline-flex items-center justify-center ${isActive ? 'border-gray-500 text-white bg-white/5' : 'border-gray-700 text-gray-200 bg-transparent'
     } rounded-xl hover:border-gray-500 hover:bg-white/5 transition-colors`;
 
   const getRegisterLinkClass = ({ isActive }) =>
-    `px-2 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm rounded-xl transition-colors ${isActive
+    `px-2 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm whitespace-nowrap inline-flex items-center justify-center rounded-xl transition-colors ${isActive
       ? 'bg-gradient-to-r from-indigo-500 to-violet-500'
       : 'bg-gradient-to-r from-blue-500 to-indigo-500'
     } hover:from-indigo-500 hover:to-violet-500 text-white shadow-lg shadow-indigo-500/20`;
@@ -134,13 +134,13 @@ function Header({ isScrolled }) {
                 <>
                   <NavLink to="/login" className={getLoginLinkClass}>
                     <span className="inline-flex items-center gap-2">
-                      <i className="fas fa-sign-in-alt text-xs"></i>
+                      <i className="fas fa-sign-in-alt text-xs hidden sm:inline-block"></i>
                       로그인
                     </span>
                   </NavLink>
                   <NavLink to="/register" className={getRegisterLinkClass}>
                     <span className="inline-flex items-center gap-2">
-                      <i className="fas fa-user-plus text-xs"></i>
+                      <i className="fas fa-user-plus text-xs hidden sm:inline-block"></i>
                       회원가입
                     </span>
                   </NavLink>
