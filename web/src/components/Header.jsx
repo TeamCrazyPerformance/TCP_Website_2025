@@ -24,18 +24,18 @@ function Header({ isScrolled }) {
   const avatarInitial = displayName ? displayName[0].toUpperCase() : 'U';
 
   const getNavLinkClass = ({ isActive }) =>
-    `nav-link orbitron text-sm font-medium ${isActive ? 'active' : 'text-gray-300'
+    `nav-link orbitron text-sm font-medium whitespace-nowrap ${isActive ? 'active' : 'text-gray-300'
     } hover:text-white`;
 
   const getLoginLinkClass = ({ isActive }) =>
-    `px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border ${isActive ? 'border-gray-400 text-white' : 'border-gray-600 text-gray-300'
-    } rounded-lg hover:border-gray-400 transition-colors`;
+    `px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border ${isActive ? 'border-gray-500 text-white bg-white/5' : 'border-gray-700 text-gray-200 bg-transparent'
+    } rounded-xl hover:border-gray-500 hover:bg-white/5 transition-colors`;
 
   const getRegisterLinkClass = ({ isActive }) =>
-    `px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-lg transition-colors ${isActive
-      ? 'bg-gradient-to-r from-blue-600 to-purple-600'
-      : 'bg-gradient-to-r from-blue-500 to-purple-500'
-    } hover:from-blue-600 hover:to-purple-600 text-white`;
+    `px-2 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm rounded-xl transition-colors ${isActive
+      ? 'bg-gradient-to-r from-indigo-500 to-violet-500'
+      : 'bg-gradient-to-r from-blue-500 to-indigo-500'
+    } hover:from-indigo-500 hover:to-violet-500 text-white shadow-lg shadow-indigo-500/20`;
 
   const logoutButtonClass =
     'px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-600 text-gray-300 rounded-lg hover:border-gray-400 transition-colors';
@@ -56,28 +56,30 @@ function Header({ isScrolled }) {
         } backdrop-blur-md border-b border-gray-800 transition-colors duration-300`}
     >
       <div className="container mx-auto px-4">
-        <div className="flex items-center h-16">
+        <div className="flex items-center justify-between h-16">
           {/* Logo and Title */}
-          <NavLink to="/" className="flex items-center space-x-3 flex-shrink-0">
-            <div className="w-10 h-10">
-              <img
-                src={logo}
-                alt="TCP 로고"
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <div>
-              <h1 className="orbitron text-xl font-bold gradient-text text-left">
-                TCP
-              </h1>
-              <p className="orbitron text-xs text-gray-400 text-left hidden sm:block">
-                Team Crazy Performance
-              </p>
-            </div>
-          </NavLink>
+          <div className="flex-1 min-w-0">
+            <NavLink to="/" className="flex items-center space-x-3 flex-shrink-0">
+              <div className="w-10 h-10">
+                <img
+                  src={logo}
+                  alt="TCP 로고"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <div>
+                <h1 className="orbitron text-xl font-bold gradient-text text-left">
+                  TCP
+                </h1>
+                <p className="orbitron text-xs text-gray-400 text-left hidden sm:block">
+                  Team Crazy Performance
+                </p>
+              </div>
+            </NavLink>
+          </div>
 
           {/* Navigation */}
-          <nav className="hidden md:flex space-x-6 md:ml-10">
+          <nav className="hidden md:flex flex-1 items-center justify-center space-x-6 px-4">
             <NavLink to="/about" className={getNavLinkClass}>
               About
             </NavLink>
@@ -98,7 +100,7 @@ function Header({ isScrolled }) {
             </NavLink>
           </nav>
 
-          <div className="ml-auto flex items-center gap-1 sm:gap-2">
+          <div className="flex flex-1 items-center justify-end gap-2">
             {/* Login/Sign Up Links */}
             <div className="flex items-center space-x-1 sm:space-x-3">
               {isAuthenticated ? (
@@ -131,10 +133,16 @@ function Header({ isScrolled }) {
               ) : (
                 <>
                   <NavLink to="/login" className={getLoginLinkClass}>
-                    로그인
+                    <span className="inline-flex items-center gap-2">
+                      <i className="fas fa-sign-in-alt text-xs"></i>
+                      로그인
+                    </span>
                   </NavLink>
                   <NavLink to="/register" className={getRegisterLinkClass}>
-                    회원가입
+                    <span className="inline-flex items-center gap-2">
+                      <i className="fas fa-user-plus text-xs"></i>
+                      회원가입
+                    </span>
                   </NavLink>
                 </>
               )}

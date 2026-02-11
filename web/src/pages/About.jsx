@@ -1,12 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import logo from '../logo.svg';
 import { stats as staticStats } from '../data/stats';
 
-function useCountUp(target, duration = 1200) {
+function useCountUp(target, duration = 1200, enabled = true) {
   const [value, setValue] = useState(0);
 
   useEffect(() => {
+    if (!enabled) {
+      setValue(0);
+      return;
+    }
+
     const startValue = value;
     const delta = target - startValue;
     const startTime = performance.now();
@@ -25,7 +30,7 @@ function useCountUp(target, duration = 1200) {
     return () => {
       if (frameId) cancelAnimationFrame(frameId);
     };
-  }, [target, duration]);
+  }, [target, duration, enabled]);
 
   return value;
 }
@@ -39,12 +44,14 @@ function About() {
     awards: 0,
     employmentRate: 0,
   });
-  const animatedFoundingYear = useCountUp(staticStats.foundingYear, 1200);
-  const animatedStudyGroups = useCountUp(staticStats.studyGroups, 1200);
-  const animatedTotalMembers = useCountUp(mainStats.totalMembers, 1200);
-  const animatedProjects = useCountUp(mainStats.projects, 1200);
-  const animatedAwards = useCountUp(mainStats.awards, 1200);
-  const animatedEmploymentRate = useCountUp(mainStats.employmentRate, 1200);
+  const [isStatsVisible, setIsStatsVisible] = useState(false);
+  const statsSectionRef = useRef(null);
+  const animatedFoundingYear = useCountUp(staticStats.foundingYear, 1200, isStatsVisible);
+  const animatedStudyGroups = useCountUp(staticStats.studyGroups, 1200, isStatsVisible);
+  const animatedTotalMembers = useCountUp(mainStats.totalMembers, 1200, isStatsVisible);
+  const animatedProjects = useCountUp(mainStats.projects, 1200, isStatsVisible);
+  const animatedAwards = useCountUp(mainStats.awards, 1200, isStatsVisible);
+  const animatedEmploymentRate = useCountUp(mainStats.employmentRate, 1200, isStatsVisible);
 
   // 연도별 활동 히스토리 데이터
   const historyData = [
@@ -239,6 +246,23 @@ function About() {
       observer.observe(el);
     });
 
+    // 통계 섹션이 보일 때 카운트업 시작
+    const statsObserver = new IntersectionObserver(
+      (entries, observerInstance) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsStatsVisible(true);
+            observerInstance.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.25 }
+    );
+
+    if (statsSectionRef.current) {
+      statsObserver.observe(statsSectionRef.current);
+    }
+
     // 메인 페이지와 동일한 백엔드 통계 소스 사용
     const fetchMainStatistics = async () => {
       try {
@@ -261,6 +285,7 @@ function About() {
     // 컴포넌트 언마운트 시 클린업
     return () => {
       observer.disconnect(); // IntersectionObserver 연결 해제
+      statsObserver.disconnect();
     };
   }, []); // 빈 배열을 의존성으로 설정하여 컴포넌트가 마운트될 때만 실행
 
@@ -371,7 +396,7 @@ function About() {
         </div>
       </section>
 
-      <section className="py-12 bg-gradient-to-b from-transparent to-gray-900">
+      <section ref={statsSectionRef} className="py-12 bg-gradient-to-b from-transparent to-gray-900">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-4">
