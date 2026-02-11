@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { apiGet, apiPost } from '../api/client';
-import { formatBirthDate } from '../utils/dateFormatter';
 
 export default function StudyManagement() {
     const { id } = useParams();
@@ -23,20 +22,7 @@ export default function StudyManagement() {
 
     // Edit mode states
     const [isEditingInfo, setIsEditingInfo] = useState(false);
-    const [editForm, setEditForm] = useState({
-        study_name: '',
-        start_year: new Date().getFullYear(),
-        study_description: '',
-        apply_deadline: '',
-        recruit_count: 0,
-        period: '',
-        periodStart: '',
-        periodEnd: '',
-        way: '',
-        place: '',
-        tag: '',
-        frequency: '',
-    });
+    const [editForm, setEditForm] = useState({});
     const [editingProgressId, setEditingProgressId] = useState(null);
     const [editProgressForm, setEditProgressForm] = useState({ title: '', content: '' });
 
@@ -79,28 +65,6 @@ export default function StudyManagement() {
                 setIsAdmin(isAdmin);
                 setCurrentUserRole(isLeader ? 'LEADER' : (isAdmin ? 'ADMIN' : null));
                 setStudy(data);
-
-                // Parse period string
-                let pStart = '';
-                let pEnd = '';
-                if (data.period) {
-                    if (data.period.includes('~')) {
-                        const parts = data.period.split('~').map(s => s.trim());
-                        if (parts.length === 2) {
-                            pStart = parts[0];
-                            pEnd = parts[1];
-                        }
-                    } else if (data.period.includes('-')) {
-                        const parts = data.period.split('-').map(s => s.trim());
-                        if (parts.length === 2) {
-                            pStart = parts[0];
-                            pEnd = parts[1];
-                        }
-                    } else {
-                        pStart = data.period;
-                    }
-                }
-
                 setEditForm({
                     study_name: data.study_name || '',
                     start_year: data.start_year || new Date().getFullYear(),
@@ -108,12 +72,9 @@ export default function StudyManagement() {
                     tag: data.tag || '',
                     recruit_count: data.recruit_count || 0,
                     period: data.period || '',
-                    periodStart: pStart,
-                    periodEnd: pEnd,
-                    apply_deadline: data.apply_deadline ? data.apply_deadline.split('T')[0].replace(/-/g, '.') : '',
+                    apply_deadline: data.apply_deadline?.split('T')[0] || '',
                     place: data.place || '',
                     way: data.way || '',
-                    frequency: data.frequency || '',
                 });
 
                 // Separate PENDING, MEMBER, LEADER_NOMINEE
@@ -146,50 +107,17 @@ export default function StudyManagement() {
 
     const token = localStorage.getItem('access_token');
 
-    // Handle change for edit form
-    const handleEditChange = (e) => {
-        const { name, value } = e.target;
-        if (name === 'apply_deadline' || name === 'periodStart' || name === 'periodEnd') {
-            setEditForm(prev => ({ ...prev, [name]: formatBirthDate(value) }));
-        } else {
-            setEditForm(prev => ({ ...prev, [name]: value }));
-        }
-    };
-
     // Update study info
     const handleUpdateInfo = async (e) => {
         e.preventDefault();
         try {
-            // Construct period string
-            const periodString = (editForm.periodStart && editForm.periodEnd)
-                ? `${editForm.periodStart} ~ ${editForm.periodEnd}`
-                : editForm.period; // Fallback to existing if not edited properly
-
-            // Format apply_deadline back to YYYY-MM-DD for backend if needed?
-            // The backend DTO expects IsDateString or YYYY-MM-DD.
-            // If the input is YYYY.MM.DD, we might need to change dots to dashes.
-            const formattedDeadline = editForm.apply_deadline.replace(/\./g, '-');
-
-            const payload = {
-                study_name: editForm.study_name,
-                start_year: Number(editForm.start_year),
-                study_description: editForm.study_description,
-                tag: editForm.tag,
-                recruit_count: Number(editForm.recruit_count),
-                period: periodString,
-                apply_deadline: formattedDeadline,
-                place: editForm.place,
-                way: editForm.way,
-                frequency: editForm.frequency,
-            };
-
             await fetch(`/api/v1/study/${id}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify(payload),
+                body: JSON.stringify(editForm),
             });
             alert('스터디 정보가 수정되었습니다.');
             setIsEditingInfo(false);
@@ -484,39 +412,13 @@ export default function StudyManagement() {
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-gray-300 mb-2">주기</label>
+                                            <label className="block text-gray-300 mb-2">기간</label>
                                             <input
                                                 type="text"
-                                                name="frequency"
-                                                value={editForm.frequency}
-                                                onChange={handleEditChange}
+                                                value={editForm.period}
+                                                onChange={(e) => setEditForm({ ...editForm, period: e.target.value })}
                                                 className="w-full bg-gray-800 rounded-lg py-2 px-4 text-white"
-                                                placeholder="예: 매주 월요일 19시"
                                             />
-                                        </div>
-                                        <div>
-                                            <label className="block text-gray-300 mb-2">기간</label>
-                                            <div className="flex gap-2 items-center">
-                                                <input
-                                                    type="text"
-                                                    name="periodStart"
-                                                    value={editForm.periodStart}
-                                                    onChange={handleEditChange}
-                                                    className="w-full bg-gray-800 rounded-lg py-2 px-4 text-white"
-                                                    placeholder="Start (YYYY.MM.DD)"
-                                                    maxLength={10}
-                                                />
-                                                <span className="text-gray-400">~</span>
-                                                <input
-                                                    type="text"
-                                                    name="periodEnd"
-                                                    value={editForm.periodEnd}
-                                                    onChange={handleEditChange}
-                                                    className="w-full bg-gray-800 rounded-lg py-2 px-4 text-white"
-                                                    placeholder="End"
-                                                    maxLength={10}
-                                                />
-                                            </div>
                                         </div>
                                         <div>
                                             <label className="block text-gray-300 mb-2">진행 방식</label>
@@ -539,13 +441,10 @@ export default function StudyManagement() {
                                         <div>
                                             <label className="block text-gray-300 mb-2">모집 마감일</label>
                                             <input
-                                                type="text"
-                                                name="apply_deadline"
+                                                type="date"
                                                 value={editForm.apply_deadline}
-                                                onChange={handleEditChange}
+                                                onChange={(e) => setEditForm({ ...editForm, apply_deadline: e.target.value })}
                                                 className="w-full bg-gray-800 rounded-lg py-2 px-4 text-white"
-                                                placeholder="YYYY.MM.DD"
-                                                maxLength={10}
                                             />
                                         </div>
                                         <div>
@@ -578,14 +477,13 @@ export default function StudyManagement() {
                                     <p><strong className="text-white">시작 연도:</strong> {study?.start_year}</p>
                                     <p><strong className="text-white">모집 인원:</strong> {study?.recruit_count}명</p>
                                     <p><strong className="text-white">기간:</strong> {study?.period || '-'}</p>
-                                    <p><strong className="text-white">주기:</strong> {study?.frequency || '-'}</p>
                                     <p><strong className="text-white">진행 방식:</strong> {study?.way || '-'}</p>
                                     <p><strong className="text-white">장소:</strong> {study?.place || '-'}</p>
                                     <p><strong className="text-white">모집 마감일:</strong> {study?.apply_deadline?.split('T')[0] || '-'}</p>
                                     <p><strong className="text-white">태그:</strong> {study?.tag || '-'}</p>
                                     <div className="md:col-span-2">
                                         <strong className="text-white">소개:</strong>
-                                        <p className="mt-2 text-white whitespace-pre-wrap">{study?.study_description || '-'}</p>
+                                        <p className="mt-2">{study?.study_description || '-'}</p>
                                     </div>
                                 </div>
                             )}
