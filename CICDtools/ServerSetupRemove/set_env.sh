@@ -20,7 +20,8 @@ mkdir -p "$ENVS_DIR"
 # 📝 Execution Logging
 # ==============================================================================
 LOG_DIR="$(dirname "$0")/logs"
-mkdir -p "$LOG_DIR"
+mkdir -p "$LOG_DIR" 2>/dev/null || sudo mkdir -p "$LOG_DIR"
+sudo chown -R "${SUDO_USER:-$(whoami)}" "$LOG_DIR" 2>/dev/null || true
 LOG_FILE="$LOG_DIR/execution_$(date +%Y-%m-%d).log"
 CURRENT_USER=$(whoami)
 SCRIPT_NAME=$(basename "$0")
