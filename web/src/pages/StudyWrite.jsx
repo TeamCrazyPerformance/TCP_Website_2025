@@ -1,3 +1,4 @@
+// @deprecated This component is replaced by RecruitStudyModal in Study.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiPost } from '../api/client';

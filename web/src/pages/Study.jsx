@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiGet } from '../api/client';
+import RecruitStudyModal from '../components/modals/RecruitStudyModal';
 
 function Study() {
   const navigate = useNavigate();
@@ -10,6 +11,7 @@ function Study() {
   const [hasYearInit, setHasYearInit] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [isRecruitModalOpen, setIsRecruitModalOpen] = useState(false);
 
   // Check if current user is admin
   const isAdmin = useMemo(() => {
@@ -29,6 +31,20 @@ function Study() {
 
   const handleStudyClick = (studyId) => {
     navigate(`/study/${studyId}`);
+  };
+
+  const handleOpenRecruit = () => {
+    setIsRecruitModalOpen(true);
+    document.body.style.overflow = 'hidden';
+  };
+
+  const handleCloseRecruit = () => {
+    setIsRecruitModalOpen(false);
+    document.body.style.overflow = 'auto';
+  };
+
+  const handleAddStudy = (newStudy) => {
+    setStudies(prev => [newStudy, ...prev]);
   };
 
   useEffect(() => {
@@ -192,7 +208,7 @@ function Study() {
             <div className="flex items-center gap-4">
               {isAdmin && (
                 <button
-                  onClick={() => navigate('/study/write')}
+                  onClick={handleOpenRecruit}
                   className="cta-button px-6 py-2 rounded-lg text-sm font-bold text-white"
                 >
                   <i className="fas fa-plus mr-2" />
@@ -279,8 +295,15 @@ function Study() {
           </div>
         </div>
       </section>
+
+      <RecruitStudyModal
+        isOpen={isRecruitModalOpen}
+        onClose={handleCloseRecruit}
+        onAddStudy={handleAddStudy}
+      />
     </>
   );
 }
 
 export default Study;
+
