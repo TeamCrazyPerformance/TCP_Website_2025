@@ -13,43 +13,37 @@
 
 ---
 
-## 1. 환경 변수 설정
+## 1. 환경 변수 설정 (자동화됨)
+
+> [!TIP]
+> **자동화 도구 권장:** `CICDtools/ServerSetupRemove/set_env.sh` 스크립트를 사용하면 아래 과정이 대화형으로 **자동 처리**됩니다. 수동 설정이 필요한 경우에만 아래 내용을 참고하세요.
 
 ### 1.1 API 환경 변수 (`envs/api.env`)
 
-| 변수명 | 설명 | 권장 조치 |
+| 변수명 | 설명 | 자동화 처리 |
 |--------|------|-----------|
-| `JWT_SECRET` | JWT 토큰 서명 키 | 🔴 **필수 변경** - `openssl rand -base64 64` 명령으로 생성 |
-| `BCRYPT_SALT_ROUNDS` | 비밀번호 해싱 강도 | 12 이상 권장 (현재: 12 ✅) |
-| `PORT` | 서버 포트 | 기본값 3000 유지 가능 |
-| `NODE_ENV` | 실행 환경 | 🔴 **필수** `production`으로 변경 |
-
-```bash
-# JWT_SECRET 생성 명령어
-openssl rand -base64 64
-```
+| `JWT_SECRET` | JWT 토큰 서명 키 | ✅ 자동 생성 (Random 64bytes) |
+| `BCRYPT_SALT_ROUNDS` | 비밀번호 해싱 강도 | ✅ 기본값 12 설정 |
+| `PORT` | 서버 포트 | ✅ 기본값 3000 설정 (변경 가능) |
+| `NODE_ENV` | 실행 환경 | ✅ `production` 자동 설정 |
 
 ---
 
-### 1.2 데이터베이스 환경 변수 (`envs/db_dev.env`)
+### 1.2 데이터베이스 환경 변수 (`envs/db_prod.env`)
 
-| 변수명 | 설명 | 권장 조치 |
+| 변수명 | 설명 | 자동화 처리 |
 |--------|------|-----------|
-| `DB_HOST` | DB 호스트 | Docker 내부: `db` 사용 |
-| `DB_PORT` | DB 포트 | 기본값 5432 |
-| `DB_USER` | DB 사용자명 | 🔴 **필수 변경** - 기본값 `user` 변경 |
-| `DB_PASSWORD` | DB 비밀번호 | 🔴 **필수 변경** - 강력한 비밀번호 사용 |
-| `DB_NAME` | 데이터베이스명 | 🟡 필요시 변경 |
-| `ADMIN_EMAIL` | 초기 관리자 이메일 | 🔴 **필수 변경** |
-| `ADMIN_PASSWORD` | 초기 관리자 비밀번호 | 🔴 **필수 변경** - 강력한 비밀번호 사용 |
-| `ADMIN_USERNAME` | 초기 관리자 사용자명 | 🟡 필요시 변경 |
+| `DB_HOST`, `DB_PORT` | DB 접속 정보 | ✅ 기본값 설정 (db, 5432) |
+| `DB_USER` | DB 사용자명 | ✅ 입력값 반영 |
+| `DB_PASSWORD` | DB 비밀번호 | ✅ **입력 필요** (공개 입력) |
+| `ADMIN_ACCOUNT` | 초기 관리자 계정 | ✅ **입력 필요** (이메일/비번/유저명) |
 
-> [!CAUTION]
-> `docker-compose.yml`에서도 DB 관련 환경변수가 하드코딩되어 있습니다. `envs/db_dev.env` 값과 동일하게 변경하세요!
+> [!IMPORTANT]
+> `prodserver_quicksetup.sh` 실행 시 이 파일이 자동으로 생성됩니다.
 
 ---
 
-### 1.3 ELK 스택 환경 변수 (`envs/elk.env`)
+### 1.3 ELK 스택 (현재 수동 설정 필요)
 
 | 변수명 | 설명 | 권장 조치 |
 |--------|------|-----------|
