@@ -10,7 +10,8 @@ set -e
 # ==============================================================================
 
 PROJECT_ROOT="$(dirname "$0")/.."
-BACKUP_DIR="$PROJECT_ROOT/backups"
+# 백업 디렉토리를 프로젝트 루트의 상위 폴더로 변경
+BACKUP_DIR="$PROJECT_ROOT/../backups"
 
 # ==============================================================================
 # 📝 Execution Logging
@@ -30,25 +31,23 @@ find "$LOG_DIR" -name "execution_*.log" -mtime +30 -delete
 # ⚠️  User Confirmation
 # ==============================================================================
 echo "=============================================================================="
-echo "                        ♻️  Database Restore Tool                             "
+echo "                        ♻️  System Restore Tool                               "
 echo "=============================================================================="
 echo "📘 What is this? / 📘 이건 무엇인가요?"
-echo "   - Finds the LATEST backup file in 'backups/'."
-echo "   - 'backups/' 폴더에서 가장 최신 백업 파일을 찾습니다."
-echo "   - Wipes the current database and restores data from the backup."
-echo "   - 현재 데이터베이스를 지우고 백업 파일의 데이터로 복구합니다."
+echo "   - Finds the LATEST backup files in system backups."
+echo "   - 가장 최신 DB 및 파일 백업을 찾습니다."
+echo "   - Wipes current DB and OVERWRITES local files (uploads, json)."
+echo "   - 현재 DB를 초기화하고 로컬 파일(업로드, 설정)을 덮어씁니다."
 echo ""
 echo "🕒 When to use? / 🕒 언제 사용하나요?"
 echo "   - 🚨 EMERGENCY ONLY: When data is corrupted or lost."
 echo "   - 🚨 비상 상황: 데이터가 손상되거나 유실되었을 때만 사용하세요."
-echo "   - To rollback to a previous state."
-echo "   - 이전 상태로 되돌려야 할 때 사용합니다."
 echo ""
 echo "💥 What happens next? / 💥 실행하면 무슨 일이 일어나나요?"
 echo "   - ⚠️  ALL CURRENT DATA WILL BE LOST (Overwritten)."
 echo "   - ⚠️  현재의 모든 데이터가 사라집니다 (덮어씌워짐)."
-echo "   - The database will revert to the state of the latest backup."
-echo "   - 데이터베이스가 최신 백업 시점의 상태로 되돌아갑니다."
+echo "   - The system will revert to the state of the latest backup."
+echo "   - 시스템이 최신 백업 시점의 상태로 되돌아갑니다."
 echo "=============================================================================="
 # ------------------------------------------------------------------------------
 # 🔒 Step 1: Basic Confirmation (y/n)
@@ -85,15 +84,22 @@ fi
 echo ""
 
 # Find the latest backup file
-LATEST_BACKUP=$(find "$BACKUP_DIR" -name "db_backup_*.sql.gz" | sort | tail -n 1)
+LATEST_DB_BACKUP=$(find "$BACKUP_DIR" -name "db_backup_*.sql.gz" | sort | tail -n 1)
+LATEST_FILES_BACKUP=$(find "$BACKUP_DIR" -name "files_backup_*.tar.gz" | sort | tail -n 1)
 
-if [ -z "$LATEST_BACKUP" ]; then
-    echo "❌ Error: No backup files found in $BACKUP_DIR"
+if [ -z "$LATEST_DB_BACKUP" ]; then
+    echo "❌ Error: No DB backup files found in $BACKUP_DIR"
     exit 1
 fi
 
-echo "🔍 Found latest backup: $(basename "$LATEST_BACKUP")"
-echo "⚠️  WARNING: This will OVERWRITE the current database data."
+echo "🔍 Found latest DB backup   : $(basename "$LATEST_DB_BACKUP")"
+if [ -n "$LATEST_FILES_BACKUP" ]; then
+    echo "🔍 Found latest Files backup: $(basename "$LATEST_FILES_BACKUP")"
+else
+    echo "⚠️  Warning: No local files backup found. Only DB will be restored."
+fi
+
+echo "⚠️  WARNING: This will OVERWRITE the current database and files."
 echo "   Are you sure you want to proceed? (y/n)"
 read -r CONFIRM
 
@@ -108,12 +114,25 @@ if [ -z "$(sudo docker compose ps -q db)" ]; then
     exit 1
 fi
 
-echo "⏳ Restoring database... (This may take a while)"
-
+# 1. Restore Database
+echo "⏳ [1/2] Restoring database... (This may take a while)"
 # Unzip and pipe to psql
 # Since the dump was created with --clean, it will drop existing tables first.
-gunzip -c "$LATEST_BACKUP" | sudo docker compose exec -T db psql -U user -d mydb
+gunzip -c "$LATEST_DB_BACKUP" | sudo docker compose exec -T db psql -U user -d mydb
+echo "✅ Database restored successfully!"
+
+# 2. Restore Local Files
+if [ -n "$LATEST_FILES_BACKUP" ]; then
+    echo "⏳ [2/2] Restoring local files..."
+    # -C "$PROJECT_ROOT" : Extract relative to project root
+    # This will overwrite api/uploads, api/json, logs
+    # Use sudo to verify we can overwrite files regardless of ownership
+    sudo tar -xzf "$LATEST_FILES_BACKUP" -C "$PROJECT_ROOT"
+    echo "✅ Local files restored successfully!"
+else
+    echo "⏩ Skipping file restore (no backup found)"
+fi
 
 echo "========================================"
-echo "✅ Database restored successfully!"
+echo "✨ System restore process completed!"
 echo "========================================"
