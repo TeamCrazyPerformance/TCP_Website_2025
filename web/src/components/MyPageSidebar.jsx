@@ -12,7 +12,7 @@ import {
   faHome,
 } from '@fortawesome/free-solid-svg-icons';
 
-function MyPageSidebar() {
+function MyPageSidebar({ isOpen = false }) {
   const location = useLocation();
 
   const isActive = (path) => {
@@ -20,7 +20,7 @@ function MyPageSidebar() {
   };
 
   return (
-    <aside id="sidebar" className="sidebar flex-shrink-0 p-4">
+    <aside id="sidebar" className={`sidebar ${isOpen ? 'open' : ''} flex-shrink-0 p-4`}>
       <div className="flex items-center space-x-3 mb-8 px-2">
         <Link to="/">
           <img src={logo} alt="TCP 로고" className="w-10 h-10 object-contain" />
