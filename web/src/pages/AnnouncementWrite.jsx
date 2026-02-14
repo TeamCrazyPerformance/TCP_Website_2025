@@ -181,11 +181,27 @@ function AnnouncementWrite() {
       return;
     }
 
+    // 날짜 유효성 검증 및 ISO 형식으로 변환
+    const dateRegex = /^\d{4}\.\d{2}\.\d{2}$/;
+    if (!dateRegex.test(date)) {
+      alert('올바른 날짜 형식을 입력해주세요. (YYYY.MM.DD)');
+      return;
+    }
+
+    const isoDate = date.replace(/\./g, '-'); // "2020.01.15" -> "2020-01-15"
+    const dateObj = new Date(isoDate);
+    
+    // Invalid Date 체크
+    if (isNaN(dateObj.getTime())) {
+      alert('유효하지 않은 날짜입니다. 올바른 날짜를 입력해주세요.');
+      return;
+    }
+
     const payload = {
       title,
       contents: content,
       summary,
-      publishAt: date,
+      publishAt: isoDate, // ISO 형식으로 전송
     };
 
     try {
