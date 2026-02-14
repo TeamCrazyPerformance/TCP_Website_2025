@@ -34,13 +34,26 @@ class LogstashTcpTransport extends winston.transports.Stream {
         if (this.isConnecting || !this.socket) return;
         this.isConnecting = true;
 
+        // 연결 및 쓰기 타임아웃 설정 (5초)
+        this.socket.setTimeout(5000);
+        // TCP KeepAlive 활성화
+        this.socket.setKeepAlive(true, 10000);
+
         this.socket.connect(this.port, this.host, () => {
             this.isConnecting = false;
             console.log(`[Logger] Connected to Logstash at ${this.host}:${this.port}`);
         });
 
+        // 타임아웃 발생 시 소켓 재연결
+        this.socket.on('timeout', () => {
+            console.error('[Logger] Logstash socket timeout');
+            this.socket?.destroy();
+            this.isConnecting = false;
+        });
+
         this.socket.on('error', (err: Error) => {
             console.error(`[Logger] Logstash connection error: ${err.message}`);
+            this.socket?.destroy();
             this.isConnecting = false;
         });
 
@@ -54,14 +67,34 @@ class LogstashTcpTransport extends winston.transports.Stream {
     log(info: winston.Logform.TransformableInfo, callback: () => void) {
         setImmediate(() => this.emit('logged', info));
 
-        if (this.socket && this.socket.writable) {
-            const logEntry = JSON.stringify({
-                ...info,
-                timestamp: new Date().toISOString(),
-            }) + '\n';
-            this.socket.write(logEntry);
+        // 소켓이 쓰기 가능하고 연결 대기 중이 아닐 때만 로그 전송
+        if (this.socket && this.socket.writable && !this.socket.pending) {
+            try {
+                const logEntry = JSON.stringify({
+                    ...info,
+                    timestamp: new Date().toISOString(),
+                }) + '\n';
+                
+                // 논블로킹 방식으로 쓰기 - 에러 발생 시 무시 (앱 크래시 방지)
+                // 백프레셔(버퍼 가득 참) 시 false 반환되지만 앱은 계속 실행
+                const success = this.socket.write(logEntry, (err) => {
+                    if (err) {
+                        // 로그 전송 실패는 심각하지 않으므로 콘솔에만 출력
+                        console.error('[Logger] Failed to write to Logstash:', err.message);
+                    }
+                });
+                
+                // 버퍼가 가득 차면 경고만 출력하고 계속 진행
+                if (!success) {
+                    console.warn('[Logger] Logstash buffer full, log may be dropped');
+                }
+            } catch (error) {
+                // JSON 직렬화 또는 쓰기 에러를 무시 (앱 크래시 방지)
+                console.error('[Logger] Error writing to Logstash:', error);
+            }
         }
 
+        // 항상 callback을 즉시 호출하여 winston이 블로킹되지 않도록 보장
         callback();
     }
 }

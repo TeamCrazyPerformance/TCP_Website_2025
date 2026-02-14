@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThanOrEqual } from 'typeorm';
 import { Announcement } from './entities/announcement.entity';
@@ -44,9 +44,20 @@ export class AnnouncementService {
 
   // 공지사항 생성
   async create(createDto: CreateAnnouncementDto, userId: string): Promise<Announcement> {
+    // publishAt 날짜 유효성 검증
+    let publishDate: Date;
+    if (createDto.publishAt) {
+      publishDate = new Date(createDto.publishAt);
+      if (isNaN(publishDate.getTime())) {
+        throw new BadRequestException('Invalid date format for publishAt');
+      }
+    } else {
+      publishDate = new Date();
+    }
+
     const announcement = this.announcementRepository.create({
       ...createDto,
-      publishAt: createDto.publishAt ? new Date(createDto.publishAt) : new Date(), // publishAt이 지정되지 않으면 현재 시각으로 자동 설정
+      publishAt: publishDate,
       author: { id: userId }, 
     });
     return this.announcementRepository.save(announcement);
@@ -57,7 +68,11 @@ export class AnnouncementService {
     const updateData: any = { ...updateDto };
 
     if (updateDto.publishAt) {
-      updateData.publishAt = new Date(updateDto.publishAt);
+      const publishDate = new Date(updateDto.publishAt);
+      if (isNaN(publishDate.getTime())) {
+        throw new BadRequestException('Invalid date format for publishAt');
+      }
+      updateData.publishAt = publishDate;
     }
 
     await this.announcementRepository.update(id, updateData);
