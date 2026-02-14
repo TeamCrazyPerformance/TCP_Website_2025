@@ -44,6 +44,7 @@ function Register() {
     hasUppercase: false,
     hasNumber: false,
     hasSpecial: false,
+    allowedCharsOnly: true,
   });
   const [passwordMatch, setPasswordMatch] = useState(null); // true, false, null
   const [signupButtonEnabled, setSignupButtonEnabled] = useState(false);
@@ -203,6 +204,7 @@ function Register() {
       hasUppercase: /[A-Z]/.test(password),
       hasNumber: /\d/.test(password),
       hasSpecial: /[@$!%*?&]/.test(password),
+      allowedCharsOnly: password.length === 0 || /^[A-Za-z\d@$!%*?&]+$/.test(password),
     });
   }, [password]);
 
@@ -421,6 +423,12 @@ function Register() {
                       <i className={`fas ${passwordStrength.hasSpecial ? 'fa-check' : 'fa-times'} mr-2`}></i>
                       특수문자 포함 (@$!%*?&)
                     </div>
+                    {!passwordStrength.allowedCharsOnly && (
+                      <div className="text-red-400">
+                        <i className="fas fa-times mr-2"></i>
+                        허용되지 않는 문자가 포함되어 있습니다 (영문, 숫자, @$!%*?& 만 사용 가능)
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
