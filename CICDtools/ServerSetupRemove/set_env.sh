@@ -2,155 +2,180 @@
 set -e
 
 # ==============================================================================
-# Environment Setup Script
+# Environment Setup Script - Secured & Automated
 # ==============================================================================
 # Description:
-#   Interactively creates or updates necessary .env files for the production server.
-#   - envs/api.env
-#   - envs/db_prod.env
-#   - .env (root)
+#   Generates secure .env files for production with minimal user input.
+#   - Auto-generates secrets (JWT, DB Passwords).
+#   - Uses safe defaults for ports and names.
+#   - Only prompts for Admin credentials.
 # ==============================================================================
 
-PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+# Ensure we are in the script's directory for relative path loading
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")/.." # Go up from CICDtools/ServerSetupRemove to Project Root
 ENVS_DIR="$PROJECT_ROOT/envs"
+
+# ANSI Color Codes
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Logging functions (embedded for standalone use, but mimicking common logging)
+log_info() { echo -e "${BLUE}[INFO] $1${NC}"; }
+log_success() { echo -e "${GREEN}[SUCCESS] $1${NC}"; }
+log_warn() { echo -e "${YELLOW}[WARN] $1${NC}"; }
+log_error() { echo -e "${RED}[ERROR] $1${NC}"; }
 
 mkdir -p "$ENVS_DIR"
 
-# ==============================================================================
-# 📝 Execution Logging
-# ==============================================================================
-LOG_DIR="$(dirname "$0")/logs"
-mkdir -p "$LOG_DIR" 2>/dev/null || sudo mkdir -p "$LOG_DIR"
-sudo chown -R "${SUDO_USER:-$(whoami)}" "$LOG_DIR" 2>/dev/null || true
-LOG_FILE="$LOG_DIR/execution_$(date +%Y-%m-%d).log"
-CURRENT_USER=$(whoami)
-SCRIPT_NAME=$(basename "$0")
-TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
-echo "[$TIMESTAMP] User: $CURRENT_USER | Script: $SCRIPT_NAME | Action: STARTED" >> "$LOG_FILE"
-
-# Delete logs older than 30 days
-find "$LOG_DIR" -name "execution_*.log" -mtime +30 -delete
-
-echo "=============================================================================="
-echo "🛠️  Environment Variable Setup"
-echo "=============================================================================="
-echo ""
+log_info "🚀 Starting Secure Environment Setup..."
 
 # ==============================================================================
-# 0. Mode Selection (Prod vs Dev)
+# 0. Configuration & Defaults
 # ==============================================================================
-MODE="${1:-prod}" # Default to prod if no arg provided
-
-if [[ "$MODE" == "dev" || "$MODE" == "development" ]]; then
-    echo "🚧 Development Mode Selected"
-    DEFAULT_NODE_ENV="development"
-    DB_ENV_FILE="db_dev.env"
-else
-    echo "🚀 Production Mode Selected"
-    DEFAULT_NODE_ENV="production"
-    DB_ENV_FILE="db_prod.env"
-fi
-echo ""
-
-# ------------------------------------------------------------------------------
-# 1. API Environment (envs/api.env)
-# ------------------------------------------------------------------------------
-echo "🔹 Configuring [envs/api.env]..."
-
-# Defaults
+# Fixed Default Values (Safe to expose)
 DEFAULT_PORT=3000
+DEFAULT_NODE_ENV="production"
 DEFAULT_SALT=12
+DEFAULT_DB_HOST="db"
+DEFAULT_DB_PORT=5432
+DEFAULT_DB_USER="tcp_user"
+DEFAULT_DB_NAME="tcp_db"
 
-# Ask for values
-read -p "   Running PORT [Default: $DEFAULT_PORT]: " INPUT_PORT
-PORT=${INPUT_PORT:-$DEFAULT_PORT}
+# ==============================================================================
+# 1. Existing Value Check (Idempotency)
+# ==============================================================================
+# If files exist, read them. If not, generate new secrets.
 
-read -p "   NODE_ENV [Default: $DEFAULT_NODE_ENV]: " INPUT_NODE_ENV
-NODE_ENV=${INPUT_NODE_ENV:-$DEFAULT_NODE_ENV}
-
-read -p "   BCRYPT_SALT_ROUNDS [Default: $DEFAULT_SALT]: " INPUT_SALT
-SALT=${INPUT_SALT:-$DEFAULT_SALT}
-
-# Generate JWT Secret automatically
-if grep -q "JWT_SECRET=" "$ENVS_DIR/api.env" 2>/dev/null; then
-    echo "   🔑 JWT_SECRET already exists. Keeping it."
+# --- API Env ---
+if [ -f "$ENVS_DIR/api.env" ]; then
+    log_info "📄 Found existing api.env. Reading values..."
     EXISTING_JWT=$(grep "JWT_SECRET=" "$ENVS_DIR/api.env" | cut -d '=' -f2)
-    JWT_SECRET=$EXISTING_JWT
+    # Use existing or generate if empty in file
+    JWT_SECRET=${EXISTING_JWT:-$(openssl rand -base64 64)}
 else
-    echo "   🔑 Generating random JWT_SECRET..."
+    log_info "🆕 Generating NEW JWT_SECRET..."
     JWT_SECRET=$(openssl rand -base64 64)
 fi
 
-# Write to file
+# --- DB Env ---
+if [ -f "$ENVS_DIR/db_prod.env" ]; then
+    log_info "📄 Found existing db_prod.env. Reading values..."
+    EXISTING_DB_PASS=$(grep "POSTGRES_PASSWORD=" "$ENVS_DIR/db_prod.env" | cut -d '=' -f2)
+    DB_PASSWORD=${EXISTING_DB_PASS:-$(openssl rand -hex 32)}
+    
+    # Check for existing Admin details
+    EXISTING_ADMIN_USER=$(grep "ADMIN_USERNAME=" "$ENVS_DIR/db_prod.env" | cut -d '=' -f2)
+    EXISTING_ADMIN_EMAIL=$(grep "ADMIN_EMAIL=" "$ENVS_DIR/db_prod.env" | cut -d '=' -f2)
+    # Password might not be easily grep-able if complex, but we try
+    ADMIN_USERNAME=$EXISTING_ADMIN_USER
+    ADMIN_EMAIL=$EXISTING_ADMIN_EMAIL
+    # We will prompt for Admin credentials only if username is missing
+else
+    log_info "🆕 Generating NEW DB_PASSWORD..."
+    DB_PASSWORD=$(openssl rand -hex 32)
+fi
+
+# ==============================================================================
+# 2. Pre-execution Summary (Echo to User)
+# ==============================================================================
+echo ""
+echo "=============================================================================="
+echo "                       📋  Configuration Summary                              "
+echo "=============================================================================="
+echo -e "🔧 ${BLUE}FIXED DEFAULTS (Standard Config):${NC}"
+echo "   - PORT            : $DEFAULT_PORT"
+echo "   - NODE_ENV        : $DEFAULT_NODE_ENV"
+echo "   - DB_HOST         : $DEFAULT_DB_HOST"
+echo "   - DB_PORT         : $DEFAULT_DB_PORT"
+echo "   - DB_USER         : $DEFAULT_DB_USER"
+echo ""
+echo -e "🎲 ${YELLOW}GENERATED SECRETS (Auto-created):${NC}"
+echo "   - JWT_SECRET      : [Hidden] (Run 'cat envs/api.env' to view)"
+echo "   - DB_PASSWORD     : [Hidden] (Run 'cat envs/db_prod.env' to view)"
+echo ""
+echo -e "✍️  ${GREEN}MANUAL INPUT REQUIRED:${NC}"
+if [ -z "$ADMIN_USERNAME" ]; then
+    echo "   - Admin Credentials (Username, Email, Password)"
+else
+    echo "   - None (Admin credentials found)"
+fi
+echo "=============================================================================="
+echo ""
+
+# ==============================================================================
+# 3. User Input (Admin Credentials)
+# ==============================================================================
+# Only ask if not already found
+if [ -z "$ADMIN_USERNAME" ]; then
+    log_info "Please enter Admin Account details for initial seeding:"
+    
+    while [[ -z "$ADMIN_USERNAME" ]]; do
+        read -p "   👤 Admin Username: " ADMIN_USERNAME
+    done
+    export ADMIN_USERNAME # Temporarily export just in case
+
+    while [[ -z "$ADMIN_EMAIL" ]]; do
+        read -p "   📧 Admin Email: " ADMIN_EMAIL
+    done
+    export ADMIN_EMAIL
+
+    while [[ -z "$ADMIN_PASSWORD" ]]; do
+        echo -n "   🔑 Admin Password: "
+        read -s ADMIN_PASSWORD
+        echo "" # Newline after silent input
+    done
+    export ADMIN_PASSWORD
+else
+    # If admin user exists, we might still need password if it wasn't readable from env file easily?
+    # Actually, we rely on writing what we read. If we read it, we write it back.
+    # If we read username but not password (unlikely unless file corrupted), we might write empty password.
+    # Let's try to read password too.
+    if [ -f "$ENVS_DIR/db_prod.env" ]; then
+         EXISTING_ADMIN_PASS=$(grep "ADMIN_PASSWORD=" "$ENVS_DIR/db_prod.env" | cut -d '=' -f2)
+         ADMIN_PASSWORD=$EXISTING_ADMIN_PASS
+    fi
+    # If password still empty, ask for it?
+    if [ -z "$ADMIN_PASSWORD" ]; then
+        log_warn "⚠️  Admin Password missing in env file. Please enter it:"
+        read -s ADMIN_PASSWORD
+        echo ""
+    else 
+        log_info "👤 Admin Username found: $ADMIN_USERNAME"
+        log_info "   (Using existing Admin credentials)"
+    fi
+fi
+
+# ==============================================================================
+# 4. Write Configuration Files
+# ==============================================================================
+log_info "💾 Writing configuration files..."
+
+# --- api.env ---
 cat > "$ENVS_DIR/api.env" <<EOF
 # API Backend Environment Variables
-PORT=$PORT
-NODE_ENV=$NODE_ENV
-BCRYPT_SALT_ROUNDS=$SALT
+PORT=$DEFAULT_PORT
+NODE_ENV=$DEFAULT_NODE_ENV
+BCRYPT_SALT_ROUNDS=$DEFAULT_SALT
 JWT_SECRET=$JWT_SECRET
 EOF
 
-echo "✅ envs/api.env created."
-echo ""
-
-# ------------------------------------------------------------------------------
-# 2. DB Environment (envs/$DB_ENV_FILE)
-# ------------------------------------------------------------------------------
-echo "🔹 Configuring [envs/$DB_ENV_FILE]..."
-
-# Defaults
-DEFAULT_DB_HOST=db
-DEFAULT_DB_PORT=5432
-DEFAULT_DB_USER=user
-DEFAULT_DB_NAME=mydb
-
-# Ask for Non-Sensitive values
-read -p "   DB_HOST [Default: $DEFAULT_DB_HOST]: " INPUT_DB_HOST
-DB_HOST=${INPUT_DB_HOST:-$DEFAULT_DB_HOST}
-
-read -p "   DB_PORT [Default: $DEFAULT_DB_PORT]: " INPUT_DB_PORT
-DB_PORT=${INPUT_DB_PORT:-$DEFAULT_DB_PORT}
-
-read -p "   DB_USER [Default: $DEFAULT_DB_USER]: " INPUT_DB_USER
-DB_USER=${INPUT_DB_USER:-$DEFAULT_DB_USER}
-
-read -p "   DB_NAME [Default: $DEFAULT_DB_NAME]: " INPUT_DB_NAME
-DB_NAME=${INPUT_DB_NAME:-$DEFAULT_DB_NAME}
-
-# Password input (Visible)
-echo -n "   🔑 Enter DB_PASSWORD [Default: Mirae122!@#]: "
-read INPUT_DB_PASSWORD
-echo ""
-DB_PASSWORD=${INPUT_DB_PASSWORD:-Mirae122!@#}
-
-# Admin Account (Mandatory)
-while [[ -z "$ADMIN_USERNAME" ]]; do
-    read -p "   👤 Enter Admin Username (Required): " ADMIN_USERNAME
-done
-
-while [[ -z "$ADMIN_EMAIL" ]]; do
-    read -p "   📧 Enter Admin Email (Required): " ADMIN_EMAIL
-done
-
-while [[ -z "$ADMIN_PASSWORD" ]]; do
-    echo -n "   🔑 Enter Admin Password (Required): "
-    read ADMIN_PASSWORD
-    echo ""
-done
-
-# Write to file
-cat > "$ENVS_DIR/$DB_ENV_FILE" <<EOF
+# --- db_prod.env ---
+cat > "$ENVS_DIR/db_prod.env" <<EOF
 # POSTGRES Container Init
-POSTGRES_USER=$DB_USER
+POSTGRES_USER=$DEFAULT_DB_USER
 POSTGRES_PASSWORD=$DB_PASSWORD
-POSTGRES_DB=$DB_NAME
+POSTGRES_DB=$DEFAULT_DB_NAME
 
 # DB Connection
-DB_HOST=$DB_HOST
-DB_PORT=$DB_PORT
-DB_USER=$DB_USER
+DB_HOST=$DEFAULT_DB_HOST
+DB_PORT=$DEFAULT_DB_PORT
+DB_USER=$DEFAULT_DB_USER
 DB_PASSWORD=$DB_PASSWORD
-DB_NAME=$DB_NAME
+DB_NAME=$DEFAULT_DB_NAME
 
 # Admin Account w/ Seeding
 ADMIN_USERNAME=$ADMIN_USERNAME
@@ -158,20 +183,29 @@ ADMIN_EMAIL=$ADMIN_EMAIL
 ADMIN_PASSWORD=$ADMIN_PASSWORD
 EOF
 
-echo "✅ envs/$DB_ENV_FILE created."
-echo ""
-
-# ------------------------------------------------------------------------------
-# 3. Root .env (For Docker Compose project name etc)
-# ------------------------------------------------------------------------------
+# --- root .env ---
 if [ ! -f "$PROJECT_ROOT/.env" ]; then
-    echo "🔹 Configuring [.env] (Root)..."
     echo "COMPOSE_PROJECT_NAME=tcp-website" > "$PROJECT_ROOT/.env"
-    echo "✅ .env created."
-else
-    echo "🔹 [.env] already exists. Skipping."
 fi
 
+# ==============================================================================
+# 5. Post-execution Instructions
+# ==============================================================================
 echo ""
-echo "🎉 Environment setup completed successfully!"
+log_success "🎉 Environment setup completed successfully!"
+echo ""
 echo "=============================================================================="
+echo "🚀 NEXT STEPS / ACTION REQUIRED"
+echo "=============================================================================="
+echo "1. Apply changes to the server:"
+echo -e "   ${GREEN}sudo docker compose up -d --force-recreate${NC}"
+echo ""
+echo "2. ⚠️  IMPORTANT WARNING about Database Password:"
+echo -e "   If you changed ${YELLOW}DB_PASSWORD${NC} and a database volume already exists,"
+echo "   the running database WILL NOT update its password automatically."
+echo "   To force a password change, you may need to reset the volume:"
+echo "   (Only do this if you can afford to lose data or have a backup!)"
+echo "   - sudo docker compose down -v"
+echo "   - sudo docker compose up -d"
+echo "=============================================================================="
+echo ""

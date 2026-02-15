@@ -13,6 +13,18 @@ PROJECT_ROOT="$(dirname "$0")/.."
 WEB_DIR="$PROJECT_ROOT/web"
 REPO_URL="https://github.com/TeamCrazyPerformance/TCP_Website_2025"
 
+# Import Common Logging
+source "$(dirname "$0")/utils/common_logging.sh"
+
+# Wrapper to run npm as the original user if sudo is used
+npm_as_user() {
+    if [ -n "$SUDO_USER" ]; then
+        sudo -u "$SUDO_USER" npm "$@"
+    else
+        npm "$@"
+    fi
+}
+
 # ==============================================================================
 # ⚠️  User Confirmation
 # ==============================================================================
@@ -44,27 +56,24 @@ source "$(dirname "$0")/utils/git_utils.sh"
 # 🔒 Pre-flight Safety Check
 check_git_status
 
-# Import Common Logging
-source "$(dirname "$0")/utils/common_logging.sh"
-
 # Setup Logging (Redirects output to log file & handles errors)
 setup_logging "frontend_update"
 
 # 0. Backup DB (Safety First)
 log_info "📥 Pulling latest code from main..."
 cd "$PROJECT_ROOT"
-git pull origin main
+git_as_user pull origin main
 
 # 2. Install dependencies & Build (Zero-Downtime Strategy)
 log_info "📦 Installing dependencies..."
 cd "$WEB_DIR"
-npm install
+npm_as_user install
 
 log_info "🏗️  Building frontend to temporary directory (dist_temp)..."
 # Build to a temporary directory first to prevent downtime
 # We use 'npm exec' to run the project's local react-scripts
 export BUILD_PATH=dist_temp
-if npm exec -- react-scripts build; then
+if npm_as_user exec -- react-scripts build; then
     log_success "✅ Build successful!"
     
     log_info "🔄 Swapping new build with live version..."

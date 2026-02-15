@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Identify the user who invoked sudo (or current user if not sudo)
+CURRENT_USER=${SUDO_USER:-$(whoami)}
+
 # ==============================================================================
 # Database Backup Script
 # ==============================================================================

@@ -9,22 +9,30 @@
 # ==============================================================================
 
 # Ensure common logging is loaded
-# If common_logging.sh is in the same directory as this script
-if [ -f "$(dirname "$0")/common_logging.sh" ]; then
-    source "$(dirname "$0")/common_logging.sh"
+# Use BASH_SOURCE to locate the script directory reliably (even when sourced)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
+
+# Wrapper to run git as the original user if sudo is used
+git_as_user() {
+    if [ -n "$SUDO_USER" ]; then
+        sudo -u "$SUDO_USER" git "$@"
+    else
+        git "$@"
+    fi
+}
 
 check_git_status() {
     log_info "🔍 Checking git status and remote updates..."
 
     # 1. Fetch latest changes from remote (without merging)
     log_info "📡 Fetching origin..."
-    git fetch origin main
+    git_as_user fetch origin main
 
     # 2. Check for uncommitted local changes
-    if [ -n "$(git status --porcelain)" ]; then
+    if [ -n "$(git_as_user status --porcelain)" ]; then
         log_warn "⚠️  Uncommitted local changes detected:"
-        git status --short
+        git_as_user status --short
         echo ""
         log_warn "These changes might cause conflicts during pull."
         read -p "❓ Do you want to proceed anyway? (y/n): " CONFIRM -r
@@ -43,7 +51,7 @@ check_git_status() {
     local LOCAL="HEAD"
     
     # Check if upstream is set, if not fallback to origin/main explicit
-    if ! git rev-parse --abbrev-ref --symbolic-full-name @{u} > /dev/null 2>&1; then
+    if ! git_as_user rev-parse --abbrev-ref --symbolic-full-name @{u} > /dev/null 2>&1; then
        # If no upstream configured, assume tracking origin/main for safety check
        UPSTREAM="origin/main"
     else
@@ -51,7 +59,7 @@ check_git_status() {
     fi
 
     # Left: Local, Right: Remote
-    local COUNTS=$(git rev-list --left-right --count $UPSTREAM...$LOCAL)
+    local COUNTS=$(git_as_user rev-list --left-right --count $UPSTREAM...$LOCAL)
     local BEHIND=$(echo $COUNTS | awk '{print $1}')
     local AHEAD=$(echo $COUNTS | awk '{print $2}')
 

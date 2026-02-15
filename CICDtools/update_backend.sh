@@ -12,6 +12,10 @@ set -e
 PROJECT_ROOT="$(dirname "$0")/.."
 REPO_URL="https://github.com/TeamCrazyPerformance/TCP_Website_2025"
 
+
+# Import Common Logging
+source "$(dirname "$0")/utils/common_logging.sh"
+
 # ==============================================================================
 # ⚠️  User Confirmation
 # ==============================================================================
@@ -49,9 +53,6 @@ source "$(dirname "$0")/utils/git_utils.sh"
 # 🔒 Pre-flight Safety Check
 check_git_status
 
-# Import Common Logging
-source "$(dirname "$0")/utils/common_logging.sh"
-
 # Setup Logging (Redirects output to log file & handles errors)
 setup_logging "backend_update"
 
@@ -62,7 +63,7 @@ bash "$PROJECT_ROOT/CICDtools/backup_db.sh" "pre_backend_update"
 # 1. Pull latest code
 log_info "📥 Pulling latest code from main..."
 cd "$PROJECT_ROOT"
-git pull origin main
+git_as_user pull origin main
 
 # 2. Rebuild API Container
 log_info "🐳 Rebuilding API container..."
