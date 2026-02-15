@@ -14,20 +14,6 @@ PROJECT_ROOT="$(dirname "$0")/.."
 BACKUP_DIR="$PROJECT_ROOT/../backups"
 
 # ==============================================================================
-# 📝 Execution Logging
-# ==============================================================================
-LOG_DIR="$PROJECT_ROOT/CICDtools/logs"
-mkdir -p "$LOG_DIR"
-LOG_FILE="$LOG_DIR/execution_$(date +%Y-%m-%d).log"
-CURRENT_USER=$(whoami)
-SCRIPT_NAME=$(basename "$0")
-TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
-echo "[$TIMESTAMP] User: $CURRENT_USER | Script: $SCRIPT_NAME | Action: STARTED" >> "$LOG_FILE"
-
-# Delete logs older than 30 days
-find "$LOG_DIR" -name "execution_*.log" -mtime +30 -delete
-
-# ==============================================================================
 # ⚠️  User Confirmation
 # ==============================================================================
 echo "=============================================================================="
@@ -83,6 +69,12 @@ if [[ "$FINAL_CONFIRM" != "YES" ]]; then
 fi
 echo ""
 
+# Import Common Logging
+source "$(dirname "$0")/utils/common_logging.sh"
+
+# Setup Logging (Redirects output to log file & handles errors)
+setup_logging "db_restore"
+
 # Find the latest backup file
 LATEST_DB_BACKUP=$(find "$BACKUP_DIR" -name "db_backup_*.sql.gz" | sort | tail -n 1)
 LATEST_FILES_BACKUP=$(find "$BACKUP_DIR" -name "files_backup_*.tar.gz" | sort | tail -n 1)
@@ -92,47 +84,45 @@ if [ -z "$LATEST_DB_BACKUP" ]; then
     exit 1
 fi
 
-echo "🔍 Found latest DB backup   : $(basename "$LATEST_DB_BACKUP")"
+log_info "🔍 Found latest DB backup   : $(basename "$LATEST_DB_BACKUP")"
 if [ -n "$LATEST_FILES_BACKUP" ]; then
-    echo "🔍 Found latest Files backup: $(basename "$LATEST_FILES_BACKUP")"
+    log_info "🔍 Found latest Files backup: $(basename "$LATEST_FILES_BACKUP")"
 else
-    echo "⚠️  Warning: No local files backup found. Only DB will be restored."
+    log_warn "⚠️  Warning: No local files backup found. Only DB will be restored."
 fi
 
-echo "⚠️  WARNING: This will OVERWRITE the current database and files."
+log_warn "⚠️  WARNING: This will OVERWRITE the current database and files."
 echo "   Are you sure you want to proceed? (y/n)"
 read -r CONFIRM
 
 if [ "$CONFIRM" != "y" ]; then
-    echo "🚫 Restore cancelled."
+    log_warn "🚫 Restore cancelled."
     exit 0
 fi
 
 # Check if DB container is running
 if [ -z "$(sudo docker compose ps -q db)" ]; then
-    echo "❌ Error: DB container is not running!"
+    log_error "❌ Error: DB container is not running!"
     exit 1
 fi
 
 # 1. Restore Database
-echo "⏳ [1/2] Restoring database... (This may take a while)"
+log_info "⏳ [1/2] Restoring database... (This may take a while)"
 # Unzip and pipe to psql
 # Since the dump was created with --clean, it will drop existing tables first.
 gunzip -c "$LATEST_DB_BACKUP" | sudo docker compose exec -T db psql -U user -d mydb
-echo "✅ Database restored successfully!"
+log_success "Database restored successfully!"
 
 # 2. Restore Local Files
 if [ -n "$LATEST_FILES_BACKUP" ]; then
-    echo "⏳ [2/2] Restoring local files..."
+    log_info "⏳ [2/2] Restoring local files..."
     # -C "$PROJECT_ROOT" : Extract relative to project root
     # This will overwrite api/uploads, api/json, logs
     # Use sudo to verify we can overwrite files regardless of ownership
     sudo tar -xzf "$LATEST_FILES_BACKUP" -C "$PROJECT_ROOT"
-    echo "✅ Local files restored successfully!"
+    log_success "Local files restored successfully!"
 else
-    echo "⏩ Skipping file restore (no backup found)"
+    log_info "⏩ Skipping file restore (no backup found)"
 fi
 
-echo "========================================"
-echo "✨ System restore process completed!"
-echo "========================================"
+log_success "System restore process completed!"

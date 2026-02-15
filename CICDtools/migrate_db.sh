@@ -12,20 +12,6 @@ set -e
 PROJECT_ROOT="$(dirname "$0")/.."
 
 # ==============================================================================
-# 📝 Execution Logging
-# ==============================================================================
-LOG_DIR="$PROJECT_ROOT/CICDtools/logs"
-mkdir -p "$LOG_DIR"
-LOG_FILE="$LOG_DIR/execution_$(date +%Y-%m-%d).log"
-CURRENT_USER=$(whoami)
-SCRIPT_NAME=$(basename "$0")
-TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
-echo "[$TIMESTAMP] User: $CURRENT_USER | Script: $SCRIPT_NAME | Action: STARTED" >> "$LOG_FILE"
-
-# Delete logs older than 30 days
-find "$LOG_DIR" -name "execution_*.log" -mtime +30 -delete
-
-# ==============================================================================
 # ⚠️  User Confirmation
 # ==============================================================================
 echo "=============================================================================="
@@ -81,20 +67,29 @@ if [[ "$FINAL_CONFIRM" != "YES" ]]; then
 fi
 echo ""
 
+# Import Git Utils
+source "$(dirname "$0")/utils/git_utils.sh"
+
+# 🔒 Pre-flight Safety Check
+check_git_status
+
+# Import Common Logging
+source "$(dirname "$0")/utils/common_logging.sh"
+
+# Setup Logging (Redirects output to log file & handles errors)
+setup_logging "db_migration"
 
 # 0. Backup DB (Safety First)
-echo "💾 Creating Pre-Update Backup..."
+log_info "💾 Creating Pre-Update Backup..."
 bash "$PROJECT_ROOT/CICDtools/backup_db.sh" "pre_db_migration"
 
 # 1. Pull latest code
-echo "📥 Pulling latest code from main..."
+log_info "📥 Pulling latest code from main..."
 cd "$PROJECT_ROOT"
 git pull origin main
 
 # 2. Run Migration
-echo "🐘 Running TypeORM Migrations..."
+log_info "🐘 Running TypeORM Migrations..."
 sudo docker compose exec api npm run migration:run
 
-echo "========================================"
-echo "✅ Database migration completed!"
-echo "========================================"
+log_success "Database migration completed!"
