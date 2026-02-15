@@ -18,6 +18,8 @@
 10. [Development Workflow](#development-workflow)
 11. [Testing](#testing)
 12. [Deployment Checklist](#deployment-checklist)
+13. [CI/CD & Operations Tools](#cicd--operations-tools)
+14. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -52,9 +54,11 @@ TCP Website 2025 is a full-stack web application designed for managing a univers
 | **React** | 19.1.0 | UI framework for building the single-page application |
 | **React Router** | 7.7.0 | Client-side routing |
 | **Chart.js** | 4.5.0 | Data visualization for admin dashboard |
+| **react-chartjs-2** | 5.3.0 | React wrapper for Chart.js |
 | **FontAwesome** | 7.0.0 | Icon library |
 | **DOMPurify** | 3.1.5 | Sanitize HTML to prevent XSS attacks |
 | **markdown-it** | 14.1.0 | Render markdown content |
+| **react-easy-crop** | 5.5.6 | Image cropping for profile picture uploads |
 
 ### Backend
 
@@ -67,6 +71,12 @@ TCP Website 2025 is a full-stack web application designed for managing a univers
 | **JWT** | 11.0.0 | Authentication tokens |
 | **bcrypt** | 6.0.0 | Password hashing |
 | **Passport** | 0.7.0 | Authentication middleware |
+| **Winston** | 3.19.0 | Structured logging framework |
+| **nest-winston** | 1.10.2 | Winston integration for NestJS |
+| **@nestjs/schedule** | 6.1.0 | Cron & scheduled job support |
+| **@nestjs/serve-static** | 5.0.4 | Static file serving (uploads) |
+| **systeminformation** | 5.28.7 | Server metrics for admin dashboard |
+| **archiver** | 7.0.1 | ZIP archive creation for downloads |
 
 ### Infrastructure
 
@@ -84,6 +94,7 @@ TCP Website 2025 is a full-stack web application designed for managing a univers
 - **ESLint**: Code linting
 - **Jest**: Testing framework
 - **Supertest**: HTTP testing
+- **SWC**: Fast Rust-based compiler (used as NestJS build tool via `@swc/cli` + `@swc/core`)
 
 ---
 
@@ -94,19 +105,29 @@ TCP_Wetsite_2025/
 ├── api/                          # Backend (NestJS)
 │   ├── src/
 │   │   ├── admin/               # Admin-specific modules
+│   │   │   ├── activity-images/ # Activity photo management
+│   │   │   ├── announcement/    # Admin announcement management
+│   │   │   ├── members/         # Admin user management
+│   │   │   ├── statistics/      # Dashboard statistics & metrics
+│   │   │   └── system/          # System monitoring
 │   │   ├── announcement/        # Announcements management
 │   │   ├── auth/                # Authentication & authorization
 │   │   ├── health/              # Health check endpoints
 │   │   ├── jobs/                # Scheduled jobs (cron)
 │   │   ├── logger/              # Winston logger configuration
+│   │   ├── main-page/           # Homepage data API (stats + images)
 │   │   ├── members/             # Public member operations
+│   │   ├── migrations/          # TypeORM database migrations
 │   │   ├── mypage/              # User profile & settings
 │   │   ├── recruitment/         # Member recruitment system
+│   │   ├── scripts/             # Utility scripts (e.g., bulk account creation)
 │   │   ├── study/               # Study groups management
 │   │   ├── teams/               # Team/project recruitment
 │   │   ├── app.module.ts        # Root application module
+│   │   ├── data-source.ts       # TypeORM data source config
 │   │   ├── main.ts              # Application entry point
 │   │   └── seed.ts              # Database seeding script
+│   ├── json/                    # Static JSON data files
 │   ├── test/                    # E2E and unit tests
 │   ├── uploads/                 # User-uploaded files
 │   ├── Dockerfile               # Docker build instructions
@@ -117,8 +138,11 @@ TCP_Wetsite_2025/
 │   ├── src/
 │   │   ├── api/                 # API client utilities
 │   │   ├── components/          # Reusable React components
+│   │   │   ├── common/         # Common shared components
 │   │   │   ├── modals/         # Modal components
 │   │   │   └── ui/             # UI components (forms, inputs)
+│   │   ├── context/             # React Context providers
+│   │   │   └── AuthContext.jsx  # Authentication state management
 │   │   ├── data/                # Static/mock data
 │   │   ├── pages/               # Page components (routes)
 │   │   │   ├── admin/          # Admin pages
@@ -130,6 +154,23 @@ TCP_Wetsite_2025/
 │   ├── dist/                    # Production build output
 │   ├── nginx.conf               # Nginx configuration for serving
 │   └── package.json             # Frontend dependencies
+│
+├── CICDtools/                   # CI/CD & Operations automation
+│   ├── update_frontend.sh       # Zero-downtime frontend deployment
+│   ├── update_backend.sh        # Backend rebuild & restart
+│   ├── update_all.sh            # Full system update (FE→DB→BE)
+│   ├── migrate_db.sh            # Database migration tool
+│   ├── backup_db.sh             # Database & file backup
+│   ├── restore_db.sh            # System restore from backup
+│   ├── check_health.sh          # Container health check
+│   ├── inspect_backup.sh        # Backup file inspection
+│   ├── rotate_db_password.sh    # DB password rotation
+│   ├── utils/                   # Common utilities (logging, git)
+│   └── ServerSetupRemove/       # Server bootstrap & teardown
+│       ├── set_env.sh           # Secure env variable generation
+│       ├── prodserver_quicksetup.sh  # Production setup
+│       ├── devserver_quicksetup.sh   # Development setup
+│       └── server_quickremove.sh     # Server teardown
 │
 ├── db/                          # Database-related files
 │   └── backups/                 # Database backups directory
@@ -149,12 +190,22 @@ TCP_Wetsite_2025/
 ├── logs/                        # Application logs
 │
 ├── reverse-proxy/               # Nginx reverse proxy
-│   ├── default.conf             # Nginx routing configuration
-│   └── certs/                   # SSL certificates (for HTTPS)
+│   ├── default.conf             # Production config (HTTPS + routing)
+│   ├── default.dev.conf         # Development config (HTTP only)
+│   └── certs/                   # SSL certificates (Cloudflare Origin)
+│
+├── docs/                        # Project documentation
+│   ├── PROJECT_DOCUMENTATION.md # This document
+│   ├── INCOMPLETE_FEATURES.md   # Known incomplete features
+│   ├── NETWORK_ARCHITECTURE.md  # Network topology details
+│   ├── OPERATIONAL_ROLES.md     # Server operational roles
+│   ├── OPENSOURCE_CREDITS.md    # Open source attributions
+│   └── SERVICE_READINESS_REPORT.md # Pre-launch readiness report
 │
 ├── docker-compose.yml           # Production Docker Compose
 ├── docker-compose.dev.yml       # Development Docker Compose
 ├── DEPLOYMENT_CHECKLIST.md      # Pre-deployment checklist
+├── OPERATIONS.md                # Operational procedures guide
 └── README.md                    # Project README
 ```
 
@@ -168,16 +219,20 @@ The application uses a **microservices architecture** with Docker Compose orches
 
 ```mermaid
 graph TB
-    Internet[Internet]
-    ReverseProxy[Reverse Proxy<br/>Nginx :80, :443]
-    Web[Web Server<br/>Nginx Static Files]
-    API[API Server<br/>NestJS :3000]
-    DB[(PostgreSQL<br/>Database :5432)]
-    ES[(Elasticsearch<br/>:9200)]
-    LS[Logstash<br/>:5000]
-    KB[Kibana<br/>:5601]
-    FB[Filebeat<br/>Container Logs]
+    User["User 🌐"]
+    CF["☁️ Cloudflare CDN/WAF<br/>(Orange Cloud Proxy)"]
+    Internet[Origin Server]
+    ReverseProxy["Reverse Proxy<br/>Nginx :80, :443"]
+    Web["Web Server<br/>Nginx Static Files"]
+    API["API Server<br/>NestJS :3000"]
+    DB[("PostgreSQL<br/>Database :5432")]
+    ES[("Elasticsearch<br/>:9200")]
+    LS["Logstash<br/>:5000"]
+    KB["Kibana<br/>:5601"]
+    FB["Filebeat<br/>Container Logs"]
 
+    User -->|"HTTPS"| CF
+    CF -->|"HTTPS<br/>Origin Certificate"| Internet
     Internet --> ReverseProxy
     ReverseProxy --> Web
     ReverseProxy --> API
@@ -187,6 +242,7 @@ graph TB
     FB --> ES
     KB --> ES
 
+    style CF fill:#f6a821,stroke:#e8960f,color:#000
     style ReverseProxy fill:#e1f5ff
     style Web fill:#ffe1e1
     style API fill:#e1ffe1
@@ -199,6 +255,10 @@ graph TB
 
 ### Network Topology
 
+- **Cloudflare Proxy** (Orange Cloud 🟠): All traffic proxied through Cloudflare CDN/WAF
+  - User's DNS query resolves to Cloudflare edge IP — origin IP hidden
+  - SSL Mode: Full (Strict) with Origin Certificate
+  - Provides DDoS protection, static asset caching, HTTP/2
 - **Public Network**: Only reverse-proxy is exposed to the internet (ports 80, 443)
 - **Internal Network**: All other services communicate internally
   - Database: Not exposed externally (security)
@@ -212,7 +272,13 @@ graph TB
 - **Routes**:
   - `/api/*` → API server
   - `/*` → Static web files
-- **Configuration**: `reverse-proxy/default.conf` (currently empty - needs setup)
+- **Configuration**: `reverse-proxy/default.conf`
+  - HTTP → HTTPS redirect (port 80 → 443)
+  - HTTPS with Cloudflare Origin Certificate (TLSv1.2/1.3)
+  - Domain: `teamcrazyperformance.com`
+  - `/api/*` → API server (NestJS)
+  - `/*` → Static web files (React build)
+  - `/activities/`, `/profiles/`, `/resources/`, `/teams/` → API server (uploaded file serving)
 
 #### 2. Web Server (Nginx)
 - **Purpose**: Serve React production build
@@ -225,6 +291,7 @@ graph TB
 - **Environment**: Production (`NODE_ENV=production`)
 - **Volumes**:
   - `./api/uploads` → User uploads
+  - `./api/json` → Static JSON data files
   - `./logs/app` → Application logs
 
 #### 4. PostgreSQL Database
@@ -278,8 +345,14 @@ src/
 ├── Admin Modules
 │   ├── admin/
 │   │   ├── members/            # User management
+│   │   ├── announcement/       # Admin announcement operations
+│   │   ├── statistics/         # Dashboard statistics & metrics
 │   │   ├── system/             # System monitoring
 │   │   └── activity-images/    # Activity photo management
+│
+├── Public Data Module
+│   └── main-page/              # Homepage data API
+│                                 # (aggregates stats + activity images)
 │
 └── Background Jobs
     └── jobs/
@@ -542,6 +615,7 @@ The frontend is a **Single Page Application (SPA)** built with React.
 **Modals** (`components/modals/`)
 - `TeamDetailModal`: View team details
 - `RecruitTeamModal`: Team recruitment form
+- `RecruitStudyModal`: Study recruitment form
 
 **Cards**
 - `TeamCard`: Display team recruitment
@@ -553,11 +627,17 @@ The frontend is a **Single Page Application (SPA)** built with React.
 **Functions**:
 - `apiGet(path, options)`: GET requests
 - `apiPost(path, body, options)`: POST requests
+- `apiPatch(path, body, options)`: PATCH requests
+- `apiDelete(path, options)`: DELETE requests
 
 **Features**:
 - Automatic base URL detection (`window.location.origin`)
 - JSON content type headers
 - Error handling with descriptive messages
+- **Automatic token refresh**: On 401 response, automatically calls `/api/v1/auth/refresh` and retries the original request
+- **Request queuing**: Concurrent failed requests are queued during refresh to prevent race conditions
+- **FormData support**: Automatically removes `Content-Type` header for multipart file uploads
+- **Session expiry handling**: Clears localStorage and redirects to login on unrecoverable auth failure
 
 **Usage Example**:
 ```javascript
@@ -576,12 +656,24 @@ const response = await apiPost('/api/auth/login', {
 ### State Management
 
 > [!NOTE]
-> The application currently uses **React's built-in state management** (useState, useEffect). There is no global state library like Redux or Zustand.
+> The application uses **React Context API** for global authentication state and **React's built-in state management** (useState, useEffect) for local component state. There is no global state library like Redux or Zustand.
 
-**Authentication State**:
-- Managed at the page level
-- JWT tokens stored in HTTP-only cookies (not accessible to JavaScript)
-- User info re-fetched on protected pages
+**Authentication State** (`context/AuthContext.jsx`):
+
+The `AuthProvider` wraps the entire app and provides authentication state via the `useAuth()` hook.
+
+- **Token storage**: Access token stored in `localStorage` (key: `access_token`)
+- **User info**: Stored in `localStorage` (key: `auth_user`) as JSON
+- **Cross-tab sync**: Listens to `storage` events to sync auth state across browser tabs
+- **Keep logged in**: Optional `keep_logged_in` flag for persistent sessions
+
+**`useAuth()` hook provides**:
+- `user` — Current user object (or null)
+- `accessToken` — Current access token string (or null)
+- `isAuthenticated` — Boolean flag
+- `login(user, accessToken, keepLoggedIn)` — Store credentials and update state
+- `logout()` — Call backend `/api/v1/auth/logout`, clear localStorage, reset state
+- `syncFromStorage()` — Re-read auth state from localStorage
 
 ### Styling
 
@@ -633,6 +725,7 @@ erDiagram
         string password
         string name
         string student_number UK
+        string profile_image
         string email UK
         string phone_number
         string major
@@ -729,14 +822,17 @@ enum UserRole {
 **User**:
 - `UserGender`: Male, Female
 - `UserRole`: ADMIN, MEMBER, GUEST
-- `EducationStatus`: Enrolled, OnLeave, Graduated, Completed
+- `EducationStatus`: 재학 (Enrolled), 휴학 (Leave), 졸업 (Graduated)
+
+**Study**:
+- `StudyMemberRole`: PENDING, MEMBER, LEADER, NOMINEE
 
 **Team**:
 - `TeamStatus`: OPEN, CLOSED
 - `ExecutionType`: ONLINE, OFFLINE, HYBRID
 
 **Recruitment**:
-- `ReviewStatus`: PENDING, ACCEPTED, REJECTED
+- `ReviewStatus`: PENDING, REVIEWED, ACCEPTED, REJECTED
 
 ---
 
@@ -762,7 +858,8 @@ sequenceDiagram
     AuthService->>AuthService: Generate refresh token (7days)
     AuthService->>Database: Store refresh token
     AuthService-->>AuthController: Tokens
-    AuthController-->>Frontend: Set HTTP-only cookies
+    AuthController-->>Frontend: Access token in body + refresh token in HTTP-only cookie
+    Frontend->>Frontend: Store access token in localStorage
     Frontend-->>User: Redirect to dashboard
 ```
 
@@ -770,8 +867,8 @@ sequenceDiagram
 
 | Token Type | Lifetime | Storage | Purpose |
 |------------|----------|---------|---------|
-| **Access Token** | 15 minutes | HTTP-only cookie | API authentication |
-| **Refresh Token** | 7 days | HTTP-only cookie + Database | Renew access tokens |
+| **Access Token** | 15 minutes | localStorage (frontend) | API authentication via `Authorization: Bearer` header |
+| **Refresh Token** | 7 days | HTTP-only cookie + Database | Renew access tokens via `/api/v1/auth/refresh` |
 
 ### Protected Routes
 
@@ -792,7 +889,7 @@ async getAllUsers() {
 ### Password Security
 
 - **Hashing Algorithm**: bcrypt
-- **Salt Rounds**: 12 (configurable via `BCRYPT_SALT_ROUNDS`)
+- **Salt Rounds**: 10 (default, configurable via `BCRYPT_SALT_ROUNDS`)
 - **Password Requirements**: Enforced by DTO validators
 
 ---
@@ -1090,6 +1187,10 @@ See [DEPLOYMENT_CHECKLIST.md](file:///c:/Users/junsu/Desktop/TCP_Wetsite_2025/DE
 
 #### 4. Docker Deployment
 
+> [!TIP]
+> For production deployments, use the automated CICDtools scripts instead of manual commands. See [CI/CD & Operations Tools](#cicd--operations-tools).
+> The most common command is: `sudo ./CICDtools/update_all.sh`
+
 ```bash
 # Validate configuration
 docker-compose config
@@ -1201,6 +1302,63 @@ Each module has its own API documentation:
 
 ---
 
+## CI/CD & Operations Tools
+
+> [!IMPORTANT]
+> All deployment and operational tasks should be performed using these automation scripts rather than manual commands. See [CICDtools/README.md](file:///c:/Users/junsu/Desktop/TCP_Wetsite_2025/CICDtools/README.md) for full details.
+
+### Deployment Scripts
+
+| Script | Purpose | Downtime |
+|--------|---------|----------|
+| `update_frontend.sh` | Pull code, build React app, swap dist (atomic) | **Zero** |
+| `update_backend.sh` | Pull code, rebuild API container | ~1–5 sec |
+| `update_all.sh` | Frontend → DB migration → Backend (sequential) | ~1–5 sec |
+| `migrate_db.sh` | Run TypeORM migrations with safety checks | None |
+
+### Backup & Recovery
+
+| Script | Purpose |
+|--------|---------|
+| `backup_db.sh` | Dump DB + backup uploads/logs to `backups/` |
+| `restore_db.sh` | Restore from latest backup (overwrites data) |
+| `inspect_backup.sh` | Preview backup file contents and tables |
+
+### Monitoring & Security
+
+| Script | Purpose |
+|--------|---------|
+| `check_health.sh` | Check all Docker container status + API health |
+| `rotate_db_password.sh` | Safely rotate DB password with API restart |
+
+### Server Setup & Teardown
+
+| Script | Purpose |
+|--------|---------|
+| `ServerSetupRemove/set_env.sh` | Generate secure env files (auto-generates secrets) |
+| `ServerSetupRemove/prodserver_quicksetup.sh` | Bootstrap production server from scratch |
+| `ServerSetupRemove/devserver_quicksetup.sh` | Bootstrap development server |
+| `ServerSetupRemove/server_quickremove.sh` | Destroy all containers, data, and config |
+
+### Operational Scenarios
+
+| Scenario | Recommended Script |
+|----------|-------------------|
+| Routine code update | `sudo ./CICDtools/update_all.sh` |
+| Environment variable change | Edit `envs/` files, then `sudo ./CICDtools/update_all.sh` |
+| DB password rotation | `sudo ./CICDtools/rotate_db_password.sh` |
+| New server setup | `./CICDtools/ServerSetupRemove/prodserver_quicksetup.sh` |
+
+> [!WARNING]
+> Do **not** run `set_env.sh` on a running production server — it regenerates `JWT_SECRET` and `DB_PASSWORD`, which will log out all users and break DB connectivity. Use `rotate_db_password.sh` for password changes instead.
+
+### Shared Utilities (`utils/`)
+
+- `common_logging.sh`: Unified logging with color output and file persistence (logs saved to `CICDtools/logs/`)
+- `git_utils.sh`: Git pre-flight checks — detects local changes and branch conflicts before `git pull`
+
+---
+
 ## Future Enhancements
 
 ### Potential Features
@@ -1268,6 +1426,7 @@ This documentation provides a comprehensive overview of the TCP Website 2025 pro
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: 2026-01-26  
+**Document Version**: 2.0  
+**Last Updated**: 2026-02-15  
 **Maintained By**: Development Team
+
