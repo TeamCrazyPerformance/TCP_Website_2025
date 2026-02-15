@@ -1,9 +1,6 @@
 #!/bin/bash
 set -e
 
-# Identify the user who invoked sudo (or current user if not sudo)
-CURRENT_USER=${SUDO_USER:-$(whoami)}
-
 # ==============================================================================
 # Database Backup Script
 # ==============================================================================
@@ -15,8 +12,10 @@ CURRENT_USER=${SUDO_USER:-$(whoami)}
 #   ./backup_db.sh [suffix_label]
 # ==============================================================================
 
-PROJECT_ROOT="$(dirname "$0")/.."
-# 백업 디렉토리를 프로젝트 루트의 상위 폴더로 변경 (server_quickremove.sh 실행 시 삭제 방지)
+# Resolve absolute path to the project root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+# 백업 디렉토리를 프로젝트 루트의 상위 폴더로 변경
 BACKUP_DIR="$PROJECT_ROOT/../backups"
 
 # Import Common Logging
@@ -32,7 +31,15 @@ DB_FILENAME="db_backup_${TIMESTAMP}_${LABEL}.sql.gz"
 FILES_FILENAME="files_backup_${TIMESTAMP}_${LABEL}.tar.gz"
 
 # Create backup directory if it doesn't exist
-mkdir -p "$BACKUP_DIR"
+if [ ! -d "$BACKUP_DIR" ]; then
+    log_info "Creating backup directory: $BACKUP_DIR"
+    sudo mkdir -p "$BACKUP_DIR"
+    # Set permissions so that the current user (and sudo) can write to it
+    # We give full control to owner (root if sudo mkdir) and group/others read/execute?
+    # Actually, we should make it owned by the user if possible, or just open permissions
+    sudo chown "$CURRENT_USER:$CURRENT_USER" "$BACKUP_DIR"
+    sudo chmod 755 "$BACKUP_DIR"
+fi
 
 # Ensure 'teams' upload directory exists to prevent tar errors
 mkdir -p "$PROJECT_ROOT/api/uploads/teams"
@@ -53,7 +60,7 @@ fi
 
 # 1. Database Backup
 log_info "📦 [1/2] Dumping database..."
-sudo docker compose exec -T db pg_dump -U user -d mydb --clean --if-exists | gzip > "$BACKUP_DIR/$DB_FILENAME"
+sudo docker compose exec -T db pg_dump -U user -d mydb --clean --if-exists | gzip | sudo tee "$BACKUP_DIR/$DB_FILENAME" > /dev/null
 log_success "DB Backup created: $DB_FILENAME"
 
 # 2. Local Files Backup (Uploads, JSON, Logs)
@@ -62,8 +69,11 @@ log_info "📦 [2/2] Archiving local files (uploads, json, logs)..."
 # Use sudo to ensure we can read files owned by root (from Docker)
 sudo tar -czf "$BACKUP_DIR/$FILES_FILENAME" -C "$PROJECT_ROOT" api/uploads api/json logs
 
-# Change ownership of the backup file to the current user (since sudo created it)
-sudo chown "$CURRENT_USER" "$BACKUP_DIR/$FILES_FILENAME"
+# Change ownership of the backup files to the current user (if defined)
+if [ -n "$CURRENT_USER" ]; then
+    sudo chown "$CURRENT_USER" "$BACKUP_DIR/$DB_FILENAME"
+    sudo chown "$CURRENT_USER" "$BACKUP_DIR/$FILES_FILENAME"
+fi
 
 log_success "Files Backup created: $FILES_FILENAME"
 

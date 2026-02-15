@@ -11,7 +11,7 @@
 # Ensure common logging is loaded
 # Use BASH_SOURCE to locate the script directory reliably (even when sourced)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-fi
+
 
 # Wrapper to run git as the original user if sudo is used
 git_as_user() {
@@ -35,7 +35,7 @@ check_git_status() {
         git_as_user status --short
         echo ""
         log_warn "These changes might cause conflicts during pull."
-        read -p "❓ Do you want to proceed anyway? (y/n): " CONFIRM -r
+        read -r -p "❓ Do you want to proceed anyway? (y/n): " CONFIRM
         if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
             log_error "🚫 Operation cancelled by user due to local changes."
             exit 1
@@ -69,7 +69,7 @@ check_git_status() {
         log_warn "   - Origin has $BEHIND new commit(s)."
         log_warn "⚠️  'git pull' will likely produce a MERGE COMMIT or CONFLICT."
         
-        read -p "❓ Do you want to proceed? (y/n): " CONFIRM -r
+        read -r -p "❓ Do you want to proceed? (y/n): " CONFIRM
         if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
             log_error "🚫 Operation cancelled to avoid conflict."
             exit 1
