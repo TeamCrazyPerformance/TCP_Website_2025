@@ -6,7 +6,8 @@ set -e
 # ==============================================================================
 # Description:
 #   Creates a dump of the PostgreSQL database and saves it to a local 'backups' folder.
-#   It retains backups for 7 days (deletes older ones).
+#   - Retains at least 10 backups.
+#   - Deletes backups older than 31 days ONLY if there are more than 10 files.
 # Usage:
 #   ./backup_db.sh [suffix_label]
 # ==============================================================================
@@ -75,10 +76,25 @@ echo "========================================"
 echo "✨ Backup process completed!"
 echo "========================================"
 
-# Cleanup old backups (older than 7 days)
-echo "🧹 Cleaning up backups older than 7 days..."
-find "$BACKUP_DIR" -name "db_backup_*.sql.gz" -mtime +7 -delete
-find "$BACKUP_DIR" -name "files_backup_*.tar.gz" -mtime +7 -delete
+# Cleanup old backups
+# Rule 1: Keep at least 10 backups (regardless of age).
+# Rule 2: If more than 10 backups exist, delete those older than 31 days.
+echo "🧹 Checking for old backups to cleanup..."
+
+cleanup_files() {
+    local pattern=$1
+    local count=$(find "$BACKUP_DIR" -name "$pattern" | wc -l)
+
+    if [ "$count" -le 10 ]; then
+        echo "   - $pattern: $count files found (<= 10). Skipping cleanup."
+    else
+        echo "   - $pattern: $count files found (> 10). Cleaning up files older than 31 days..."
+        find "$BACKUP_DIR" -name "$pattern" -mtime +31 -delete
+    fi
+}
+
+cleanup_files "db_backup_*.sql.gz"
+cleanup_files "files_backup_*.tar.gz"
 
 echo "========================================"
 echo "✨ Backup process completed!"
