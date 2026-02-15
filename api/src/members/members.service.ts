@@ -43,6 +43,7 @@ export class MembersService {
       ...(user.is_public_tech_stack && { tech_stack: user.tech_stack }),
       ...(user.is_public_github_username && { github_username: user.github_username }),
       ...(user.is_public_portfolio_link && { portfolio_link: user.portfolio_link }),
+      ...(user.is_public_current_company && { current_company: user.current_company }),
     }));
   }
 
