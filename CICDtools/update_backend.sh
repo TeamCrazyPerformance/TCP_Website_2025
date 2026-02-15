@@ -12,19 +12,9 @@ set -e
 PROJECT_ROOT="$(dirname "$0")/.."
 REPO_URL="https://github.com/TeamCrazyPerformance/TCP_Website_2025"
 
-# ==============================================================================
-# 📝 Execution Logging
-# ==============================================================================
-LOG_DIR="$PROJECT_ROOT/CICDtools/logs"
-mkdir -p "$LOG_DIR"
-LOG_FILE="$LOG_DIR/execution_$(date +%Y-%m-%d).log"
-CURRENT_USER=$(whoami)
-SCRIPT_NAME=$(basename "$0")
-TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
-echo "[$TIMESTAMP] User: $CURRENT_USER | Script: $SCRIPT_NAME | Action: STARTED" >> "$LOG_FILE"
 
-# Delete logs older than 30 days
-find "$LOG_DIR" -name "execution_*.log" -mtime +30 -delete
+# Import Common Logging
+source "$(dirname "$0")/utils/common_logging.sh"
 
 # ==============================================================================
 # ⚠️  User Confirmation
@@ -57,28 +47,34 @@ if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
 fi
 echo ""
 
+# Import Git Utils
+source "$(dirname "$0")/utils/git_utils.sh"
+
+# 🔒 Pre-flight Safety Check
+check_git_status
+
+# Setup Logging (Redirects output to log file & handles errors)
+setup_logging "backend_update"
 
 # 0. Backup DB (Safety First)
-echo "💾 Creating Pre-Update Backup..."
+log_info "💾 Creating Pre-Update Backup..."
 bash "$PROJECT_ROOT/CICDtools/backup_db.sh" "pre_backend_update"
 
 # 1. Pull latest code
-echo "📥 Pulling latest code from main..."
+log_info "📥 Pulling latest code from main..."
 cd "$PROJECT_ROOT"
-git pull origin main
+git_as_user pull origin main
 
 # 2. Rebuild API Container
-echo "🐳 Rebuilding API container..."
+log_info "🐳 Rebuilding API container..."
 sudo docker compose build api
 
 # 3. Restart API Container (No Deps)
-echo "🔄 Restarting API container..."
+log_info "🔄 Restarting API container..."
 sudo docker compose up -d --no-deps api
 
 # 4. Cleanup Unused Images (Optional)
-echo "🧹 Cleaning up old images..."
+log_info "🧹 Cleaning up old images..."
 sudo docker image prune -f
 
-echo "========================================"
-echo "✅ Backend update completed!"
-echo "========================================"
+log_success "backend update completed!"

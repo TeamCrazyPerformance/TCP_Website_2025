@@ -1,64 +1,91 @@
 #!/bin/bash
 set -e
 
+# Identify the user who invoked sudo (or current user if not sudo)
+CURRENT_USER=${SUDO_USER:-$(whoami)}
+
 # ==============================================================================
 # Database Backup Script
 # ==============================================================================
 # Description:
 #   Creates a dump of the PostgreSQL database and saves it to a local 'backups' folder.
-#   It retains backups for 7 days (deletes older ones).
+#   - Retains at least 10 backups.
+#   - Deletes backups older than 31 days ONLY if there are more than 10 files.
 # Usage:
 #   ./backup_db.sh [suffix_label]
 # ==============================================================================
 
 PROJECT_ROOT="$(dirname "$0")/.."
-BACKUP_DIR="$PROJECT_ROOT/backups"
+# 백업 디렉토리를 프로젝트 루트의 상위 폴더로 변경 (server_quickremove.sh 실행 시 삭제 방지)
+BACKUP_DIR="$PROJECT_ROOT/../backups"
 
-# ==============================================================================
-# 📝 Execution Logging
-# ==============================================================================
-LOG_DIR="$PROJECT_ROOT/CICDtools/logs"
-mkdir -p "$LOG_DIR"
-LOG_FILE="$LOG_DIR/execution_$(date +%Y-%m-%d).log"
-CURRENT_USER=$(whoami)
-SCRIPT_NAME=$(basename "$0")
-TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
-echo "[$TIMESTAMP] User: $CURRENT_USER | Script: $SCRIPT_NAME | Action: STARTED" >> "$LOG_FILE"
+# Import Common Logging
+source "$(dirname "$0")/utils/common_logging.sh"
 
-# Delete logs older than 30 days
-find "$LOG_DIR" -name "execution_*.log" -mtime +30 -delete
+# Setup Logging (Redirects output to log file & handles errors)
+setup_logging "db_backup"
 
 # Argument handling for custom label (default: manual)
 LABEL=${1:-manual}
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-FILENAME="db_backup_${TIMESTAMP}_${LABEL}.sql.gz"
+DB_FILENAME="db_backup_${TIMESTAMP}_${LABEL}.sql.gz"
+FILES_FILENAME="files_backup_${TIMESTAMP}_${LABEL}.tar.gz"
 
 # Create backup directory if it doesn't exist
 mkdir -p "$BACKUP_DIR"
 
+# Ensure 'teams' upload directory exists to prevent tar errors
+mkdir -p "$PROJECT_ROOT/api/uploads/teams"
+mkdir -p "$PROJECT_ROOT/api/json"
+mkdir -p "$PROJECT_ROOT/logs"
+
 echo "========================================"
-echo "💾 Starting Database Backup"
-echo "   Label: $LABEL"
+log_info "💾 Starting System Backup"
+log_info "   Label: $LABEL"
+log_info "   Dest : $BACKUP_DIR"
 echo "========================================"
 
 # Check if DB container is running
 if [ -z "$(sudo docker compose ps -q db)" ]; then
-    echo "❌ Error: DB container is not running!"
+    log_error "❌ Error: DB container is not running!"
     exit 1
 fi
 
-# Run pg_dump inside the container
-# --clean: Drop database objects before creating them (useful for restores)
-# --if-exists: Use IF EXISTS when dropping objects
-echo "📦 Dumping database..."
-sudo docker compose exec -T db pg_dump -U user -d mydb --clean --if-exists | gzip > "$BACKUP_DIR/$FILENAME"
+# 1. Database Backup
+log_info "📦 [1/2] Dumping database..."
+sudo docker compose exec -T db pg_dump -U user -d mydb --clean --if-exists | gzip > "$BACKUP_DIR/$DB_FILENAME"
+log_success "DB Backup created: $DB_FILENAME"
 
-echo "✅ Backup created: $BACKUP_DIR/$FILENAME"
+# 2. Local Files Backup (Uploads, JSON, Logs)
+log_info "📦 [2/2] Archiving local files (uploads, json, logs)..."
+# -C "$PROJECT_ROOT" : Change to project root before archiving
+# Use sudo to ensure we can read files owned by root (from Docker)
+sudo tar -czf "$BACKUP_DIR/$FILES_FILENAME" -C "$PROJECT_ROOT" api/uploads api/json logs
 
-# Cleanup old backups (older than 7 days)
-echo "🧹 Cleaning up backups older than 7 days..."
-find "$BACKUP_DIR" -name "db_backup_*.sql.gz" -mtime +7 -delete
+# Change ownership of the backup file to the current user (since sudo created it)
+sudo chown "$CURRENT_USER" "$BACKUP_DIR/$FILES_FILENAME"
 
-echo "========================================"
-echo "✨ Backup process completed!"
-echo "========================================"
+log_success "Files Backup created: $FILES_FILENAME"
+
+log_success "Backup process completed!"
+
+# Cleanup old backups
+# Rule 1: Keep at least 10 backups (regardless of age).
+# Rule 2: If more than 10 backups exist, delete those older than 31 days.
+log_info "🧹 Checking for old backups to cleanup..."
+
+cleanup_files() {
+    local pattern=$1
+    local count=$(find "$BACKUP_DIR" -name "$pattern" | wc -l)
+
+    if [ "$count" -le 10 ]; then
+        log_info "   - $pattern: $count files found (<= 10). Skipping cleanup."
+    else
+        log_info "   - $pattern: $count files found (> 10). Cleaning up files older than 31 days..."
+        find "$BACKUP_DIR" -name "$pattern" -mtime +31 -delete
+    fi
+}
+
+cleanup_files "db_backup_*.sql.gz"
+cleanup_files "files_backup_*.tar.gz"
+

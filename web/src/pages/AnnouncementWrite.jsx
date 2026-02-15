@@ -181,11 +181,27 @@ function AnnouncementWrite() {
       return;
     }
 
+    // 날짜 유효성 검증 및 ISO 형식으로 변환
+    const dateRegex = /^\d{4}\.\d{2}\.\d{2}$/;
+    if (!dateRegex.test(date)) {
+      alert('올바른 날짜 형식을 입력해주세요. (YYYY.MM.DD)');
+      return;
+    }
+
+    const isoDate = date.replace(/\./g, '-'); // "2020.01.15" -> "2020-01-15"
+    const dateObj = new Date(isoDate);
+
+    // Invalid Date 체크
+    if (isNaN(dateObj.getTime())) {
+      alert('유효하지 않은 날짜입니다. 올바른 날짜를 입력해주세요.');
+      return;
+    }
+
     const payload = {
       title,
       contents: content,
       summary,
-      publishAt: date,
+      publishAt: isoDate, // ISO 형식으로 전송
     };
 
     try {
@@ -492,7 +508,7 @@ function AnnouncementWrite() {
 - 세부 사항
 - 문의처
 - 마무리 인사"
-              maxLength="3000"
+              maxLength="10000"
               required
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -504,9 +520,9 @@ function AnnouncementWrite() {
                 마크다운 문법을 지원합니다. (**, *, _, 등)
               </p>
               <span
-                className={`char-counter ${content.length > 2800 ? 'warning' : ''}`}
+                className={`char-counter ${content.length > 9800 ? 'warning' : ''}`}
               >
-                {content.length}/3000
+                {content.length}/10000
               </span>
             </div>
           </div>

@@ -11,20 +11,6 @@ set -e
 SCRIPT_DIR="$(dirname "$0")"
 
 # ==============================================================================
-# 📝 Execution Logging
-# ==============================================================================
-LOG_DIR="$SCRIPT_DIR/logs"
-mkdir -p "$LOG_DIR"
-LOG_FILE="$LOG_DIR/execution_$(date +%Y-%m-%d).log"
-CURRENT_USER=$(whoami)
-SCRIPT_NAME=$(basename "$0")
-TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
-echo "[$TIMESTAMP] User: $CURRENT_USER | Script: $SCRIPT_NAME | Action: STARTED" >> "$LOG_FILE"
-
-# Delete logs older than 30 days
-find "$LOG_DIR" -name "execution_*.log" -mtime +30 -delete
-
-# ==============================================================================
 # ⚠️  User Confirmation
 # ==============================================================================
 echo "=============================================================================="
@@ -57,18 +43,26 @@ if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
 fi
 echo ""
 
+# Import Common Logging
+source "$(dirname "$0")/utils/common_logging.sh"
+
+# Setup Logging (Redirects output to log file & handles errors)
+setup_logging "full_stack_update"
+
 # 1. Update Frontend
-echo ">>> [1/3] Updating Frontend..."
-bash "$SCRIPT_DIR/update_frontend.sh"
+log_info ">>> [1/3] Updating Frontend..."
+if [ -n "$SUDO_USER" ]; then
+    sudo -u "$SUDO_USER" bash "$SCRIPT_DIR/update_frontend.sh"
+else
+    bash "$SCRIPT_DIR/update_frontend.sh"
+fi
 
-# 2. Run Migrations (Before code update to ensure schema is ready)
-echo ">>> [2/3] Running Database Migrations..."
-bash "$SCRIPT_DIR/migrate_db.sh"
-
-# 3. Update Backend
-echo ">>> [3/3] Updating Backend..."
+# 2. Update Backend (Get new code & migrations into container)
+log_info ">>> [2/3] Updating Backend..."
 bash "$SCRIPT_DIR/update_backend.sh"
 
-echo "========================================"
-echo "✅ Full Stack update completed!"
-echo "========================================"
+# 3. Run Migrations (Now that container has new code)
+log_info ">>> [3/3] Running Database Migrations..."
+bash "$SCRIPT_DIR/migrate_db.sh"
+
+log_success "Full Stack update completed!"

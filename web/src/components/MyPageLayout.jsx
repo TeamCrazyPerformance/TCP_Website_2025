@@ -67,9 +67,9 @@ function MyPageLayout() {
   return (
     <div className="flex h-screen">
       <div
-        className={`fixed inset-y-0 left-0 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out z-50`}
+        className="fixed inset-y-0 left-0 md:relative z-50"
       >
-        <MyPageSidebar />
+        <MyPageSidebar isOpen={isSidebarOpen} />
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden">

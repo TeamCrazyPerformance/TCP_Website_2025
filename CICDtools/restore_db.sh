@@ -10,45 +10,30 @@ set -e
 # ==============================================================================
 
 PROJECT_ROOT="$(dirname "$0")/.."
-BACKUP_DIR="$PROJECT_ROOT/backups"
-
-# ==============================================================================
-# 📝 Execution Logging
-# ==============================================================================
-LOG_DIR="$PROJECT_ROOT/CICDtools/logs"
-mkdir -p "$LOG_DIR"
-LOG_FILE="$LOG_DIR/execution_$(date +%Y-%m-%d).log"
-CURRENT_USER=$(whoami)
-SCRIPT_NAME=$(basename "$0")
-TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
-echo "[$TIMESTAMP] User: $CURRENT_USER | Script: $SCRIPT_NAME | Action: STARTED" >> "$LOG_FILE"
-
-# Delete logs older than 30 days
-find "$LOG_DIR" -name "execution_*.log" -mtime +30 -delete
+# 백업 디렉토리를 프로젝트 루트의 상위 폴더로 변경
+BACKUP_DIR="$PROJECT_ROOT/../backups"
 
 # ==============================================================================
 # ⚠️  User Confirmation
 # ==============================================================================
 echo "=============================================================================="
-echo "                        ♻️  Database Restore Tool                             "
+echo "                        ♻️  System Restore Tool                               "
 echo "=============================================================================="
 echo "📘 What is this? / 📘 이건 무엇인가요?"
-echo "   - Finds the LATEST backup file in 'backups/'."
-echo "   - 'backups/' 폴더에서 가장 최신 백업 파일을 찾습니다."
-echo "   - Wipes the current database and restores data from the backup."
-echo "   - 현재 데이터베이스를 지우고 백업 파일의 데이터로 복구합니다."
+echo "   - Finds the LATEST backup files in system backups."
+echo "   - 가장 최신 DB 및 파일 백업을 찾습니다."
+echo "   - Wipes current DB and OVERWRITES local files (uploads, json)."
+echo "   - 현재 DB를 초기화하고 로컬 파일(업로드, 설정)을 덮어씁니다."
 echo ""
 echo "🕒 When to use? / 🕒 언제 사용하나요?"
 echo "   - 🚨 EMERGENCY ONLY: When data is corrupted or lost."
 echo "   - 🚨 비상 상황: 데이터가 손상되거나 유실되었을 때만 사용하세요."
-echo "   - To rollback to a previous state."
-echo "   - 이전 상태로 되돌려야 할 때 사용합니다."
 echo ""
 echo "💥 What happens next? / 💥 실행하면 무슨 일이 일어나나요?"
 echo "   - ⚠️  ALL CURRENT DATA WILL BE LOST (Overwritten)."
 echo "   - ⚠️  현재의 모든 데이터가 사라집니다 (덮어씌워짐)."
-echo "   - The database will revert to the state of the latest backup."
-echo "   - 데이터베이스가 최신 백업 시점의 상태로 되돌아갑니다."
+echo "   - The system will revert to the state of the latest backup."
+echo "   - 시스템이 최신 백업 시점의 상태로 되돌아갑니다."
 echo "=============================================================================="
 # ------------------------------------------------------------------------------
 # 🔒 Step 1: Basic Confirmation (y/n)
@@ -84,36 +69,60 @@ if [[ "$FINAL_CONFIRM" != "YES" ]]; then
 fi
 echo ""
 
-# Find the latest backup file
-LATEST_BACKUP=$(find "$BACKUP_DIR" -name "db_backup_*.sql.gz" | sort | tail -n 1)
+# Import Common Logging
+source "$(dirname "$0")/utils/common_logging.sh"
 
-if [ -z "$LATEST_BACKUP" ]; then
-    echo "❌ Error: No backup files found in $BACKUP_DIR"
+# Setup Logging (Redirects output to log file & handles errors)
+setup_logging "db_restore"
+
+# Find the latest backup file
+LATEST_DB_BACKUP=$(find "$BACKUP_DIR" -name "db_backup_*.sql.gz" | sort | tail -n 1)
+LATEST_FILES_BACKUP=$(find "$BACKUP_DIR" -name "files_backup_*.tar.gz" | sort | tail -n 1)
+
+if [ -z "$LATEST_DB_BACKUP" ]; then
+    echo "❌ Error: No DB backup files found in $BACKUP_DIR"
     exit 1
 fi
 
-echo "🔍 Found latest backup: $(basename "$LATEST_BACKUP")"
-echo "⚠️  WARNING: This will OVERWRITE the current database data."
+log_info "🔍 Found latest DB backup   : $(basename "$LATEST_DB_BACKUP")"
+if [ -n "$LATEST_FILES_BACKUP" ]; then
+    log_info "🔍 Found latest Files backup: $(basename "$LATEST_FILES_BACKUP")"
+else
+    log_warn "⚠️  Warning: No local files backup found. Only DB will be restored."
+fi
+
+log_warn "⚠️  WARNING: This will OVERWRITE the current database and files."
 echo "   Are you sure you want to proceed? (y/n)"
 read -r CONFIRM
 
 if [ "$CONFIRM" != "y" ]; then
-    echo "🚫 Restore cancelled."
+    log_warn "🚫 Restore cancelled."
     exit 0
 fi
 
 # Check if DB container is running
 if [ -z "$(sudo docker compose ps -q db)" ]; then
-    echo "❌ Error: DB container is not running!"
+    log_error "❌ Error: DB container is not running!"
     exit 1
 fi
 
-echo "⏳ Restoring database... (This may take a while)"
-
+# 1. Restore Database
+log_info "⏳ [1/2] Restoring database... (This may take a while)"
 # Unzip and pipe to psql
 # Since the dump was created with --clean, it will drop existing tables first.
-gunzip -c "$LATEST_BACKUP" | sudo docker compose exec -T db psql -U user -d mydb
+gunzip -c "$LATEST_DB_BACKUP" | sudo docker compose exec -T db psql -U user -d mydb
+log_success "Database restored successfully!"
 
-echo "========================================"
-echo "✅ Database restored successfully!"
-echo "========================================"
+# 2. Restore Local Files
+if [ -n "$LATEST_FILES_BACKUP" ]; then
+    log_info "⏳ [2/2] Restoring local files..."
+    # -C "$PROJECT_ROOT" : Extract relative to project root
+    # This will overwrite api/uploads, api/json, logs
+    # Use sudo to verify we can overwrite files regardless of ownership
+    sudo tar -xzf "$LATEST_FILES_BACKUP" -C "$PROJECT_ROOT"
+    log_success "Local files restored successfully!"
+else
+    log_info "⏩ Skipping file restore (no backup found)"
+fi
+
+log_success "System restore process completed!"

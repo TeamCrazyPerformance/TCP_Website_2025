@@ -13,19 +13,17 @@ PROJECT_ROOT="$(dirname "$0")/.."
 WEB_DIR="$PROJECT_ROOT/web"
 REPO_URL="https://github.com/TeamCrazyPerformance/TCP_Website_2025"
 
-# ==============================================================================
-# 📝 Execution Logging
-# ==============================================================================
-LOG_DIR="$PROJECT_ROOT/CICDtools/logs"
-mkdir -p "$LOG_DIR"
-LOG_FILE="$LOG_DIR/execution_$(date +%Y-%m-%d).log"
-CURRENT_USER=$(whoami)
-SCRIPT_NAME=$(basename "$0")
-TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
-echo "[$TIMESTAMP] User: $CURRENT_USER | Script: $SCRIPT_NAME | Action: STARTED" >> "$LOG_FILE"
+# Import Common Logging
+source "$(dirname "$0")/utils/common_logging.sh"
 
-# Delete logs older than 30 days
-find "$LOG_DIR" -name "execution_*.log" -mtime +30 -delete
+# Wrapper to run npm as the original user if sudo is used
+npm_as_user() {
+    if [ -n "$SUDO_USER" ]; then
+        sudo -u "$SUDO_USER" npm "$@"
+    else
+        npm "$@"
+    fi
+}
 
 # ==============================================================================
 # ⚠️  User Confirmation
@@ -33,7 +31,7 @@ find "$LOG_DIR" -name "execution_*.log" -mtime +30 -delete
 echo "=============================================================================="
 echo "                           🎨 Frontend Update Tool                            "
 echo "=============================================================================="
-echo "� What is this?"
+echo " What is this?"
 echo "   - Pulls the latest code from the 'main' branch."
 echo "   - Reinstalls dependencies (npm install) and rebuilds the React app."
 echo ""
@@ -52,23 +50,44 @@ if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
 fi
 echo ""
 
+# Import Git Utils
+source "$(dirname "$0")/utils/git_utils.sh"
+
+# 🔒 Pre-flight Safety Check
+check_git_status
+
+# Setup Logging (Redirects output to log file & handles errors)
+setup_logging "frontend_update"
 
 # 0. Backup DB (Safety First)
-echo "💾 Creating Pre-Update Backup..."
-bash "$PROJECT_ROOT/CICDtools/backup_db.sh" "pre_frontend_update"
-
-# 1. Pull latest code
-echo "📥 Pulling latest code from main..."
+log_info "📥 Pulling latest code from main..."
 cd "$PROJECT_ROOT"
-git pull origin main
+git_as_user pull origin main
 
-# 2. Install dependencies and Build
-echo "📦 Installing dependencies and building frontend..."
+# 2. Install dependencies & Build (Zero-Downtime Strategy)
+log_info "📦 Installing dependencies..."
 cd "$WEB_DIR"
-npm install
-npm run build
+npm_as_user install
 
-echo "========================================"
-echo "✅ Frontend update completed!"
-echo "🌐 Verify at your website URL."
-echo "========================================"
+log_info "🏗️  Building frontend to temporary directory (dist_temp)..."
+# Build to a temporary directory first to prevent downtime
+# We use 'npm exec' to run the project's local react-scripts
+export BUILD_PATH=dist_temp
+if npm_as_user exec -- react-scripts build; then
+    log_success "✅ Build successful!"
+    
+    log_info "🔄 Swapping new build with live version..."
+    # Atomic swap: Remove old dist and move new dist in place
+    rm -rf dist
+    mv dist_temp dist
+    
+    log_success "Frontend update completed successfully!"
+    log_info "🌐 Verify at your website URL."
+
+else
+    log_error "❌ Build FAILED!"
+    log_warn "⚠️  The live website was NOT affected."
+    log_info "🧹 Cleaning up temporary files..."
+    rm -rf dist_temp
+    exit 1
+fi

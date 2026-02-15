@@ -156,10 +156,12 @@ const PasswordChangeModal = ({ isOpen, onClose }) => {
     const [passwordData, setPasswordData] = useState({
         currentPassword: '',
         newPassword: '',
-        confirmPassword: '',
-        verificationCode: ''
+        confirmPassword: ''
     });
     const [submitting, setSubmitting] = useState(false);
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     // Password strength state
     const [passwordStrength, setPasswordStrength] = useState({
@@ -168,6 +170,7 @@ const PasswordChangeModal = ({ isOpen, onClose }) => {
         hasUppercase: false,
         hasNumber: false,
         hasSpecial: false,
+        allowedCharsOnly: true,
     });
     const [passwordMatch, setPasswordMatch] = useState(null);
 
@@ -180,6 +183,7 @@ const PasswordChangeModal = ({ isOpen, onClose }) => {
             hasUppercase: /[A-Z]/.test(password),
             hasNumber: /\d/.test(password),
             hasSpecial: /[@$!%*?&]/.test(password),
+            allowedCharsOnly: password.length === 0 || /^[A-Za-z\d@$!%*?&]+$/.test(password),
         });
     }, [passwordData.newPassword]);
 
@@ -210,8 +214,9 @@ const PasswordChangeModal = ({ isOpen, onClose }) => {
             return;
         }
 
-        if (passwordData.newPassword.length < 8) {
-            alert('비밀번호는 최소 8자 이상이어야 합니다.');
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+        if (!passwordRegex.test(passwordData.newPassword)) {
+            alert('비밀번호는 8자 이상이며, 대소문자, 숫자, 특수문자(@$!%*?&)를 포함해야 합니다.');
             return;
         }
 
@@ -223,7 +228,7 @@ const PasswordChangeModal = ({ isOpen, onClose }) => {
                 confirmPassword: passwordData.confirmPassword
             });
             alert('비밀번호가 변경되었습니다.');
-            setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '', verificationCode: '' });
+            setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
             onClose();
         } catch (err) {
             console.error('Password change failed:', err);
@@ -244,36 +249,84 @@ const PasswordChangeModal = ({ isOpen, onClose }) => {
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label htmlFor="pw-current" className="form-label">현재 비밀번호</label>
-                        <input
-                            id="pw-current"
-                            type="password"
-                            className="form-input"
-                            value={passwordData.currentPassword}
-                            onChange={handlePasswordChange}
-                            required
-                        />
+                        <div className="relative">
+                            <input
+                                id="pw-current"
+                                type={showCurrentPassword ? 'text' : 'password'}
+                                className="form-input pr-10"
+                                value={passwordData.currentPassword}
+                                onChange={handlePasswordChange}
+                                required
+                            />
+                            <i
+                                className={`fas ${showCurrentPassword ? 'fa-eye-slash' : 'fa-eye'} password-toggle`}
+                                onClick={() => setShowCurrentPassword(prev => !prev)}
+                            ></i>
+                        </div>
                     </div>
                     <div>
                         <label htmlFor="pw-new" className="form-label">새 비밀번호</label>
-                        <input
-                            id="pw-new"
-                            type="password"
-                            className="form-input"
-                            value={passwordData.newPassword}
-                            onChange={handlePasswordChange}
-                            required
-                        />
+                        <div className="relative">
+                            <input
+                                id="pw-new"
+                                type={showNewPassword ? 'text' : 'password'}
+                                className="form-input pr-10"
+                                value={passwordData.newPassword}
+                                onChange={handlePasswordChange}
+                                required
+                            />
+                            <i
+                                className={`fas ${showNewPassword ? 'fa-eye-slash' : 'fa-eye'} password-toggle`}
+                                onClick={() => setShowNewPassword(prev => !prev)}
+                            ></i>
+                        </div>
+                        {passwordData.newPassword.length > 0 && (
+                            <div className="mt-2 space-y-1 text-left text-sm">
+                                <div className={passwordStrength.minLength ? 'text-green-400' : 'text-red-400'}>
+                                    <i className={`fas ${passwordStrength.minLength ? 'fa-check' : 'fa-times'} mr-2`}></i>
+                                    8자 이상
+                                </div>
+                                <div className={passwordStrength.hasLowercase ? 'text-green-400' : 'text-red-400'}>
+                                    <i className={`fas ${passwordStrength.hasLowercase ? 'fa-check' : 'fa-times'} mr-2`}></i>
+                                    영문 소문자 포함
+                                </div>
+                                <div className={passwordStrength.hasUppercase ? 'text-green-400' : 'text-red-400'}>
+                                    <i className={`fas ${passwordStrength.hasUppercase ? 'fa-check' : 'fa-times'} mr-2`}></i>
+                                    영문 대문자 포함
+                                </div>
+                                <div className={passwordStrength.hasNumber ? 'text-green-400' : 'text-red-400'}>
+                                    <i className={`fas ${passwordStrength.hasNumber ? 'fa-check' : 'fa-times'} mr-2`}></i>
+                                    숫자 포함
+                                </div>
+                                <div className={passwordStrength.hasSpecial ? 'text-green-400' : 'text-red-400'}>
+                                    <i className={`fas ${passwordStrength.hasSpecial ? 'fa-check' : 'fa-times'} mr-2`}></i>
+                                    특수문자 포함 (@$!%*?&)
+                                </div>
+                                {!passwordStrength.allowedCharsOnly && (
+                                    <div className="text-red-400">
+                                        <i className="fas fa-times mr-2"></i>
+                                        허용되지 않는 문자가 포함되어 있습니다 (영문, 숫자, @$!%*?& 만 사용 가능)
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                     <div>
                         <label htmlFor="pw-confirm" className="form-label">새 비밀번호 확인</label>
-                        <input
-                            id="pw-confirm"
-                            type="password"
-                            className="form-input"
-                            value={passwordData.confirmPassword}
-                            onChange={handlePasswordChange}
-                            required
-                        />
+                        <div className="relative">
+                            <input
+                                id="pw-confirm"
+                                type={showConfirmPassword ? 'text' : 'password'}
+                                className="form-input pr-10"
+                                value={passwordData.confirmPassword}
+                                onChange={handlePasswordChange}
+                                required
+                            />
+                            <i
+                                className={`fas ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'} password-toggle`}
+                                onClick={() => setShowConfirmPassword(prev => !prev)}
+                            ></i>
+                        </div>
                         {passwordMatch !== null && (
                             <div className={`text-sm mt-1 text-left ${passwordMatch ? 'text-green-400' : 'text-red-500'}`}>
                                 <i className={`fas ${passwordMatch ? 'fa-check' : 'fa-times'} mr-2`}></i>
@@ -281,15 +334,7 @@ const PasswordChangeModal = ({ isOpen, onClose }) => {
                             </div>
                         )}
                     </div>
-                    <div>
-                        <div className="flex items-end gap-3">
-                            <div className="flex-1">
-                                <label htmlFor="pw-code" className="form-label">인증 코드</label>
-                                <input id="pw-code" type="text" className="form-input" required />
-                            </div>
-                            <button type="button" className="px-3 py-2 rounded-lg btn-secondary hover:bg-gray-800">코드 전송</button>
-                        </div>
-                    </div>
+
                     <div className="flex items-center justify-end gap-3 mt-6">
                         <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg btn-secondary hover:bg-gray-800">취소</button>
                         <button
