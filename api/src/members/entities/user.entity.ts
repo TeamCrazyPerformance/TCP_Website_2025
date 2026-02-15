@@ -100,6 +100,9 @@ export class User {
   @Column({ type: 'boolean', default: false })
   is_public_portfolio_link: boolean;
 
+  @Column({ type: 'boolean', default: false })
+  is_public_current_company: boolean;
+
   @CreateDateColumn()
   created_at: Date;
 

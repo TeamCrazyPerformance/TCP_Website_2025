@@ -16,4 +16,8 @@ export class UpdatePrivacyDto {
   @IsOptional()
   @IsBoolean()
   is_public_portfolio_link?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  is_public_current_company?: boolean;
 }
