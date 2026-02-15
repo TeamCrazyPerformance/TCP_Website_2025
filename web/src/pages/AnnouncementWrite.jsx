@@ -190,7 +190,7 @@ function AnnouncementWrite() {
 
     const isoDate = date.replace(/\./g, '-'); // "2020.01.15" -> "2020-01-15"
     const dateObj = new Date(isoDate);
-    
+
     // Invalid Date 체크
     if (isNaN(dateObj.getTime())) {
       alert('유효하지 않은 날짜입니다. 올바른 날짜를 입력해주세요.');
@@ -508,7 +508,7 @@ function AnnouncementWrite() {
 - 세부 사항
 - 문의처
 - 마무리 인사"
-              maxLength="3000"
+              maxLength="10000"
               required
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -520,9 +520,9 @@ function AnnouncementWrite() {
                 마크다운 문법을 지원합니다. (**, *, _, 등)
               </p>
               <span
-                className={`char-counter ${content.length > 2800 ? 'warning' : ''}`}
+                className={`char-counter ${content.length > 9800 ? 'warning' : ''}`}
               >
-                {content.length}/3000
+                {content.length}/10000
               </span>
             </div>
           </div>
