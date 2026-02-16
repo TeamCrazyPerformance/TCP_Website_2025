@@ -28,7 +28,7 @@ export class User {
   @Column({ type: 'varchar', length: 50 })
   name: string;
 
-  @Column({ type: 'varchar', length: 20, unique: true, nullable: true })
+  @Column({ type: 'varchar', length: 20, nullable: true })
   student_number: string | null;
 
   @Column({ type: 'varchar', length: 255, default: 'default_profile_image.png' }) // TODO 기본 프로필 이미지 추가해야 함
@@ -99,6 +99,9 @@ export class User {
 
   @Column({ type: 'boolean', default: false })
   is_public_portfolio_link: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  is_public_current_company: boolean;
 
   @CreateDateColumn()
   created_at: Date;

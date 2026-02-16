@@ -9,7 +9,7 @@ export class PrivacyService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-  ) {}
+  ) { }
 
 
   async getPrivacySettings(userId: string) {
@@ -20,6 +20,7 @@ export class PrivacyService {
         is_public_tech_stack: true,
         is_public_github_username: true,
         is_public_portfolio_link: true,
+        is_public_current_company: true,
       },
     });
 

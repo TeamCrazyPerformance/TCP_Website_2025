@@ -24,7 +24,15 @@ export class AuthService {
     const { id, username, name, email, student_number, role, created_at, updated_at } = user;
     let profile_image: string | null = user.profile_image;
 
-    if (profile_image && profile_image !== 'default_profile_image.png') {
+    if (profile_image) {
+      // 기본 이미지가 아니고, http로 시작하지 않고, /로 시작하지 않으면 /profiles/ 추가
+      const isDefaultImage = [
+        'default_profile_image.png',
+        'default_profile_image.webp',
+        'default_graduate_profile_image.webp',
+        'default_admin_profile_image.webp'
+      ].includes(profile_image);
+
       if (!profile_image.startsWith('http') && !profile_image.startsWith('/')) {
         profile_image = `/profiles/${profile_image}`;
       }
@@ -89,7 +97,7 @@ export class AuthService {
       password: hashed,
       birth_date: dto.birth_date ? new Date(dto.birth_date) : null,
       tech_stack: dto.tech_stack ?? null,
-      profile_image: dto.profile_image ?? '/images/default_profile.webp',
+      profile_image: dto.profile_image ?? 'default_profile_image.webp',
       is_public_github_username: dto.is_public_github_username ?? false,
       is_public_email: dto.is_public_email ?? false,
     });

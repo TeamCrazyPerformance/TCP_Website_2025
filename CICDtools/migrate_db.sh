@@ -86,7 +86,7 @@ bash "$PROJECT_ROOT/CICDtools/backup_db.sh" "pre_db_migration"
 # 1. Pull latest code
 log_info "📥 Pulling latest code from main..."
 cd "$PROJECT_ROOT"
-git_as_user pull origin main
+git pull origin main
 
 # 2. Run Migration
 log_info "🐘 Running TypeORM Migrations..."

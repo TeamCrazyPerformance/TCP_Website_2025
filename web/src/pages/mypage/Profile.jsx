@@ -291,14 +291,14 @@ function Profile() {
     if (!window.confirm('정말로 기본 프로필 사진으로 변경하시겠습니까?')) return;
 
     try {
-      await apiDelete('/api/v1/members/me/profile-image');
+      const response = await apiDelete('/api/v1/members/me/profile-image');
 
       // 상태 업데이트
-      setProfile((prev) => ({ ...prev, photo: '' }));
+      setProfile((prev) => ({ ...prev, photo: response.profile_image }));
 
       // 전역 상태 업데이트
       if (user) {
-        const updatedUser = { ...user, profile_image: null };
+        const updatedUser = { ...user, profile_image: response.profile_image };
         login(updatedUser, localStorage.getItem('access_token'));
       }
 

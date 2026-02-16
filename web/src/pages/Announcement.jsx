@@ -72,7 +72,7 @@ function Announcement() {
   useEffect(() => {
     // IntersectionObserver를 사용하여 스크롤 시 요소가 보일 때 애니메이션 추가
     const observerOptions = {
-      threshold: 0.1,
+      threshold: 0,
       rootMargin: '0px 0px -50px 0px',
     };
 

@@ -56,6 +56,10 @@ pids
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 node_modules
 
-# Local Data (User uploads & Config)
-/uploads
-/json
+# Allow uploads folder structure but ignore contents by default
+/uploads/*
+!/uploads/profiles/
+/uploads/profiles/*
+!/uploads/profiles/default_profile_image.webp
+!/uploads/profiles/default_graduate_profile_image.webp
+!/uploads/profiles/default_admin_profile_image.webp

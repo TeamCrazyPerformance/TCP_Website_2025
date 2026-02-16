@@ -107,10 +107,25 @@ if [ -z "$(sudo docker compose ps -q db)" ]; then
 fi
 
 # 1. Restore Database
-log_info "⏳ [1/2] Restoring database... (This may take a while)"
+# Load DB credentials from env file if available
+if [ -f "$PROJECT_ROOT/envs/db_prod.env" ]; then
+    # Read DB_USER from env file
+    DB_USER=$(grep "^DB_USER=" "$PROJECT_ROOT/envs/db_prod.env" | cut -d '=' -f2)
+    DB_NAME=$(grep "^DB_NAME=" "$PROJECT_ROOT/envs/db_prod.env" | cut -d '=' -f2)
+else
+    # Fallback defaults (should match docker-compose defaults if env file missing)
+    DB_USER="tcp_user"
+    DB_NAME="tcp_db"
+fi
+
+# Ensure variables are set
+DB_USER=${DB_USER:-tcp_user}
+DB_NAME=${DB_NAME:-tcp_db}
+
+log_info "⏳ [1/2] Restoring database to '$DB_NAME' as user '$DB_USER'..."
 # Unzip and pipe to psql
 # Since the dump was created with --clean, it will drop existing tables first.
-gunzip -c "$LATEST_DB_BACKUP" | sudo docker compose exec -T db psql -U user -d mydb
+gunzip -c "$LATEST_DB_BACKUP" | sudo docker compose exec -T db psql -U "$DB_USER" -d "$DB_NAME"
 log_success "Database restored successfully!"
 
 # 2. Restore Local Files

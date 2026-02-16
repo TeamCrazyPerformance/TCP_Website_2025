@@ -25,7 +25,7 @@ function Home() {
   useEffect(() => {
     // 스크롤 애니메이션
     const observerOptions = {
-      threshold: 0.1,
+      threshold: 0,
       rootMargin: '0px 0px -50px 0px',
     };
 

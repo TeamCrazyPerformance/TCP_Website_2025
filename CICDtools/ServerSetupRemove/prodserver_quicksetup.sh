@@ -4,7 +4,11 @@ set -e  # 에러 발생 시 즉시 중단
 ### =========================
 ### 기본 설정
 ### =========================
-PROJECT_DIR="$(pwd)"
+# Resolve absolute path to the project root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# SCRIPT_DIR is .../CICDtools/ServerSetupRemove
+# PROJECT_DIR is two levels up: .../TCP_Website_2025
+PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 TARGET_USER="${SUDO_USER:-$USER}"
 
 # ==============================================================================
@@ -99,8 +103,8 @@ echo
 ### 2. 환경변수 설정 (Interactive)
 ### =========================
 echo "🔧 Setting up environment variables..."
-chmod +x "$PROJECT_DIR/CICDtools/ServerSetupRemove/set_env.sh"
-bash "$PROJECT_DIR/CICDtools/ServerSetupRemove/set_env.sh" "prod"
+chmod +x "$SCRIPT_DIR/set_env.sh"
+bash "$SCRIPT_DIR/set_env.sh" "prod"
 echo "✅ Environment variables configured"
 echo
 
