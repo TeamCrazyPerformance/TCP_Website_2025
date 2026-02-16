@@ -65,7 +65,8 @@ setup_logging() {
         export CICD_LOGGING_ACTIVE=true
         
         # Redirect all output (stdout and stderr) to both console and log file
-        exec > >(tee -a "$log_file") 2>&1
+        # Use sed to add indentation (4 spaces) to every line
+        exec > >(sed -u 's/^/    /' | tee -a "$log_file") 2>&1
     else
         echo "--------------------------------------------------------------------------------"
         echo "[$(timestamp)] STARTING (SUB) $script_label"
