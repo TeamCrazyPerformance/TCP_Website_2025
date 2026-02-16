@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../../members/entities/user.entity';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UserRole } from '../../members/entities/enums/user-role.enum';
+
 
 @Injectable()
 export class ProfileService {
@@ -10,6 +12,13 @@ export class ProfileService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
   ) { }
+
+  private readonly defaultImages = [
+    'default_profile_image.png',
+    'default_profile_image.webp',
+    'default_graduate_profile_image.webp',
+    'default_admin_profile_image.webp'
+  ];
 
   async getMyProfile(userId: string): Promise<User> {
     const user = await this.userRepository.findOne({
@@ -75,6 +84,20 @@ export class ProfileService {
         user[key] = dto[key];
       }
     });
+
+    // 학적 상태 변경 시 기본 이미지 자동 업데이트 로직
+    if (dto.education_status && this.defaultImages.includes(user.profile_image)) {
+      // 1. 관리자라면 학적 상태와 무관하게 항상 관리자 이미지
+      if (user.role === UserRole.ADMIN) {
+        user.profile_image = 'default_admin_profile_image.webp';
+      } else if (dto.education_status === '졸업') {
+        // 2. 졸업생이라면 졸업 이미지
+        user.profile_image = 'default_graduate_profile_image.webp';
+      } else {
+        // 3. 그 외 (재학/휴학 등) -> 일반 이미지
+        user.profile_image = 'default_profile_image.webp';
+      }
+    }
 
     return this.userRepository.save(user);
   }
