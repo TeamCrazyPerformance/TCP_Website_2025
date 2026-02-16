@@ -59,8 +59,19 @@ if [ -z "$(sudo docker compose ps -q db)" ]; then
 fi
 
 # 1. Database Backup
-log_info "📦 [1/2] Dumping database..."
-sudo docker compose exec -T db pg_dump -U user -d mydb --clean --if-exists | gzip | sudo tee "$BACKUP_DIR/$DB_FILENAME" > /dev/null
+# Load DB credentials from env file if available
+if [ -f "$PROJECT_ROOT/envs/db_prod.env" ]; then
+    DB_USER=$(grep "^DB_USER=" "$PROJECT_ROOT/envs/db_prod.env" | cut -d '=' -f2)
+    DB_NAME=$(grep "^DB_NAME=" "$PROJECT_ROOT/envs/db_prod.env" | cut -d '=' -f2)
+else
+    DB_USER="tcp_user"
+    DB_NAME="tcp_db"
+fi
+DB_USER=${DB_USER:-tcp_user}
+DB_NAME=${DB_NAME:-tcp_db}
+
+log_info "📦 [1/2] Dumping database '$DB_NAME' as user '$DB_USER'..."
+sudo docker compose exec -T db pg_dump -U "$DB_USER" -d "$DB_NAME" --clean --if-exists | gzip | sudo tee "$BACKUP_DIR/$DB_FILENAME" > /dev/null
 log_success "DB Backup created: $DB_FILENAME"
 
 # 2. Local Files Backup (Uploads, JSON, Logs)
