@@ -55,17 +55,17 @@ if [ -f "$ENVS_DIR/api.env" ]; then
     log_info "📄 Found existing api.env. Reading values..."
     EXISTING_JWT=$(grep "JWT_SECRET=" "$ENVS_DIR/api.env" | cut -d '=' -f2)
     # Use existing or generate if empty in file
-    JWT_SECRET=${EXISTING_JWT:-$(openssl rand -base64 64)}
+    JWT_SECRET=${EXISTING_JWT:-$(openssl rand -base64 64 | tr -d '\n')}
 else
     log_info "🆕 Generating NEW JWT_SECRET..."
-    JWT_SECRET=$(openssl rand -base64 64)
+    JWT_SECRET=$(openssl rand -base64 64 | tr -d '\n')
 fi
 
 # --- DB Env ---
 if [ -f "$ENVS_DIR/db_prod.env" ]; then
     log_info "📄 Found existing db_prod.env. Reading values..."
     EXISTING_DB_PASS=$(grep "POSTGRES_PASSWORD=" "$ENVS_DIR/db_prod.env" | cut -d '=' -f2)
-    DB_PASSWORD=${EXISTING_DB_PASS:-$(openssl rand -hex 32)}
+    DB_PASSWORD=${EXISTING_DB_PASS:-$(openssl rand -hex 32 | tr -d '\n')}
     
     # Check for existing Admin details
     EXISTING_ADMIN_USER=$(grep "ADMIN_USERNAME=" "$ENVS_DIR/db_prod.env" | cut -d '=' -f2)
@@ -76,7 +76,7 @@ if [ -f "$ENVS_DIR/db_prod.env" ]; then
     # We will prompt for Admin credentials only if username is missing
 else
     log_info "🆕 Generating NEW DB_PASSWORD..."
-    DB_PASSWORD=$(openssl rand -hex 32)
+    DB_PASSWORD=$(openssl rand -hex 32 | tr -d '\n')
 fi
 
 # ==============================================================================
