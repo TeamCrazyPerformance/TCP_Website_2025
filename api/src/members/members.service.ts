@@ -91,17 +91,43 @@ export class MembersService {
   }
 
   /**
+   * @description 사용자의 역할 및 상태에 따라 기본 프로필 이미지 파일명을 반환합니다.
+   * @param user 사용자 엔티티
+   * @returns 기본 프로필 이미지 파일명 (확장자 포함)
+   */
+  private getDefaultImageName(user: User): string {
+    if (user.role === UserRole.ADMIN) {
+      return 'default_admin_profile_image.webp';
+    }
+    if (user.education_status === '졸업') {
+      return 'default_graduate_profile_image.webp';
+    }
+    return 'default_profile_image.webp';
+  }
+
+  /**
    * @description 사용자의 프로필 이미지를 삭제(기본 이미지로 초기화)합니다.
    * @param userId 사용자 ID
    */
-  async deleteProfileImage(userId: string): Promise<void> {
+  async deleteProfileImage(userId: string): Promise<{ profile_image: string }> {
     const user = await this.userRepository.findOneBy({ id: userId });
     if (!user) {
       throw new NotFoundException('사용자를 찾을 수 없습니다.');
     }
 
+    // 기본 이미지 결정
+    const defaultImageName = this.getDefaultImageName(user);
+
     // 기존 이미지가 있고 기본값이 아니라면 파일 삭제
-    if (user.profile_image && user.profile_image !== 'default_profile_image.png' && !user.profile_image.startsWith('http')) {
+    // (기본 이미지들은 삭제하면 안 됨)
+    const isDefaultImage = [
+      'default_profile_image.png',
+      'default_profile_image.webp',
+      'default_graduate_profile_image.webp',
+      'default_admin_profile_image.webp'
+    ].includes(user.profile_image);
+
+    if (user.profile_image && !isDefaultImage && !user.profile_image.startsWith('http')) {
       const oldImagePath = path.join(this.profilesPath, user.profile_image);
       if (fs.existsSync(oldImagePath)) {
         try {
@@ -112,8 +138,10 @@ export class MembersService {
       }
     }
 
-    // DB 업데이트: 기본값으로 복원
-    user.profile_image = 'default_profile_image.png';
+    // DB 업데이트: 상태에 맞는 기본값으로 설정
+    user.profile_image = defaultImageName;
     await this.userRepository.save(user);
+
+    return { profile_image: `/profiles/${defaultImageName}` };
   }
 }

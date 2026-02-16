@@ -58,7 +58,7 @@ export class MembersController {
      */
     @Delete('me/profile-image')
     @UseGuards(JwtAuthGuard)
-    async deleteProfileImage(@Req() req: any): Promise<void> {
+    async deleteProfileImage(@Req() req: any): Promise<{ profile_image: string }> {
         const userId = req.user.userId;
         return this.membersService.deleteProfileImage(userId);
     }

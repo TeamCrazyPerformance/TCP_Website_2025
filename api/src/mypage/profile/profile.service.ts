@@ -38,8 +38,16 @@ export class ProfileService {
       throw new NotFoundException('사용자를 찾을 수 없습니다.');
     }
 
-    if (user.profile_image && user.profile_image !== 'default_profile_image.png') {
-      if (!user.profile_image.startsWith('http')) {
+    if (user.profile_image) {
+      // 기본 이미지가 아니고, http로 시작하지 않고, /로 시작하지 않으면 /profiles/ 추가
+      const isDefaultImage = [
+        'default_profile_image.png',
+        'default_profile_image.webp',
+        'default_graduate_profile_image.webp',
+        'default_admin_profile_image.webp'
+      ].includes(user.profile_image);
+
+      if (!user.profile_image.startsWith('http') && !user.profile_image.startsWith('/')) {
         user.profile_image = `/profiles/${user.profile_image}`;
       }
     } else {

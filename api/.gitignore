@@ -58,4 +58,7 @@ node_modules
 
 # Local Data (User uploads & Config)
 /uploads
+!/uploads/profiles/default_profile_image.webp
+!/uploads/profiles/default_graduate_profile_image.webp
+!/uploads/profiles/default_admin_profile_image.webp
 /json
