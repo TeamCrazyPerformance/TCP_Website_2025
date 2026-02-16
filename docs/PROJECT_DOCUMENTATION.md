@@ -29,7 +29,7 @@
 
 TCP Website 2025 is a full-stack web application designed for managing a university computer science club. The platform provides:
 
-- **Member Management**: User registration, profiles, and authentication
+- **Member Management**: User registration, profiles, and authentication (See [Profile Image Logic](PROFILE_IMAGE_LOGIC.md))
 - **Study Groups**: Create and manage study groups with resources and progress tracking
 - **Team/Project Recruitment**: Post and manage team recruitment for projects
 - **Announcements**: Club announcements and news
