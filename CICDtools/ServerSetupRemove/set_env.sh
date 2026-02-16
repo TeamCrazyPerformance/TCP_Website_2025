@@ -181,6 +181,38 @@ DB_NAME=$DEFAULT_DB_NAME
 ADMIN_USERNAME=$ADMIN_USERNAME
 ADMIN_EMAIL=$ADMIN_EMAIL
 ADMIN_PASSWORD=$ADMIN_PASSWORD
+ADMIN_PASSWORD=$ADMIN_PASSWORD
+EOF
+
+# --- elk.env ---
+# Generate ELK passwords if not exists
+if [ -f "$ENVS_DIR/elk.env" ]; then
+    log_info "📄 Found existing elk.env. Reading values..."
+    EXISTING_ELASTIC_PASS=$(grep "ELASTIC_PASSWORD=" "$ENVS_DIR/elk.env" | cut -d '=' -f2)
+    ELASTIC_PASSWORD=${EXISTING_ELASTIC_PASS:-$(openssl rand -hex 16 | tr -d '\n')}
+    
+    EXISTING_KIBANA_PASS=$(grep "KIBANA_SYSTEM_PASSWORD=" "$ENVS_DIR/elk.env" | cut -d '=' -f2)
+    KIBANA_SYSTEM_PASSWORD=${EXISTING_KIBANA_PASS:-$(openssl rand -hex 16 | tr -d '\n')}
+    
+    EXISTING_LOGSTASH_PASS=$(grep "LOGSTASH_PASSWORD=" "$ENVS_DIR/elk.env" | cut -d '=' -f2)
+    LOGSTASH_PASSWORD=${EXISTING_LOGSTASH_PASS:-$(openssl rand -hex 16 | tr -d '\n')}
+else
+    log_info "🆕 Generating NEW ELK Passwords..."
+    ELASTIC_PASSWORD=$(openssl rand -hex 16 | tr -d '\n')
+    KIBANA_SYSTEM_PASSWORD=$(openssl rand -hex 16 | tr -d '\n')
+    LOGSTASH_PASSWORD=$(openssl rand -hex 16 | tr -d '\n')
+fi
+
+cat > "$ENVS_DIR/elk.env" <<EOF
+# =============================================================================
+# Elasticsearch
+ELASTIC_PASSWORD=$ELASTIC_PASSWORD
+
+# Kibana (kibana_system User Password)
+KIBANA_SYSTEM_PASSWORD=$KIBANA_SYSTEM_PASSWORD
+
+# Logstash (Optional)
+LOGSTASH_PASSWORD=$LOGSTASH_PASSWORD
 EOF
 
 # --- root .env ---
