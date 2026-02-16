@@ -8,8 +8,9 @@ set -e
 #   Shows specific details about the latest backup file to verify its integrity.
 # ==============================================================================
 
-PROJECT_ROOT="$(dirname "$0")/.."
-BACKUP_DIR="$PROJECT_ROOT/backups"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+BACKUP_DIR="$PROJECT_ROOT/../backups"
 
 # Import Common Logging
 source "$(dirname "$0")/utils/common_logging.sh"
