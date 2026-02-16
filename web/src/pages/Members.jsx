@@ -51,6 +51,8 @@ function Members() {
               githubUrl: `https://github.com/${user.github_username}`
             }),
             ...(portfolioUrl && { portfolioUrl }),
+            ...(user.current_company && { currentCompany: user.current_company }),
+
 
             // tech_stack이 없으면 빈 배열로 설정 (필터링 로직을 위해)
             ...(!user.tech_stack && { tags: [] }),
@@ -302,6 +304,12 @@ function Members() {
                       {member.email}
                     </p>
                   )}
+                  {member.currentCompany && (
+                    <p className="text-xs text-orange-400 mb-2">
+                      <i className="fas fa-building mr-1"></i>
+                      {member.currentCompany}
+                    </p>
+                  )}
                   <p className="text-xs text-blue-400 mb-2">
                     <i className="fas fa-graduation-cap mr-1"></i>
                     {member.educationStatus}
@@ -399,6 +407,12 @@ function Members() {
                     <p className="text-xs text-gray-500 mb-1">
                       <i className="fas fa-envelope mr-1"></i>
                       {member.email}
+                    </p>
+                  )}
+                  {member.currentCompany && (
+                    <p className="text-xs text-orange-400 mb-2">
+                      <i className="fas fa-building mr-1"></i>
+                      {member.currentCompany}
                     </p>
                   )}
                   <p className="text-xs text-blue-400 mb-2">

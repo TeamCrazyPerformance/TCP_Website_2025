@@ -7,6 +7,7 @@ const buildSettingsState = (data) => ({
     techstack: Boolean(data?.is_public_tech_stack),
     github: Boolean(data?.is_public_github_username),
     portfolio: Boolean(data?.is_public_portfolio_link),
+    currentCompany: Boolean(data?.is_public_current_company),
 });
 
 const MyPageSettings = () => {
@@ -73,6 +74,7 @@ const MyPageSettings = () => {
                 is_public_tech_stack: settings.techstack,
                 is_public_github_username: settings.github,
                 is_public_portfolio_link: settings.portfolio,
+                is_public_current_company: settings.currentCompany,
             });
             setInitialSettings(settings);
             alert('설정이 저장되었습니다.');
@@ -97,6 +99,7 @@ const MyPageSettings = () => {
     const bio = profile.self_description || '';
     const email = profile.email || '';
     const educationStatus = profile.education_status || '';
+    const currentCompany = profile.current_company || '';
     const github = profile.github_username ? `https://github.com/${profile.github_username}` : '';
     const portfolio = profile.portfolio_link || '';
 
@@ -167,6 +170,7 @@ const MyPageSettings = () => {
                         <p className="text-sm text-gray-400 mb-6">공개 여부를 직접 선택할 수 있습니다.</p>
                         <div className="space-y-4">
                             <SettingItem settingKey="email" label="이메일" value={email || '미등록'} helpText="멤버 페이지에 이메일을 표시합니다." icon="fa-envelope text-blue-400" isActive={settings.email} onToggle={toggleSetting} />
+                            <SettingItem settingKey="currentCompany" label="현재 소속" value={currentCompany || '미등록'} helpText="현재 소속(직장/단체)을 멤버 페이지에 표시합니다." icon="fa-building text-orange-400" isActive={settings.currentCompany} onToggle={toggleSetting} />
                             <SettingItem settingKey="techstack" label="기술 스택" value={techStack.length ? techStack.join(', ') : '미등록'} helpText="기술 스택을 멤버 페이지에 표시합니다." icon="fa-code text-purple-400" isActive={settings.techstack} onToggle={toggleSetting} />
                             <SettingItem settingKey="github" label="GitHub" value={github || '미등록'} helpText="GitHub 프로필을 멤버 페이지에 표시합니다." icon="fab fa-github text-pink-400" isActive={settings.github} onToggle={toggleSetting} />
                             <SettingItem settingKey="portfolio" label="포트폴리오" value={portfolio || '미등록'} helpText="포트폴리오 링크를 멤버 페이지에 표시합니다." icon="fa-link text-yellow-400" isActive={settings.portfolio} onToggle={toggleSetting} />
@@ -217,6 +221,7 @@ const MemberCardPreview = ({ settings, profile }) => {
     const bio = profile.self_description || '';
     const email = profile.email || '';
     const educationStatus = profile.education_status || '';
+    const currentCompany = profile.current_company || '';
     const github = profile.github_username ? `https://github.com/${profile.github_username}` : '';
     const portfolio = profile.portfolio_link || '';
     const avatarInitial = displayName ? displayName[0].toUpperCase() : 'U';
@@ -245,6 +250,11 @@ const MemberCardPreview = ({ settings, profile }) => {
             {educationStatus && (
                 <div className="mb-4 text-sm text-gray-300">
                     <i className="fas fa-graduation-cap text-green-400 mr-2"></i>{educationStatus}
+                </div>
+            )}
+            {settings.currentCompany && currentCompany && (
+                <div className="mb-4 text-sm text-gray-300">
+                    <i className="fas fa-building text-orange-400 mr-2"></i>{currentCompany}
                 </div>
             )}
 
