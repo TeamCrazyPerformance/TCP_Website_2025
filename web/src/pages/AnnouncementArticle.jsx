@@ -20,7 +20,7 @@ function AnnouncementArticle() {
   const [article, setArticle] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
-  
+
   // 관리자 권한 확인
   const isAdmin = user?.role === 'ADMIN';
   // Admin 페이지에서 왔는지 확인
@@ -71,7 +71,7 @@ function AnnouncementArticle() {
 
   useEffect(() => {
     const observerOptions = {
-      threshold: 0.1,
+      threshold: 0,
       rootMargin: '0px 0px -50px 0px',
     };
     const observer = new IntersectionObserver((entries) => {
