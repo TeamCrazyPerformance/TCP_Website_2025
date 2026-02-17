@@ -28,11 +28,11 @@ function Header({ isScrolled }) {
     } hover:text-white`;
 
   const getLoginLinkClass = ({ isActive }) =>
-    `px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border whitespace-nowrap inline-flex items-center justify-center ${isActive ? 'border-gray-500 text-white bg-white/5' : 'border-gray-700 text-gray-200 bg-transparent'
+    `px-1.5 max-[420px]:px-1 sm:px-4 py-1.5 sm:py-2 text-[11px] max-[420px]:text-[10px] sm:text-sm border whitespace-nowrap inline-flex items-center justify-center ${isActive ? 'border-gray-500 text-white bg-white/5' : 'border-gray-700 text-gray-200 bg-transparent'
     } rounded-xl hover:border-gray-500 hover:bg-white/5 transition-colors`;
 
   const getRegisterLinkClass = ({ isActive }) =>
-    `px-2 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm whitespace-nowrap inline-flex items-center justify-center rounded-xl transition-colors ${isActive
+    `px-1.5 max-[420px]:px-1 sm:px-5 py-1.5 sm:py-2 text-[11px] max-[420px]:text-[10px] sm:text-sm whitespace-nowrap inline-flex items-center justify-center rounded-xl transition-colors ${isActive
       ? 'bg-gradient-to-r from-indigo-500 to-violet-500'
       : 'bg-gradient-to-r from-blue-500 to-indigo-500'
     } hover:from-indigo-500 hover:to-violet-500 text-white shadow-lg shadow-indigo-500/20`;
@@ -55,12 +55,12 @@ function Header({ isScrolled }) {
       className={`fixed top-0 left-0 right-0 z-50 ${isScrolled ? 'bg-black' : 'bg-black'
         } backdrop-blur-md border-b border-gray-800 transition-colors duration-300`}
     >
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-2.5 sm:px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo and Title */}
           <div className="flex-1 min-w-0">
-            <NavLink to="/" className="flex items-center space-x-3 flex-shrink-0">
-              <div className="w-10 h-10">
+            <NavLink to="/" className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10">
                 <img
                   src={logo}
                   alt="TCP 로고"
@@ -68,7 +68,7 @@ function Header({ isScrolled }) {
                 />
               </div>
               <div>
-                <h1 className="orbitron text-xl font-bold gradient-text text-left">
+                <h1 className="orbitron text-lg sm:text-xl font-bold gradient-text text-left">
                   TCP
                 </h1>
                 <p className="orbitron text-xs text-gray-400 text-left hidden sm:block">
@@ -100,9 +100,9 @@ function Header({ isScrolled }) {
             </NavLink>
           </nav>
 
-          <div className="flex flex-1 items-center justify-end gap-2">
+          <div className="flex flex-1 items-center justify-end gap-1 sm:gap-2">
             {/* Login/Sign Up Links */}
-            <div className="flex items-center space-x-1 sm:space-x-3">
+            <div className="flex items-center gap-1 sm:gap-3">
               {isAuthenticated ? (
                 <>
                   <NavLink to="/mypage" className="flex items-center space-x-2 px-1.5 sm:px-2 py-1 rounded-lg hover:bg-white/10 transition-colors group">
@@ -151,7 +151,7 @@ function Header({ isScrolled }) {
             {/* Mobile Menu Button */}
             <button
               type="button"
-              className="md:hidden w-9 h-9 sm:w-10 sm:h-10 rounded-lg border border-gray-700 text-white hover:border-gray-500 transition-colors flex items-center justify-center"
+              className="md:hidden w-9 h-9 sm:w-10 sm:h-10 rounded-lg border border-gray-700 text-white hover:border-gray-500 transition-colors flex items-center justify-center shrink-0 relative z-20 ml-0.5"
               onClick={() => setIsMobileMenuOpen((prev) => !prev)}
               aria-label="모바일 메뉴 열기"
               aria-expanded={isMobileMenuOpen}

@@ -3,7 +3,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import logo from '../logo.svg';
 
-function AdminSidebar() {
+function AdminSidebar({ isOpen = false }) {
   const location = useLocation();
 
   const isActive = (path) => {
@@ -11,7 +11,7 @@ function AdminSidebar() {
   };
 
   return (
-    <aside id="sidebar" className="sidebar flex-shrink-0 p-4">
+    <aside id="sidebar" className={`sidebar ${isOpen ? 'open' : ''} flex-shrink-0 p-4`}>
       <div className="flex items-center space-x-3 mb-8 px-2">
         <img src={logo} alt="TCP 로고" className="w-10 h-10 object-contain" />
         <div>
