@@ -136,41 +136,41 @@ function Profile() {
     });
   };
 
-  // Fetch profile data on mount
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        setLoading(true);
-        const data = await apiGet('/api/v1/mypage/profile');
-        // Map backend fields to frontend format
-        setProfile({
-          photo: data.profile_image || '',
-          username: data.username || '',
-          major: data.major || '',
-          studentId: data.student_number || '',
-          role: data.current_company || '',
-          email: data.email || '',
-          bio: data.self_description || '',
-          techStack: data.tech_stack || [],
-          status: data.education_status || '',
-          github: data.github_username ? `https://github.com/${data.github_username}` : '',
-          baekjoon: data.baekjoon_username || '', // Added
-          portfolio: data.portfolio_link || '',
-          joinYear: data.join_year || '', // Added
-          birthDate: data.birth_date ? data.birth_date.split('T')[0].replace(/-/g, '.') : '', // Added, format YYYY.MM.DD
-          gender: data.gender || '', // Added
-        });
-        setError(null);
-      } catch (err) {
-        console.error('Failed to fetch profile:', err);
-        setError('프로필을 불러오는데 실패했습니다.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
+  // Fetch profile data
+  const loadProfileData = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await apiGet('/api/v1/mypage/profile');
+      // Map backend fields to frontend format
+      setProfile({
+        photo: data.profile_image || '',
+        username: data.username || '',
+        major: data.major || '',
+        studentId: data.student_number || '',
+        role: data.current_company || '',
+        email: data.email || '',
+        bio: data.self_description || '',
+        techStack: data.tech_stack || [],
+        status: data.education_status || '',
+        github: data.github_username ? `https://github.com/${data.github_username}` : '',
+        baekjoon: data.baekjoon_username || '', // Added
+        portfolio: data.portfolio_link || '',
+        joinYear: data.join_year || '', // Added
+        birthDate: data.birth_date ? data.birth_date.split('T')[0].replace(/-/g, '.') : '', // Added, format YYYY.MM.DD
+        gender: data.gender || '', // Added
+      });
+      setError(null);
+    } catch (err) {
+      console.error('Failed to fetch profile:', err);
+      setError('프로필을 불러오는데 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadProfileData();
+  }, [loadProfileData]);
 
   // textarea 높이 조절
   useEffect(() => {
@@ -293,13 +293,18 @@ function Profile() {
     try {
       const response = await apiDelete('/api/v1/members/me/profile-image');
 
-      // 상태 업데이트
-      setProfile((prev) => ({ ...prev, photo: response.profile_image }));
+      if (response && response.profile_image) {
+        // 상태 업데이트
+        setProfile((prev) => ({ ...prev, photo: response.profile_image }));
 
-      // 전역 상태 업데이트
-      if (user) {
-        const updatedUser = { ...user, profile_image: response.profile_image };
-        login(updatedUser, localStorage.getItem('access_token'));
+        // 전역 상태 업데이트
+        if (user) {
+          const updatedUser = { ...user, profile_image: response.profile_image };
+          login(updatedUser, localStorage.getItem('access_token'));
+        }
+      } else {
+        // 응답이 없거나 이미지가 없는 경우 (204 No Content 등), 프로필 다시 로드
+        await loadProfileData();
       }
 
       alert('기본 프로필 사진으로 변경되었습니다.');
