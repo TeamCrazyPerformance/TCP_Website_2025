@@ -69,6 +69,8 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                 way: form.way,
                 place: form.place,
                 tag: form.tags,
+                leader_id: JSON.parse(localStorage.getItem('auth_user')).id,
+                leader_name: JSON.parse(localStorage.getItem('auth_user')).name,
             };
 
             const newStudy = await apiPost('/api/v1/study', payload, {

@@ -30,7 +30,7 @@ const AdminStudy = () => {
 
             // Extract unique years and tags (split comma-separated tags)
             const years = [...new Set(studyList.map(s => s.start_year))].sort((a, b) => b - a);
-            const allTags = studyList.flatMap(s => 
+            const allTags = studyList.flatMap(s =>
                 s.tag ? s.tag.split(',').map(t => t.trim()).filter(Boolean) : []
             );
             const tags = [...new Set(allTags)].sort();
@@ -56,7 +56,7 @@ const AdminStudy = () => {
             const matchYear = !filters.year || study.start_year?.toString() === filters.year;
             // Status filter
             const deadlinePassed = study.apply_deadline ? new Date(study.apply_deadline) < new Date() : false;
-            const matchStatus = !filters.status || 
+            const matchStatus = !filters.status ||
                 (filters.status === 'recruiting' && !deadlinePassed) ||
                 (filters.status === 'closed' && deadlinePassed);
             return matchSearch && matchTag && matchYear && matchStatus;
@@ -99,6 +99,82 @@ const AdminStudy = () => {
         return new Date(dateString).toLocaleDateString('ko-KR');
     };
 
+    // Handle Delete Study (Admin)
+    const handleDeleteStudy = async (studyId, studyName) => {
+        if (!window.confirm(`정말로 '${studyName}' 스터디를 삭제하시겠습니까?`)) return;
+        if (!window.confirm('이 작업은 되돌릴 수 없으며, 모든 멤버, 진행사항, 자료가 영구적으로 삭제됩니다. 정말 진행하시겠습니까?')) return;
+
+        try {
+            const token = localStorage.getItem('access_token');
+
+            // 1. Fetch full study details first (to get members, resources, progress IDs)
+            // The list view item doesn't have these details.
+            const detailRes = await fetch(`/api/v1/study/${studyId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!detailRes.ok) throw new Error('스터디 상세 정보를 불러올 수 없습니다.');
+            const studyDetail = await detailRes.json();
+
+            // 2. Cascade Delete Manually
+
+            // Delete Resources
+            if (studyDetail.resources && studyDetail.resources.length > 0) {
+                for (const resource of studyDetail.resources) {
+                    await fetch(`/api/v1/study/${studyId}/resources/${resource.id}`, {
+                        method: 'DELETE',
+                        headers: { Authorization: `Bearer ${token}` },
+                    });
+                }
+            }
+
+            // Delete Progress Reports
+            if (studyDetail.progress && studyDetail.progress.length > 0) {
+                for (const item of studyDetail.progress) {
+                    await fetch(`/api/v1/study/${studyId}/progress/${item.id}`, {
+                        method: 'DELETE',
+                        headers: { Authorization: `Bearer ${token}` },
+                    });
+                }
+            }
+
+            // Delete Members
+            const allMembers = studyDetail.members || [];
+            if (allMembers.length > 0) {
+                // Delete non-leaders first
+                for (const member of allMembers) {
+                    // Determine current user ID if needed, but admin has power over all.
+                    // The issue is simply FK constraints.
+                    // Let's just try to delete everyone.
+                    // We might need to handle the case where the admin themselves is a member?
+                    // If we delete ourselves, we might lose access? No, Admin role is Global.
+                    await fetch(`/api/v1/study/${studyId}/members/${member.user_id}`, {
+                        method: 'DELETE',
+                        headers: { Authorization: `Bearer ${token}` },
+                    });
+                }
+            }
+
+            // 3. Delete Study
+            const response = await fetch(`/api/v1/study/${studyId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || '삭제 실패');
+            }
+
+            alert('스터디가 성공적으로 삭제되었습니다.');
+            // Refresh list
+            fetchStudies();
+
+        } catch (error) {
+            console.error(error);
+            alert(`삭제 중 오류가 발생했습니다: ${error.message}`);
+        }
+    };
+
     if (loading) return <div className="p-8 text-center text-white">로딩 중...</div>;
     if (error) return <div className="p-8 text-center text-red-500">에러: {error}</div>;
 
@@ -111,7 +187,7 @@ const AdminStudy = () => {
                         <i className="fas fa-sync mr-2"></i>새로고침
                     </button>
                 </div>
-                
+
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     <div className="widget-card p-4 rounded-xl">
@@ -141,10 +217,10 @@ const AdminStudy = () => {
                     <div className="widget-card p-6 rounded-xl">
                         <h4 className="text-lg font-semibold text-white mb-4">태그별 스터디 분포</h4>
                         <div className="chart-container" style={{ height: '200px' }}>
-                            <Doughnut 
-                                data={chartData} 
-                                options={{ 
-                                    responsive: true, 
+                            <Doughnut
+                                data={chartData}
+                                options={{
+                                    responsive: true,
                                     maintainAspectRatio: false,
                                     plugins: {
                                         legend: {
@@ -152,7 +228,7 @@ const AdminStudy = () => {
                                             labels: { color: '#9ca3af' }
                                         }
                                     }
-                                }} 
+                                }}
                             />
                         </div>
                     </div>
@@ -163,18 +239,18 @@ const AdminStudy = () => {
                 <h3 className="text-2xl font-bold gradient-text mb-6">스터디 검색 및 필터</h3>
                 <div className="widget-card p-6 rounded-xl">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <input 
-                            type="text" 
-                            name="search" 
-                            placeholder="스터디명 검색" 
+                        <input
+                            type="text"
+                            name="search"
+                            placeholder="스터디명 검색"
                             value={filters.search}
-                            onChange={handleFilterChange} 
-                            className="form-input bg-gray-800 border-gray-600 text-white" 
+                            onChange={handleFilterChange}
+                            className="form-input bg-gray-800 border-gray-600 text-white"
                         />
-                        <select 
-                            name="tag" 
+                        <select
+                            name="tag"
                             value={filters.tag}
-                            onChange={handleFilterChange} 
+                            onChange={handleFilterChange}
                             className="form-input bg-gray-800 border-gray-600 text-white"
                         >
                             <option value="">전체 태그</option>
@@ -182,10 +258,10 @@ const AdminStudy = () => {
                                 <option key={tag} value={tag}>{tag} ({tagCounts[tag] || 0})</option>
                             ))}
                         </select>
-                        <select 
-                            name="year" 
+                        <select
+                            name="year"
                             value={filters.year}
-                            onChange={handleFilterChange} 
+                            onChange={handleFilterChange}
                             className="form-input bg-gray-800 border-gray-600 text-white"
                         >
                             <option value="">전체 연도</option>
@@ -193,10 +269,10 @@ const AdminStudy = () => {
                                 <option key={year} value={year}>{year}년</option>
                             ))}
                         </select>
-                        <select 
-                            name="status" 
+                        <select
+                            name="status"
                             value={filters.status}
-                            onChange={handleFilterChange} 
+                            onChange={handleFilterChange}
                             className="form-input bg-gray-800 border-gray-600 text-white"
                         >
                             <option value="">모집 상태</option>
@@ -223,6 +299,7 @@ const AdminStudy = () => {
                                     <th className="p-4 text-left text-gray-300">인원</th>
                                     <th className="p-4 text-left text-gray-300">마감일</th>
                                     <th className="p-4 text-left text-gray-300">상태</th>
+                                    <th className="p-4 text-left text-gray-300">관리</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -236,8 +313,8 @@ const AdminStudy = () => {
                                     filteredStudies.map(study => {
                                         const deadlinePassed = isDeadlinePassed(study.apply_deadline);
                                         return (
-                                            <tr 
-                                                key={study.id} 
+                                            <tr
+                                                key={study.id}
                                                 className="table-row border-b border-gray-700 hover:bg-gray-800 transition-colors cursor-pointer"
                                                 onClick={() => navigate(`/study/${study.id}`)}
                                             >
@@ -271,6 +348,15 @@ const AdminStudy = () => {
                                                     <span className={`status-badge ${deadlinePassed ? 'status-rejected' : 'status-accepted'}`}>
                                                         {deadlinePassed ? '마감' : '모집중'}
                                                     </span>
+                                                </td>
+                                                <td className="p-4" onClick={(e) => e.stopPropagation()}>
+                                                    <button
+                                                        onClick={() => handleDeleteStudy(study.id, study.study_name)}
+                                                        className="text-red-500 hover:text-red-400 p-2 rounded hover:bg-red-500/10 transition-colors"
+                                                        title="스터디 삭제"
+                                                    >
+                                                        <i className="fas fa-trash"></i>
+                                                    </button>
                                                 </td>
                                             </tr>
                                         );

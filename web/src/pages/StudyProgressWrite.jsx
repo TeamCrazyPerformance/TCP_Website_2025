@@ -149,7 +149,7 @@ function StudyProgressWrite() {
             title,
             content,
             weekNo: parseInt(weekNo),
-            progressDate: date,
+            progressDate: date.replace(/\./g, '-'),
             resourceIds: uploadedFiles.map(f => f.id),
         };
 
