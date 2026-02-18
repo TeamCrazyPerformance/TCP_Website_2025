@@ -276,24 +276,7 @@ export default function StudyManagement() {
         }
     };
 
-    // Delete study (Admin only)
-    const handleDeleteStudy = async () => {
-        if (!window.confirm('정말로 이 스터디를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
-        try {
-            const response = await fetch(`/api/v1/study/${id}`, {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || '삭제 실패');
-            }
-            alert('스터디가 삭제되었습니다.');
-            navigate('/study');
-        } catch (error) {
-            alert(error.message || '스터디 삭제에 실패했습니다.');
-        }
-    };
+
 
     if (isLoading) {
         return <div className="container mx-auto px-4 py-24 text-center">로딩 중...</div>;
@@ -339,14 +322,7 @@ export default function StudyManagement() {
                                     <i className="fas fa-sign-out-alt mr-2"></i>스터디 탈퇴
                                 </button>
                             )}
-                            {isAdmin && (
-                                <button
-                                    onClick={handleDeleteStudy}
-                                    className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
-                                >
-                                    <i className="fas fa-trash mr-2"></i>스터디 삭제
-                                </button>
-                            )}
+
                         </div>
                     </div>
                 </div>

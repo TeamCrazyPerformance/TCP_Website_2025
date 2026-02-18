@@ -2,9 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, Outlet, useNavigate } from 'react-router-dom';
 import MyPageSidebar from './MyPageSidebar';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faBars, faBell } from '@fortawesome/free-solid-svg-icons';
+import { faBars } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../context/AuthContext';
-import defaultProfileImage from '../logo.svg';
 
 function MyPageLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -16,7 +15,6 @@ function MyPageLayout() {
     () => user?.name || user?.username || '사용자',
     [user]
   );
-  const avatarInitial = displayName ? displayName[0].toUpperCase() : 'U';
 
   const toggleSidebar = () => {
     setIsSidebarOpen((prev) => !prev);
@@ -75,48 +73,29 @@ function MyPageLayout() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="flex-shrink-0 bg-black bg-opacity-90 backdrop-blur-md border-b border-gray-800">
           <div className="container mx-auto px-4">
-            <div className="flex items-center justify-between h-16">
+            <div className="flex items-center h-16 gap-2 sm:gap-3">
               <button
                 id="sidebar-toggle"
-                className="md:hidden text-white"
+                type="button"
+                className="md:hidden text-white w-9 h-9 sm:w-10 sm:h-10 rounded-lg border border-gray-700 hover:border-gray-500 flex items-center justify-center shrink-0"
                 onClick={toggleSidebar}
               >
-                <FontAwesomeIcon icon={faBars} className="text-xl" />
+                <FontAwesomeIcon icon={faBars} className="text-base sm:text-lg" />
               </button>
-              <h2 className="orbitron text-2xl font-bold text-white hidden md:block">
-                {getPageTitle()}
-              </h2>
               <h2
-                className={`orbitron text-xl font-bold text-white md:hidden ${isSidebarOpen ? 'hidden' : 'block'}`}
+                className={`orbitron text-base sm:text-lg md:text-2xl font-bold text-white truncate min-w-0 ${isSidebarOpen ? 'hidden md:block' : 'block'} md:mr-auto`}
+                title={getPageTitle()}
               >
                 {getPageTitle()}
               </h2>
-              <div className="flex items-center space-x-4 ml-auto">
-                <div className="flex items-center space-x-2">
-                  {user?.profile_image ? (
-                    <img
-                      src={user.profile_image}
-                      alt={displayName}
-                      className="w-8 h-8 rounded-full object-cover"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = defaultProfileImage;
-                        e.target.className = "w-8 h-8 rounded-full object-contain bg-white p-1";
-                      }}
-                    />
-                  ) : (
-                    <img
-                      src={defaultProfileImage}
-                      alt="Profile"
-                      className="w-8 h-8 rounded-full object-contain bg-white p-1"
-                    />
-                  )}
-                  <span className="text-sm font-medium">{displayName}</span>
+              <div className="flex items-center gap-2 sm:gap-3 ml-auto min-w-0">
+                <div className="min-w-0 max-w-[9rem] sm:max-w-[12rem] md:max-w-[16rem]">
+                  <span className="text-sm font-medium truncate block">{displayName}</span>
                 </div>
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="px-4 py-2 text-sm border border-gray-600 rounded-lg hover:border-gray-400 transition-colors"
+                  className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-600 rounded-lg hover:border-gray-400 transition-colors whitespace-nowrap shrink-0"
                 >
                   로그아웃
                 </button>

@@ -1,7 +1,6 @@
 // src/components/AdminLayout.jsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
-import defaultProfileImage from '../logo.svg';
 import AdminSidebar from './AdminSidebar';
 
 function AdminLayout() {
@@ -98,60 +97,50 @@ function AdminLayout() {
 
   return (
     <div className="flex min-h-screen">
-      <div
-        className={`fixed inset-y-0 left-0 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out z-50`}
-      >
-        <AdminSidebar />
+      <div className="fixed inset-y-0 left-0 md:relative z-50">
+        <AdminSidebar isOpen={isSidebarOpen} />
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="flex-shrink-0 bg-black bg-opacity-90 backdrop-blur-md border-b border-gray-800">
           <div className="container mx-auto px-4">
-            <div className="flex items-center justify-between h-16">
+            <div className="flex items-center h-16 gap-2 sm:gap-3">
               <button
                 id="sidebar-toggle"
-                className="md:hidden text-white"
+                type="button"
+                className="md:hidden text-white w-9 h-9 sm:w-10 sm:h-10 rounded-lg border border-gray-700 hover:border-gray-500 flex items-center justify-center shrink-0"
                 onClick={toggleSidebar}
               >
-                <i className="fas fa-bars text-xl"></i>
+                <i className="fas fa-bars text-base sm:text-lg"></i>
               </button>
-              <h2 className="orbitron text-2xl font-bold text-white hidden md:block">
-                {getPageTitle()}
-              </h2>
               <h2
-                className={`orbitron text-xl font-bold text-white md:hidden ${isSidebarOpen ? 'hidden' : 'block'}`}
+                className={`orbitron text-base sm:text-lg md:text-2xl font-bold text-white truncate min-w-0 ${isSidebarOpen ? 'hidden md:block' : 'block'} md:mr-auto`}
+                title={getPageTitle()}
               >
                 {getPageTitle()}
               </h2>
-              <div className="flex items-center space-x-4 ml-auto">
+              <div className="flex items-center gap-2 sm:gap-3 ml-auto min-w-0">
                 <button
+                  type="button"
                   onClick={() => navigate('/')}
-                  className="text-gray-400 hover:text-white mr-4"
+                  className="text-gray-400 hover:text-white shrink-0 p-1"
                   title="Main Page"
                 >
                   <i className="fas fa-home text-lg"></i>
                 </button>
-                <div className="flex items-center space-x-2">
-                  <img
-                    src={user?.profile_image || defaultProfileImage}
-                    alt="Admin"
-                    className="w-8 h-8 rounded-full object-cover"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = defaultProfileImage;
-                    }}
-                  />
-                  <span className="text-sm font-medium">{user?.name || 'Admin'}</span>
+                <div className="min-w-0 max-w-[9rem] sm:max-w-[12rem] md:max-w-[16rem]">
+                  <span className="text-sm font-medium truncate block">{user?.name || 'Admin'}</span>
                 </div>
                 <button
+                  type="button"
                   onClick={() => {
                     localStorage.removeItem('access_token');
                     localStorage.removeItem('auth_user');
                     navigate('/login');
                   }}
-                  className="px-4 py-2 text-sm border border-gray-600 rounded-lg hover:border-gray-400 transition-colors"
+                  className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-600 rounded-lg hover:border-gray-400 transition-colors whitespace-nowrap shrink-0"
                 >
-                  Logout
+                  로그아웃
                 </button>
               </div>
             </div>
