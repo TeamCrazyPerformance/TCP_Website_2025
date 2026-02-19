@@ -31,6 +31,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
+import EasterEgg from './pages/EasterEgg';
 
 // 마이페이지 관련 컴포넌트 임포트
 import MyPageLayout from './components/MyPageLayout';
@@ -104,6 +105,7 @@ function AppContent() {
         <Route path="/register" element={<Register />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
+        <Route path="/easter-egg" element={<EasterEgg />} />
 
         {/* 마이페이지 중첩 라우트 */}
         <Route path="/mypage" element={<MyPageLayout />}>
