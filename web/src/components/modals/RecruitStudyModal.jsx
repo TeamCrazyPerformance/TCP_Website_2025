@@ -59,18 +59,23 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
         try {
             setIsSubmitting(true);
 
+            const authUser = JSON.parse(localStorage.getItem('auth_user'));
+            if (!authUser?.id) {
+                alert('로그인 정보를 찾을 수 없습니다. 다시 로그인해주세요.');
+                return;
+            }
+
             const payload = {
                 study_name: form.title,
                 start_year: Number(form.startYear),
                 study_description: form.description,
-                apply_deadline: form.deadline,
+                apply_deadline: form.deadline.replace(/\./g, '-'),
                 recruit_count: Number(form.recruitCount),
                 period: `${form.periodStart} ~ ${form.periodEnd}`,
                 way: form.way,
                 place: form.place,
                 tag: form.tags,
-                leader_id: JSON.parse(localStorage.getItem('auth_user')).id,
-                leader_name: JSON.parse(localStorage.getItem('auth_user')).name,
+                leader_id: authUser.id,
             };
 
             const newStudy = await apiPost('/api/v1/study', payload, {
@@ -78,18 +83,13 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
             });
 
             if (onAddStudy) {
-                // Map response to match Study.jsx expectations if needed, 
-                // but Study.jsx refetches or we can just pass a simplified object to update UI immediately if we want.
-                // For now, let's assuming fetching is better or we just alert and close.
-                // Actually, Study.jsx maps the data. Let's just pass the raw or mapped data.
-                // Study.jsx expects: id, year, title, period, description, tags
                 const mapped = {
                     id: newStudy.id,
-                    year: newStudy.start_year,
-                    title: newStudy.study_name,
-                    period: `${newStudy.start_year}년`, // The list view uses this format
-                    description: newStudy.study_description,
-                    tags: ['스터디'], // Default tag as per Study.jsx
+                    year: Number(form.startYear),
+                    title: form.title,
+                    period: `${form.startYear}년`,
+                    description: form.description,
+                    tags: ['스터디'],
                 };
                 onAddStudy(mapped);
             }

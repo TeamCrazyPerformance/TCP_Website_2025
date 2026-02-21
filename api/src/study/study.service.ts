@@ -55,52 +55,22 @@ export class StudyService {
    * @returns A promise that resolves to an array of study summary DTOs.
    */
   async findAll(year?: number): Promise<StudyResponseDto[]> {
-    // Define the options for the database query.
     const findOptions = {
-      // 'relations' tells TypeORM to also load the related entities.
-      // Here, we are asking for the 'studyMembers' of each study,
-      // and for each 'studyMember', we also want the associated 'user'.
-      // This allows us to get all the data we need in a single query.
-      relations: ['studyMembers', 'studyMembers.user'],
       where: {},
     };
 
-    // If a 'year' was provided as an argument...
     if (year) {
-      // ...add a condition to the 'where' clause to filter by that start year.
       findOptions.where = { start_year: year };
     }
 
-    // Execute the query to find all studies that match the findOptions.
-    // The 'studies' variable will be an array of Study entities.
     const studies = await this.studyRepository.find(findOptions);
 
-    // Transform (map) the array of Study entities into an array of StudyResponseDto objects.
-    return studies.map((study) => {
-      // For each study, search its 'studyMembers' array to find the entry where role is LEADER.
-      const leaderMember = study.studyMembers.find(
-        (member) => member.role === StudyMemberRole.LEADER && member.user,
-      );
-
-      // Safely get the leader's name. If no leader was found or user is deleted, this will be null.
-      return {
-        id: study.id,
-        study_name: study.study_name,
-        start_year: study.start_year,
-        study_description: study.study_description,
-        tag: study.tag,
-        recruit_count: study.recruit_count,
-        period: study.period,
-        apply_deadline: study.apply_deadline,
-        place: study.place,
-        way: study.way,
-        leader_name: leaderMember?.user?.name ?? null,
-        // The total member count is the total number of studyMembers associated with the study, excluding PENDING members.
-        members_count: study.studyMembers.filter(
-          (member) => member.role !== StudyMemberRole.PENDING,
-        ).length,
-      };
-    });
+    return studies.map((study) => ({
+      id: study.id,
+      study_name: study.study_name,
+      start_year: study.start_year,
+      study_description: study.study_description,
+    }));
   }
 
   /**

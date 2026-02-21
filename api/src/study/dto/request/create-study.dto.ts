@@ -23,8 +23,8 @@ export class CreateStudyDto {
 
   @IsString()
   @IsOptional()
-  @Matches(/^\d{4}\.\d{2}-\d{4}\.\d{2}$/, {
-    message: 'period는 "YYYY.MM-YYYY.MM" 형식이어야 합니다 (예: 2025.01-2025.12)',
+  @Matches(/^\d{4}\.\d{2}\.\d{2} ~ \d{4}\.\d{2}\.\d{2}$/, {
+    message: 'period는 "YYYY.MM.DD ~ YYYY.MM.DD" 형식이어야 합니다 (예: 2025.01.01 ~ 2025.12.31)',
   })
   period?: string;
 
