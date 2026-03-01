@@ -376,7 +376,7 @@ export default function StudyDetail() {
               <h1 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-2 text-left">
                 {study.title}
               </h1>
-              <p className="text-lg text-gray-300 mb-4 text-left">{study.description}</p>
+              <p className="text-lg text-gray-300 mb-4 text-left whitespace-pre-wrap">{study.description}</p>
               <div className="flex flex-wrap gap-2">
                 {study.tags.map((tag, index) => {
                   // Simple logic to assign colors based on tag name or index
