@@ -146,7 +146,6 @@ describe('StudyController', () => {
         study_name: 'New Study',
         start_year: 2025,
         study_description: 'New Description',
-        leader_id: 'test-uuid-1',
         apply_deadline: '2025-12-31',
       };
       const mockResponse = { success: true, id: 1 };

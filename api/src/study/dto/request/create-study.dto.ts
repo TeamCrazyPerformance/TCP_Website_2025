@@ -39,8 +39,4 @@ export class CreateStudyDto {
   @IsString()
   @IsOptional()
   way?: string;
-
-  @IsUUID()
-  @IsNotEmpty()
-  leader_id: string;
 }

@@ -371,7 +371,6 @@ describe('Study Integration Tests', () => {
         study_name: 'New Study',
         start_year: 2025,
         study_description: 'New study description',
-        leader_id: 'test-uuid-1',
         apply_deadline: '2025-12-31',
       };
 

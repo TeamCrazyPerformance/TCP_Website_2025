@@ -75,7 +75,6 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                 way: form.way,
                 place: form.place,
                 tag: form.tags,
-                leader_id: authUser.id,
             };
 
             const newStudy = await apiPost('/api/v1/study', payload, {

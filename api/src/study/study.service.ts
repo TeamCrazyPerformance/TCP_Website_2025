@@ -145,14 +145,15 @@ export class StudyService {
    * @returns A promise resolving to an object with the success status and the new study's ID.
    */
   async create(
+    userId: string,
     createStudyDto: CreateStudyDto,
   ): Promise<CreateStudyResponseDto> {
-    const { leader_id, ...studyData } = createStudyDto;
+    const studyData = createStudyDto;
 
     // 1. Validate that the user designated as leader exists.
-    const leader = await this.userRepository.findOneBy({ id: leader_id });
+    const leader = await this.userRepository.findOneBy({ id: userId });
     if (!leader) {
-      throw new BadRequestException(`Leader with ID "${leader_id}" not found.`);
+      throw new BadRequestException(`Leader with ID "${userId}" not found.`);
     }
 
     // 2. Create and save the main Study entity.
