@@ -91,9 +91,11 @@ export class StudyController {
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(UserRole.ADMIN)
   async create(
+    @Req() req: any,
     @Body() createStudyDto: CreateStudyDto,
   ): Promise<CreateStudyResponseDto> {
-    return this.studyService.create(createStudyDto);
+    const userId = req.user.userId;
+    return this.studyService.create(userId, createStudyDto);
   }
 
   /**

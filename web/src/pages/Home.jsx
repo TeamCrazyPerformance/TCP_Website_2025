@@ -137,17 +137,11 @@ function Home() {
                 >
                   <i className="fas fa-times"></i>
                 </button>
-                <div className="w-full h-full overflow-auto custom-scrollbar rounded-t-xl bg-black flex">
+                <div className="w-full h-full overflow-hidden rounded-t-xl bg-black flex items-center justify-center p-2 sm:p-4">
                   <img
                     src={modalData.image}
                     alt={modalData.title}
-                    className="block m-auto"
-                    style={{
-                      maxWidth: 'none',
-                      maxHeight: 'none',
-                      width: 'auto',
-                      height: 'auto'
-                    }}
+                    className="max-w-full max-h-full w-auto h-auto object-contain rounded-lg"
                   />
                 </div>
               </div>

@@ -26,6 +26,10 @@ export class PublicUserDto {
 
   @IsString()
   @IsOptional()
+  current_company?: string | null;
+
+  @IsString()
+  @IsOptional()
   github_username?: string;
 
   @IsUrl()

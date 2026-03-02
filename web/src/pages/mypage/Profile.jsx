@@ -147,7 +147,7 @@ function Profile() {
         username: data.username || '',
         major: data.major || '',
         studentId: data.student_number || '',
-        role: data.current_company || '',
+        currentCompany: data.current_company || '',
         email: data.email || '',
         bio: data.self_description || '',
         techStack: data.tech_stack || [],
@@ -337,7 +337,7 @@ function Profile() {
         github_username: profile.github.replace('https://github.com/', '').replace('github.com/', ''),
         baekjoon_username: profile.baekjoon, // Added
         portfolio_link: profile.portfolio,
-        current_company: profile.role,
+        current_company: profile.currentCompany,
         join_year: profile.joinYear ? parseInt(profile.joinYear, 10) : null, // Added
         birth_date: profile.birthDate ? profile.birthDate : null, // Added
         gender: profile.gender || null, // Added, convert empty string to null
@@ -430,7 +430,7 @@ function Profile() {
                 <p className="text-blue-300 mb-2">
                   {profile.major} {profile.studentId}
                 </p>
-                <p className="text-sm text-gray-400">{profile.role}</p>
+                <p className="text-sm text-gray-400">{profile.currentCompany}</p>
               </div>
               <div className="flex justify-center space-x-4">
                 <a
@@ -578,8 +578,8 @@ function Profile() {
                   <input
                     type="text"
                     className="editable form-input"
-                    name="role"
-                    value={profile.role}
+                    name="currentCompany"
+                    value={profile.currentCompany}
                     onChange={handleProfileChange}
                     placeholder="예: 삼성전자, 네이버, 프리랜서"
                   />

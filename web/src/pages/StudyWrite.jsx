@@ -61,7 +61,6 @@ export default function StudyWrite() {
       study_name: study.title,
       start_year: Number(study.startYear),
       study_description: study.content,
-      leader_id: parsedUser.id,
       apply_deadline: study.deadline,
       recruit_count: Number(study.members),
       period: study.period,
