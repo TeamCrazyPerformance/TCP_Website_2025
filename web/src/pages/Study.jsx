@@ -13,13 +13,13 @@ function Study() {
   const [errorMessage, setErrorMessage] = useState('');
   const [isRecruitModalOpen, setIsRecruitModalOpen] = useState(false);
 
-  // Check if current user is admin
-  const isAdmin = useMemo(() => {
+  // Check if current user is logged in (MEMBER or ADMIN can create studies)
+  const isLoggedIn = useMemo(() => {
     const user = localStorage.getItem('auth_user');
     if (!user) return false;
     try {
       const parsed = JSON.parse(user);
-      return parsed.role === 'ADMIN';
+      return parsed.role === 'MEMBER' || parsed.role === 'ADMIN';
     } catch {
       return false;
     }
@@ -206,7 +206,7 @@ function Study() {
               스터디 목록
             </h2>
             <div className="flex items-center gap-4">
-              {isAdmin && (
+              {isLoggedIn && (
                 <button
                   onClick={handleOpenRecruit}
                   className="cta-button px-6 py-2 rounded-lg text-sm font-bold text-white"

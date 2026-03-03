@@ -89,7 +89,7 @@ export class StudyController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.MEMBER, UserRole.ADMIN)
   async create(
     @Req() req: any,
     @Body() createStudyDto: CreateStudyDto,

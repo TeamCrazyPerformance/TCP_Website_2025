@@ -29,7 +29,7 @@ export class StudyMember {
     @JoinColumn({ name: 'user_id' })
     user: User;
 
-    @ManyToOne(() => Study, (study) => study.studyMembers)
+    @ManyToOne(() => Study, (study) => study.studyMembers, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'study_id' })
     study: Study;
 }

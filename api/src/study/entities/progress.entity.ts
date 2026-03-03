@@ -34,7 +34,7 @@ export class Progress {
   @UpdateDateColumn()
   updated_at: Date;
 
-  @ManyToOne(() => Study, (study) => study.progress)
+  @ManyToOne(() => Study, (study) => study.progress, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'study_id' })
   study_id: Study;
 
