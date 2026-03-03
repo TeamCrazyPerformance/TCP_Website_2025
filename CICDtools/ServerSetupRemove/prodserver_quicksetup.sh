@@ -151,10 +151,33 @@ echo
 ### =========================
 ### 5. 초기화 작업
 ### =========================
-# 1. 테이블 생성
-sudo docker compose exec api npm run migration:run
-# 2. 관리자 계정 생성
-sudo docker compose exec api npm run seed
+# docker-compose.yml의 api command에서도 migration을 실행하지만,
+# 컨테이너 최초 시작 시 DB가 준비되기 전에 실패할 수 있으므로 여기서도 실행합니다.
+
+# API 컨테이너가 healthy 상태가 될 때까지 대기
+echo "⏳ Waiting for API container to be healthy..."
+RETRIES=0
+MAX_RETRIES=30
+until sudo docker compose exec api wget -qO- http://127.0.0.1:3000/health/live > /dev/null 2>&1; do
+    RETRIES=$((RETRIES + 1))
+    if [ "$RETRIES" -ge "$MAX_RETRIES" ]; then
+        echo "⚠️  API container not healthy after ${MAX_RETRIES} attempts, proceeding anyway..."
+        break
+    fi
+    echo "   Attempt $RETRIES/$MAX_RETRIES - waiting 5s..."
+    sleep 5
+done
+echo "✅ API container is ready"
+
+# 1. 테이블 생성 (마이그레이션)
+echo "📦 Running database migrations..."
+sudo docker compose exec api npx typeorm migration:run -d dist/data-source.js
+echo "✅ Migrations completed"
+
+# 2. 관리자 계정 생성 (시드)
+echo "🌱 Running database seed..."
+sudo docker compose exec api node dist/seed.js
+echo "✅ Seed completed"
 
 
 ### =========================
