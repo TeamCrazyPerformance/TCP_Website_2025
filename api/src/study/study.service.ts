@@ -151,9 +151,7 @@ export class StudyService {
     const studyData = createStudyDto;
 
     // 1. Validate that the user designated as leader exists.
-    console.log('[STUDY CREATE DEBUG] Received userId from JWT:', userId);
     const leader = await this.userRepository.findOneBy({ id: userId });
-    console.log('[STUDY CREATE DEBUG] Found leader:', leader ? { id: leader.id, name: leader.name, username: leader.username } : 'NOT FOUND');
     if (!leader) {
       throw new BadRequestException(`Leader with ID "${userId}" not found.`);
     }
