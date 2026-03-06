@@ -232,13 +232,13 @@ function Recruitment() {
       awards: cleanedAwards.map((award) => ({
         award_name: award.name,
         award_institution: award.institution,
-        award_date: award.date,
+        award_date: award.date.replace(/\./g, '-'),
         award_description: award.description,
       })),
       projects: cleanedProjects.map((project) => ({
         project_name: project.name,
         project_contribution: project.contribution,
-        project_date: project.date.split('~')[0]?.trim() || project.date,
+        project_date: (project.date.split('~')[0]?.trim() || project.date).replace(/\./g, '-'),
         project_description: project.description,
         project_tech_stack: project.techStack,
       })),
