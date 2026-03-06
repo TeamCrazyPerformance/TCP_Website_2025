@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, LessThan } from 'typeorm';
+import { Repository, IsNull, LessThan, QueryRunner, In } from 'typeorm';
 import { Study } from './entities/study.entity';
 import { User } from '../members/entities/user.entity';
 import { UserRole } from '../members/entities/enums/user-role.enum';
@@ -432,12 +432,14 @@ export class StudyService {
       content: p.content,
       weekNo: p.week_no,
       progressDate: p.progress_date,
-      resources: p.resources ? p.resources.map(r => ({
-        id: r.id,
-        name: r.name,
-        format: r.format,
-        dir_path: r.dir_path,
-      })) : [],
+      resources: p.resources ? p.resources
+        .filter(r => r.deleted_at === null || r.deleted_at === undefined)
+        .map(r => ({
+          id: r.id,
+          name: r.name,
+          format: r.format,
+          dir_path: r.dir_path,
+        })) : [],
     }));
   }
 
@@ -473,10 +475,13 @@ export class StudyService {
     // 4. If resourceIds are provided, link them to this progress
     if (resourceIds && resourceIds.length > 0) {
       // Find resources that belong to this study and match the IDs
-      const resourcesToUpdate = await this.resourceRepository.findByIds(resourceIds);
+      const resourcesToUpdate = await this.resourceRepository.find({
+        where: { id: In(resourceIds) },
+        relations: ['study_id']
+      });
 
       // Filter resources to ensure they belong to the correct study (security check)
-      const validResources = resourcesToUpdate.filter(r => r.study_id.id === studyId);
+      const validResources = resourcesToUpdate.filter(r => r.study_id?.id === studyId);
 
       if (validResources.length > 0) {
         // Update each resource to set the progress field
@@ -547,8 +552,11 @@ export class StudyService {
     // Let's assume this just adds/links new resources for now, or use a "set" approach?
     // Given the simple form, let's treat it as "update these resources to point to this progress".
     if (resourceIds && resourceIds.length > 0) {
-      const resourcesToUpdate = await this.resourceRepository.findByIds(resourceIds);
-      const validResources = resourcesToUpdate.filter(r => r.study_id.id === studyId);
+      const resourcesToUpdate = await this.resourceRepository.find({
+        where: { id: In(resourceIds) },
+        relations: ['study_id']
+      });
+      const validResources = resourcesToUpdate.filter(r => r.study_id?.id === studyId);
 
       for (const resource of validResources) {
         resource.progress = progressEntry;
