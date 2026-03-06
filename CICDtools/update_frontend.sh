@@ -9,7 +9,7 @@ set -e
 #   Since Nginx serves static files from a volume, no container restart is needed.
 # ==============================================================================
 
-PROJECT_ROOT="$(dirname "$0")/.."
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WEB_DIR="$PROJECT_ROOT/web"
 REPO_URL="https://github.com/TeamCrazyPerformance/TCP_Website_2025"
 
