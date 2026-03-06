@@ -39,4 +39,8 @@ export class CreateStudyDto {
   @IsString()
   @IsOptional()
   way?: string;
+
+  @IsString()
+  @IsOptional()
+  cycle?: string;
 }

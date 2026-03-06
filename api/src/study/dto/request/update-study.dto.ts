@@ -40,4 +40,8 @@ export class UpdateStudyDto {
     @IsString()
     @IsOptional()
     way?: string;
+
+    @IsString()
+    @IsOptional()
+    cycle?: string;
 }

@@ -108,6 +108,7 @@ export class StudyService {
       apply_deadline: study.apply_deadline,
       place: study.place,
       way: study.way,
+      cycle: study.cycle,
       leader: leaderMember
         ? {
           user_id: leaderMember.user.id,
@@ -123,7 +124,7 @@ export class StudyService {
           ? `/profiles/${member.user.profile_image}`
           : member.user.profile_image,
       })),
-      resources: study.resources
+      resources: (study.resources || [])
         .filter((r) => r.deleted_at === null)
         .map((r) => ({
           id: r.id,
@@ -131,7 +132,7 @@ export class StudyService {
           format: r.format,
           dir_path: r.dir_path,
         })),
-      progress: study.progress.map((p) => ({
+      progress: (study.progress || []).map((p) => ({
         id: p.id,
         title: p.title,
         content: p.content,

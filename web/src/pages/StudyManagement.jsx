@@ -75,6 +75,7 @@ export default function StudyManagement() {
                     apply_deadline: data.apply_deadline?.split('T')[0] || '',
                     place: data.place || '',
                     way: data.way || '',
+                    cycle: data.cycle || '',
                 });
 
                 // Separate PENDING, MEMBER, LEADER_NOMINEE
@@ -406,6 +407,16 @@ export default function StudyManagement() {
                                             />
                                         </div>
                                         <div>
+                                            <label className="block text-gray-300 mb-2">주기</label>
+                                            <input
+                                                type="text"
+                                                value={editForm.cycle}
+                                                onChange={(e) => setEditForm({ ...editForm, cycle: e.target.value })}
+                                                className="w-full bg-gray-800 rounded-lg py-2 px-4 text-white"
+                                                placeholder="예: 주 1회, 격주"
+                                            />
+                                        </div>
+                                        <div>
                                             <label className="block text-gray-300 mb-2">장소</label>
                                             <input
                                                 type="text"
@@ -454,6 +465,7 @@ export default function StudyManagement() {
                                     <p><strong className="text-white">모집 인원:</strong> {study?.recruit_count}명</p>
                                     <p><strong className="text-white">기간:</strong> {study?.period || '-'}</p>
                                     <p><strong className="text-white">진행 방식:</strong> {study?.way || '-'}</p>
+                                    <p><strong className="text-white">주기:</strong> {study?.cycle || '-'}</p>
                                     <p><strong className="text-white">장소:</strong> {study?.place || '-'}</p>
                                     <p><strong className="text-white">모집 마감일:</strong> {study?.apply_deadline?.split('T')[0] || '-'}</p>
                                     <p><strong className="text-white">태그:</strong> {study?.tag || '-'}</p>
