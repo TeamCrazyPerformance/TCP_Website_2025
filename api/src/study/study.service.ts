@@ -910,6 +910,17 @@ export class StudyService {
     studyId: number,
     userId: string,
   ): Promise<SuccessResponseDto> {
+    // Check if there is already a pending nominee
+    const existingNominee = await this.studyMemberRepository.findOne({
+      where: { study: { id: studyId }, role: StudyMemberRole.NOMINEE },
+      relations: ['user'],
+    });
+    if (existingNominee) {
+      throw new BadRequestException(
+        `이미 스터디장 후보(${existingNominee.user?.name || '알 수 없음'})가 대기 중입니다. 기존 지명이 수락 또는 거절된 후 다시 시도해주세요.`,
+      );
+    }
+
     const studyMember = await this.studyMemberRepository.findOne({
       where: { study: { id: studyId }, user: { id: userId } },
     });
@@ -951,6 +962,7 @@ export class StudyService {
       throw new BadRequestException('You are not nominated for leadership');
     }
 
+    // Promote the nominee to LEADER (multiple leaders allowed)
     studyMember.role = StudyMemberRole.LEADER;
     await this.studyMemberRepository.save(studyMember);
 

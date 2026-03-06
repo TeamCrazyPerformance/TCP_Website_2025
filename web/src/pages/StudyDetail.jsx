@@ -19,6 +19,7 @@ export default function StudyDetail() {
 
   // userRole is dynamically determined based on API response
   const [userRole, setUserRole] = useState('guest'); // 'guest', 'member', 'leader'
+  const [isNominee, setIsNominee] = useState(false); // Whether user is a NOMINEE
 
   // Progress form state
   const [showProgressForm, setShowProgressForm] = useState(false);
@@ -69,6 +70,9 @@ export default function StudyDetail() {
           // Check members array
           else if (data.members?.some((m) => m.user_id === currentUser.id && m.role === 'LEADER')) {
             role = 'leader';
+          } else if (data.members?.some((m) => m.user_id === currentUser.id && m.role === 'NOMINEE')) {
+            role = 'member';
+            setIsNominee(true);
           } else if (data.members?.some((m) => m.user_id === currentUser.id && m.role === 'MEMBER')) {
             role = 'member';
           }
@@ -83,7 +87,7 @@ export default function StudyDetail() {
           location: data.place || '정보 없음',
           recruitCount: data.recruit_count || 0,
           recruitCount: data.recruit_count || 0,
-          memberCount: (data.members || []).filter(m => m.role === 'MEMBER' || m.role === 'LEADER').length,
+          memberCount: (data.members || []).filter(m => m.role === 'MEMBER' || m.role === 'LEADER' || m.role === 'NOMINEE').length,
           description: data.study_description,
           tags: data.tag ? data.tag.split(',').map((t) => t.trim()) : ['스터디'],
           leader: data.leader ? {
@@ -92,12 +96,12 @@ export default function StudyDetail() {
             quote: data.leader.intro || '함께 성장하는 스터디를 만들어갑시다!', // Fallback quote if not in API
           } : null,
         };
-        // Filter out PENDING members, show MEMBER and LEADER
-        const approvedMembers = (data.members || []).filter(m => m.role === 'MEMBER' || m.role === 'LEADER');
+        // Filter out PENDING members, show MEMBER, LEADER, and NOMINEE
+        const approvedMembers = (data.members || []).filter(m => m.role === 'MEMBER' || m.role === 'LEADER' || m.role === 'NOMINEE');
         const mappedMembers = approvedMembers.map((member) => ({
           id: member.user_id,
           name: member.user?.name || member.name, // Access user relation if available
-          role: member.role === 'LEADER' ? '스터디장' : '스터디원',
+          role: member.role === 'LEADER' ? '스터디장' : member.role === 'NOMINEE' ? '스터디장 후보' : '스터디원',
           avatar: member.user?.profile_image || member.profile_image || 'https://via.placeholder.com/40',
           major: member.user?.major || '전공 미입력',
           techStack: member.user?.tech_stack || [],
@@ -212,6 +216,28 @@ export default function StudyDetail() {
       window.location.reload();
     } catch (error) {
       alert(error.message || '가입 신청에 실패했습니다.');
+    }
+  };
+
+  const handleAcceptLeadership = async () => {
+    if (!window.confirm('스터디장 지명을 수락하시겠습니까?')) return;
+    try {
+      await apiPost(`/api/v1/study/${id}/accept-leadership`);
+      alert('스터디장 지명을 수락했습니다. 이제 스터디장입니다!');
+      window.location.reload();
+    } catch (error) {
+      alert(error.message || '수락에 실패했습니다.');
+    }
+  };
+
+  const handleDeclineLeadership = async () => {
+    if (!window.confirm('스터디장 지명을 거절하시겠습니까?')) return;
+    try {
+      await apiPost(`/api/v1/study/${id}/decline-leadership`);
+      alert('스터디장 지명을 거절했습니다.');
+      window.location.reload();
+    } catch (error) {
+      alert(error.message || '거절에 실패했습니다.');
     }
   };
 
@@ -336,11 +362,29 @@ export default function StudyDetail() {
     const isAdmin = currentUser?.role === 'ADMIN';
 
     return (
-      <div className="flex gap-2 items-center">
+      <div className="flex gap-2 items-center flex-wrap">
         {(userRole === 'leader' || isAdmin) && (
           <Link to={`/study/${id}/manage`} className="cta-button px-4 py-2 rounded-lg font-bold text-white hover:text-black transition-colors inline-flex items-center">
             <i className="fas fa-cog mr-2"></i>스터디 관리
           </Link>
+        )}
+
+        {/* Nominee Accept/Decline Buttons */}
+        {isNominee && (
+          <>
+            <button
+              onClick={handleAcceptLeadership}
+              className="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded-lg font-bold text-black transition-colors flex items-center"
+            >
+              <i className="fas fa-crown mr-2"></i> 스터디장 수락
+            </button>
+            <button
+              onClick={handleDeclineLeadership}
+              className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg font-bold text-white transition-colors flex items-center"
+            >
+              <i className="fas fa-times mr-2"></i> 거절
+            </button>
+          </>
         )}
 
         {/* Guest Join Button */}
