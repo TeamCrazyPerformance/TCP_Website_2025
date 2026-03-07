@@ -222,7 +222,7 @@ export class StudyController {
    */
   @Get(':id/progress')
   @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
-  @StudyRoles(StudyMemberRole.LEADER, StudyMemberRole.MEMBER)
+  @StudyRoles(StudyMemberRole.LEADER, StudyMemberRole.MEMBER, StudyMemberRole.NOMINEE)
   async findProgressByStudyId(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<StudyProgressResponseDto[]> {
@@ -288,7 +288,7 @@ export class StudyController {
    */
   @Get(':id/resources')
   @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
-  @StudyRoles(StudyMemberRole.LEADER, StudyMemberRole.MEMBER)
+  @StudyRoles(StudyMemberRole.LEADER, StudyMemberRole.MEMBER, StudyMemberRole.NOMINEE)
   async findResourcesByStudyId(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<StudyResourceResponseDto[]> {
@@ -346,7 +346,7 @@ export class StudyController {
    */
   @Get(':id/resources/:resourceId/download')
   @UseGuards(AuthGuard('jwt'), StudyRolesGuard)
-  @StudyRoles(StudyMemberRole.LEADER, StudyMemberRole.MEMBER)
+  @StudyRoles(StudyMemberRole.LEADER, StudyMemberRole.MEMBER, StudyMemberRole.NOMINEE)
   async downloadResource(
     @Param('id', ParseIntPipe) id: number,
     @Param('resourceId', ParseIntPipe) resourceId: number,

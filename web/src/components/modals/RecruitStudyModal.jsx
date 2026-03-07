@@ -13,6 +13,7 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
         deadline: '',
         recruitCount: 2,
         way: '',
+        cycle: '',
         place: '',
         tags: '',
         description: '',
@@ -30,6 +31,7 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                 deadline: '',
                 recruitCount: 2,
                 way: '',
+                cycle: '',
                 place: '',
                 tags: '',
                 description: '',
@@ -73,6 +75,7 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                 recruit_count: Number(form.recruitCount),
                 period: `${form.periodStart} ~ ${form.periodEnd}`,
                 way: form.way,
+                cycle: form.cycle,
                 place: form.place,
                 tag: form.tags,
             };
@@ -215,6 +218,13 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                                 placeholder="예: 디스코드, 도서관"
                             />
                         </div>
+                        <FormInput
+                            label="주기"
+                            name="cycle"
+                            value={form.cycle}
+                            onChange={onForm}
+                            placeholder="예: 주 1회, 격주"
+                        />
 
                         {/* Tags */}
                         <FormInput

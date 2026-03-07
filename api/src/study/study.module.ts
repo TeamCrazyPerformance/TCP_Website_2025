@@ -22,7 +22,8 @@ import { Resource } from './entities/resource.entity';
         destination: './uploads/resources',
         filename: (req, file, cb) => {
           const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-          const ext = file.originalname.split('.').pop();
+          const utf8OriginalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+          const ext = utf8OriginalName.split('.').pop();
           cb(null, `${uniqueSuffix}.${ext}`);
         },
       }),

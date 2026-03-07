@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, LessThan } from 'typeorm';
+import { Repository, IsNull, LessThan, QueryRunner, In } from 'typeorm';
 import { Study } from './entities/study.entity';
 import { User } from '../members/entities/user.entity';
 import { UserRole } from '../members/entities/enums/user-role.enum';
@@ -108,6 +108,7 @@ export class StudyService {
       apply_deadline: study.apply_deadline,
       place: study.place,
       way: study.way,
+      cycle: study.cycle,
       leader: leaderMember
         ? {
           user_id: leaderMember.user.id,
@@ -123,7 +124,7 @@ export class StudyService {
           ? `/profiles/${member.user.profile_image}`
           : member.user.profile_image,
       })),
-      resources: study.resources
+      resources: (study.resources || [])
         .filter((r) => r.deleted_at === null)
         .map((r) => ({
           id: r.id,
@@ -131,7 +132,7 @@ export class StudyService {
           format: r.format,
           dir_path: r.dir_path,
         })),
-      progress: study.progress.map((p) => ({
+      progress: (study.progress || []).map((p) => ({
         id: p.id,
         title: p.title,
         content: p.content,
@@ -431,12 +432,14 @@ export class StudyService {
       content: p.content,
       weekNo: p.week_no,
       progressDate: p.progress_date,
-      resources: p.resources ? p.resources.map(r => ({
-        id: r.id,
-        name: r.name,
-        format: r.format,
-        dir_path: r.dir_path,
-      })) : [],
+      resources: p.resources ? p.resources
+        .filter(r => r.deleted_at === null || r.deleted_at === undefined)
+        .map(r => ({
+          id: r.id,
+          name: r.name,
+          format: r.format,
+          dir_path: r.dir_path,
+        })) : [],
     }));
   }
 
@@ -472,10 +475,13 @@ export class StudyService {
     // 4. If resourceIds are provided, link them to this progress
     if (resourceIds && resourceIds.length > 0) {
       // Find resources that belong to this study and match the IDs
-      const resourcesToUpdate = await this.resourceRepository.findByIds(resourceIds);
+      const resourcesToUpdate = await this.resourceRepository.find({
+        where: { id: In(resourceIds) },
+        relations: ['study_id']
+      });
 
       // Filter resources to ensure they belong to the correct study (security check)
-      const validResources = resourcesToUpdate.filter(r => r.study_id.id === studyId);
+      const validResources = resourcesToUpdate.filter(r => r.study_id?.id === studyId);
 
       if (validResources.length > 0) {
         // Update each resource to set the progress field
@@ -546,8 +552,11 @@ export class StudyService {
     // Let's assume this just adds/links new resources for now, or use a "set" approach?
     // Given the simple form, let's treat it as "update these resources to point to this progress".
     if (resourceIds && resourceIds.length > 0) {
-      const resourcesToUpdate = await this.resourceRepository.findByIds(resourceIds);
-      const validResources = resourcesToUpdate.filter(r => r.study_id.id === studyId);
+      const resourcesToUpdate = await this.resourceRepository.find({
+        where: { id: In(resourceIds) },
+        relations: ['study_id']
+      });
+      const validResources = resourcesToUpdate.filter(r => r.study_id?.id === studyId);
 
       for (const resource of validResources) {
         resource.progress = progressEntry;
@@ -629,10 +638,29 @@ export class StudyService {
       throw new NotFoundException(`Study with ID "${studyId}" not found`);
     }
 
+    // Fix Multer's default latin1 decoding of utf-8 filenames
+    const utf8OriginalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+
+    // Extract extension
+    const originalExt = path.extname(utf8OriginalName);
+    const baseName = path.basename(utf8OriginalName, originalExt);
+
+    // Mac OS Korean characters are NFD. Normalize to NFC to save DB space
+    let normalizedName = baseName;
+    if (normalizedName.normalize) {
+      normalizedName = normalizedName.normalize('NFC');
+    }
+
+    // Truncate to maximum 80 characters + extension to fit within 100 char limit safely
+    if (normalizedName.length > 80) {
+      normalizedName = normalizedName.substring(0, 80) + '...';
+    }
+    const finalName = normalizedName + originalExt;
+
     // 2. Create a new Resource entity in memory using details from the uploaded file.
     const newResource = this.resourceRepository.create({
-      name: file.originalname,
-      format: path.extname(file.originalname).toUpperCase().replace('.', ''), // e.g., 'PDF'
+      name: finalName,
+      format: originalExt.toUpperCase().replace('.', ''), // e.g., 'PDF'
       dir_path: file.path,
       study_id: study,
     });
@@ -910,6 +938,17 @@ export class StudyService {
     studyId: number,
     userId: string,
   ): Promise<SuccessResponseDto> {
+    // Check if there is already a pending nominee
+    const existingNominee = await this.studyMemberRepository.findOne({
+      where: { study: { id: studyId }, role: StudyMemberRole.NOMINEE },
+      relations: ['user'],
+    });
+    if (existingNominee) {
+      throw new BadRequestException(
+        `이미 스터디장 후보(${existingNominee.user?.name || '알 수 없음'})가 대기 중입니다. 기존 지명이 수락 또는 거절된 후 다시 시도해주세요.`,
+      );
+    }
+
     const studyMember = await this.studyMemberRepository.findOne({
       where: { study: { id: studyId }, user: { id: userId } },
     });
@@ -951,6 +990,7 @@ export class StudyService {
       throw new BadRequestException('You are not nominated for leadership');
     }
 
+    // Promote the nominee to LEADER (multiple leaders allowed)
     studyMember.role = StudyMemberRole.LEADER;
     await this.studyMemberRepository.save(studyMember);
 
