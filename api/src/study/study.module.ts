@@ -19,20 +19,25 @@ import { Resource } from './entities/resource.entity';
     TypeOrmModule.forFeature([Study, User, StudyMember, Progress, Resource]),
     MulterModule.register({
       storage: require('multer').diskStorage({
-        destination: (req, file, cb) => {
-          const fs = require('fs');
-          const dir = './uploads/resources';
-          if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-          }
-          cb(null, dir);
-        },
+        destination: './uploads/resources',
         filename: (req, file, cb) => {
           const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
           const ext = file.originalname.split('.').pop();
           cb(null, `${uniqueSuffix}.${ext}`);
         },
       }),
+      fileFilter: (req, file, cb) => {
+        const allowedMimeTypes = [
+          'application/pdf',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        ];
+        if (allowedMimeTypes.includes(file.mimetype)) {
+          cb(null, true);
+        } else {
+          cb(new Error(`Invalid file type: ${file.mimetype}. Only PDF, DOCX, PPTX are allowed.`), false);
+        }
+      },
       limits: {
         fileSize: 10 * 1024 * 1024, // 10MB
       },

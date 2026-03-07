@@ -115,7 +115,9 @@ function StudyProgressWrite() {
             formData.append('file', file);
 
             try {
-                const response = await apiPost(`/api/v1/study/${id}/resources`, formData);
+                const response = await apiPost(`/api/v1/study/${id}/resources`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                });
                 setUploadedFiles(prev => [...prev, response]);
             } catch (error) {
                 alert(`Failed to upload ${file.name}`);
