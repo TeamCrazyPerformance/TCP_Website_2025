@@ -71,6 +71,13 @@ const ImageEditorModal = ({
 
     if (!isOpen) return null;
 
+    const hasEdits = zoom !== 1 || rotation !== 0 || flip.horizontal || flip.vertical;
+
+    const handleSafeClose = () => {
+        if (hasEdits && !window.confirm('편집 중인 내용이 있습니다. 정말 닫으시겠습니까?')) return;
+        onClose();
+    };
+
     return (
         <div className="modal active" style={{ zIndex: 2000 }}> {/* Ensure it's above other modals */}
             <div
@@ -86,7 +93,7 @@ const ImageEditorModal = ({
                     borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
                 }}>
                     <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>이미지 편집</h2>
-                    <button onClick={onClose} className="close-modal" style={{ position: 'static' }}>
+                    <button onClick={handleSafeClose} className="close-modal" style={{ position: 'static' }}>
                         <FontAwesomeIcon icon={faTimes} />
                     </button>
                 </div>
@@ -210,7 +217,7 @@ const ImageEditorModal = ({
                     {/* Action Buttons */}
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
                         <button
-                            onClick={onClose}
+                            onClick={handleSafeClose}
                             className="input-field"
                             style={{
                                 background: 'rgba(255, 255, 255, 0.1)',

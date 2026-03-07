@@ -623,10 +623,24 @@ function Recruitment() {
         <div
           id="applicationModal"
           className="modal active"
-          onClick={(e) => e.target.id === 'applicationModal' && closeModal()}
+          onClick={(e) => {
+            if (e.target.id === 'applicationModal') {
+              const form = e.target.querySelector('form');
+              const inputs = form ? form.querySelectorAll('input, textarea, select') : [];
+              const hasContent = Array.from(inputs).some(el => el.value && el.value.trim());
+              if (hasContent && !window.confirm('작성 중인 내용이 있습니다. 정말 닫으시겠습니까?')) return;
+              closeModal();
+            }
+          }}
         >
           <div className="modal-content">
-            <button className="close-modal" onClick={closeModal}>
+            <button className="close-modal" onClick={() => {
+              const form = document.querySelector('#applicationModal form');
+              const inputs = form ? form.querySelectorAll('input, textarea, select') : [];
+              const hasContent = Array.from(inputs).some(el => el.value && el.value.trim());
+              if (hasContent && !window.confirm('작성 중인 내용이 있습니다. 정말 닫으시겠습니까?')) return;
+              closeModal();
+            }}>
               <FontAwesomeIcon icon={faTimes} />
             </button>
             <div className="p-8">

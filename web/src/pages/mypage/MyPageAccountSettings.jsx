@@ -198,6 +198,15 @@ const PasswordChangeModal = ({ isOpen, onClose }) => {
 
     if (!isOpen) return null;
 
+    const hasContent = () => {
+        return passwordData.currentPassword || passwordData.newPassword || passwordData.confirmPassword;
+    };
+
+    const handleSafeClose = () => {
+        if (hasContent() && !window.confirm('작성 중인 내용이 있습니다. 정말 닫으시겠습니까?')) return;
+        onClose();
+    };
+
     const handlePasswordChange = (e) => {
         const { id, value } = e.target;
         // pw-current -> currentPassword, pw-new -> newPassword, pw-confirm -> confirmPassword
@@ -243,7 +252,7 @@ const PasswordChangeModal = ({ isOpen, onClose }) => {
             <div className="modal-content p-6">
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-xl font-bold">비밀번호 변경</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl"><i className="fas fa-times"></i></button>
+                    <button onClick={handleSafeClose} className="text-gray-400 hover:text-white text-2xl"><i className="fas fa-times"></i></button>
                 </div>
                 <p className="text-sm text-gray-400 mb-4">아래 순서대로 입력 후 변경을 완료하세요.</p>
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -336,7 +345,7 @@ const PasswordChangeModal = ({ isOpen, onClose }) => {
                     </div>
 
                     <div className="flex items-center justify-end gap-3 mt-6">
-                        <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg btn-secondary hover:bg-gray-800">취소</button>
+                        <button type="button" onClick={handleSafeClose} className="px-4 py-2 rounded-lg btn-secondary hover:bg-gray-800">취소</button>
                         <button
                             type="submit"
                             className="px-4 py-2 rounded-lg btn-primary"
