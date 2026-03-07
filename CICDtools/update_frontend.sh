@@ -77,9 +77,18 @@ if npm_as_user exec -- react-scripts build; then
     log_success "✅ Build successful!"
     
     log_info "🔄 Swapping new build with live version..."
-    # Atomic swap: Remove old dist and move new dist in place
-    rm -rf dist
-    mv dist_temp dist
+    # Replace contents INSIDE dist (preserves the directory inode for Docker bind mounts)
+    # If we rm+mv, Docker's bind mount still points to the old deleted inode → 500
+    rm -rf dist/*
+    mv dist_temp/* dist/
+    # Move hidden files too (e.g. .htaccess) if any
+    mv dist_temp/.* dist/ 2>/dev/null || true
+    rmdir dist_temp
+    
+    # Restart the web (Nginx) container to pick up the new files
+    log_info "🔄 Restarting web container..."
+    cd "$PROJECT_ROOT"
+    sudo docker compose restart web
     
     log_success "Frontend update completed successfully!"
     log_info "🌐 Verify at your website URL."
