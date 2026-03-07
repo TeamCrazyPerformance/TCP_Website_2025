@@ -30,6 +30,7 @@ import Team from './pages/Team';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Privacy from './pages/Privacy';
+import PrivacyConsent from './pages/PrivacyConsent';
 import Terms from './pages/Terms';
 import EasterEgg from './pages/EasterEgg';
 
@@ -104,6 +105,7 @@ function AppContent() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/privacy" element={<Privacy />} />
+        <Route path="/privacy-consent" element={<PrivacyConsent />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/easter-egg" element={<EasterEgg />} />
 

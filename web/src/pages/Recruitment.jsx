@@ -22,6 +22,7 @@ import {
   faFire,
   faBook,
 } from '@fortawesome/free-solid-svg-icons';
+import { Link } from 'react-router-dom';
 import { apiPost, apiGet } from '../api/client';
 import { formatBirthDate } from '../utils/dateFormatter';
 
@@ -951,7 +952,16 @@ function Recruitment() {
                     htmlFor="privacyAgreement"
                     className="text-sm text-gray-300 text-left"
                   >
-                    개인정보 수집 및 이용에 동의합니다.
+                    <Link
+                      to="/privacy-consent"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-400 hover:text-blue-300 underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      개인정보 수집 및 이용
+                    </Link>
+                    에 동의합니다.
                   </label>
                 </div>
 
