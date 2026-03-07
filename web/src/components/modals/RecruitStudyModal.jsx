@@ -69,7 +69,7 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                 study_name: form.title,
                 start_year: Number(form.startYear),
                 study_description: form.description,
-                apply_deadline: form.deadline.replace(/\./g, '-'),
+                apply_deadline: form.deadline,
                 recruit_count: Number(form.recruitCount),
                 period: `${form.periodStart} ~ ${form.periodEnd}`,
                 way: form.way,
@@ -169,7 +169,7 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                                     required
                                     className="form-input"
                                     style={{ maxWidth: '45%' }}
-                                    placeholder="YYYY.MM.DD"
+                                    placeholder="YYYY-MM-DD"
                                     maxLength={10}
                                 />
                                 <span className="text-gray-400">~</span>
@@ -181,7 +181,7 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                                     required
                                     className="form-input"
                                     style={{ maxWidth: '45%' }}
-                                    placeholder="YYYY.MM.DD"
+                                    placeholder="YYYY-MM-DD"
                                     maxLength={10}
                                 />
                             </div>
@@ -194,7 +194,7 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                             value={form.deadline}
                             onChange={handleDateChange}
                             required
-                            placeholder="YYYY.MM.DD"
+                            placeholder="YYYY-MM-DD"
                             maxLength={10}
                         />
 

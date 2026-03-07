@@ -32,6 +32,11 @@ Located in `/api`.
 | **TypeORM** (`typeorm`) | MIT | ORM | Optional | Keep copyright in source. |
 | **PostgreSQL Driver** (`pg`) | MIT | Driver | Optional | Keep copyright in source. |
 | **Passport/JWT** | MIT | Auth | Optional | Keep copyright in source. |
+| **bcrypt** (`bcrypt`) | MIT | Password Hashing | Optional | Keep copyright in source. |
+| **class-validator** | MIT | DTO Validation | Optional | Keep copyright in source. |
+| **class-transformer** | MIT | DTO Transformation | Optional | Keep copyright in source. |
+| **Archiver** (`archiver`) | MIT | ZIP Generation | Optional | Keep copyright in source. |
+| **cookie-parser** | MIT | Cookie Parsing | Optional | Keep copyright in source. |
 | **Winston** | MIT | Logging | Optional | Keep copyright in source. |
 | **Systeminformation** | MIT | Monitor | Optional | Keep copyright in source. |
 

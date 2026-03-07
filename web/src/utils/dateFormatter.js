@@ -1,6 +1,6 @@
 /**
- * Formats a date string into YYYY.MM.DD format.
- * Automatically adds dots as the user types numbers.
+ * Formats a date string into YYYY-MM-DD format.
+ * Automatically adds dashes as the user types numbers.
  * @param {string} value - The input value to format.
  * @returns {string} - The formatted date string.
  */
@@ -14,8 +14,8 @@ export const formatBirthDate = (value) => {
     if (limited.length <= 4) {
         return limited;
     } else if (limited.length <= 6) {
-        return `${limited.slice(0, 4)}.${limited.slice(4)}`;
+        return `${limited.slice(0, 4)}-${limited.slice(4)}`;
     } else {
-        return `${limited.slice(0, 4)}.${limited.slice(4, 6)}.${limited.slice(6)}`;
+        return `${limited.slice(0, 4)}-${limited.slice(4, 6)}-${limited.slice(6)}`;
     }
 };

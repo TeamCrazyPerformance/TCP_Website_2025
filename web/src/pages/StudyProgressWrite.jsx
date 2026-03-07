@@ -49,7 +49,7 @@ function StudyProgressWrite() {
                         setTitle(progress.title);
                         setContent(progress.content);
                         setWeekNo(progress.weekNo);
-                        setDate(progress.progressDate ? new Date(progress.progressDate).toISOString().split('T')[0].replace(/-/g, '.') : '');
+                        setDate(progress.progressDate ? new Date(progress.progressDate).toISOString().split('T')[0] : '');
                         setUploadedFiles(progress.resources || []);
                     } else {
                         alert('Progress report not found.');
@@ -65,7 +65,7 @@ function StudyProgressWrite() {
             fetchProgress();
         } else {
             // Default date to today
-            const today = new Date().toISOString().split('T')[0].replace(/-/g, '.');
+            const today = new Date().toISOString().split('T')[0];
             setDate(today);
         }
     }, [isEditMode, id, progressId, navigate]);
@@ -149,7 +149,7 @@ function StudyProgressWrite() {
             title,
             content,
             weekNo: parseInt(weekNo),
-            progressDate: date.replace(/\./g, '-'),
+            progressDate: date,
             resourceIds: uploadedFiles.map(f => f.id),
         };
 
@@ -229,7 +229,7 @@ function StudyProgressWrite() {
                                 type="text"
                                 className="form-input w-full px-4 py-3 rounded-lg"
                                 value={date}
-                                placeholder="YYYY.MM.DD"
+                                placeholder="YYYY-MM-DD"
                                 onChange={e => setDate(formatBirthDate(e.target.value))}
                                 required
                             />

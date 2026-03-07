@@ -156,7 +156,7 @@ function Profile() {
         baekjoon: data.baekjoon_username || '', // Added
         portfolio: data.portfolio_link || '',
         joinYear: data.join_year || '', // Added
-        birthDate: data.birth_date ? data.birth_date.split('T')[0].replace(/-/g, '.') : '', // Added, format YYYY.MM.DD
+        birthDate: data.birth_date ? data.birth_date.split('T')[0] : '', // Format YYYY-MM-DD
         gender: data.gender || '', // Added
       });
       setError(null);
@@ -522,7 +522,7 @@ function Profile() {
                         const val = formatBirthDate(e.target.value);
                         handleProfileChange({ target: { name: 'birthDate', value: val } });
                       }}
-                      placeholder="YYYY.MM.DD"
+                      placeholder="YYYY-MM-DD"
                       maxLength={10}
                     />
                   </div>
