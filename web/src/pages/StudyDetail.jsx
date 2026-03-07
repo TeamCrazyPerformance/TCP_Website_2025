@@ -293,8 +293,10 @@ export default function StudyDetail() {
     }
 
     // Check file size (10MB)
-    if (file.size > 10 * 1024 * 1024) {
+    const MAX_SIZE = 10 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
       alert('파일 크기는 10MB를 초과할 수 없습니다.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 

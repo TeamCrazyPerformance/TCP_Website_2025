@@ -638,10 +638,29 @@ export class StudyService {
       throw new NotFoundException(`Study with ID "${studyId}" not found`);
     }
 
+    // Fix Multer's default latin1 decoding of utf-8 filenames
+    const utf8OriginalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+
+    // Extract extension
+    const originalExt = path.extname(utf8OriginalName);
+    const baseName = path.basename(utf8OriginalName, originalExt);
+
+    // Mac OS Korean characters are NFD. Normalize to NFC to save DB space
+    let normalizedName = baseName;
+    if (normalizedName.normalize) {
+      normalizedName = normalizedName.normalize('NFC');
+    }
+
+    // Truncate to maximum 80 characters + extension to fit within 100 char limit safely
+    if (normalizedName.length > 80) {
+      normalizedName = normalizedName.substring(0, 80) + '...';
+    }
+    const finalName = normalizedName + originalExt;
+
     // 2. Create a new Resource entity in memory using details from the uploaded file.
     const newResource = this.resourceRepository.create({
-      name: file.originalname,
-      format: path.extname(file.originalname).toUpperCase().replace('.', ''), // e.g., 'PDF'
+      name: finalName,
+      format: originalExt.toUpperCase().replace('.', ''), // e.g., 'PDF'
       dir_path: file.path,
       study_id: study,
     });
