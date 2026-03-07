@@ -32,7 +32,7 @@
 services:
   # API (NestJS)
   api:
-    command: npm run start:dev
+    command: sh -c "npx typeorm migration:run -d dist/data-source.js && npm run start:dev"
     env_file:
       - ./envs/api.env
       - ./envs/db_dev.env

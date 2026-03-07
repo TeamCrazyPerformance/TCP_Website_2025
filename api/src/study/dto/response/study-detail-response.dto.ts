@@ -13,6 +13,7 @@ export class StudyDetailResponseDto {
   apply_deadline: Date;
   place: string | null;
   way: string | null;
+  cycle: string | null;
   leader: StudyMemberResponseDto | null;
   members: StudyMemberResponseDto[];
   resources: StudyResourceResponseDto[];
