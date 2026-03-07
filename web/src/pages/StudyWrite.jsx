@@ -199,7 +199,7 @@ export default function StudyWrite() {
                   handleChange({ target: { name: 'deadline', value: val } });
                 }}
                 maxLength={10}
-                placeholder="YYYY.MM.DD"
+                placeholder="YYYY-MM-DD"
                 className="w-full bg-gray-800 border-gray-700 rounded-lg py-3 px-4 text-base focus:ring-2 focus:ring-accent-blue focus:outline-none"
                 required
               />
@@ -221,9 +221,9 @@ export default function StudyWrite() {
                 onChange={handlePeriodChange}
                 maxLength={15}
                 pattern="^\d{4}\.\d{2}-\d{4}\.\d{2}$"
-                title="YYYY.MM-YYYY.MM 형식으로 입력해주세요 (예: 2025.01-2025.12)"
+                title="YYYY.MM.DD-YYYY.MM.DD 형식으로 입력해주세요 (예: 2025.01.01-2025.12.31)"
                 className="w-full bg-gray-800 border-gray-700 rounded-lg py-3 px-4 text-base focus:ring-2 focus:ring-accent-blue focus:outline-none"
-                placeholder="예: 2025.01-2025.12"
+                placeholder="예: 2025.01.01-2025.12.31"
                 required
               />
             </div>

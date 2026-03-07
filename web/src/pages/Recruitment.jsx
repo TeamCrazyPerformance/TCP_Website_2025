@@ -232,13 +232,13 @@ function Recruitment() {
       awards: cleanedAwards.map((award) => ({
         award_name: award.name,
         award_institution: award.institution,
-        award_date: award.date.replace(/\./g, '-'),
+        award_date: award.date,
         award_description: award.description,
       })),
       projects: cleanedProjects.map((project) => ({
         project_name: project.name,
         project_contribution: project.contribution,
-        project_date: (project.date.split('~')[0]?.trim() || project.date).replace(/\./g, '-'),
+        project_date: project.date.split('~')[0]?.trim() || project.date,
         project_description: project.description,
         project_tech_stack: project.techStack,
       })),
@@ -818,7 +818,7 @@ function Recruitment() {
                               type="text"
                               name="project_start_date"
                               className="form-input mt-1"
-                              placeholder="YYYY.MM.DD"
+                              placeholder="YYYY-MM-DD"
                               maxLength={10}
                               onChange={(e) => {
                                 e.target.value = formatBirthDate(e.target.value);
@@ -829,7 +829,7 @@ function Recruitment() {
                               type="text"
                               name="project_end_date"
                               className="form-input mt-1"
-                              placeholder="YYYY.MM.DD"
+                              placeholder="YYYY-MM-DD"
                               maxLength={10}
                               onChange={(e) => {
                                 e.target.value = formatBirthDate(e.target.value);
@@ -913,7 +913,7 @@ function Recruitment() {
                             type="text"
                             name="award_date"
                             className="form-input mt-1"
-                            placeholder="YYYY.MM.DD"
+                            placeholder="YYYY-MM-DD"
                             maxLength={10}
                             onChange={(e) => {
                               e.target.value = formatBirthDate(e.target.value);

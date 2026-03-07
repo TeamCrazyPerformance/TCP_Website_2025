@@ -47,7 +47,7 @@ function AnnouncementWrite() {
           setTitle(data.title || '');
           setSummary(data.summary || '');
           setContent(data.contents || '');
-          setDate(data.publishAt ? new Date(data.publishAt).toISOString().split('T')[0].replace(/-/g, '.') : '');
+          setDate(data.publishAt ? new Date(data.publishAt).toISOString().split('T')[0] : '');
         } catch (error) {
           alert('공지사항을 불러오는데 실패했습니다.');
           navigate(fromAdmin ? '/admin/announcement' : '/announcement');
@@ -59,7 +59,7 @@ function AnnouncementWrite() {
       return;
     }
 
-    const today = new Date().toISOString().split('T')[0].replace(/-/g, '.');
+    const today = new Date().toISOString().split('T')[0];
     setDate(today);
 
     const savedDraft = localStorage.getItem('announcement_draft');
@@ -182,13 +182,13 @@ function AnnouncementWrite() {
     }
 
     // 날짜 유효성 검증 및 ISO 형식으로 변환
-    const dateRegex = /^\d{4}\.\d{2}\.\d{2}$/;
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(date)) {
-      alert('올바른 날짜 형식을 입력해주세요. (YYYY.MM.DD)');
+      alert('올바른 날짜 형식을 입력해주세요. (YYYY-MM-DD)');
       return;
     }
 
-    const isoDate = date.replace(/\./g, '-'); // "2020.01.15" -> "2020-01-15"
+    const isoDate = date; // Already in YYYY-MM-DD format
     const dateObj = new Date(isoDate);
 
     // Invalid Date 체크
@@ -399,7 +399,7 @@ function AnnouncementWrite() {
               className="form-input px-4 py-3 rounded-lg"
               required
               value={date}
-              placeholder="YYYY.MM.DD"
+              placeholder="YYYY-MM-DD"
               maxLength={10}
               onChange={(e) => {
                 const formatted = formatBirthDate(e.target.value);
@@ -413,7 +413,7 @@ function AnnouncementWrite() {
               }}
             />
             <p className="text-sm text-gray-400 mt-2 text-left">
-              공지사항이 게시될 날짜를 선택해주세요. (YYYY.MM.DD)
+              공지사항이 게시될 날짜를 선택해주세요. (YYYY-MM-DD)
             </p>
           </div>
 

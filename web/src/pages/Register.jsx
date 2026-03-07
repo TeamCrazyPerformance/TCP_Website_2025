@@ -284,7 +284,7 @@ function Register() {
     if (studentNumber) payload.student_number = studentNumber;
     if (major) payload.major = major;
     if (joinYear) payload.join_year = Number(joinYear);
-    if (birthDate) payload.birth_date = birthDate.replace(/\./g, '-');
+    if (birthDate) payload.birth_date = birthDate;
     if (gender) payload.gender = gender;
     if (educationStatus) payload.education_status = educationStatus;
     if (techStack) {

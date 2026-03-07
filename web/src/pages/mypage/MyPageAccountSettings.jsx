@@ -17,7 +17,7 @@ const MyPageAccountSettings = () => {
                 const accountData = {
                     username: data.username || '', // Added
                     name: data.name || '',
-                    birthday: (data.birthDate || '').split('T')[0].replace(/-/g, '.'),
+                    birthday: (data.birthDate || '').split('T')[0],
                     phone: data.phoneNumber || '',
                     email: data.email || ''
                 };
@@ -113,7 +113,7 @@ const MyPageAccountSettings = () => {
                                 className="form-input"
                                 value={formData.birthday}
                                 onChange={handleInputChange}
-                                placeholder="YYYY.MM.DD"
+                                placeholder="YYYY-MM-DD"
                                 maxLength={10}
                                 required
                             />

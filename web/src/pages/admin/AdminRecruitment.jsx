@@ -486,7 +486,7 @@ function AdminRecruitment() {
                     // Call original handler with modified value
                     updateRecruitmentPeriod({ target: { id: 'startDate', value: val } });
                   }}
-                  placeholder="YYYY.MM.DD"
+                  placeholder="YYYY-MM-DD"
                   maxLength={10}
                 />
               </div>
@@ -505,7 +505,7 @@ function AdminRecruitment() {
                     // Call original handler with modified value
                     updateRecruitmentPeriod({ target: { id: 'endDate', value: val } });
                   }}
-                  placeholder="YYYY.MM.DD"
+                  placeholder="YYYY-MM-DD"
                   maxLength={10}
                 />
               </div>

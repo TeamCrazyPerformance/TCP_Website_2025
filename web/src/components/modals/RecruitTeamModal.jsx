@@ -548,7 +548,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
                     required
                     className="form-input"
                     style={{ maxWidth: '45%' }}
-                    placeholder="YYYY.MM.DD"
+                    placeholder="YYYY-MM-DD"
                     maxLength={10}
                   />
                   <span className="text-gray-400">~</span>
@@ -563,7 +563,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
                     required
                     className="form-input"
                     style={{ maxWidth: '45%' }}
-                    placeholder="YYYY.MM.DD"
+                    placeholder="YYYY-MM-DD"
                     maxLength={10}
                   />
                 </div>
@@ -578,7 +578,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
                   onForm({ target: { name: 'deadline', value: val } });
                 }}
                 required
-                placeholder="YYYY.MM.DD"
+                placeholder="YYYY-MM-DD"
                 maxLength={10}
               />
             </div>
