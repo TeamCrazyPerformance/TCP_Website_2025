@@ -105,26 +105,26 @@ const MyPageSettings = () => {
 
     return (
         <div className="container mx-auto max-w-7xl">
-            <div className="mb-6">
-                <h3 className="text-3xl font-bold gradient-text mb-2">멤버 페이지 공개 설정</h3>
-                <p className="text-gray-400">멤버 페이지에 공개할 정보를 선택하세요.</p>
+            <div className="mb-6 text-left">
+                <h3 className="text-3xl font-bold gradient-text mb-2 text-left">멤버 페이지 공개 설정</h3>
+                <p className="text-gray-400 text-left">멤버 페이지에 공개할 정보를 선택하세요.</p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="space-y-6">
                     <div className="widget-card p-6 rounded-xl">
                         <div className="flex items-center justify-between mb-4">
-                            <h4 className="text-xl font-bold text-white">기본 공개 정보</h4>
+                            <h4 className="text-xl font-bold text-white text-left">기본 공개 정보</h4>
                             <span className="notice-badge">필수</span>
                         </div>
-                        <p className="text-sm text-gray-400 mb-6">이 항목은 멤버 페이지에서 항상 공개됩니다.</p>
+                        <p className="text-sm text-gray-400 mb-6 text-left">이 항목은 멤버 페이지에서 항상 공개됩니다.</p>
                         <div className="space-y-4">
                             <div className="flex items-center justify-between p-4 bg-gray-800 bg-opacity-50 rounded-lg">
                                 <div className="flex items-center space-x-3">
                                     <i className="fas fa-user-circle text-blue-400"></i>
                                     <div>
-                                        <h5 className="font-semibold text-white">프로필 이미지</h5>
-                                        <p className="text-sm text-gray-400">프로필 사진 또는 이니셜</p>
+                                        <h5 className="font-semibold text-white text-left">프로필 이미지</h5>
+                                        <p className="text-sm text-gray-400 text-left">프로필 사진 또는 이니셜</p>
                                     </div>
                                 </div>
                                 <i className="fas fa-lock text-gray-500"></i>
@@ -133,8 +133,8 @@ const MyPageSettings = () => {
                                 <div className="flex items-center space-x-3">
                                     <i className="fas fa-id-card text-green-400"></i>
                                     <div>
-                                        <h5 className="font-semibold text-white">이름</h5>
-                                        <p className="text-sm text-gray-400">{displayName}</p>
+                                        <h5 className="font-semibold text-white text-left">이름</h5>
+                                        <p className="text-sm text-gray-400 text-left">{displayName}</p>
                                     </div>
                                 </div>
                                 <i className="fas fa-lock text-gray-500"></i>
@@ -143,8 +143,8 @@ const MyPageSettings = () => {
                                 <div className="flex items-center space-x-3">
                                     <i className="fas fa-quote-left text-purple-400"></i>
                                     <div>
-                                        <h5 className="font-semibold text-white">자기소개</h5>
-                                        <p className="text-sm text-gray-400">{bio || '자기소개를 입력해주세요.'}</p>
+                                        <h5 className="font-semibold text-white text-left">자기소개</h5>
+                                        <p className="text-sm text-gray-400 text-left">{bio || '자기소개를 입력해주세요.'}</p>
                                     </div>
                                 </div>
                                 <i className="fas fa-lock text-gray-500"></i>
@@ -153,8 +153,8 @@ const MyPageSettings = () => {
                                 <div className="flex items-center space-x-3">
                                     <i className="fas fa-graduation-cap text-green-400"></i>
                                     <div>
-                                        <h5 className="font-semibold text-white">재학 상태</h5>
-                                        <p className="text-sm text-gray-400">{educationStatus || '미등록'}</p>
+                                        <h5 className="font-semibold text-white text-left">재학 상태</h5>
+                                        <p className="text-sm text-gray-400 text-left">{educationStatus || '미등록'}</p>
                                     </div>
                                 </div>
                                 <i className="fas fa-lock text-gray-500"></i>
@@ -164,10 +164,10 @@ const MyPageSettings = () => {
 
                     <div className="widget-card p-6 rounded-xl">
                         <div className="flex items-center justify-between mb-4">
-                            <h4 className="text-xl font-bold text-white">선택 공개 항목</h4>
+                            <h4 className="text-xl font-bold text-white text-left">선택 공개 항목</h4>
                             <span className="optional-badge">선택</span>
                         </div>
-                        <p className="text-sm text-gray-400 mb-6">공개 여부를 직접 선택할 수 있습니다.</p>
+                        <p className="text-sm text-gray-400 mb-6 text-left">공개 여부를 직접 선택할 수 있습니다.</p>
                         <div className="space-y-4">
                             <SettingItem settingKey="email" label="이메일" value={email || '미등록'} helpText="멤버 페이지에 이메일을 표시합니다." icon="fa-envelope text-blue-400" isActive={settings.email} onToggle={toggleSetting} />
                             <SettingItem settingKey="currentCompany" label="현재 소속" value={currentCompany || '미등록'} helpText="현재 소속(직장/단체)을 멤버 페이지에 표시합니다." icon="fa-building text-orange-400" isActive={settings.currentCompany} onToggle={toggleSetting} />
@@ -200,18 +200,18 @@ const MyPageSettings = () => {
 };
 
 const SettingItem = ({ settingKey, label, value, helpText, icon, isActive, onToggle }) => (
-    <div className="setting-item">
+    <div className="setting-item text-left">
         <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-3">
-                <i className={`fas ${icon}`}></i>
-                <div>
-                    <h5 className="font-semibold text-white">{label}</h5>
-                    <p className="text-sm text-gray-400">{value}</p>
+            <div className="flex items-center space-x-3 min-w-0">
+                <i className={`fas ${icon} flex-shrink-0`}></i>
+                <div className="min-w-0">
+                    <h5 className="font-semibold text-white text-left">{label}</h5>
+                    <p className="text-sm text-gray-400 text-left truncate">{value}</p>
                 </div>
             </div>
-            <div className={`toggle-switch ${isActive ? 'active' : ''}`} onClick={() => onToggle(settingKey)}></div>
+            <div className={`toggle-switch flex-shrink-0 ${isActive ? 'active' : ''}`} onClick={() => onToggle(settingKey)}></div>
         </div>
-        <p className="text-xs text-gray-500">{helpText}</p>
+        <p className="text-xs text-gray-500 text-left">{helpText}</p>
     </div>
 );
 
