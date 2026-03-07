@@ -565,9 +565,9 @@ function AnnouncementWrite() {
       {isPreviewModalOpen && (
         <div
           id="previewModal"
-          className="fixed inset-0 preview-modal flex items-center justify-center z-50"
+          className="fixed inset-0 preview-modal flex items-start justify-center z-50 overflow-y-auto py-8"
         >
-          <div className="bg-gray-900 rounded-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-gray-900 rounded-xl max-w-4xl w-full mx-4 my-auto max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-gray-900 px-6 py-4 border-b border-gray-700 flex justify-between items-center z-10">
               <h2 className="orbitron text-xl font-bold gradient-text">
                 미리보기
