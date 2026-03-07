@@ -244,13 +244,13 @@ function AnnouncementArticle() {
 
             {/* Meta: Removed likes/tags, Left aligned content */}
             <div className="article-meta widget-card rounded-lg p-6 mb-8">
-              <div className="flex flex-wrap items-center justify-between text-sm text-gray-300">
-                <div className="flex items-center space-x-6 mb-2 md:mb-0">
+              <div className="flex flex-wrap items-center justify-between gap-y-2 text-sm text-gray-300">
+                <div className="flex items-center gap-6">
                   <div className="flex items-center space-x-2">
                     <i className="fas fa-user text-blue-400"></i>
                     <span>작성자: {article.author}</span>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center">
                     <i className="fas fa-calendar text-purple-400"></i>
                     <span>
                       {new Date(article.date).toLocaleDateString('ko-KR', {
