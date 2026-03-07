@@ -221,7 +221,7 @@ function Study() {
                 </label>
                 <select
                   id="year-select"
-                  className="w-full md:w-48 bg-gray-800 border border-gray-700 rounded-lg py-2 px-4 text-white focus:ring-2 focus:ring-accent-blue focus:outline-none"
+                  className="appearance-none w-full md:w-48 bg-gray-800 border border-gray-700 rounded-lg py-2 px-4 pr-10 text-white focus:ring-2 focus:ring-accent-blue focus:outline-none cursor-pointer"
                   value={selectedYear}
                   onChange={handleYearChange}
                 >

@@ -105,16 +105,25 @@ function Members() {
     };
   }, [searchTerm, activeTag, members]);
 
-  // 필터링된 멤버 목록 계산
   const filteredMembers = useMemo(() => {
     return members.filter((member) => {
+      const term = searchTerm.toLowerCase();
       const nameMatch = member.name
         .toLowerCase()
-        .includes(searchTerm.toLowerCase());
+        .includes(term);
       const tagsMatch = (member.tags || []).some((tag) =>
-        tag.toLowerCase().includes(searchTerm.toLowerCase())
+        tag.toLowerCase().includes(term)
       );
-      const searchCombined = nameMatch || tagsMatch;
+      const descMatch = (member.description || '')
+        .toLowerCase()
+        .includes(term);
+      const statusMatch = (member.educationStatus || '')
+        .toLowerCase()
+        .includes(term);
+      const companyMatch = (member.currentCompany || '')
+        .toLowerCase()
+        .includes(term);
+      const searchCombined = nameMatch || tagsMatch || descMatch || statusMatch || companyMatch;
 
       const tagButtonMatch =
         !activeTag || (member.tags || []).includes(activeTag);
@@ -123,12 +132,19 @@ function Members() {
     });
   }, [members, searchTerm, activeTag]);
 
-  const currentMembers = filteredMembers.filter(
-    (member) => member.status === 'current'
-  );
-  const alumniMembers = filteredMembers.filter(
-    (member) => member.status === 'alumni'
-  );
+  const currentMembers = filteredMembers
+    .filter((member) => member.status === 'current')
+    .sort((a, b) => {
+      // 1순위: 재학이 휴학보다 위
+      const statusOrder = (s) => (s === '재학' ? 0 : 1);
+      const statusDiff = statusOrder(a.educationStatus) - statusOrder(b.educationStatus);
+      if (statusDiff !== 0) return statusDiff;
+      // 2순위: 가나다 → 알파벳 순
+      return a.name.localeCompare(b.name, 'ko');
+    });
+  const alumniMembers = filteredMembers
+    .filter((member) => member.status === 'alumni')
+    .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
 
   // 태그 버튼 클릭 핸들러
   const handleTagClick = (tag) => {
@@ -210,7 +226,7 @@ function Members() {
                 <input
                   type="text"
                   id="search"
-                  placeholder="이름 또는 기술 스택으로 검색"
+                  placeholder="이름, 기술 스택, 소개, 소속으로 검색"
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg py-2 px-4 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
