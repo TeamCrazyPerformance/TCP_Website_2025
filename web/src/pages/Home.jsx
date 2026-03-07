@@ -6,6 +6,7 @@ import { useKonamiCode } from '../hooks/useKonamiCode';
 function Home() {
   const navigate = useNavigate();
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [isFadingOut, setIsFadingOut] = useState(false);
   const [stats, setStats] = useState({
     totalMembers: 0,
     projects: 0,
@@ -25,7 +26,10 @@ function Home() {
 
   // Konami Code Easter Egg
   useKonamiCode(() => {
-    navigate('/easter-egg');
+    setIsFadingOut(true);
+    setTimeout(() => {
+      navigate('/easter-egg');
+    }, 2000); // Wait for the fade out animation to finish
   });
 
   useEffect(() => {
@@ -616,6 +620,12 @@ function Home() {
           </div>
         </div>
       </section>
+
+      {/* Fade to Black transition overlay */}
+      <div
+        className="fixed inset-0 z-[9999] bg-black pointer-events-none transition-opacity duration-2000 ease-in-out"
+        style={{ opacity: isFadingOut ? 1 : 0 }}
+      />
     </>
   );
 }
