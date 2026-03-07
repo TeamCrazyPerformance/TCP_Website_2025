@@ -22,7 +22,7 @@ function EasterEgg() {
       const animations = crawlRef.current.getAnimations();
       if (animations.length > 0) {
         animations.forEach(anim => {
-          anim.playbackRate = isSpeedingUp ? 4 : 1; // 4x speed looks more dramatic and satisfying
+          anim.playbackRate = isSpeedingUp ? 2 : 1; // Changed to 2x speed for better readability
         });
       }
     }
@@ -89,9 +89,11 @@ function EasterEgg() {
           position: absolute;
           width: 86%;
           left: 7%;
-          bottom: 0;
+          /* Start exactly at the bottom edge of the screen */
+          bottom: -150%; 
           transform-origin: 50% 100%;
-          animation: easter-crawl-up 38s linear forwards;
+          /* Shortened duration so it finishes closer to the actual text length */
+          animation: easter-crawl-up 30s linear forwards;
           text-align: center;
         }
 
@@ -137,7 +139,7 @@ function EasterEgg() {
         .easter-block {
           margin-top: 3.5rem;
           margin-bottom: 2rem;
-          text-align: left;
+          text-align: center;
           padding: 0 10%;
         }
 
@@ -158,11 +160,13 @@ function EasterEgg() {
           border-radius: 16px;
           padding: 2rem;
           border: 1px solid rgba(255, 255, 255, 0.1);
+          text-align: center;
         }
 
         .easter-role-header {
           display: flex;
           align-items: center;
+          justify-content: center;
           gap: 1rem;
           margin-bottom: 0.5rem;
         }
@@ -183,9 +187,8 @@ function EasterEgg() {
         .easter-member {
           display: flex;
           flex-direction: column;
-          margin-bottom: 1.2rem;
-          padding-left: 1rem;
-          border-left: 3px solid rgba(255,255,255,0.2);
+          margin-bottom: 1.5rem;
+          align-items: center;
         }
 
         .easter-member-name {
@@ -209,8 +212,8 @@ function EasterEgg() {
           .easter-crawl {
             width: 98%;
             left: 1%;
-            bottom: 0;
-            animation: easter-crawl-up-desktop 45s linear forwards;
+            bottom: -150%;
+            animation: easter-crawl-up-desktop 35s linear forwards;
           }
 
           .easter-title {
@@ -239,19 +242,19 @@ function EasterEgg() {
 
         @keyframes easter-crawl-up {
           0% {
-            transform: rotateX(17deg) translateY(100vh);
+            transform: rotateX(17deg) translateY(50vh);
           }
           100% {
-            transform: rotateX(17deg) translateY(-350%);
+            transform: rotateX(17deg) translateY(-250%);
           }
         }
 
         @keyframes easter-crawl-up-desktop {
           0% {
-            transform: rotateX(15deg) translateY(100vh);
+            transform: rotateX(15deg) translateY(50vh);
           }
           100% {
-            transform: rotateX(15deg) translateY(-300%);
+            transform: rotateX(15deg) translateY(-220%);
           }
         }
 
@@ -308,8 +311,8 @@ function EasterEgg() {
 
                       <div className="easter-members">
                         {team.members.map((member, idx) => (
-                          <div className="easter-member" key={idx} style={{ borderLeftColor: team.color }}>
-                            <span className="easter-member-name">{member.name}</span>
+                          <div className="easter-member" key={idx}>
+                            <span className="easter-member-name" style={{ color: team.color }}>{member.name}</span>
                             <span className="easter-member-role">{member.role}</span>
                           </div>
                         ))}
