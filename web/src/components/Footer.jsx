@@ -123,6 +123,14 @@ function Footer() {
                   개인정보처리방침
                 </Link>
               </div>
+              <div className="text-left">
+                <Link
+                  to="/opensource"
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  오픈소스 고지
+                </Link>
+              </div>
             </div>
           </div>
         </div>
