@@ -51,6 +51,8 @@ export const useKonamiCode = (onUnlock, requireTap = false) => {
     }, [onUnlock]);
 
     const handleTouchStart = useCallback((e) => {
+        // Only track single touches for swipe
+        if (e.touches.length !== 1) return;
         touchStartRef.current = {
             x: e.touches[0].clientX,
             y: e.touches[0].clientY,
@@ -69,28 +71,20 @@ export const useKonamiCode = (onUnlock, requireTap = false) => {
 
         const dx = touchEnd.x - touchStartRef.current.x;
         const dy = touchEnd.y - touchStartRef.current.y;
-        const dt = touchEnd.time - touchStartRef.current.time;
 
         touchStartRef.current = null;
 
-        // Ignore taps if looking for swipes
-        if (dt > 1000) return; // Took too long
-
         let direction = null;
-
-        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 30) {
+        // Require at least 20px movement to count as a swipe (very forgiving)
+        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 20) {
             direction = dx > 0 ? 'RIGHT' : 'LEFT';
-        } else if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 30) {
+        } else if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 20) {
             direction = dy > 0 ? 'DOWN' : 'UP';
-        } else if (Math.abs(dx) < 10 && Math.abs(dy) < 10 && requireTap) {
-            direction = 'TAP'; // For 'B' and 'A' equivalent on mobile if we wanted
         }
 
         if (direction) {
             setSwipeSequence((prev) => {
                 const newSequence = [...prev, direction];
-
-                // Use a shortened sequence for mobile (just the arrows) to make it easier
                 const targetSequence = KONAMI_CODE_SWIPES.slice(0, 8);
 
                 if (newSequence.length > targetSequence.length) {
@@ -101,16 +95,17 @@ export const useKonamiCode = (onUnlock, requireTap = false) => {
                     onUnlock();
                     return [];
                 }
-
                 return newSequence;
             });
         }
-    }, [onUnlock, requireTap]);
+    }, [onUnlock]);
 
     useEffect(() => {
         window.addEventListener('keydown', handleKeyDown);
-        window.addEventListener('touchstart', handleTouchStart);
-        window.addEventListener('touchend', handleTouchEnd);
+
+        // For modern mobile browsers, passive: false is sometimes required to capture all touches
+        window.addEventListener('touchstart', handleTouchStart, { passive: false });
+        window.addEventListener('touchend', handleTouchEnd, { passive: false });
 
         return () => {
             window.removeEventListener('keydown', handleKeyDown);

@@ -1,10 +1,66 @@
-import React from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import easterEggData from '../data/easteregg.json';
 
 function EasterEgg() {
+  const navigate = useNavigate();
+  const crawlRef = useRef(null);
+  const [isSpeedingUp, setIsSpeedingUp] = useState(false);
+  const [fadeState, setFadeState] = useState('in'); // 'in' (black to clear), 'normal' (clear), 'out' (clear to black)
+
+  // Trigger fade-in on mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setFadeState('normal');
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (crawlRef.current) {
+      // Access the Web Animations API if available to smoothly change playback rate
+      const animations = crawlRef.current.getAnimations();
+      if (animations.length > 0) {
+        animations.forEach(anim => {
+          anim.playbackRate = isSpeedingUp ? 4 : 1; // 4x speed looks more dramatic and satisfying
+        });
+      }
+    }
+  }, [isSpeedingUp]);
+
+  const handlePressStart = () => setIsSpeedingUp(true);
+  const handlePressEnd = () => setIsSpeedingUp(false);
+
+  const handleAnimationEnd = () => {
+    // When the crawl finishes, fade to black, then navigate home
+    setFadeState('out');
+    setTimeout(() => {
+      navigate('/');
+    }, 3000); // Wait for the 3s fade out
+  };
+
+  const stars = useMemo(() => {
+    return Array.from({ length: 150 }).map((_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      size: Math.random() * 2 + 1,
+      opacity: Math.random() * 0.8 + 0.2,
+      animationDuration: Math.random() * 3 + 2,
+      animationDelay: Math.random() * 2
+    }));
+  }, []);
 
   return (
-    <div className="min-h-screen bg-black text-white overflow-hidden relative pt-20">
+    <div
+      className="min-h-screen bg-black text-white overflow-hidden relative pt-20 select-none"
+      onMouseDown={handlePressStart}
+      onMouseUp={handlePressEnd}
+      onMouseLeave={handlePressEnd}
+      onTouchStart={handlePressStart}
+      onTouchEnd={handlePressEnd}
+      style={{ cursor: isSpeedingUp ? 'grabbing' : 'grab' }}
+    >
       <style>{`
         .easter-stars {
           position: absolute;
@@ -33,9 +89,9 @@ function EasterEgg() {
           position: absolute;
           width: 86%;
           left: 7%;
-          bottom: -70%;
+          bottom: 0;
           transform-origin: 50% 100%;
-          animation: easter-crawl-up 32s linear forwards;
+          animation: easter-crawl-up 38s linear forwards;
           text-align: center;
         }
 
@@ -153,8 +209,8 @@ function EasterEgg() {
           .easter-crawl {
             width: 98%;
             left: 1%;
-            bottom: -18%;
-            animation: easter-crawl-up-desktop 36s linear forwards;
+            bottom: 0;
+            animation: easter-crawl-up-desktop 45s linear forwards;
           }
 
           .easter-title {
@@ -183,28 +239,54 @@ function EasterEgg() {
 
         @keyframes easter-crawl-up {
           0% {
-            transform: rotateX(17deg) translateY(0);
+            transform: rotateX(17deg) translateY(100vh);
           }
           100% {
-            transform: rotateX(17deg) translateY(-290%);
+            transform: rotateX(17deg) translateY(-350%);
           }
         }
 
         @keyframes easter-crawl-up-desktop {
           0% {
-            transform: rotateX(15deg) translateY(0);
+            transform: rotateX(15deg) translateY(100vh);
           }
           100% {
-            transform: rotateX(15deg) translateY(-235%);
+            transform: rotateX(15deg) translateY(-300%);
           }
+        }
+
+        @keyframes twinkle {
+          0%, 100% { opacity: 0.2; }
+          50% { opacity: 1; }
         }
       `}</style>
 
-      <div className="easter-stars" />
+      <div className="absolute inset-0 z-0">
+        {stars.map((star) => (
+          <div
+            key={star.id}
+            style={{
+              position: 'absolute',
+              left: `${star.x}%`,
+              top: `${star.y}%`,
+              width: `${star.size}px`,
+              height: `${star.size}px`,
+              backgroundColor: '#FFF',
+              borderRadius: '50%',
+              opacity: star.opacity,
+              animation: `twinkle ${star.animationDuration}s infinite ease-in-out ${star.animationDelay}s`,
+            }}
+          />
+        ))}
+      </div>
       <div className="easter-fade" />
 
       <div className="easter-stage">
-        <div className="easter-crawl">
+        <div
+          className="easter-crawl"
+          ref={crawlRef}
+          onAnimationEnd={handleAnimationEnd}
+        >
           <p className="easter-title">EASTER EGG DISCOVERED</p>
           <h1 className="easter-heading">축하합니다!</h1>
           <div className="easter-body">
@@ -242,6 +324,14 @@ function EasterEgg() {
           </div>
         </div>
       </div>
+
+      {/* Fade overlay for entry and exit transitions */}
+      <div
+        className="fixed inset-0 z-[9999] bg-black pointer-events-none transition-opacity duration-3000 ease-in-out"
+        style={{
+          opacity: fadeState === 'normal' ? 0 : 1
+        }}
+      />
     </div>
   );
 }
