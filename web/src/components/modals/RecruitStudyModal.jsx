@@ -43,6 +43,15 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
         setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
+    const hasContent = () => {
+        return form.title || form.periodStart || form.periodEnd || form.deadline || form.way || form.cycle || form.place || form.tags || form.description;
+    };
+
+    const handleSafeClose = () => {
+        if (hasContent() && !window.confirm('작성 중인 내용이 있습니다. 정말 닫으시겠습니까?')) return;
+        onClose();
+    };
+
     const handleDateChange = (e) => {
         const { name, value } = e.target;
         const formatted = formatBirthDate(value);
@@ -110,10 +119,10 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
     return (
         <div
             className="modal active"
-            onClick={(e) => { if (e.target.className.includes('modal')) onClose(); }}
+            onClick={(e) => { if (e.target.className.includes('modal')) handleSafeClose(); }}
         >
             <div className="modal-content">
-                <button className="close-modal" onClick={onClose}>
+                <button className="close-modal" onClick={handleSafeClose}>
                     <i className="fas fa-times" />
                 </button>
 
@@ -250,7 +259,7 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                         <div className="flex justify-end gap-3 pt-6 border-t border-gray-800">
                             <button
                                 type="button"
-                                onClick={onClose}
+                                onClick={handleSafeClose}
                                 className="px-6 py-2 border border-gray-600 rounded-lg hover:border-gray-400 text-gray-300 transition-colors"
                             >
                                 취소
