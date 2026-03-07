@@ -194,6 +194,7 @@ const AdminModifyUserInfo = () => {
                                     <th className="p-4 text-left">이름/아이디</th>
                                     <th className="p-4 text-left">학번</th>
                                     <th className="p-4 text-left">이메일</th>
+                                    <th className="p-4 text-left">학적상태</th>
                                     <th className="p-4 text-left">권한</th>
                                     <th className="p-4 text-center">작업</th>
                                 </tr>
@@ -201,7 +202,7 @@ const AdminModifyUserInfo = () => {
                             <tbody>
                                 {filteredUsers.length === 0 ? (
                                     <tr>
-                                        <td colSpan="6" className="p-8 text-center text-gray-400">
+                                        <td colSpan="7" className="p-8 text-center text-gray-400">
                                             사용자가 없습니다.
                                         </td>
                                     </tr>
@@ -225,6 +226,14 @@ const AdminModifyUserInfo = () => {
                                             </td>
                                             <td className="p-4 text-gray-300">{user.student_number || '-'}</td>
                                             <td className="p-4 text-gray-300">{user.email || '-'}</td>
+                                            <td className="p-4">
+                                                <span className={`text-sm font-medium ${user.education_status === '재학' ? 'text-green-400' :
+                                                        user.education_status === '휴학' ? 'text-yellow-400' :
+                                                            user.education_status === '졸업' ? 'text-gray-400' : 'text-gray-500'
+                                                    }`}>
+                                                    {user.education_status || '-'}
+                                                </span>
+                                            </td>
                                             <td className="p-4">
                                                 <span className={`permission-badge permission-${user.role?.toLowerCase()}`}>
                                                     {getRoleDisplayName(user.role)}
