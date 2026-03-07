@@ -132,12 +132,19 @@ function Members() {
     });
   }, [members, searchTerm, activeTag]);
 
-  const currentMembers = filteredMembers.filter(
-    (member) => member.status === 'current'
-  );
-  const alumniMembers = filteredMembers.filter(
-    (member) => member.status === 'alumni'
-  );
+  const currentMembers = filteredMembers
+    .filter((member) => member.status === 'current')
+    .sort((a, b) => {
+      // 1순위: 재학이 휴학보다 위
+      const statusOrder = (s) => (s === '재학' ? 0 : 1);
+      const statusDiff = statusOrder(a.educationStatus) - statusOrder(b.educationStatus);
+      if (statusDiff !== 0) return statusDiff;
+      // 2순위: 가나다 → 알파벳 순
+      return a.name.localeCompare(b.name, 'ko');
+    });
+  const alumniMembers = filteredMembers
+    .filter((member) => member.status === 'alumni')
+    .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
 
   // 태그 버튼 클릭 핸들러
   const handleTagClick = (tag) => {
