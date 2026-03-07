@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import logo from '../logo.svg';
+import { useKonamiCode } from '../hooks/useKonamiCode';
 
 function Home() {
   const navigate = useNavigate();
@@ -20,6 +21,11 @@ function Home() {
     competition: [],
     study: [],
     mt: [],
+  });
+
+  // Konami Code Easter Egg
+  useKonamiCode(() => {
+    navigate('/easter-egg');
   });
 
   useEffect(() => {

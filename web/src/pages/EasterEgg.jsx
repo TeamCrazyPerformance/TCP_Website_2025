@@ -1,11 +1,7 @@
 import React from 'react';
+import easterEggData from '../data/easteregg.json';
 
 function EasterEgg() {
-  const contributors = [
-    { role: '프론트엔드', names: ['박연오', '마정훈', '이준수'] },
-    { role: '백엔드', names: ['김영진', '서준수', '정세영'] },
-    { role: '서버 및 총괄', names: ['이준수'] },
-  ];
 
   return (
     <div className="min-h-screen bg-black text-white overflow-hidden relative pt-20">
@@ -78,17 +74,74 @@ function EasterEgg() {
         .easter-body {
           color: #f5deb3;
           line-height: 1.8;
-          font-size: clamp(1.7rem, 4vw, 3.1rem);
-          font-weight: 700;
+          font-size: clamp(1.2rem, 2.5vw, 2.2rem);
+          font-weight: 500;
         }
 
         .easter-block {
-          margin-top: 2.2rem;
+          margin-top: 3.5rem;
+          margin-bottom: 2rem;
+          text-align: left;
+          padding: 0 10%;
         }
 
-        .easter-role {
-          color: #ffe8a3;
-          margin-bottom: 0.7rem;
+        .easter-generation {
+          color: #ffd54f;
+          font-size: clamp(2rem, 5vw, 4rem);
+          font-weight: 800;
+          text-align: center;
+          margin: 5rem 0 3rem 0;
+          letter-spacing: 0.1em;
+          border-bottom: 2px solid rgba(255, 213, 79, 0.3);
+          padding-bottom: 1rem;
+        }
+
+        .easter-team {
+          margin-bottom: 3.5rem;
+          background: rgba(0, 0, 0, 0.4);
+          border-radius: 16px;
+          padding: 2rem;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .easter-role-header {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .easter-role-title {
+          font-size: clamp(1.6rem, 3.5vw, 2.8rem);
+          font-weight: 800;
+          letter-spacing: 0.05em;
+        }
+
+        .easter-role-desc {
+          color: #bbb;
+          font-size: clamp(1rem, 2vw, 1.6rem);
+          font-weight: 400;
+          margin-bottom: 2rem;
+        }
+
+        .easter-member {
+          display: flex;
+          flex-direction: column;
+          margin-bottom: 1.2rem;
+          padding-left: 1rem;
+          border-left: 3px solid rgba(255,255,255,0.2);
+        }
+
+        .easter-member-name {
+          color: #fff;
+          font-weight: 700;
+          font-size: clamp(1.4rem, 2.8vw, 2.2rem);
+        }
+
+        .easter-member-role {
+          color: #e0e0e0;
+          font-size: clamp(1rem, 2vw, 1.6rem);
+          font-weight: 400;
         }
 
         @media (min-width: 1024px) {
@@ -113,7 +166,7 @@ function EasterEgg() {
           }
 
           .easter-body {
-            font-size: 5rem;
+            font-size: 3.5rem;
             line-height: 1.62;
           }
         }
@@ -124,7 +177,7 @@ function EasterEgg() {
           }
 
           .easter-body {
-            font-size: 5.4rem;
+            font-size: 4rem;
           }
         }
 
@@ -155,17 +208,37 @@ function EasterEgg() {
           <p className="easter-title">EASTER EGG DISCOVERED</p>
           <h1 className="easter-heading">축하합니다!</h1>
           <div className="easter-body">
-            <p>이스터에그를 찾아주셔서 감사합니다.</p>
-            <p className="mt-2">이 웹사이트를 함께 만든 사람들입니다.</p>
+            <p className="text-center">이스터에그를 찾아주셔서 감사합니다.</p>
+            <p className="mt-2 mb-12 text-center">이 웹사이트를 함께 만든 사람들입니다.</p>
 
-            {contributors.map((team) => (
-              <div className="easter-block" key={team.role}>
-                <p className="easter-role">{team.role}</p>
-                <p>{team.names.join(', ')}</p>
-              </div>
+            {Object.entries(easterEggData).map(([generation, teams]) => (
+              teams.length > 0 && (
+                <div key={generation} className="easter-block">
+                  <h2 className="easter-generation">{generation}</h2>
+
+                  {teams.map((team) => (
+                    <div className="easter-team" key={team.id}>
+                      <div className="easter-role-header">
+                        <span>{team.icon}</span>
+                        <h3 className="easter-role-title" style={{ color: team.color }}>{team.label}</h3>
+                      </div>
+                      <p className="easter-role-desc">{team.desc}</p>
+
+                      <div className="easter-members">
+                        {team.members.map((member, idx) => (
+                          <div className="easter-member" key={idx} style={{ borderLeftColor: team.color }}>
+                            <span className="easter-member-name">{member.name}</span>
+                            <span className="easter-member-role">{member.role}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
             ))}
 
-            <p className="mt-6">May the Code be with you.</p>
+            <p className="mt-20 text-center" style={{ color: '#ffd54f', fontSize: 'clamp(2rem, 5vw, 4rem)', fontWeight: 800 }}>May the Code be with you.</p>
           </div>
         </div>
       </div>
