@@ -1,0 +1,42 @@
+{
+  "1기 운영개발팀": [
+    {
+      "id": "frontend",
+      "label": "FRONTEND",
+      "icon": "🖥️",
+      "desc": "프론트 전반, 상호작용, 목업, 픽셀 퍼펙트",
+      "color": "var(--neon-1, #00f3ff)",
+      "members": [
+        { "name": "박연오", "role": "프론트 팀장 · 프론트 전반" },
+        { "name": "이준수", "role": "프론트 목업" },
+        { "name": "마정훈", "role": "프론트 도움" }
+      ]
+    },
+    {
+      "id": "backend",
+      "label": "BACKEND",
+      "icon": "🛠️",
+      "desc": "API, 인증/권한, 데이터, 안정성",
+      "color": "var(--neon-2, #ff00ea)",
+      "members": [
+        { "name": "김영진", "role": "백엔드 팀장 · 백엔드 전반, 인증/권한 관련 API 제작" },
+        { "name": "정세영", "role": "부원 관리 API 제작" },
+        { "name": "서준수", "role": "동아리 지원 API 제작" },
+        { "name": "이형진", "role": "회계 관리 API 제작" }
+      ]
+    },
+    {
+      "id": "infra",
+      "label": "SERVER & HARDWARE",
+      "icon": "🧰",
+      "desc": "서버 구축, 배포, 모니터링, 하드웨어",
+      "color": "var(--neon-3, #00ff66)",
+      "members": [
+        { "name": "이준수", "role": "서버 하드웨어 팀장" },
+        { "name": "이형진", "role": "서버 하드웨어 검수" }
+      ]
+    }
+  ],
+  "2기 팀": [],
+  "3기 팀": []
+}
