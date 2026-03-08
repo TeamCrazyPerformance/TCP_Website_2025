@@ -22,7 +22,7 @@ function EasterEgg() {
       const animations = crawlRef.current.getAnimations();
       if (animations.length > 0) {
         animations.forEach(anim => {
-          anim.playbackRate = isSpeedingUp ? 2 : 1; // Changed to 2x speed for better readability
+          anim.playbackRate = isSpeedingUp ? 8 : 1;
         });
       }
     }
@@ -80,20 +80,21 @@ function EasterEgg() {
         .easter-stage {
           position: relative;
           height: calc(100vh - 5rem);
-          perspective: 420px;
+          perspective: 800px;
+          perspective-origin: center 200px;
           overflow: hidden;
           z-index: 2;
         }
 
         .easter-crawl {
           position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          margin: 0 auto;
           width: 86%;
-          left: 7%;
-          /* Start exactly at the bottom edge of the screen */
-          bottom: -150%; 
-          transform-origin: 50% 100%;
-          /* Shortened duration so it finishes closer to the actual text length */
-          animation: easter-crawl-up 30s linear forwards;
+          transform-style: preserve-3d;
+          animation: easter-crawl-up 60s linear forwards, easter-fade-out 60s linear forwards;
           text-align: center;
         }
 
@@ -145,7 +146,7 @@ function EasterEgg() {
 
         .easter-generation {
           color: #ffd54f;
-          font-size: clamp(2rem, 5vw, 4rem);
+          font-size: clamp(4rem, 10vw, 8rem);
           font-weight: 800;
           text-align: center;
           margin: 5rem 0 3rem 0;
@@ -172,14 +173,14 @@ function EasterEgg() {
         }
 
         .easter-role-title {
-          font-size: clamp(1.6rem, 3.5vw, 2.8rem);
+          font-size: clamp(3.2rem, 7vw, 5.6rem);
           font-weight: 800;
           letter-spacing: 0.05em;
         }
 
         .easter-role-desc {
           color: #bbb;
-          font-size: clamp(1rem, 2vw, 1.6rem);
+          font-size: clamp(2rem, 4vw, 3.2rem);
           font-weight: 400;
           margin-bottom: 2rem;
         }
@@ -194,26 +195,24 @@ function EasterEgg() {
         .easter-member-name {
           color: #fff;
           font-weight: 700;
-          font-size: clamp(1.4rem, 2.8vw, 2.2rem);
+          font-size: clamp(2.8rem, 5.6vw, 4.4rem);
         }
 
         .easter-member-role {
           color: #e0e0e0;
-          font-size: clamp(1rem, 2vw, 1.6rem);
+          font-size: clamp(2rem, 4vw, 3.2rem);
           font-weight: 400;
         }
 
         @media (min-width: 1024px) {
           .easter-stage {
             height: calc(100vh - 4rem);
-            perspective: 260px;
+            perspective: 800px;
           }
 
           .easter-crawl {
             width: 98%;
-            left: 1%;
-            bottom: -150%;
-            animation: easter-crawl-up-desktop 35s linear forwards;
+            animation: easter-crawl-up-desktop 60s linear forwards, easter-fade-out 60s linear forwards;
           }
 
           .easter-title {
@@ -242,20 +241,25 @@ function EasterEgg() {
 
         @keyframes easter-crawl-up {
           0% {
-            transform: rotateX(17deg) translateY(50vh);
+            transform: rotateX(40deg) translateZ(200px) translateY(100vh);
           }
           100% {
-            transform: rotateX(17deg) translateY(-250%);
+            transform: rotateX(40deg) translateZ(200px) translateY(-100%);
           }
         }
 
         @keyframes easter-crawl-up-desktop {
           0% {
-            transform: rotateX(15deg) translateY(50vh);
+            transform: rotateX(45deg) translateZ(100px) translateY(100vh);
           }
           100% {
-            transform: rotateX(15deg) translateY(-220%);
+            transform: rotateX(45deg) translateZ(100px) translateY(-100%);
           }
+        }
+
+        @keyframes easter-fade-out {
+          0%, 85% { opacity: 1; }
+          100% { opacity: 0; }
         }
 
         @keyframes twinkle {
