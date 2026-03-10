@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import FormInput from '../ui/FormInput';
 import FormTextarea from '../ui/FormTextarea';
 import { apiPost } from '../../api/client';
-import { formatBirthDate } from '../../utils/dateFormatter';
+import { formatBirthDate, formatPeriodDate } from '../../utils/dateFormatter';
 
 export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
     const [form, setForm] = useState({
@@ -54,7 +54,11 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
 
     const handleDateChange = (e) => {
         const { name, value } = e.target;
-        const formatted = formatBirthDate(value);
+        // periodStart/periodEnd는 YYYY.MM.DD 형식 (백엔드 요구사항)
+        // deadline은 YYYY-MM-DD 형식 (ISO 날짜)
+        const formatted = (name === 'periodStart' || name === 'periodEnd')
+            ? formatPeriodDate(value)
+            : formatBirthDate(value);
         setForm((prev) => ({ ...prev, [name]: formatted }));
     };
 
@@ -181,7 +185,7 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                                     required
                                     className="form-input"
                                     style={{ maxWidth: '45%' }}
-                                    placeholder="YYYY-MM-DD"
+                                    placeholder="YYYY.MM.DD"
                                     maxLength={10}
                                 />
                                 <span className="text-gray-400">~</span>
@@ -193,7 +197,7 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                                     required
                                     className="form-input"
                                     style={{ maxWidth: '45%' }}
-                                    placeholder="YYYY-MM-DD"
+                                    placeholder="YYYY.MM.DD"
                                     maxLength={10}
                                 />
                             </div>
