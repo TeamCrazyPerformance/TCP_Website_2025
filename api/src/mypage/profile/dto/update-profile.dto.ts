@@ -7,6 +7,7 @@ import {
   ArrayMaxSize,
   MaxLength,
   Matches,
+  ValidateIf,
 } from 'class-validator';
 import { EducationStatus } from '../../../members/entities/enums/education-status.enum';
 import { UserGender } from '../../../members/entities/enums/user-gender.enum';
@@ -48,6 +49,7 @@ export class UpdateProfileDto {
   github_username?: string;
 
   @IsOptional()
+  @ValidateIf((o, v) => v !== "" && v !== null)
   @IsUrl({ require_protocol: true })
   portfolio_link?: string;
 
