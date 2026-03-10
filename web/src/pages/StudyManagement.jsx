@@ -415,6 +415,7 @@ export default function StudyManagement() {
                                                 value={editForm.period}
                                                 onChange={(e) => setEditForm({ ...editForm, period: e.target.value })}
                                                 className="w-full bg-gray-800 rounded-lg py-2 px-4 text-white"
+                                                placeholder="예: 2025.01.01 ~ 2025.12.31"
                                             />
                                         </div>
                                         <div>
