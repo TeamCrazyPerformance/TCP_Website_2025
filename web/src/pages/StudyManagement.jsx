@@ -112,7 +112,7 @@ export default function StudyManagement() {
     const handleUpdateInfo = async (e) => {
         e.preventDefault();
         try {
-            await fetch(`/api/v1/study/${id}`, {
+            const response = await fetch(`/api/v1/study/${id}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -120,6 +120,10 @@ export default function StudyManagement() {
                 },
                 body: JSON.stringify(editForm),
             });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `수정 실패 (${response.status})`);
+            }
             alert('스터디 정보가 수정되었습니다.');
             setIsEditingInfo(false);
             window.location.reload();
@@ -153,10 +157,14 @@ export default function StudyManagement() {
         const confirmMsg = isPending ? '이 신청을 거절하시겠습니까?' : '이 멤버를 추방하시겠습니까?';
         if (!window.confirm(confirmMsg)) return;
         try {
-            await fetch(`/api/v1/study/${id}/members/${userId}`, {
+            const response = await fetch(`/api/v1/study/${id}/members/${userId}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
             });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `작업 실패 (${response.status})`);
+            }
             alert(isPending ? '신청이 거절되었습니다.' : '멤버가 추방되었습니다.');
             window.location.reload();
         } catch (error) {
@@ -194,7 +202,7 @@ export default function StudyManagement() {
     // Update progress
     const handleUpdateProgress = async (progressId) => {
         try {
-            await fetch(`/api/v1/study/${id}/progress/${progressId}`, {
+            const response = await fetch(`/api/v1/study/${id}/progress/${progressId}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -202,6 +210,10 @@ export default function StudyManagement() {
                 },
                 body: JSON.stringify(editProgressForm),
             });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `수정 실패 (${response.status})`);
+            }
             alert('진행사항이 수정되었습니다.');
             setEditingProgressId(null);
             window.location.reload();
@@ -214,10 +226,14 @@ export default function StudyManagement() {
     const handleDeleteProgress = async (progressId) => {
         if (!window.confirm('이 진행사항을 삭제하시겠습니까?')) return;
         try {
-            await fetch(`/api/v1/study/${id}/progress/${progressId}`, {
+            const response = await fetch(`/api/v1/study/${id}/progress/${progressId}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
             });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `삭제 실패 (${response.status})`);
+            }
             alert('진행사항이 삭제되었습니다.');
             window.location.reload();
         } catch (error) {
@@ -229,10 +245,14 @@ export default function StudyManagement() {
     const handleDeleteResource = async (resourceId) => {
         if (!window.confirm('이 자료를 삭제하시겠습니까?')) return;
         try {
-            await fetch(`/api/v1/study/${id}/resources/${resourceId}`, {
+            const response = await fetch(`/api/v1/study/${id}/resources/${resourceId}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
             });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `삭제 실패 (${response.status})`);
+            }
             alert('자료가 삭제되었습니다.');
             window.location.reload();
         } catch (error) {
