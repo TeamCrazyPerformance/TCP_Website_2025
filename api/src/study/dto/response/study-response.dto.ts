@@ -3,4 +3,5 @@ export class StudyResponseDto {
   study_name: string;
   start_year: number;
   study_description: string | null;
+  is_public: boolean;
 }

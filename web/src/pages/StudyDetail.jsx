@@ -87,10 +87,10 @@ export default function StudyDetail() {
           cycle: data.cycle || '정보 없음',
           location: data.place || '정보 없음',
           recruitCount: data.recruit_count || 0,
-          recruitCount: data.recruit_count || 0,
           memberCount: (data.members || []).filter(m => m.role === 'MEMBER' || m.role === 'LEADER' || m.role === 'NOMINEE').length,
           description: data.study_description,
           tags: data.tag ? data.tag.split(',').map((t) => t.trim()) : ['스터디'],
+          is_public: data.is_public ?? false,
           leader: data.leader ? {
             id: data.leader.user_id,
             name: data.leader.name || '알 수 없음',
@@ -391,7 +391,7 @@ export default function StudyDetail() {
         )}
 
         {/* Guest Join Button */}
-        {(userRole === 'guest') && (
+        {(userRole === 'guest' && (study.is_public || (currentUser && currentUser.role !== 'GUEST'))) && (
           <button
             onClick={handleJoin}
             className="cta-button px-6 py-3 rounded-lg font-bold text-white hover:text-black transition-colors flex items-center"

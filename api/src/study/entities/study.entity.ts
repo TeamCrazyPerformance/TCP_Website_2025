@@ -45,6 +45,9 @@ export class Study {
   @Column({ type: 'varchar', length: 100, nullable: true })
   cycle: string;
 
+  @Column({ type: 'boolean', default: false })
+  is_public: boolean;
+
   @CreateDateColumn()
   created_at: Date;
 

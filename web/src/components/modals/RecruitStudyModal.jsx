@@ -17,6 +17,7 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
         place: '',
         tags: '',
         description: '',
+        is_public: false,
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,6 +36,7 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                 place: '',
                 tags: '',
                 description: '',
+                is_public: false,
             });
         }
     }, [isOpen]);
@@ -91,6 +93,7 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                 cycle: form.cycle,
                 place: form.place,
                 tag: form.tags,
+                is_public: form.is_public,
             };
 
             const newStudy = await apiPost('/api/v1/study', payload, {
@@ -247,6 +250,25 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                             onChange={onForm}
                             placeholder="예: #React, #Java (쉼표로 구분)"
                         />
+
+                        {/* Public Toggle */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                공개 여부 (일반 회원 지원 가능)
+                            </label>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    className="sr-only peer"
+                                    checked={form.is_public}
+                                    onChange={(e) => setForm({ ...form, is_public: e.target.checked })}
+                                />
+                                <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-blue"></div>
+                                <span className="ml-3 text-sm font-medium text-gray-300">
+                                    {form.is_public ? '공개' : '비공개'}
+                                </span>
+                            </label>
+                        </div>
 
                         {/* Description */}
                         <FormTextarea
