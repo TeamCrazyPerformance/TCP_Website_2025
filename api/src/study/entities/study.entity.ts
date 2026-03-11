@@ -24,7 +24,7 @@ export class Study {
   @Column({ type: 'text', nullable: true })
   study_description: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 300, nullable: true })
   tag: string;
 
   @Column({ type: 'int', nullable: true })
