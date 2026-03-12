@@ -5,6 +5,8 @@ import { apiPost } from '../../api/client';
 import { formatBirthDate, formatPeriodDate } from '../../utils/dateFormatter';
 
 export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
+    const normalizeBoolean = (value) => value === true || value === 1 || value === '1' || value === 'true';
+
     const [form, setForm] = useState({
         title: '',
         startYear: new Date().getFullYear(),
@@ -105,9 +107,12 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                     id: newStudy.id,
                     year: Number(form.startYear),
                     title: form.title,
-                    period: `${form.startYear}년`,
+                    period: `${form.periodStart} ~ ${form.periodEnd}`,
                     description: form.description,
-                    tags: ['스터디'],
+                    tags: form.tags
+                        ? form.tags.split(',').map((tag) => tag.trim()).filter(Boolean)
+                        : ['스터디'],
+                    is_public: normalizeBoolean(newStudy?.is_public ?? form.is_public),
                 };
                 onAddStudy(mapped);
             }
@@ -252,22 +257,33 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                         />
 
                         {/* Public Toggle */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                        <div className="w-full" style={{ textAlign: 'left' }}>
+                            <label className="block text-left text-sm font-medium text-gray-300 mb-2">
                                 공개 여부 (일반 회원 지원 가능)
                             </label>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    className="sr-only peer"
-                                    checked={form.is_public}
-                                    onChange={(e) => setForm({ ...form, is_public: e.target.checked })}
-                                />
-                                <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-blue"></div>
-                                <span className="ml-3 text-sm font-medium text-gray-300">
-                                    {form.is_public ? '공개' : '비공개'}
+                            <div
+                                className="h-10"
+                                style={{
+                                    width: '100%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'flex-start',
+                                    gap: '0.75rem',
+                                    textAlign: 'left',
+                                }}
+                            >
+                                <button
+                                    type="button"
+                                    className={`toggle-switch border-0 p-0 ${normalizeBoolean(form.is_public) ? 'active' : ''}`}
+                                    onClick={() => setForm((prev) => ({ ...prev, is_public: !normalizeBoolean(prev.is_public) }))}
+                                    aria-pressed={normalizeBoolean(form.is_public)}
+                                    aria-label="공개 여부 토글"
+                                    style={{ margin: 0, flexShrink: 0 }}
+                                ></button>
+                                <span className="text-sm font-medium text-gray-300">
+                                    {normalizeBoolean(form.is_public) ? '공개' : '비공개'}
                                 </span>
-                            </label>
+                            </div>
                         </div>
 
                         {/* Description */}

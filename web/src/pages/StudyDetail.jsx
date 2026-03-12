@@ -6,6 +6,7 @@ import MarkdownIt from 'markdown-it';
 import defaultProfileImage from '../logo.svg';
 
 const md = new MarkdownIt({ html: true, linkify: true, breaks: true });
+const normalizeBoolean = (value) => value === true || value === 1 || value === '1' || value === 'true';
 
 export default function StudyDetail() {
   const { id } = useParams();
@@ -90,7 +91,7 @@ export default function StudyDetail() {
           memberCount: (data.members || []).filter(m => m.role === 'MEMBER' || m.role === 'LEADER' || m.role === 'NOMINEE').length,
           description: data.study_description,
           tags: data.tag ? data.tag.split(',').map((t) => t.trim()) : ['스터디'],
-          is_public: data.is_public ?? false,
+          is_public: normalizeBoolean(data.is_public),
           leader: data.leader ? {
             id: data.leader.user_id,
             name: data.leader.name || '알 수 없음',
@@ -420,9 +421,17 @@ export default function StudyDetail() {
           <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6 mb-6">
 
             <div className="flex-1 text-left">
-              <h1 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-2 text-left">
-                {study.title}
-              </h1>
+              <div className="flex flex-wrap items-center gap-3 mb-2">
+                <h1 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-0 text-left">
+                  {study.title}
+                </h1>
+                {normalizeBoolean(study.is_public) && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-500/20 text-green-300 border border-green-500/30">
+                    <i className="fas fa-unlock-alt mr-2"></i>
+                    공개 스터디
+                  </span>
+                )}
+              </div>
               <p className="text-lg text-gray-300 mb-4 text-left whitespace-pre-wrap">{study.description}</p>
               <div className="flex flex-wrap gap-2">
                 {study.tags.map((tag, index) => {
