@@ -31,6 +31,8 @@ export default function StudyManagement() {
     const [searchResults, setSearchResults] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
 
+    const normalizeBoolean = (value) => value === true || value === 1 || value === '1' || value === 'true';
+
     useEffect(() => {
         const token = localStorage.getItem('access_token');
         const user = localStorage.getItem('auth_user');
@@ -76,6 +78,7 @@ export default function StudyManagement() {
                     place: data.place || '',
                     way: data.way || '',
                     cycle: data.cycle || '',
+                    is_public: normalizeBoolean(data.is_public),
                 });
 
                 // Separate PENDING, MEMBER, LEADER_NOMINEE
@@ -465,6 +468,21 @@ export default function StudyManagement() {
                                                 placeholder="쉼표로 구분"
                                             />
                                         </div>
+                                        <div>
+                                            <label className="block text-gray-300 mb-2">공개 여부 (일반 회원 지원 가능)</label>
+                                            <div className="flex items-center justify-center h-10">
+                                                <button
+                                                    type="button"
+                                                    className={`toggle-switch border-0 p-0 ${normalizeBoolean(editForm.is_public) ? 'active' : ''}`}
+                                                    onClick={() => setEditForm((prev) => ({ ...prev, is_public: !normalizeBoolean(prev.is_public) }))}
+                                                    aria-pressed={normalizeBoolean(editForm.is_public)}
+                                                    aria-label="공개 여부 토글"
+                                                ></button>
+                                                <span className="ml-3 text-sm font-medium text-gray-300">
+                                                    {normalizeBoolean(editForm.is_public) ? '공개' : '비공개'}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div>
                                         <label className="block text-gray-300 mb-2">소개</label>
@@ -489,6 +507,7 @@ export default function StudyManagement() {
                                     <p><strong className="text-white">주기:</strong> {study?.cycle || '-'}</p>
                                     <p><strong className="text-white">장소:</strong> {study?.place || '-'}</p>
                                     <p><strong className="text-white">모집 마감일:</strong> {study?.apply_deadline?.split('T')[0] || '-'}</p>
+                                    <p><strong className="text-white">공개 여부:</strong> {normalizeBoolean(study?.is_public) ? '🔓 공개 (일반 회원 지원 가능)' : '🔒 비공개'}</p>
                                     <p><strong className="text-white">태그:</strong> {study?.tag || '-'}</p>
                                     <div className="md:col-span-2">
                                         <strong className="text-white">소개:</strong>

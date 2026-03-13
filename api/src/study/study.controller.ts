@@ -77,8 +77,10 @@ export class StudyController {
   @UseGuards(AuthGuard('jwt'))
   async findById(
     @Param('id', ParseIntPipe) id: number,
+    @Req() req: any,
   ): Promise<StudyDetailResponseDto> {
-    return this.studyService.findById(id);
+    const userId = req.user.userId;
+    return this.studyService.findById(id, userId);
   }
 
   /**
@@ -379,8 +381,7 @@ export class StudyController {
    */
   @Post(':id/apply')
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(UserRole.MEMBER, UserRole.ADMIN)
+  @UseGuards(AuthGuard('jwt'))
   async apply(
     @Param('id', ParseIntPipe) id: number,
     @Req() req: any,
