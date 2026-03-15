@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString, Min, IsDateString, IsUUID, Matches } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, IsBoolean, Min, IsDateString, Matches } from 'class-validator';
 
 export class CreateStudyDto {
   @IsString()
@@ -43,4 +43,8 @@ export class CreateStudyDto {
   @IsString()
   @IsOptional()
   cycle?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  is_public?: boolean;
 }

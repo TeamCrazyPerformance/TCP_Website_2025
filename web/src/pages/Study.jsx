@@ -5,6 +5,7 @@ import RecruitStudyModal from '../components/modals/RecruitStudyModal';
 
 function Study() {
   const navigate = useNavigate();
+  const normalizeBoolean = (value) => value === true || value === 1 || value === '1' || value === 'true';
 
   const [studies, setStudies] = useState([]);
   const [selectedYear, setSelectedYear] = useState('all');
@@ -58,9 +59,12 @@ function Study() {
           id: study.id,
           year: study.start_year,
           title: study.study_name,
-          period: `${study.start_year}년`,
-          description: study.study_description,
-          tags: ['스터디'],
+          period: study.period || `${study.start_year}년`,
+          description: study.study_description || '',
+          tags: study.tag
+            ? study.tag.split(',').map((tag) => tag.trim()).filter(Boolean)
+            : ['스터디'],
+          is_public: normalizeBoolean(study.is_public),
         }));
         if (isMounted) {
           setStudies(mapped);
@@ -262,9 +266,17 @@ function Study() {
                   className="study-item p-6 rounded-xl card-hover scroll-fade"
                   onClick={() => handleStudyClick(study.id)}
                 >
-                  <h3 className="orbitron text-xl font-bold mb-2 text-white text-left">
-                    {study.title}
-                  </h3>
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <h3 className="orbitron text-xl font-bold text-white text-left flex-1">
+                      {study.title}
+                    </h3>
+                    {normalizeBoolean(study.is_public) && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-300 border border-green-500/30 whitespace-nowrap">
+                        <i className="fas fa-unlock-alt mr-1"></i>
+                        공개 스터디
+                      </span>
+                    )}
+                  </div>
                   <p className="text-gray-400 mb-2 text-left">{study.period}</p>
                   <p className="text-sm text-gray-500 text-left">
                     {(study.description || '').substring(0, 80)}...
@@ -306,4 +318,3 @@ function Study() {
 }
 
 export default Study;
-

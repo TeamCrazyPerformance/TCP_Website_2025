@@ -1,4 +1,4 @@
-import { IsNumber, IsOptional, IsString, Min, IsDateString, Matches } from 'class-validator';
+import { IsNumber, IsOptional, IsString, IsBoolean, Min, IsDateString, Matches } from 'class-validator';
 
 export class UpdateStudyDto {
     @IsString()
@@ -44,4 +44,8 @@ export class UpdateStudyDto {
     @IsString()
     @IsOptional()
     cycle?: string;
+
+    @IsBoolean()
+    @IsOptional()
+    is_public?: boolean;
 }

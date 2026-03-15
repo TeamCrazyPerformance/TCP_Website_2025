@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   StreamableFile,
@@ -70,6 +71,7 @@ export class StudyService {
       study_name: study.study_name,
       start_year: study.start_year,
       study_description: study.study_description,
+      is_public: study.is_public,
     }));
   }
 
@@ -78,7 +80,7 @@ export class StudyService {
    * @param id The ID of the study to retrieve.
    * @returns A promise that resolves to a detailed DTO of the study.
    */
-  async findById(id: number): Promise<StudyDetailResponseDto> {
+  async findById(id: number, userId: string): Promise<StudyDetailResponseDto> {
     // 1. Fetch the study and all its related data in a single query.
     const study = await this.studyRepository.findOne({
       where: { id },
@@ -90,14 +92,23 @@ export class StudyService {
       throw new NotFoundException('Study not found');
     }
 
-    // 3. Process the 'studyMembers' array.
-    // Ensure we only work with members that have a valid user relation
+    // 3. User permission check. Check if the user is a member of this study or an ADMIN.
+    const user = await this.userRepository.findOneBy({ id: userId });
+
+    // Process the 'studyMembers' array.
     const validMembers = study.studyMembers.filter((m) => m && m.user);
     const leaderMember = validMembers.find((member) => member.role === StudyMemberRole.LEADER);
-    const visibleMembers = validMembers;
+
+    const isMember = validMembers.some(
+      (m) => m.user.id === userId && (m.role === StudyMemberRole.MEMBER || m.role === StudyMemberRole.LEADER || m.role === StudyMemberRole.NOMINEE)
+    );
+    const isAdmin = user?.role === UserRole.ADMIN;
+
+    // If not a member and not an admin, they can only view the basic info (no members list, progress, resources).
+    const canViewDetails = isMember || isAdmin;
 
     // 4. Map the entity data to the shape required by the API response DTO.
-    return {
+    const baseResponse: StudyDetailResponseDto = {
       id: study.id,
       study_name: study.study_name,
       start_year: study.start_year,
@@ -109,35 +120,55 @@ export class StudyService {
       place: study.place,
       way: study.way,
       cycle: study.cycle,
+      is_public: study.is_public,
       leader: leaderMember
         ? {
-          user_id: leaderMember.user.id,
+          // Only include user_id if the requester can view details
+          ...(canViewDetails ? { user_id: leaderMember.user.id } : {}),
           name: leaderMember.user.name,
           role: StudyMemberRole.LEADER,
         }
         : null,
-      members: visibleMembers.map((member) => ({
-        user_id: member.user.id,
-        name: member.user.name,
-        role: member.role,
-        profile_image: member.user.profile_image && !member.user.profile_image.startsWith('http')
-          ? `/profiles/${member.user.profile_image}`
-          : member.user.profile_image,
-      })),
-      resources: (study.resources || [])
+    };
+
+    if (canViewDetails) {
+      // Determine if the requester is the leader or admin (who can see PENDING applicants)
+      const isLeaderOrAdmin = (leaderMember && leaderMember.user.id === userId) || isAdmin;
+
+      baseResponse.members = validMembers
+        .filter((member) => {
+          // Only show PENDING members to the leader or admin
+          if (member.role === StudyMemberRole.PENDING) {
+            return isLeaderOrAdmin;
+          }
+          return true; // Everyone who can view details can see MEMBER, LEADER, NOMINEE
+        })
+        .map((member) => ({
+          user_id: member.user.id,
+          name: member.user.name,
+          role: member.role,
+          profile_image: member.user.profile_image && !member.user.profile_image.startsWith('http')
+            ? `/profiles/${member.user.profile_image}`
+            : member.user.profile_image,
+        }));
+
+      baseResponse.resources = (study.resources || [])
         .filter((r) => r.deleted_at === null)
         .map((r) => ({
           id: r.id,
           name: r.name,
           format: r.format,
           dir_path: r.dir_path,
-        })),
-      progress: (study.progress || []).map((p) => ({
+        }));
+
+      baseResponse.progress = (study.progress || []).map((p) => ({
         id: p.id,
         title: p.title,
         content: p.content,
-      })),
-    };
+      }));
+    }
+
+    return baseResponse;
   }
 
   /**
@@ -811,8 +842,8 @@ export class StudyService {
       throw new NotFoundException(`User with ID "${userId}" not found`);
     }
 
-    if (user.role === UserRole.GUEST) {
-      throw new BadRequestException('Guest users cannot apply to a study. Please request approval to MEMBER first.');
+    if (user.role === UserRole.GUEST && !study.is_public) {
+      throw new BadRequestException('Guest users cannot apply to a private study. Please request approval to MEMBER first.');
     }
 
     // 3. Check if the user is already a member of the study (in any role)

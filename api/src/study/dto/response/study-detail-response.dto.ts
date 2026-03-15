@@ -14,8 +14,9 @@ export class StudyDetailResponseDto {
   place: string | null;
   way: string | null;
   cycle: string | null;
+  is_public: boolean;
   leader: StudyMemberResponseDto | null;
-  members: StudyMemberResponseDto[];
-  resources: StudyResourceResponseDto[];
-  progress: StudyProgressResponseDto[];
+  members?: StudyMemberResponseDto[];
+  resources?: StudyResourceResponseDto[];
+  progress?: StudyProgressResponseDto[];
 }
