@@ -1,4 +1,107 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+
+// 전화번호를 숫자만 추출 (빠진 버전)
+const formatPhoneForCopy = (phone) => {
+    if (!phone) return '';
+    return phone.replace(/[^0-9]/g, '');
+};
+
+// 클립보드 복사 헬퍼
+const copyToClipboard = async (text, label = '복사') => {
+    try {
+        await navigator.clipboard.writeText(text);
+        return true;
+    } catch {
+        // fallback for older browsers / non-HTTPS
+        const el = document.createElement('textarea');
+        el.value = text;
+        el.setAttribute('readonly', '');
+        el.style.position = 'absolute';
+        el.style.left = '-9999px';
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        return true;
+    }
+};
+
+// 복사 버튼 컴포넌트
+const CopyButton = ({ text, isPhone = false, className = '' }) => {
+    const [copied, setCopied] = useState(false);
+    const handleCopy = async (e) => {
+        e.stopPropagation();
+        const valueToCopy = isPhone ? formatPhoneForCopy(text) : text;
+        await copyToClipboard(valueToCopy);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+    };
+    return (
+        <button
+            onClick={handleCopy}
+            title={isPhone ? '빠진 버전으로 복사' : '복사'}
+            className={`inline-flex items-center justify-center gap-1 px-2 py-1 rounded text-xs transition-all select-none
+                ${copied
+                    ? 'bg-green-600/80 text-white'
+                    : 'bg-gray-700/80 text-gray-300 hover:bg-blue-700/80 hover:text-white active:scale-95'
+                } ${className}`}
+            style={{ minWidth: '2.5rem', minHeight: '2rem' }}
+        >
+            <i className={`fas ${copied ? 'fa-check' : 'fa-copy'} text-xs`}></i>
+            <span className="hidden sm:inline">{copied ? '완료' : '복사'}</span>
+        </button>
+    );
+};
+
+// 클릭하면 복사되는 정보 행
+const CopyableInfoRow = ({ label, value, isPhone = false }) => {
+    const [copied, setCopied] = useState(false);
+    const handleCopy = async () => {
+        if (!value) return;
+        const valueToCopy = isPhone ? formatPhoneForCopy(value) : String(value);
+        await copyToClipboard(valueToCopy);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+    };
+    return (
+        <div
+            className="flex items-center gap-2 cursor-pointer group rounded-lg p-2 -mx-2 hover:bg-gray-700/40 active:bg-gray-700/60 transition-colors select-none"
+            onClick={handleCopy}
+            title={isPhone ? '클릭하여 빠진 없는 번호 복사' : '클릭하여 복사'}
+        >
+            <span className="text-sm text-gray-400 w-24 shrink-0">{label}</span>
+            <span className="text-lg text-white font-semibold flex-1">{value}</span>
+            <span className={`text-xs px-2 py-0.5 rounded transition-all shrink-0 ${ copied ? 'text-green-400 opacity-100' : 'text-gray-500 opacity-0 group-hover:opacity-100'}`}>
+                {copied ? '✓ 복사됨' : isPhone ? '빠진' : '복사'}
+            </span>
+        </div>
+    );
+};
+
+// 테이블 전화번호 셀: 클릭하면 빠진 버전으로 복사
+const PhoneCopyCell = ({ phone }) => {
+    const [copied, setCopied] = useState(false);
+    const handleCopy = async (e) => {
+        e.stopPropagation();
+        await copyToClipboard(formatPhoneForCopy(phone));
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+    };
+    return (
+        <button
+            onClick={handleCopy}
+            title="클릭하여 빠진 없는 번호 복사"
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-sm transition-all w-full text-left
+                ${copied
+                    ? 'bg-green-700/40 text-green-300'
+                    : 'bg-gray-700/30 text-gray-200 hover:bg-green-800/30 hover:text-green-300 active:scale-95'
+                }`}
+        >
+            <i className={`fas ${copied ? 'fa-check' : 'fa-phone'} text-green-400 text-xs shrink-0`}></i>
+            <span>{copied ? '복사됨!' : phone}</span>
+        </button>
+    );
+};
 
 const StatusBadge = ({ status }) => {
     const styles = {
@@ -41,47 +144,44 @@ const ApplicationModal = ({ app, onClose, onUpdateStatus, onSaveComment }) => {
                 <div className="p-8 space-y-8">
                     {/* Basic Info Section */}
                     <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700">
-                        <h3 className="text-lg font-bold text-blue-300 mb-4 border-b border-gray-700 pb-2">기본 정보</h3>
-                        <div className="space-y-4">
-                            <div className="flex items-center">
-                                <span className="text-sm text-gray-400 w-24">이름</span>
-                                <span className="text-lg text-white font-semibold">{app.name}</span>
-                            </div>
-                            <div className="flex items-center">
-                                <span className="text-sm text-gray-400 w-24">학번</span>
-                                <span className="text-lg text-white font-semibold">{app.student_number}</span>
-                            </div>
-                            <div className="flex items-center">
-                                <span className="text-sm text-gray-400 w-24">전공</span>
-                                <span className="text-lg text-white font-semibold">{app.major}</span>
-                            </div>
-                            <div className="flex items-center">
-                                <span className="text-sm text-gray-400 w-24">전화번호</span>
-                                <span className="text-lg text-white font-semibold">{app.phone_number}</span>
-                            </div>
+                        <h3 className="text-lg font-bold text-blue-300 mb-4 border-b border-gray-700 pb-2">기본 정보 <span className="text-xs text-gray-500 font-normal ml-1">클릭하여 복사</span></h3>
+                        <div className="space-y-1">
+                            <CopyableInfoRow label="이름" value={app.name} />
+                            <CopyableInfoRow label="학번" value={app.student_number} />
+                            <CopyableInfoRow label="전공" value={app.major} />
+                            <CopyableInfoRow label="전화번호" value={app.phone_number} isPhone={true} />
                         </div>
                     </div>
 
                     {/* All detailed sections stacked vertically (Single Column) for maximum readability */}
 
                     <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-sm">
-                        <h4 className="text-blue-300 font-bold mb-3 flex items-center text-lg">
-                            <i className="fas fa-star mr-2"></i>관심 분야
-                        </h4>
+                        <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-blue-300 font-bold flex items-center text-lg">
+                                <i className="fas fa-star mr-2"></i>관심 분야
+                            </h4>
+                            <CopyButton text={app.area_interest || ''} />
+                        </div>
                         <p className="text-gray-200 bg-gray-900/50 p-4 rounded-lg border border-gray-800 text-lg">{app.area_interest || '없음'}</p>
                     </div>
 
                     <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-sm">
-                        <h4 className="text-blue-300 font-bold mb-3 flex items-center text-lg">
-                            <i className="fas fa-user mr-2"></i>자기소개
-                        </h4>
+                        <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-blue-300 font-bold flex items-center text-lg">
+                                <i className="fas fa-user mr-2"></i>자기소개
+                            </h4>
+                            <CopyButton text={app.self_introduction || ''} />
+                        </div>
                         <p className="text-gray-300 bg-gray-900/50 p-6 rounded-lg border border-gray-800 whitespace-pre-wrap leading-relaxed text-lg">{app.self_introduction}</p>
                     </div>
 
                     <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-sm">
-                        <h4 className="text-blue-300 font-bold mb-3 flex items-center text-lg">
-                            <i className="fas fa-bullseye mr-2"></i>지원 동기 및 목표
-                        </h4>
+                        <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-blue-300 font-bold flex items-center text-lg">
+                                <i className="fas fa-bullseye mr-2"></i>지원 동기 및 목표
+                            </h4>
+                            <CopyButton text={app.club_expectation || ''} />
+                        </div>
                         <p className="text-gray-300 bg-gray-900/50 p-6 rounded-lg border border-gray-800 whitespace-pre-wrap leading-relaxed text-lg">{app.club_expectation}</p>
                     </div>
 
@@ -397,12 +497,9 @@ const AdminApplicationManagement = () => {
                                             <td className="p-4 text-gray-300">{app.major}</td>
                                             <td className="p-4 text-gray-400">{new Date(app.created_at).toLocaleString('ko-KR')}</td>
                                             <td className="p-4"><StatusBadge status={app.review_status} /></td>
-                                            <td className="p-4 text-gray-300">
+                                            <td className="p-4 text-gray-300" onClick={(e) => e.stopPropagation()}>
                                                 {showAllPhones ? (
-                                                    <span className="flex items-center gap-1">
-                                                        <i className="fas fa-phone text-green-400 text-xs"></i>
-                                                        {app.phone_number}
-                                                    </span>
+                                                    <PhoneCopyCell phone={app.phone_number} />
                                                 ) : (
                                                     <span className="text-gray-500 text-sm">클릭하여 상세보기</span>
                                                 )}
