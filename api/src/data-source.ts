@@ -1,9 +1,14 @@
 import { DataSource } from 'typeorm';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import * as fs from 'fs';
 
-// envs/api.env 파일 로드
-dotenv.config({ path: path.join(__dirname, '../../envs/api.env') });
+// 로컬 개발 환경에서만 .env 파일 직접 로드
+// 컨테이너 환경에서는 docker-compose의 env_file로 이미 주입됨
+const envPath = path.join(__dirname, '../../envs/api.env');
+if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+}
 
 export const AppDataSource = new DataSource({
     type: 'postgres',

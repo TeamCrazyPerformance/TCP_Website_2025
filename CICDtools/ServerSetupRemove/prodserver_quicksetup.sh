@@ -142,7 +142,7 @@ echo "🐳 Starting docker compose..."
 cd "$PROJECT_DIR"
 
 sudo docker compose \
-  up -d
+  up -d --build
 
 echo "✅ Docker services are up"
 echo
