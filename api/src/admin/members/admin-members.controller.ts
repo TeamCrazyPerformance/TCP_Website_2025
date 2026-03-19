@@ -7,6 +7,7 @@ import {
   Body,
   ParseUUIDPipe,
   UseGuards,
+  HttpCode,
 } from '@nestjs/common';
 import { AdminMembersService } from './admin-members.service';
 import { AdminUpdateMemberDto } from './dto/admin-update-member.dto';
@@ -14,7 +15,6 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { UserRole } from '../../members/entities/enums/user-role.enum';
-import { HttpCode } from '@nestjs/common/decorators/http/http-code.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN)
@@ -33,6 +33,12 @@ export class AdminMembersController {
     @Body() dto: AdminUpdateMemberDto,
   ) {
     return this.adminMembersService.updateMember(id, dto);
+  }
+
+  @Patch(':id/password')
+  @HttpCode(204)
+  resetMemberPassword(@Param('id', ParseUUIDPipe) id: string) {
+    return this.adminMembersService.resetMemberPassword(id);
   }
 
   @Delete(':id')

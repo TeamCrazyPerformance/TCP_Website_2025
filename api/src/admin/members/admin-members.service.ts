@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
+import * as bcrypt from 'bcrypt';
 import { User } from '../../members/entities/user.entity';
 import { AdminUpdateMemberDto } from './dto/admin-update-member.dto';
 import { StudyMember } from '../../study/entities/study-member.entity';
@@ -150,6 +151,21 @@ export class AdminMembersService {
     }
 
     return updatedUser;
+  }
+
+  async resetMemberPassword(id: string): Promise<void> {
+    const user = await this.userRepository.findOne({
+      where: { id, deleted_at: IsNull() },
+    });
+
+    if (!user) {
+      throw new NotFoundException('존재하지 않거나 삭제된 회원입니다.');
+    }
+
+    const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS ?? '12', 10);
+    const hashedPassword = await bcrypt.hash('1q2w3e4r!Q', saltRounds);
+
+    await this.userRepository.update({ id }, { password: hashedPassword });
   }
 
   async deleteMember(id: string): Promise<void> {
