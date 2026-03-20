@@ -37,7 +37,7 @@ import { Resource } from './entities/resource.entity';
           'text/plain',
         ];
         const utf8OriginalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
-        const ext = utf8OriginalName.split('.').pop()?.toLowerCase();
+        const ext = utf8OriginalName.split('.').pop()?.toLowerCase() ?? '';
         const allowedExtensions = ['pdf', 'docx', 'pptx', 'md'];
         if (allowedMimeTypes.includes(file.mimetype) || allowedExtensions.includes(ext)) {
           cb(null, true);
