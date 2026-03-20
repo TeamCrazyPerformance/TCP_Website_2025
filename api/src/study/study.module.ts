@@ -32,11 +32,17 @@ import { Resource } from './entities/resource.entity';
           'application/pdf',
           'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
           'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          'text/markdown',
+          'text/x-markdown',
+          'text/plain',
         ];
-        if (allowedMimeTypes.includes(file.mimetype)) {
+        const utf8OriginalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+        const ext = utf8OriginalName.split('.').pop()?.toLowerCase();
+        const allowedExtensions = ['pdf', 'docx', 'pptx', 'md'];
+        if (allowedMimeTypes.includes(file.mimetype) || allowedExtensions.includes(ext)) {
           cb(null, true);
         } else {
-          cb(new Error(`Invalid file type: ${file.mimetype}. Only PDF, DOCX, PPTX are allowed.`), false);
+          cb(new Error(`Invalid file type: ${file.mimetype}. Only PDF, DOCX, PPTX, MD are allowed.`), false);
         }
       },
       limits: {
