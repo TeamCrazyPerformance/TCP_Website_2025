@@ -284,12 +284,12 @@ export default function StudyDetail() {
     if (!token) return;
 
     // Check file type
-    const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'];
-    const allowedExtensions = ['pdf', 'docx', 'pptx'];
+    const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'text/markdown', 'text/x-markdown', 'text/plain'];
+    const allowedExtensions = ['pdf', 'docx', 'pptx', 'md'];
     const fileExtension = file.name.split('.').pop().toLowerCase();
 
     if (!allowedExtensions.includes(fileExtension)) {
-      alert('PDF, DOCX, PPTX 파일만 업로드 가능합니다.');
+      alert('PDF, DOCX, PPTX, MD 파일만 업로드 가능합니다.');
       return;
     }
 
@@ -716,6 +716,8 @@ export default function StudyDetail() {
                       >
                         <i className={`fas ${resource.format === 'pdf' ? 'fa-file-pdf text-red-400'
                           : resource.format === 'docx' ? 'fa-file-word text-blue-400'
+                          : resource.format === 'pptx' ? 'fa-file-powerpoint text-orange-400'
+                          : resource.format === 'md' ? 'fa-file-code text-green-400'
                             : 'fa-file text-gray-400'
                           } text-lg`}></i>
                         <div className="flex-1">
