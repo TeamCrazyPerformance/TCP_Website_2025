@@ -1,3 +1,4 @@
+import * as path from 'path';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MulterModule } from '@nestjs/platform-express';
@@ -23,7 +24,7 @@ import { Resource } from './entities/resource.entity';
         filename: (req, file, cb) => {
           const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
           const utf8OriginalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
-          const ext = utf8OriginalName.split('.').pop();
+          const ext = path.extname(utf8OriginalName).replace('.', '');
           cb(null, `${uniqueSuffix}.${ext}`);
         },
       }),
@@ -32,17 +33,21 @@ import { Resource } from './entities/resource.entity';
           'application/pdf',
           'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
           'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          // 일부 브라우저/OS에서 pptx를 octet-stream 또는 zip으로 전송하는 경우 대비
+          'application/octet-stream',
+          'application/zip',
           'text/markdown',
           'text/x-markdown',
           'text/plain',
         ];
         const utf8OriginalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
-        const ext = utf8OriginalName.split('.').pop()?.toLowerCase() ?? '';
+        // path.extname()으로 안정적인 확장자 추출 (공백/특수문자가 있는 파일명도 처리)
+        const ext = path.extname(utf8OriginalName).replace('.', '').toLowerCase();
         const allowedExtensions = ['pdf', 'docx', 'pptx', 'md'];
         if (allowedMimeTypes.includes(file.mimetype) || allowedExtensions.includes(ext)) {
           cb(null, true);
         } else {
-          cb(new Error(`Invalid file type: ${file.mimetype}. Only PDF, DOCX, PPTX, MD are allowed.`), false);
+          cb(new Error(`Invalid file type: ${file.mimetype} (ext: ${ext}). Only PDF, DOCX, PPTX, MD are allowed.`), false);
         }
       },
       limits: {
