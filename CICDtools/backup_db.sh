@@ -103,7 +103,7 @@ cleanup_files() {
         log_info "   - $pattern: $count files found (<= 10). Skipping cleanup."
     else
         log_info "   - $pattern: $count files found (> 10). Cleaning up files older than 31 days..."
-        find "$BACKUP_DIR" -name "$pattern" -mtime +31 -delete
+        sudo find "$BACKUP_DIR" -name "$pattern" -mtime +31 -delete
     fi
 }
 
