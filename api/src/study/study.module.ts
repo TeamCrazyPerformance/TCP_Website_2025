@@ -1,3 +1,4 @@
+import * as path from 'path';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MulterModule } from '@nestjs/platform-express';
@@ -23,28 +24,11 @@ import { Resource } from './entities/resource.entity';
         filename: (req, file, cb) => {
           const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
           const utf8OriginalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
-          const ext = utf8OriginalName.split('.').pop();
+          const ext = path.extname(utf8OriginalName).replace('.', '');
           cb(null, `${uniqueSuffix}.${ext}`);
         },
       }),
-      fileFilter: (req, file, cb) => {
-        const allowedMimeTypes = [
-          'application/pdf',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-          'text/markdown',
-          'text/x-markdown',
-          'text/plain',
-        ];
-        const utf8OriginalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
-        const ext = utf8OriginalName.split('.').pop()?.toLowerCase() ?? '';
-        const allowedExtensions = ['pdf', 'docx', 'pptx', 'md'];
-        if (allowedMimeTypes.includes(file.mimetype) || allowedExtensions.includes(ext)) {
-          cb(null, true);
-        } else {
-          cb(new Error(`Invalid file type: ${file.mimetype}. Only PDF, DOCX, PPTX, MD are allowed.`), false);
-        }
-      },
+
       limits: {
         fileSize: 10 * 1024 * 1024, // 10MB
       },

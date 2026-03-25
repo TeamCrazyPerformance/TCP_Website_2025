@@ -283,15 +283,7 @@ export default function StudyDetail() {
     const token = localStorage.getItem('access_token');
     if (!token) return;
 
-    // Check file type
-    const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'text/markdown', 'text/x-markdown', 'text/plain'];
-    const allowedExtensions = ['pdf', 'docx', 'pptx', 'md'];
-    const fileExtension = file.name.split('.').pop().toLowerCase();
 
-    if (!allowedExtensions.includes(fileExtension)) {
-      alert('PDF, DOCX, PPTX, MD 파일만 업로드 가능합니다.');
-      return;
-    }
 
     // Check file size (10MB)
     const MAX_SIZE = 10 * 1024 * 1024;
