@@ -1,0 +1,132 @@
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Any, Protocol
+
+from tech_article_pipeline.contracts import CrawlJobRecord, JobRecord, PublicationPolicy, Stage
+
+
+class IdempotencyConflictError(RuntimeError):
+    pass
+
+
+class VersionConflictError(RuntimeError):
+    pass
+
+
+class NotFoundError(RuntimeError):
+    pass
+
+
+class PipelineRepository(Protocol):
+    def check_readiness(self) -> None: ...
+
+    def submit(
+        self,
+        *,
+        idempotency_key: str,
+        body_digest: bytes,
+        payload: dict[str, Any],
+        max_attempts: int,
+    ) -> tuple[dict[str, Any], bool]: ...
+
+    def submit_crawl(
+        self,
+        *,
+        idempotency_key: str,
+        body_digest: bytes,
+        payload: dict[str, Any],
+        max_attempts: int,
+    ) -> tuple[dict[str, Any], bool]: ...
+
+    def get_crawl_run(self, crawl_run_id: str) -> dict[str, Any] | None: ...
+
+    def claim_crawl_job(self, *, lease_seconds: int) -> CrawlJobRecord | None: ...
+
+    def complete_crawl_job(
+        self, job: CrawlJobRecord, result: dict[str, Any], *, max_attempts: int
+    ) -> None: ...
+
+    def fail_crawl_job(
+        self,
+        job: CrawlJobRecord,
+        error: dict[str, Any],
+        *,
+        retryable: bool,
+        available_at: datetime,
+    ) -> None: ...
+
+    def get_job(self, job_id: str) -> dict[str, Any] | None: ...
+
+    def claim_job(self, *, lease_seconds: int) -> JobRecord | None: ...
+
+    def get_submission(self, submission_id: str) -> dict[str, Any]: ...
+
+    def mark_admission_result(self, submission_id: str, result: dict[str, Any]) -> None: ...
+
+    def mark_quality_result(self, submission_id: str, result: dict[str, Any]) -> None: ...
+
+    def mark_enrichment_result(
+        self,
+        submission_id: str,
+        result: dict[str, Any],
+        publication_policy: PublicationPolicy,
+    ) -> None: ...
+
+    def enqueue(
+        self,
+        submission_id: str,
+        stage: Stage,
+        *,
+        max_attempts: int,
+        unique_key: str,
+    ) -> str: ...
+
+    def complete_job(self, job: JobRecord, result: dict[str, Any]) -> None: ...
+
+    def fail_job(
+        self,
+        job: JobRecord,
+        error: dict[str, Any],
+        *,
+        retryable: bool,
+        available_at: datetime,
+    ) -> None: ...
+
+    def publication_policy(self) -> tuple[PublicationPolicy, int]: ...
+
+    def set_publication_policy(
+        self, policy: PublicationPolicy, expected_version: int | None
+    ) -> tuple[PublicationPolicy, int]: ...
+
+    def list_public_articles(self, *, limit: int, offset: int) -> list[dict[str, Any]]: ...
+
+    def get_public_article(self, article_id: str) -> dict[str, Any] | None: ...
+
+    def list_articles(self, *, limit: int, offset: int) -> list[dict[str, Any]]: ...
+
+    def list_review_queue(self, kind: str, *, limit: int) -> list[dict[str, Any]]: ...
+
+    def resolve_quality_review(
+        self,
+        case_id: str,
+        *,
+        action: str,
+        expected_version: int,
+        administrator_id: str,
+        max_attempts: int,
+    ) -> dict[str, Any]: ...
+
+    def apply_publication_action(
+        self,
+        article_id: str,
+        *,
+        action: str,
+        expected_version: int,
+        administrator_id: str,
+        reason: str,
+    ) -> dict[str, Any]: ...
+
+    def continue_after_duplicate_resolution(
+        self, review_case_id: str, result: dict[str, Any], *, max_attempts: int
+    ) -> None: ...

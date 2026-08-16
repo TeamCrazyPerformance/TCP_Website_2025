@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/"
+     xmlns:content="http://purl.org/rss/1.0/modules/content/"
+     version="2.0">
+  <channel>
+    <title>The Cloudflare Blog</title>
+    <link>https://blog.cloudflare.com/</link>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 09 Aug 2026 02:00:00 GMT</lastBuildDate>
+    <item>
+      <guid>https://blog.cloudflare.com/example-article/</guid>
+      <link>https://blog.cloudflare.com/example-article/?utm_source=rss</link>
+      <title> Example &amp; article </title>
+      <pubDate>Sat, 08 Aug 2026 13:00:41 GMT</pubDate>
+      <dc:creator>Jane Doe</dc:creator>
+      <dc:creator>John Doe</dc:creator>
+      <category>Developers</category>
+      <description>Example description</description>
+      <content:encoded><![CDATA[<p>unsupported block: code</p>]]></content:encoded>
+    </item>
+  </channel>
+</rss>
+

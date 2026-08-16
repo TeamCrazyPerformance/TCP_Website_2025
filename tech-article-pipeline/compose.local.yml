@@ -1,0 +1,77 @@
+name: tcp-tech-article-pipeline
+
+services:
+  pipeline-mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${TECH_ARTICLE_MYSQL_DATABASE:-tech_articles}
+      MYSQL_USER: ${TECH_ARTICLE_MYSQL_USER:-pipeline}
+      MYSQL_PASSWORD: ${TECH_ARTICLE_MYSQL_PASSWORD:?set TECH_ARTICLE_MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${TECH_ARTICLE_MYSQL_ROOT_PASSWORD:?set TECH_ARTICLE_MYSQL_ROOT_PASSWORD}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    volumes:
+      - pipeline-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
+
+  pipeline-migrate:
+    build:
+      context: .
+    restart: "no"
+    command: ["python", "-m", "tech_article_pipeline.persistence.migrate"]
+    environment: &pipeline-environment
+      PIPELINE_SERVICE_TOKEN: ${PIPELINE_SERVICE_TOKEN:?set PIPELINE_SERVICE_TOKEN}
+      TECH_ARTICLE_MYSQL_HOST: pipeline-mysql
+      TECH_ARTICLE_MYSQL_PORT: "3306"
+      TECH_ARTICLE_MYSQL_DATABASE: ${TECH_ARTICLE_MYSQL_DATABASE:-tech_articles}
+      TECH_ARTICLE_MYSQL_USER: ${TECH_ARTICLE_MYSQL_USER:-pipeline}
+      TECH_ARTICLE_MYSQL_PASSWORD: ${TECH_ARTICLE_MYSQL_PASSWORD:?set TECH_ARTICLE_MYSQL_PASSWORD}
+    depends_on:
+      pipeline-mysql:
+        condition: service_healthy
+
+  tech-article-pipeline:
+    build:
+      context: .
+    restart: unless-stopped
+    environment:
+      <<: *pipeline-environment
+      PIPELINE_BACKEND: mysql
+      PIPELINE_WORKER_CONCURRENCY: ${PIPELINE_WORKER_CONCURRENCY:-1}
+      PIPELINE_WORKER_LEASE_SECONDS: ${PIPELINE_WORKER_LEASE_SECONDS:-60}
+      PIPELINE_JOB_MAX_ATTEMPTS: ${PIPELINE_JOB_MAX_ATTEMPTS:-3}
+      CRAWLER_PUBLIC_URL: ${CRAWLER_PUBLIC_URL:-}
+      CRAWLER_CONTACT: ${CRAWLER_CONTACT:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
+    depends_on:
+      pipeline-mysql:
+        condition: service_healthy
+      pipeline-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/ready', timeout=2)"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+
+  pipeline-gemini-smoke:
+    profiles: ["gemini-smoke"]
+    build:
+      context: .
+    restart: "no"
+    command: ["python", "-m", "tech_article_pipeline.smoke.gemini"]
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
+
+volumes:
+  pipeline-mysql-data:

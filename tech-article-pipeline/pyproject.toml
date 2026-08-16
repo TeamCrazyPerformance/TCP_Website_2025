@@ -1,0 +1,89 @@
+[build-system]
+requires = ["hatchling>=1.26,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tcp-tech-article-pipeline"
+version = "0.1.0"
+description = "Durable technical article admission, quality, enrichment and publication pipeline"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = { text = "UNLICENSED" }
+dependencies = [
+  "beautifulsoup4>=4.13,<5",
+  "defusedxml>=0.7.1,<1",
+  "fastapi>=0.116,<1",
+  "feedparser>=6.0.11,<7",
+  "google-genai>=1.31,<2",
+  "httpx>=0.28,<1",
+  "jsonschema[format]>=4.23,<5",
+  "langdetect==1.0.9",
+  "lxml>=5.4,<7",
+  "mysql-connector-python>=9.4,<10",
+  "pydantic>=2.11,<3",
+  "python-dateutil>=2.9,<3",
+  "requests>=2.32,<3",
+  "rfc8785>=0.1.4,<1",
+  "sqlparse>=0.5.3,<1",
+  "uvicorn[standard]>=0.35,<1",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3,<10",
+  "pytest-asyncio>=1.1,<2",
+  "ruff>=0.12,<1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = [
+  "core/src/tech_article_pipeline",
+  "modules/admission/src/tech_article_admission",
+  "modules/quality/src/tech_article_quality",
+  "modules/summarizer/src/developer_news_summarizer",
+  "modules/crawler/src/tech_article_sources",
+  "modules/crawler/src/tech_articles_ingestion",
+  "modules/crawler/src/technical_news_pipeline",
+  "modules/crawler/src/sdtimes_crawler",
+]
+
+[tool.hatch.build.targets.wheel.force-include]
+"migrations" = "tech_article_pipeline/migrations"
+
+[tool.pytest.ini_options]
+addopts = "-q"
+asyncio_mode = "auto"
+markers = [
+  "mysql_integration: requires an explicitly configured disposable MySQL 8.4 database",
+  "docker_smoke: requires Docker and explicit RUN_DOCKER_SMOKE=1",
+]
+testpaths = [
+  "modules/admission/tests",
+  "modules/quality/tests",
+  "modules/summarizer/tests",
+  "modules/crawler/tests",
+  "tests",
+]
+pythonpath = [
+  "core/src",
+  "modules/admission/src",
+  "modules/quality/src",
+  "modules/summarizer/src",
+  "modules/crawler/src",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = [
+  "modules/crawler/src/tech_articles_ingestion",
+  "modules/crawler/src/technical_news_pipeline",
+  "modules/crawler/src/sdtimes_crawler",
+  "modules/crawler/tests/cloudflare",
+  "modules/crawler/tests/infoq",
+  "modules/crawler/tests/sdtimes",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["E501", "RUF100"]

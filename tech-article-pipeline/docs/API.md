@@ -1,0 +1,63 @@
+# Internal API
+
+All routes below use `/internal/v1` and require a Bearer service token. Health
+routes (`/health/live`, `/health/ready`) are the only exceptions.
+
+## Submission and jobs
+
+- `POST /crawl-runs` — requires `Idempotency-Key`; enqueues one source crawl and
+  returns HTTP 202 with `crawlRunId`, `jobId`, and `operation`.
+- `GET /crawl-runs/{crawlRunId}` — returns crawl/job status, attempts, aggregate
+  statistics, errors, and each item's downstream `submissionId` when available.
+- `POST /normalized-articles` — requires `Idempotency-Key`; returns HTTP 202 with
+  `submissionId`, the initial `jobId`, and `operation: CREATED|REPLAYED`.
+- `GET /jobs/{jobId}` — returns stage, status, attempts, lease, result, and error.
+
+The submission body is the admission module's normalized article contract plus
+`qualityPolicy` and `generationOptions`. Defaults are supplied for quality and
+generation policy, while `duplicatePolicy` is explicit because it affects the
+atomic admission decision.
+
+The crawl request does not accept URLs. This prevents the internal endpoint from
+becoming an SSRF proxy; entry points are selected from the registered source:
+
+```json
+{
+  "schemaVersion": "1.0",
+  "source": {
+    "sourceId": "infoq",
+    "sourceType": "RSS",
+    "sectionKey": "NEWS"
+  },
+  "crawlOptions": {
+    "maximumArticleCount": 10,
+    "maximumAgeHours": 720,
+    "followPagination": false,
+    "maximumPageCount": 1,
+    "requestTimeoutMs": 15000
+  }
+}
+```
+
+Supported combinations are Cloudflare `RSS/BLOG`, InfoQ
+`RSS|WEB_CRAWL` with `NEWS|ENGINEERING`, and SD Times
+`RSS|WEB_CRAWL|API` with `NEWS`. Duplicate, quality, and generation policies may
+be supplied on the same request and otherwise use the core defaults.
+
+## Reads and administration
+
+- `GET /public/articles` and `GET /public/articles/{articleId}`
+- `GET /admin/articles`
+- `GET /admin/reviews/duplicate|quality|publication`
+- `POST /admin/reviews/duplicate/{caseId}/resolution`
+- `POST /admin/reviews/quality/{caseId}/resolution`
+- `POST /admin/articles/{articleId}/publication`
+- `GET|PATCH /admin/settings/publication-policy`
+
+Duplicate resolution bodies follow the admission module contract, including
+`resolutionRequestId`, `expectedCaseVersion`, administrator, action, and UTC
+`resolvedAt`. Quality actions are `APPROVE|REJECT`. Publication actions are
+`PUBLISH|HIDE|ARCHIVE` and require the expected article record version.
+
+The publication policy setting is `IMMEDIATE|REVIEW`, defaults to `IMMEDIATE`,
+and uses an optional expected version on PATCH for optimistic concurrency.

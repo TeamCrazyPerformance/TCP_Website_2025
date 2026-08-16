@@ -1,0 +1,22 @@
+{
+  "articleId": "infoq-20260814-cloudflare-cdnjs-migration",
+  "article": {
+    "title": "Cloudflare Migrates JavaScript CDN Serving 9B Requests a Day to Its Developer Platform",
+    "content": "Cloudflare completed the migration of cdnjs, an open-source CDN for JavaScript and CSS libraries, to the Cloudflare Developer Platform. The former publishing system was divided between Cloudflare and Google Cloud Platform. The replacement uses Cloudflare Workers, R2, Workflows, Queues, Durable Objects, KV, and Containers. Existing package URLs, file contents, and Subresource Integrity hashes were kept unchanged during the migration.\n\nCloudflare reports that cdnjs handles about 9 billion requests per day, averages roughly 108,000 requests per second, operates across more than 330 data centers, and achieves a 98.6 percent cache hit rate. The service is used by approximately 12 percent of websites.\n\nA 2020 redesign had already moved normal file delivery from dedicated origin servers to Workers and Workers KV, while retaining an external fallback origin. Precompressed Brotli and gzip assets were also introduced. However, the publishing pipeline still depended on Google Cloud Functions to check npm releases, Google Cloud Storage for packages, Pub/Sub for messages, and a virtual machine running git-sync. Twenty-six alphabetically partitioned Cloud Functions monitored updates. The GitHub repository eventually exceeded 1.1 TB of packed storage, and published files were represented in both GitHub and KV.\n\nIn the new design, R2 is the authoritative store for published package files. KV contains package metadata, version data, and SRI hashes. A Worker serves requests with Workers Cache as the caching layer. Published files are also copied to DigitalOcean Spaces so they remain available if R2 cannot deliver them.\n\nCloudflare Workflows now coordinates package ingestion. A scheduled workflow checks npm and GitHub for releases, downloads packages to R2, and starts processing workflows for individual files. Those workflows extract package contents, minify and compress assets, save the results in R2, update KV metadata, and refresh the Algolia search index. Stored workflow state lets processing continue from the most recently completed step after a failure.\n\nThe existing compression algorithms need an entire library in memory, so compression runs in Containers instead of Workers. Cloudflare is investigating streaming support that may allow this work to move to Workers later. Preserving identical package bytes was necessary because changing minification or compression could change SRI hashes. The migration also led Cloudflare to raise the Worker subrequest limit from 1,000 to 10 million and the Workflow step limit from 1,024 to 10,000, with configurations supporting as many as 25,000 steps.",
+    "language": "en"
+  },
+  "qualityEvaluation": {
+    "decision": "PASS",
+    "score": {
+      "overall": 90
+    }
+  },
+  "generationOptions": {
+    "outputLanguage": "ko",
+    "maximumSummaryLength": 1000,
+    "maximumOneLineSummaryLength": 120,
+    "maximumTagCount": 3,
+    "translateTitle": true,
+    "translateContent": false
+  }
+}
