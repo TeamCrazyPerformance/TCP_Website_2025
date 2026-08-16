@@ -61,6 +61,66 @@ def test_api_auth_submission_replay_and_public_filter(normalized_payload):
         )
         assert public.status_code == 200
         assert len(public.json()["items"]) == 1
+        assert public.json()["totalCount"] == 1
+        assert public.json()["lastCrawledAt"] is None
+
+        article = public.json()["items"][0]
+        assert article["source"]["id"] == "example"
+        assert article["originalLanguage"] == {"code": "ko", "label": "한국어"}
+        assert article["evaluation"]["score"]["overall"] == 88
+
+        tags = client.get(
+            "/internal/v1/public/tags",
+            headers={"Authorization": "Bearer test-service-token"},
+        )
+        assert tags.status_code == 200
+        assert len(tags.json()["items"]) == 15
+
+        filtered = client.get(
+            "/internal/v1/public/articles?keyword=missing",
+            headers={"Authorization": "Bearer test-service-token"},
+        )
+        assert filtered.json()["totalCount"] == 0
+        tagged = client.get(
+            "/internal/v1/public/articles",
+            params=[("tags", "애플리케이션 개발"), ("tags", "보안")],
+            headers={"Authorization": "Bearer test-service-token"},
+        )
+        assert tagged.json()["totalCount"] == 1
+        invalid_tag = client.get(
+            "/internal/v1/public/articles?tags=not-a-tag",
+            headers={"Authorization": "Bearer test-service-token"},
+        )
+        assert invalid_tag.status_code == 422
+
+        admin = client.get(
+            "/internal/v1/admin/articles?publicationStatus=PUBLISHED",
+            headers={"Authorization": "Bearer test-service-token"},
+        )
+        assert admin.status_code == 200
+        assert admin.json()["totalCount"] == 1
+        stats = client.get(
+            "/internal/v1/admin/articles/stats",
+            headers={"Authorization": "Bearer test-service-token"},
+        )
+        assert stats.json()["publication"]["PUBLISHED"] == 1
+
+        hidden = client.post(
+            f"/internal/v1/admin/articles/{article['articleId']}/publication",
+            headers={"Authorization": "Bearer test-service-token"},
+            json={
+                "action": "HIDE",
+                "expectedRecordVersion": article["recordVersion"],
+                "administratorId": "admin-1",
+                "reason": "test",
+            },
+        )
+        assert hidden.status_code == 200
+        detail = client.get(
+            f"/internal/v1/public/articles/{article['articleId']}",
+            headers={"Authorization": "Bearer test-service-token"},
+        )
+        assert detail.status_code == 404
 
 
 def test_api_rejects_idempotency_key_with_different_body(normalized_payload):

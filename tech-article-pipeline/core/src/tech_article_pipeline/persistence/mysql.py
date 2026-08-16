@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
+from tech_article_pipeline.catalog import language_projection, source_projection
 from tech_article_pipeline.contracts import (
     CrawlJobRecord,
     JobRecord,
@@ -940,35 +941,174 @@ class MySQLPipelineRepository:
         finally:
             connection.close()
 
-    def list_public_articles(self, *, limit: int, offset: int) -> list[dict[str, Any]]:
-        return self._list_articles(
-            "processing_status = 'ENRICHED' AND publication_status = 'PUBLISHED'",
-            (), limit=limit, offset=offset,
+    @staticmethod
+    def _article_conditions(
+        *,
+        public_only: bool = False,
+        keyword: str | None = None,
+        tags: tuple[str, ...] = (),
+        publication_status: str | None = None,
+        include_admin_fields: bool = False,
+        extra: str | None = None,
+    ) -> tuple[str, tuple[Any, ...]]:
+        clauses: list[str] = []
+        params: list[Any] = []
+        if public_only:
+            clauses.extend(
+                ["a.processing_status = 'ENRICHED'", "a.publication_status = 'PUBLISHED'"]
+            )
+        if keyword:
+            like = f"%{keyword.lower()}%"
+            if include_admin_fields:
+                clauses.append(
+                    "(LOWER(COALESCE(a.localized_title, a.title)) LIKE %s "
+                    "OR LOWER(COALESCE(a.one_line_summary, '')) LIKE %s "
+                    "OR LOWER(a.source_id) LIKE %s "
+                    "OR LOWER(CAST(COALESCE(a.tags, JSON_ARRAY()) AS CHAR)) LIKE %s)"
+                )
+                params.extend([like, like, like, like])
+            else:
+                clauses.append(
+                    "(LOWER(COALESCE(a.localized_title, a.title)) LIKE %s "
+                    "OR LOWER(COALESCE(a.one_line_summary, '')) LIKE %s)"
+                )
+                params.extend([like, like])
+        if tags:
+            clauses.append(
+                "(" + " OR ".join(
+                    "JSON_CONTAINS(COALESCE(a.tags, JSON_ARRAY()), JSON_QUOTE(%s))"
+                    for _ in tags
+                ) + ")"
+            )
+            params.extend(tags)
+        if publication_status:
+            clauses.append("a.publication_status = %s")
+            params.append(publication_status)
+        if extra:
+            clauses.append(extra)
+        return " AND ".join(clauses) if clauses else "1 = 1", tuple(params)
+
+    def list_public_articles(
+        self,
+        *,
+        limit: int,
+        offset: int,
+        keyword: str | None = None,
+        tags: tuple[str, ...] = (),
+    ) -> list[dict[str, Any]]:
+        where, params = self._article_conditions(
+            public_only=True, keyword=keyword, tags=tags
         )
+        return self._list_articles(
+            where, params, limit=limit, offset=offset, sort="NEWEST"
+        )
+
+    def count_public_articles(
+        self, *, keyword: str | None = None, tags: tuple[str, ...] = ()
+    ) -> int:
+        where, params = self._article_conditions(
+            public_only=True, keyword=keyword, tags=tags
+        )
+        return self._count_articles(where, params)
+
+    def last_crawled_at(self) -> datetime | None:
+        connection = self._pool.get_connection()
+        try:
+            cursor = connection.cursor()
+            try:
+                cursor.execute("SELECT MAX(produced_at) FROM crawl_items")
+                return _utc(cursor.fetchone()[0])
+            finally:
+                cursor.close()
+        finally:
+            connection.close()
 
     def get_public_article(self, article_id: str) -> dict[str, Any] | None:
         rows = self._list_articles(
-            "article_id = %s AND processing_status = 'ENRICHED' "
-            "AND publication_status = 'PUBLISHED'", (article_id,), limit=1, offset=0
+            "a.article_id = %s AND a.processing_status = 'ENRICHED' "
+            "AND a.publication_status = 'PUBLISHED'",
+            (article_id,),
+            limit=1,
+            offset=0,
+            sort="NEWEST",
         )
         return rows[0] if rows else None
 
-    def list_articles(self, *, limit: int, offset: int) -> list[dict[str, Any]]:
-        return self._list_articles("1 = 1", (), limit=limit, offset=offset)
+    def list_articles(
+        self,
+        *,
+        limit: int,
+        offset: int,
+        keyword: str | None = None,
+        publication_status: str | None = None,
+        sort: str = "NEWEST",
+    ) -> list[dict[str, Any]]:
+        where, params = self._article_conditions(
+            keyword=keyword,
+            publication_status=publication_status,
+            include_admin_fields=True,
+        )
+        return self._list_articles(where, params, limit=limit, offset=offset, sort=sort)
+
+    def count_articles(
+        self, *, keyword: str | None = None, publication_status: str | None = None
+    ) -> int:
+        where, params = self._article_conditions(
+            keyword=keyword,
+            publication_status=publication_status,
+            include_admin_fields=True,
+        )
+        return self._count_articles(where, params)
+
+    def get_article(self, article_id: str) -> dict[str, Any] | None:
+        rows = self._list_articles(
+            "a.article_id = %s", (article_id,), limit=1, offset=0, sort="NEWEST"
+        )
+        return rows[0] if rows else None
+
+    def _count_articles(self, where: str, params: tuple[Any, ...]) -> int:
+        connection = self._pool.get_connection()
+        try:
+            cursor = connection.cursor()
+            try:
+                cursor.execute(f"SELECT COUNT(*) FROM articles a WHERE {where}", params)
+                return int(cursor.fetchone()[0])
+            finally:
+                cursor.close()
+        finally:
+            connection.close()
 
     def _list_articles(
-        self, where: str, params: tuple[Any, ...], *, limit: int, offset: int
+        self,
+        where: str,
+        params: tuple[Any, ...],
+        *,
+        limit: int,
+        offset: int,
+        sort: str,
     ) -> list[dict[str, Any]]:
+        order_by = {
+            "NEWEST": "COALESCE(a.original_published_at, a.created_at) DESC, a.article_id DESC",
+            "SCORE_DESC": "a.quality_score DESC, a.article_id DESC",
+            "SCORE_ASC": "a.quality_score ASC, a.article_id ASC",
+        }[sort]
         connection = self._pool.get_connection()
         try:
             cursor = connection.cursor(dictionary=True)
             try:
                 cursor.execute(
-                    "SELECT article_id, title, content, language, original_published_at, "
-                    "canonical_url, quality_score, quality_decision, localized_title, tags, "
-                    "one_line_summary, summary, localized_content, processing_status, "
-                    "review_status, publication_status, published_at, record_version "
-                    f"FROM articles WHERE {where} ORDER BY created_at DESC LIMIT %s OFFSET %s",
+                    "SELECT a.article_id, a.crawl_run_id, a.crawl_item_id, a.source_id, "
+                    "a.title, a.authors, a.content, a.language, a.original_published_at, "
+                    "a.canonical_url, a.quality_score, a.quality_decision, a.localized_title, "
+                    "a.tags, a.one_line_summary, a.summary, a.localized_content, "
+                    "a.processing_status, a.review_status, a.publication_status, "
+                    "a.published_at, a.record_version, a.created_at, a.updated_at, "
+                    "ps.payload AS submission_payload, ps.quality_result, "
+                    "ci.item_payload AS crawl_item_payload, ci.produced_at AS collected_at "
+                    "FROM articles a "
+                    "LEFT JOIN pipeline_submissions ps ON ps.article_id = a.article_id "
+                    "LEFT JOIN crawl_items ci ON ci.crawl_item_id = a.crawl_item_id "
+                    f"WHERE {where} ORDER BY {order_by} LIMIT %s OFFSET %s",
                     (*params, limit, offset),
                 )
                 return [self._article_projection(row) for row in cursor.fetchall()]
@@ -979,68 +1119,331 @@ class MySQLPipelineRepository:
 
     @staticmethod
     def _article_projection(row: dict[str, Any]) -> dict[str, Any]:
+        submission = _decode(row.get("submission_payload")) or {}
+        source = submission.get("source") or {}
+        quality_result = _decode(row.get("quality_result")) or {}
         return {
             "articleId": row["article_id"],
+            "crawlRunId": row.get("crawl_run_id"),
+            "crawlItemId": row.get("crawl_item_id"),
             "title": row["title"],
+            "authors": _decode(row.get("authors")) or [],
             "content": row["content"],
             "language": row["language"],
+            "originalLanguage": language_projection(row.get("language")),
             "originalPublishedAt": _utc(row["original_published_at"]),
             "canonicalUrl": row["canonical_url"],
+            "source": source_projection(
+                row.get("source_id"), source.get("sourceType"), row.get("canonical_url")
+            ),
+            "collectedAt": _utc(row.get("collected_at")),
+            "normalizedAt": (submission.get("normalization") or {}).get("normalizedAt"),
             "qualityScore": row["quality_score"],
+            "valueScore": row["quality_score"],
             "qualityDecision": row["quality_decision"],
+            "evaluation": quality_result.get("qualityEvaluation"),
             "localizedTitle": row["localized_title"],
             "tags": _decode(row["tags"]) or [],
             "oneLineSummary": row["one_line_summary"],
             "summary": row["summary"],
+            "summaryMarkdown": row["summary"],
             "localizedContent": row["localized_content"],
             "processingStatus": row["processing_status"],
+            "duplicateStatus": "UNIQUE",
             "reviewStatus": row["review_status"],
             "publicationStatus": row["publication_status"],
             "publishedAt": _utc(row["published_at"]),
             "recordVersion": int(row["record_version"]),
+            "createdAt": _utc(row.get("created_at")),
+            "updatedAt": _utc(row.get("updated_at")),
         }
 
-    def list_review_queue(self, kind: str, *, limit: int) -> list[dict[str, Any]]:
+    def article_stats(self) -> dict[str, Any]:
+        connection = self._pool.get_connection()
+        try:
+            cursor = connection.cursor(dictionary=True)
+            try:
+                cursor.execute(
+                    "SELECT publication_status AS value, COUNT(*) AS count "
+                    "FROM articles GROUP BY publication_status"
+                )
+                publication = {row["value"]: int(row["count"]) for row in cursor.fetchall()}
+                cursor.execute(
+                    "SELECT processing_status AS value, COUNT(*) AS count "
+                    "FROM articles GROUP BY processing_status"
+                )
+                processing = {row["value"]: int(row["count"]) for row in cursor.fetchall()}
+                cursor.execute(
+                    "SELECT COUNT(*) AS count FROM duplicate_review_cases WHERE status = 'PENDING'"
+                )
+                duplicates = int(cursor.fetchone()["count"])
+                cursor.execute(
+                    "SELECT COUNT(*) AS count FROM quality_review_cases WHERE status = 'PENDING'"
+                )
+                quality = int(cursor.fetchone()["count"])
+                cursor.execute(
+                    "SELECT COUNT(*) AS count FROM articles "
+                    "WHERE processing_status = 'ENRICHED' AND review_status = 'PENDING'"
+                )
+                publication_reviews = int(cursor.fetchone()["count"])
+                return {
+                    "totalCount": sum(publication.values()),
+                    "publication": publication,
+                    "processing": processing,
+                    "reviews": {
+                        "duplicates": duplicates,
+                        "quality": quality,
+                        "publication": publication_reviews,
+                    },
+                }
+            finally:
+                cursor.close()
+        finally:
+            connection.close()
+
+    @staticmethod
+    def _review_conditions(
+        kind: str, keyword: str | None, filter_value: str | None
+    ) -> tuple[str, tuple[Any, ...]]:
+        clauses = {
+            "duplicate": ["r.status = 'PENDING'"],
+            "quality": ["q.status = 'PENDING'"],
+            "publication": [
+                "a.processing_status = 'ENRICHED'",
+                "a.review_status = 'PENDING'",
+            ],
+        }[kind]
+        params: list[Any] = []
+        if keyword:
+            if kind == "duplicate":
+                clauses.append(
+                    "(LOWER(CAST(r.admission_payload AS CHAR)) LIKE %s "
+                    "OR LOWER(CAST(r.original_candidate_snapshot AS CHAR)) LIKE %s)"
+                )
+            elif kind == "quality":
+                clauses.append(
+                    "(LOWER(COALESCE(a.localized_title, a.title)) LIKE %s "
+                    "OR LOWER(a.source_id) LIKE %s "
+                    "OR LOWER(CAST(q.evaluation_payload AS CHAR)) LIKE %s)"
+                )
+            else:
+                clauses.append(
+                    "(LOWER(COALESCE(a.localized_title, a.title)) LIKE %s "
+                    "OR LOWER(COALESCE(a.one_line_summary, '')) LIKE %s "
+                    "OR LOWER(a.source_id) LIKE %s "
+                    "OR LOWER(CAST(COALESCE(a.tags, JSON_ARRAY()) AS CHAR)) LIKE %s)"
+                )
+            like = f"%{keyword.lower()}%"
+            params.extend([like] * (2 if kind == "duplicate" else 3 if kind == "quality" else 4))
+        if filter_value:
+            if kind == "duplicate" and filter_value == "JACCARD":
+                clauses.append(
+                    "JSON_EXTRACT(r.original_candidate_snapshot, '$[0].contentJaccard') IS NOT NULL"
+                )
+            elif kind in {"quality", "publication"}:
+                clauses.append(
+                    "JSON_UNQUOTE(JSON_EXTRACT(ps.payload, '$.source.sourceType')) = %s"
+                )
+                params.append(filter_value)
+        return " AND ".join(clauses), tuple(params)
+
+    def list_review_queue(
+        self,
+        kind: str,
+        *,
+        limit: int,
+        offset: int = 0,
+        keyword: str | None = None,
+        filter_value: str | None = None,
+        sort: str = "NEWEST",
+    ) -> list[dict[str, Any]]:
+        where, params = self._review_conditions(kind, keyword, filter_value)
         connection = self._pool.get_connection()
         try:
             cursor = connection.cursor(dictionary=True)
             try:
                 if kind == "duplicate":
+                    order_by = (
+                        "JSON_EXTRACT(r.original_candidate_snapshot, '$[0].contentJaccard') DESC"
+                        if sort == "SIMILARITY_DESC"
+                        else "r.created_at DESC"
+                    )
                     cursor.execute(
-                        "SELECT review_case_id AS reviewCaseId, original_check_id AS checkId, "
-                        "crawl_run_id AS crawlRunId, crawl_item_id AS crawlItemId, "
-                        "original_candidate_snapshot AS candidates, status, case_version AS caseVersion, "
-                        "created_at AS createdAt FROM duplicate_review_cases "
-                        "WHERE status = 'PENDING' ORDER BY created_at LIMIT %s", (limit,)
+                        "SELECT r.review_case_id AS reviewCaseId, r.original_check_id AS checkId, "
+                        "r.crawl_run_id AS crawlRunId, r.crawl_item_id AS crawlItemId, "
+                        "r.admission_payload AS admissionPayload, "
+                        "r.original_candidate_snapshot AS candidates, r.status, "
+                        "r.case_version AS caseVersion, r.created_at AS createdAt "
+                        "FROM duplicate_review_cases r "
+                        f"WHERE {where} ORDER BY {order_by} LIMIT %s OFFSET %s",
+                        (*params, limit, offset),
                     )
                 elif kind == "quality":
                     cursor.execute(
-                        "SELECT case_id AS caseId, submission_id AS submissionId, "
-                        "article_id AS articleId, evaluation_payload AS evaluation, status, "
-                        "case_version AS caseVersion, created_at AS createdAt "
-                        "FROM quality_review_cases WHERE status = 'PENDING' "
-                        "ORDER BY created_at LIMIT %s", (limit,)
+                        "SELECT q.case_id AS caseId, q.submission_id AS submissionId, "
+                        "q.article_id AS articleId, q.evaluation_payload AS evaluation, q.status, "
+                        "q.case_version AS caseVersion, q.created_at AS createdAt, "
+                        "a.title, a.localized_title AS localizedTitle, a.source_id AS sourceId, "
+                        "a.canonical_url AS canonicalUrl, a.language, a.original_published_at AS originalPublishedAt, "
+                        "ps.payload AS submissionPayload "
+                        "FROM quality_review_cases q JOIN articles a ON a.article_id = q.article_id "
+                        "LEFT JOIN pipeline_submissions ps ON ps.submission_id = q.submission_id "
+                        f"WHERE {where} ORDER BY q.created_at DESC LIMIT %s OFFSET %s",
+                        (*params, limit, offset),
                     )
                 elif kind == "publication":
                     cursor.execute(
-                        "SELECT article_id AS articleId, title, localized_title AS localizedTitle, "
-                        "quality_score AS qualityScore, review_status AS reviewStatus, "
-                        "publication_status AS publicationStatus, record_version AS recordVersion "
-                        "FROM articles WHERE processing_status = 'ENRICHED' AND review_status = 'PENDING' "
-                        "ORDER BY updated_at LIMIT %s", (limit,)
+                        "SELECT a.article_id AS articleId, a.title, "
+                        "a.localized_title AS localizedTitle, a.one_line_summary AS oneLineSummary, "
+                        "a.summary, a.tags, a.quality_score AS qualityScore, "
+                        "a.review_status AS reviewStatus, a.publication_status AS publicationStatus, "
+                        "a.record_version AS recordVersion, a.source_id AS sourceId, "
+                        "a.canonical_url AS canonicalUrl, a.language, "
+                        "a.authors, a.original_published_at AS originalPublishedAt, "
+                        "a.processing_status AS processingStatus, 'UNIQUE' AS duplicateStatus, "
+                        "a.created_at AS createdAt, a.updated_at AS updatedAt, "
+                        "a.published_at AS publishedAt, ps.payload AS submissionPayload, "
+                        "ps.quality_result AS qualityResult "
+                        "FROM articles a LEFT JOIN pipeline_submissions ps ON ps.article_id = a.article_id "
+                        f"WHERE {where} ORDER BY a.updated_at DESC LIMIT %s OFFSET %s",
+                        (*params, limit, offset),
                     )
                 else:
                     raise ValueError(f"unknown review kind: {kind}")
                 rows = cursor.fetchall()
+                candidate_article_ids = {
+                    candidate.get("articleId")
+                    for row in rows
+                    for candidate in (_decode(row.get("candidates")) or [])
+                    if candidate.get("articleId")
+                }
+                candidate_articles: dict[str, dict[str, Any]] = {}
+                if candidate_article_ids:
+                    placeholders = ",".join("%s" for _ in candidate_article_ids)
+                    cursor.execute(
+                        "SELECT a.article_id, a.title, a.localized_title, a.source_id, "
+                        "a.canonical_url, a.language, a.original_published_at, "
+                        "ps.payload AS submissionPayload FROM articles a "
+                        "LEFT JOIN pipeline_submissions ps ON ps.article_id = a.article_id "
+                        f"WHERE a.article_id IN ({placeholders})",
+                        tuple(candidate_article_ids),
+                    )
+                    for article in cursor.fetchall():
+                        candidate_submission = _decode(article.get("submissionPayload")) or {}
+                        candidate_source = candidate_submission.get("source") or {}
+                        candidate_articles[article["article_id"]] = {
+                            "articleId": article["article_id"],
+                            "title": article.get("localized_title") or article["title"],
+                            "source": source_projection(
+                                article.get("source_id"),
+                                candidate_source.get("sourceType"),
+                                article.get("canonical_url"),
+                            ),
+                            "articleUrl": article.get("canonical_url"),
+                            "originalLanguage": language_projection(article.get("language")),
+                            "originalPublishedAt": _utc(article.get("original_published_at")),
+                        }
                 for row in rows:
-                    for key in ("candidates", "evaluation"):
+                    for key in (
+                        "candidates",
+                        "evaluation",
+                        "admissionPayload",
+                        "submissionPayload",
+                        "qualityResult",
+                        "tags",
+                        "authors",
+                    ):
                         if key in row:
                             row[key] = _decode(row[key])
                     if "caseVersion" in row:
                         row["caseVersion"] = int(row["caseVersion"])
                     if "recordVersion" in row:
                         row["recordVersion"] = int(row["recordVersion"])
+                    for key in (
+                        "originalPublishedAt",
+                        "createdAt",
+                        "updatedAt",
+                        "publishedAt",
+                    ):
+                        if key in row:
+                            row[key] = _utc(row[key])
+                    submission = row.get("submissionPayload") or row.get("admissionPayload") or {}
+                    source = submission.get("source") or {}
+                    if row.get("sourceId") or source:
+                        row["source"] = source_projection(
+                            row.get("sourceId") or source.get("sourceId"),
+                            source.get("sourceType"),
+                            row.get("canonicalUrl")
+                            or (submission.get("urls") or {}).get("canonicalUrl"),
+                        )
+                    if row.get("language"):
+                        row["originalLanguage"] = language_projection(row["language"])
+                    if isinstance(row.get("evaluation"), dict):
+                        row["evaluation"] = row["evaluation"].get(
+                            "qualityEvaluation", row["evaluation"]
+                        )
+                    if isinstance(row.get("qualityResult"), dict):
+                        row["evaluation"] = row["qualityResult"].get("qualityEvaluation")
+                    row.pop("qualityResult", None)
+                    admission = row.pop("admissionPayload", None)
+                    row.pop("submissionPayload", None)
+                    if admission:
+                        incoming_article = admission.get("article") or {}
+                        incoming_source = admission.get("source") or {}
+                        incoming_urls = admission.get("urls") or {}
+                        row["candidate"] = {
+                            "title": incoming_article.get("title"),
+                            "source": source_projection(
+                                incoming_source.get("sourceId"),
+                                incoming_source.get("sourceType"),
+                                incoming_urls.get("canonicalUrl"),
+                            ),
+                            "originalLanguage": language_projection(
+                                incoming_article.get("language")
+                            ),
+                            "articleUrl": incoming_urls.get("canonicalUrl"),
+                            "originalPublishedAt": incoming_article.get(
+                                "originalPublishedAt"
+                            ),
+                        }
+                    if row.get("candidates"):
+                        row["candidates"] = [
+                            candidate
+                            | {"article": candidate_articles.get(candidate.get("articleId"))}
+                            for candidate in row["candidates"]
+                        ]
                 return rows
+            finally:
+                cursor.close()
+        finally:
+            connection.close()
+
+    def count_review_queue(
+        self,
+        kind: str,
+        *,
+        keyword: str | None = None,
+        filter_value: str | None = None,
+    ) -> int:
+        where, params = self._review_conditions(kind, keyword, filter_value)
+        table = {
+            "duplicate": "duplicate_review_cases r",
+            "quality": (
+                "quality_review_cases q JOIN articles a ON a.article_id = q.article_id "
+                "LEFT JOIN pipeline_submissions ps ON ps.submission_id = q.submission_id"
+            ),
+            "publication": (
+                "articles a LEFT JOIN pipeline_submissions ps ON ps.article_id = a.article_id"
+            ),
+        }.get(kind)
+        if table is None:
+            raise ValueError(f"unknown review kind: {kind}")
+        connection = self._pool.get_connection()
+        try:
+            cursor = connection.cursor()
+            try:
+                cursor.execute(f"SELECT COUNT(*) FROM {table} WHERE {where}", params)
+                return int(cursor.fetchone()[0])
             finally:
                 cursor.close()
         finally:

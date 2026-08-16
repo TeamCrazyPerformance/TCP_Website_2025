@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
+from tech_article_pipeline.catalog import language_projection, source_projection
 from tech_article_pipeline.contracts import (
     CrawlJobRecord,
     JobRecord,
@@ -33,6 +34,7 @@ class MemoryPipelineRepository:
         self.job_keys: dict[str, str] = {}
         self.articles: dict[str, dict[str, Any]] = {}
         self.quality_reviews: dict[str, dict[str, Any]] = {}
+        self.duplicate_reviews: dict[str, dict[str, Any]] = {}
         self.events: list[dict[str, Any]] = []
         self.policy = PublicationPolicy.IMMEDIATE
         self.policy_version = 1
@@ -233,6 +235,7 @@ class MemoryPipelineRepository:
                     "item_payload": copy.deepcopy(item),
                     "normalization_payload": copy.deepcopy(normalized),
                     "submission_id": submission_id,
+                    "produced_at": _now(),
                 }
             completion = result["completion"]
             run = self.crawl_runs[job.crawl_run_id]
@@ -289,6 +292,7 @@ class MemoryPipelineRepository:
                     "item_payload": copy.deepcopy(item),
                     "normalization_payload": None,
                     "submission_id": None,
+                    "produced_at": _now(),
                 }
 
     def _crawl_response(self, run: dict[str, Any]) -> dict[str, Any]:
@@ -415,24 +419,52 @@ class MemoryPipelineRepository:
             if outcome == "ARTICLE_INGESTED":
                 article = result["articleIngested"]
                 article_id = article["articleId"]
+                payload = submission["payload"]
+                article_payload = payload["article"]
+                now = _now()
                 submission["article_id"] = article_id
                 submission["state"] = "QUALITY_PENDING"
                 self.articles.setdefault(
                     article_id,
                     {
                         "articleId": article_id,
-                        "title": article["article"]["title"],
-                        "content": article["article"]["content"],
-                        "language": article["article"]["language"],
+                        "crawlRunId": payload["crawlRunId"],
+                        "crawlItemId": payload["crawlItemId"],
+                        "sourceId": payload["source"]["sourceId"],
+                        "sourceType": payload["source"].get("sourceType"),
+                        "title": article_payload["title"],
+                        "authors": copy.deepcopy(article_payload.get("authors", [])),
+                        "content": article_payload["content"],
+                        "language": article_payload["language"],
+                        "originalPublishedAt": article_payload.get("originalPublishedAt"),
+                        "canonicalUrl": payload["urls"]["canonicalUrl"],
+                        "normalizedAt": payload.get("normalization", {}).get("normalizedAt"),
                         "processingStatus": "INGESTED",
                         "reviewStatus": "NOT_REQUIRED",
                         "publicationStatus": "UNPUBLISHED",
                         "recordVersion": 1,
+                        "createdAt": now,
+                        "updatedAt": now,
                     },
                 )
             elif outcome == "DUPLICATE_REVIEW_REQUESTED":
                 submission["state"] = "DUPLICATE_REVIEW_PENDING"
-                submission["duplicate_review_case_id"] = result["reviewCase"]["reviewCaseId"]
+                review = result["reviewCase"]
+                review_case_id = review["reviewCaseId"]
+                submission["duplicate_review_case_id"] = review_case_id
+                self.duplicate_reviews[review_case_id] = {
+                    "reviewCaseId": review_case_id,
+                    "crawlRunId": submission["payload"]["crawlRunId"],
+                    "crawlItemId": submission["payload"]["crawlItemId"],
+                    "admissionPayload": copy.deepcopy(submission["payload"]),
+                    "candidates": copy.deepcopy(
+                        review.get("originalCandidateSnapshot")
+                        or result.get("duplicateCheck", {}).get("candidates", [])
+                    ),
+                    "status": "PENDING",
+                    "caseVersion": review.get("caseVersion", 1),
+                    "createdAt": _now(),
+                }
             else:
                 submission["state"] = "DUPLICATE"
 
@@ -442,10 +474,12 @@ class MemoryPipelineRepository:
             article = self.articles[submission["article_id"]]
             evaluation = result["qualityEvaluation"]
             submission["quality_result"] = copy.deepcopy(result)
+            article["qualityEvaluation"] = copy.deepcopy(evaluation)
             article["qualityScore"] = evaluation.get("score", {}).get("overall")
             decision = evaluation["decision"]
             article["qualityDecision"] = decision
             article["recordVersion"] += 1
+            article["updatedAt"] = _now()
             if decision == "PASS":
                 submission["state"] = "ENRICHMENT_PENDING"
                 article["processingStatus"] = "ENRICHMENT_PENDING"
@@ -460,7 +494,8 @@ class MemoryPipelineRepository:
                     "articleId": article["articleId"],
                     "status": "PENDING",
                     "caseVersion": 1,
-                    "score": evaluation.get("score"),
+                    "evaluation": copy.deepcopy(evaluation),
+                    "createdAt": _now(),
                 }
             else:
                 submission["state"] = "QUALITY_REJECTED"
@@ -496,6 +531,7 @@ class MemoryPipelineRepository:
                 article["publicationStatus"] = "UNPUBLISHED"
                 submission["state"] = "PUBLICATION_REVIEW_PENDING"
             article["recordVersion"] += 1
+            article["updatedAt"] = _now()
             submission["enrichment_result"] = copy.deepcopy(result)
 
     def enqueue(
@@ -573,37 +609,292 @@ class MemoryPipelineRepository:
                 self.policy_version += 1
             return self.policy, self.policy_version
 
-    def list_public_articles(self, *, limit: int, offset: int) -> list[dict[str, Any]]:
+    @staticmethod
+    def _article_time(article: dict[str, Any]) -> str:
+        value = article.get("originalPublishedAt") or article.get("createdAt")
+        return value.isoformat() if isinstance(value, datetime) else str(value or "")
+
+    @staticmethod
+    def _matches_article(
+        article: dict[str, Any],
+        keyword: str | None,
+        tags: tuple[str, ...],
+        *,
+        include_admin_fields: bool = False,
+    ) -> bool:
+        if keyword:
+            values = [
+                article.get("localizedTitle"),
+                article.get("title"),
+                article.get("oneLineSummary"),
+            ]
+            if include_admin_fields:
+                values.extend([article.get("sourceId"), *(article.get("tags") or [])])
+            haystack = " ".join(str(value or "") for value in values).casefold()
+            if keyword.casefold() not in haystack:
+                return False
+        return not tags or bool(set(article.get("tags") or []).intersection(tags))
+
+    def _project_article(self, article: dict[str, Any]) -> dict[str, Any]:
+        projected = copy.deepcopy(article)
+        crawl_item = self.crawl_items.get(str(article.get("crawlItemId")))
+        collected_at = crawl_item.get("produced_at") if crawl_item else None
+        projected.update(
+            {
+                "source": source_projection(
+                    article.get("sourceId"),
+                    article.get("sourceType"),
+                    article.get("canonicalUrl"),
+                ),
+                "originalLanguage": language_projection(article.get("language")),
+                "collectedAt": collected_at,
+                "summaryMarkdown": article.get("summary"),
+                "evaluation": copy.deepcopy(article.get("qualityEvaluation")),
+                "valueScore": article.get("qualityScore"),
+                "duplicateStatus": "UNIQUE",
+            }
+        )
+        return projected
+
+    def list_public_articles(
+        self,
+        *,
+        limit: int,
+        offset: int,
+        keyword: str | None = None,
+        tags: tuple[str, ...] = (),
+    ) -> list[dict[str, Any]]:
         with self._lock:
             values = [
-                article for article in self.articles.values()
+                article
+                for article in self.articles.values()
                 if article["processingStatus"] == "ENRICHED"
                 and article["publicationStatus"] == "PUBLISHED"
+                and self._matches_article(article, keyword, tags)
             ]
-            return copy.deepcopy(values[offset:offset + limit])
+            values.sort(
+                key=lambda item: (self._article_time(item), item.get("articleId", "")),
+                reverse=True,
+            )
+            return [self._project_article(item) for item in values[offset : offset + limit]]
+
+    def count_public_articles(
+        self, *, keyword: str | None = None, tags: tuple[str, ...] = ()
+    ) -> int:
+        with self._lock:
+            return sum(
+                1
+                for article in self.articles.values()
+                if article["processingStatus"] == "ENRICHED"
+                and article["publicationStatus"] == "PUBLISHED"
+                and self._matches_article(article, keyword, tags)
+            )
+
+    def last_crawled_at(self) -> datetime | None:
+        with self._lock:
+            values = [item.get("produced_at") for item in self.crawl_items.values()]
+            return max((item for item in values if item is not None), default=None)
 
     def get_public_article(self, article_id: str) -> dict[str, Any] | None:
         with self._lock:
             article = self.articles.get(article_id)
             if not article or article["processingStatus"] != "ENRICHED" or article["publicationStatus"] != "PUBLISHED":
                 return None
-            return copy.deepcopy(article)
+            return self._project_article(article)
 
-    def list_articles(self, *, limit: int, offset: int) -> list[dict[str, Any]]:
+    def list_articles(
+        self,
+        *,
+        limit: int,
+        offset: int,
+        keyword: str | None = None,
+        publication_status: str | None = None,
+        sort: str = "NEWEST",
+    ) -> list[dict[str, Any]]:
         with self._lock:
-            return copy.deepcopy(list(self.articles.values())[offset:offset + limit])
+            values = [
+                article
+                for article in self.articles.values()
+                if (publication_status is None or article["publicationStatus"] == publication_status)
+                and self._matches_article(article, keyword, (), include_admin_fields=True)
+            ]
+            if sort == "SCORE_DESC":
+                values.sort(
+                    key=lambda item: (
+                        item["qualityScore"] if item.get("qualityScore") is not None else -1,
+                        item.get("articleId", ""),
+                    ),
+                    reverse=True,
+                )
+            elif sort == "SCORE_ASC":
+                values.sort(
+                    key=lambda item: (
+                        item["qualityScore"] if item.get("qualityScore") is not None else -1,
+                        item.get("articleId", ""),
+                    )
+                )
+            else:
+                values.sort(
+                    key=lambda item: (self._article_time(item), item.get("articleId", "")),
+                    reverse=True,
+                )
+            return [self._project_article(item) for item in values[offset : offset + limit]]
 
-    def list_review_queue(self, kind: str, *, limit: int) -> list[dict[str, Any]]:
+    def count_articles(
+        self, *, keyword: str | None = None, publication_status: str | None = None
+    ) -> int:
         with self._lock:
-            if kind == "quality":
-                return copy.deepcopy(
-                    [case for case in self.quality_reviews.values() if case["status"] == "PENDING"][:limit]
+            return sum(
+                1
+                for article in self.articles.values()
+                if (publication_status is None or article["publicationStatus"] == publication_status)
+                and self._matches_article(article, keyword, (), include_admin_fields=True)
+            )
+
+    def get_article(self, article_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            article = self.articles.get(article_id)
+            return None if article is None else self._project_article(article)
+
+    def article_stats(self) -> dict[str, Any]:
+        with self._lock:
+            publication: dict[str, int] = {}
+            processing: dict[str, int] = {}
+            for article in self.articles.values():
+                publication[article["publicationStatus"]] = (
+                    publication.get(article["publicationStatus"], 0) + 1
                 )
-            if kind == "publication":
-                return copy.deepcopy(
-                    [article for article in self.articles.values() if article["processingStatus"] == "ENRICHED" and article["reviewStatus"] == "PENDING"][:limit]
+                processing[article["processingStatus"]] = (
+                    processing.get(article["processingStatus"], 0) + 1
                 )
-            return []
+            return {
+                "totalCount": len(self.articles),
+                "publication": publication,
+                "processing": processing,
+                "reviews": {
+                    "duplicates": self.count_review_queue("duplicate"),
+                    "quality": self.count_review_queue("quality"),
+                    "publication": self.count_review_queue("publication"),
+                },
+            }
+
+    def list_review_queue(
+        self,
+        kind: str,
+        *,
+        limit: int,
+        offset: int = 0,
+        keyword: str | None = None,
+        filter_value: str | None = None,
+        sort: str = "NEWEST",
+    ) -> list[dict[str, Any]]:
+        with self._lock:
+            if kind == "duplicate":
+                values = []
+                for item in self.duplicate_reviews.values():
+                    if item["status"] != "PENDING":
+                        continue
+                    payload = item.get("admissionPayload") or {}
+                    article_payload = payload.get("article") or {}
+                    urls = payload.get("urls") or {}
+                    source = payload.get("source") or {}
+                    projected = {key: copy.deepcopy(value) for key, value in item.items() if key != "admissionPayload"}
+                    projected["candidate"] = {
+                        "title": article_payload.get("title"),
+                        "source": source_projection(
+                            source.get("sourceId"),
+                            source.get("sourceType"),
+                            urls.get("canonicalUrl"),
+                        ),
+                        "originalLanguage": language_projection(article_payload.get("language")),
+                        "articleUrl": urls.get("canonicalUrl"),
+                        "originalPublishedAt": article_payload.get("originalPublishedAt"),
+                    }
+                    projected["candidates"] = [
+                        candidate
+                        | {
+                            "article": self._project_article(self.articles[candidate["articleId"]])
+                            if candidate.get("articleId") in self.articles
+                            else None
+                        }
+                        for candidate in item.get("candidates", [])
+                    ]
+                    values.append(projected)
+            elif kind == "quality":
+                values = []
+                for case in self.quality_reviews.values():
+                    if case["status"] != "PENDING":
+                        continue
+                    article = self._project_article(self.articles[case["articleId"]])
+                    values.append(
+                        copy.deepcopy(case)
+                        | {
+                            "title": article.get("localizedTitle") or article.get("title"),
+                            "source": article.get("source"),
+                            "originalLanguage": article.get("originalLanguage"),
+                            "originalPublishedAt": article.get("originalPublishedAt"),
+                        }
+                    )
+            elif kind == "publication":
+                values = [
+                    self._project_article(article)
+                    for article in self.articles.values()
+                    if article["processingStatus"] == "ENRICHED"
+                    and article["reviewStatus"] == "PENDING"
+                ]
+            else:
+                raise ValueError(f"unknown review kind: {kind}")
+
+            def searchable(item: dict[str, Any]) -> str:
+                return json.dumps(item, ensure_ascii=False, default=str).casefold()
+
+            if keyword:
+                values = [item for item in values if keyword.casefold() in searchable(item)]
+            if filter_value:
+                if kind == "duplicate" and filter_value == "JACCARD":
+                    values = [item for item in values if "JACCARD" in searchable(item).upper()]
+                elif kind in {"quality", "publication"}:
+                    values = [
+                        item
+                        for item in values
+                        if (
+                            item.get("sourceType") == filter_value
+                            or item.get("source", {}).get("type") == filter_value
+                        )
+                    ]
+            if kind == "duplicate" and sort == "SIMILARITY_DESC":
+                values.sort(
+                    key=lambda item: max(
+                        (candidate.get("contentJaccard", -1) for candidate in item.get("candidates", [])),
+                        default=-1,
+                    ),
+                    reverse=True,
+                )
+            else:
+                values.sort(
+                    key=lambda item: str(item.get("createdAt") or item.get("updatedAt") or ""),
+                    reverse=True,
+                )
+            return copy.deepcopy(values[offset : offset + limit])
+
+    def count_review_queue(
+        self,
+        kind: str,
+        *,
+        keyword: str | None = None,
+        filter_value: str | None = None,
+    ) -> int:
+        return len(
+            self.list_review_queue(
+                kind,
+                limit=max(
+                    len(self.articles) + len(self.quality_reviews) + len(self.duplicate_reviews),
+                    1,
+                ),
+                keyword=keyword,
+                filter_value=filter_value,
+            )
+        )
 
     def resolve_quality_review(
         self,
@@ -672,6 +963,14 @@ class MemoryPipelineRepository:
             if result.get("outcome") != "RESOLUTION_COMPLETED":
                 return
             resolution = result["resolution"]
+            review = self.duplicate_reviews.get(review_case_id)
+            if review is not None:
+                review["status"] = (
+                    "RESOLVED_UNIQUE"
+                    if resolution["finalDecision"] == "UNIQUE"
+                    else "RESOLVED_DUPLICATE"
+                )
+                review["caseVersion"] += 1
             if resolution["finalDecision"] == "UNIQUE":
                 self.mark_admission_result(submission["submission_id"], {
                     "outcome": "ARTICLE_INGESTED",

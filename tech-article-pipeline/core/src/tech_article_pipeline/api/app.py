@@ -5,11 +5,12 @@ import hashlib
 import json
 import os
 from contextlib import asynccontextmanager, suppress
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 
+from tech_article_pipeline.catalog import crawl_source_catalog, tag_catalog
 from tech_article_pipeline.contracts.models import (
     CrawlRequested,
     NormalizedArticleCandidate,
@@ -180,13 +181,38 @@ def create_app(
         request: Request,
         limit: int = Query(default=20, ge=1, le=100),
         offset: int = Query(default=0, ge=0),
+        keyword: str | None = Query(default=None, min_length=1, max_length=100),
+        tags: Annotated[list[str] | None, Query()] = None,
     ) -> dict[str, Any]:
-        items = await asyncio.to_thread(
-            request.app.state.runtime.repository.list_public_articles,
-            limit=limit,
-            offset=offset,
+        tag_values = tuple(dict.fromkeys(tags or []))
+        if set(tag_values) - set(tag_catalog()):
+            raise HTTPException(status_code=422, detail={"code": "INVALID_ARTICLE_TAG"})
+        items, total_count, last_crawled_at = await asyncio.gather(
+            asyncio.to_thread(
+                request.app.state.runtime.repository.list_public_articles,
+                limit=limit,
+                offset=offset,
+                keyword=keyword,
+                tags=tag_values,
+            ),
+            asyncio.to_thread(
+                request.app.state.runtime.repository.count_public_articles,
+                keyword=keyword,
+                tags=tag_values,
+            ),
+            asyncio.to_thread(request.app.state.runtime.repository.last_crawled_at),
         )
-        return {"items": items, "limit": limit, "offset": offset}
+        return {
+            "items": items,
+            "limit": limit,
+            "offset": offset,
+            "totalCount": total_count,
+            "lastCrawledAt": last_crawled_at,
+        }
+
+    @internal.get("/public/tags")
+    async def public_tags() -> dict[str, Any]:
+        return {"items": tag_catalog()}
 
     @internal.get("/public/articles/{article_id}")
     async def public_article(request: Request, article_id: str) -> dict[str, Any]:
@@ -202,26 +228,90 @@ def create_app(
         request: Request,
         limit: int = Query(default=50, ge=1, le=100),
         offset: int = Query(default=0, ge=0),
+        keyword: str | None = Query(default=None, min_length=1, max_length=100),
+        publication_status: str | None = Query(
+            default=None,
+            alias="publicationStatus",
+            pattern=r"^(UNPUBLISHED|SCHEDULED|PUBLISHED|HIDDEN|ARCHIVED)$",
+        ),
+        sort: str = Query(default="NEWEST", pattern=r"^(NEWEST|SCORE_DESC|SCORE_ASC)$"),
     ) -> dict[str, Any]:
-        items = await asyncio.to_thread(
-            request.app.state.runtime.repository.list_articles,
-            limit=limit,
-            offset=offset,
+        items, total_count = await asyncio.gather(
+            asyncio.to_thread(
+                request.app.state.runtime.repository.list_articles,
+                limit=limit,
+                offset=offset,
+                keyword=keyword,
+                publication_status=publication_status,
+                sort=sort,
+            ),
+            asyncio.to_thread(
+                request.app.state.runtime.repository.count_articles,
+                keyword=keyword,
+                publication_status=publication_status,
+            ),
         )
-        return {"items": items, "limit": limit, "offset": offset}
+        return {"items": items, "limit": limit, "offset": offset, "totalCount": total_count}
+
+    @internal.get("/admin/articles/stats")
+    async def admin_article_stats(request: Request) -> dict[str, Any]:
+        return await asyncio.to_thread(request.app.state.runtime.repository.article_stats)
+
+    @internal.get("/admin/articles/{article_id}")
+    async def admin_article(request: Request, article_id: str) -> dict[str, Any]:
+        article = await asyncio.to_thread(
+            request.app.state.runtime.repository.get_article, article_id
+        )
+        if article is None:
+            raise HTTPException(status_code=404, detail={"code": "ARTICLE_NOT_FOUND"})
+        return article
 
     @internal.get("/admin/reviews/{kind}")
     async def review_queue(
         request: Request,
         kind: str,
         limit: int = Query(default=50, ge=1, le=100),
+        offset: int = Query(default=0, ge=0),
+        keyword: str | None = Query(default=None, min_length=1, max_length=100),
+        filter_value: str | None = Query(default=None, alias="filter"),
+        sort: str = Query(default="NEWEST"),
     ) -> dict[str, Any]:
         if kind not in {"duplicate", "quality", "publication"}:
             raise HTTPException(status_code=404, detail={"code": "REVIEW_QUEUE_NOT_FOUND"})
-        items = await asyncio.to_thread(
-            request.app.state.runtime.repository.list_review_queue, kind, limit=limit
+        allowed_sorts = {"duplicate": {"NEWEST", "SIMILARITY_DESC"}}.get(
+            kind, {"NEWEST"}
         )
-        return {"items": items}
+        if sort not in allowed_sorts:
+            raise HTTPException(status_code=422, detail={"code": "INVALID_REVIEW_SORT"})
+        allowed_filters = {
+            "duplicate": {None, "JACCARD"},
+            "quality": {None, "RSS", "WEB_CRAWL", "API"},
+            "publication": {None, "RSS", "WEB_CRAWL", "API"},
+        }[kind]
+        if filter_value not in allowed_filters:
+            raise HTTPException(status_code=422, detail={"code": "INVALID_REVIEW_FILTER"})
+        items, total_count = await asyncio.gather(
+            asyncio.to_thread(
+                request.app.state.runtime.repository.list_review_queue,
+                kind,
+                limit=limit,
+                offset=offset,
+                keyword=keyword,
+                filter_value=filter_value,
+                sort=sort,
+            ),
+            asyncio.to_thread(
+                request.app.state.runtime.repository.count_review_queue,
+                kind,
+                keyword=keyword,
+                filter_value=filter_value,
+            ),
+        )
+        return {"items": items, "limit": limit, "offset": offset, "totalCount": total_count}
+
+    @internal.get("/admin/crawl-sources")
+    async def admin_crawl_sources() -> dict[str, Any]:
+        return {"items": crawl_source_catalog()}
 
     @internal.post("/admin/reviews/duplicate/{review_case_id}/resolution")
     async def resolve_duplicate(

@@ -28,17 +28,20 @@ Cloudflare ingestion rejects runs when these identity values are absent or are
 placeholders. Set `GEMINI_API_KEY` before processing real articles; otherwise
 enrichment jobs will retry and eventually become dead jobs.
 
-The later NestJS integration should use the following internal-only values:
+The NestJS facade uses the following internal-only values:
 
 ```text
-PIPELINE_BASE_URL=http://tech-article-pipeline:8080
+TECH_ARTICLE_PIPELINE_BASE_URL=http://tech-article-pipeline:8080
 PIPELINE_SERVICE_TOKEN=<the same secret injected into the pipeline>
+TECH_ARTICLE_PIPELINE_READ_TIMEOUT_MS=2000
+TECH_ARTICLE_PIPELINE_WRITE_TIMEOUT_MS=5000
 ```
 
 Do not give NestJS MySQL credentials and do not publish the pipeline directly
-through Nginx. Browser requests must eventually pass through the website's normal
-authentication and authorization boundary. That backend work is intentionally
-outside this pipeline-only change.
+through Nginx. Browser requests pass through the website's normal authentication
+and authorization boundary under `/api/v1/tech-articles`. The website API has no
+startup dependency on the optional profile; while the profile is stopped, only
+technical-article endpoints return `503 TECH_ARTICLE_PIPELINE_UNAVAILABLE`.
 
 ## Start and verify
 

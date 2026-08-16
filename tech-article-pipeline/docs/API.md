@@ -46,9 +46,14 @@ be supplied on the same request and otherwise use the core defaults.
 
 ## Reads and administration
 
-- `GET /public/articles` and `GET /public/articles/{articleId}`
-- `GET /admin/articles`
+- `GET /public/articles` — keeps `limit|offset` and adds `keyword`, repeated
+  canonical `tags`, `totalCount`, and `lastCrawledAt`.
+- `GET /public/tags` and `GET /public/articles/{articleId}`
+- `GET /admin/articles` — supports `keyword`, `publicationStatus`, and
+  `NEWEST|SCORE_DESC|SCORE_ASC`; returns `totalCount`.
+- `GET /admin/articles/stats` and `GET /admin/articles/{articleId}`
 - `GET /admin/reviews/duplicate|quality|publication`
+- `GET /admin/crawl-sources`
 - `POST /admin/reviews/duplicate/{caseId}/resolution`
 - `POST /admin/reviews/quality/{caseId}/resolution`
 - `POST /admin/articles/{articleId}/publication`
@@ -61,3 +66,8 @@ Duplicate resolution bodies follow the admission module contract, including
 
 The publication policy setting is `IMMEDIATE|REVIEW`, defaults to `IMMEDIATE`,
 and uses an optional expected version on PATCH for optimistic concurrency.
+
+Review queues accept `limit`, `offset`, `keyword`, `filter`, and a queue-specific
+`sort` value and return `totalCount`. Article and review projections combine the
+existing article, submission, quality-result, and crawl-item records; no public
+website projection republishes the collected source body.

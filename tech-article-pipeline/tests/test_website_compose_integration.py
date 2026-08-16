@@ -29,6 +29,13 @@ def test_pipeline_startup_does_not_gate_the_existing_api():
     assert "pipeline-migrate" not in api_dependencies
     assert "tech-article-pipeline" not in api_dependencies
 
+    environment = services["api"]["environment"]
+    assert environment["TECH_ARTICLE_PIPELINE_BASE_URL"] == (
+        "http://tech-article-pipeline:8080"
+    )
+    assert "PIPELINE_SERVICE_TOKEN" in environment
+    assert not any(key.startswith("TECH_ARTICLE_MYSQL_") for key in environment)
+
 
 def test_pipeline_waits_for_mysql_and_checksum_verified_migrations():
     services = _compose()["services"]

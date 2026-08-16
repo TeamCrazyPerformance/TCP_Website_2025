@@ -99,13 +99,59 @@ class PipelineRepository(Protocol):
         self, policy: PublicationPolicy, expected_version: int | None
     ) -> tuple[PublicationPolicy, int]: ...
 
-    def list_public_articles(self, *, limit: int, offset: int) -> list[dict[str, Any]]: ...
+    def list_public_articles(
+        self,
+        *,
+        limit: int,
+        offset: int,
+        keyword: str | None = None,
+        tags: tuple[str, ...] = (),
+    ) -> list[dict[str, Any]]: ...
+
+    def count_public_articles(
+        self, *, keyword: str | None = None, tags: tuple[str, ...] = ()
+    ) -> int: ...
+
+    def last_crawled_at(self) -> datetime | None: ...
 
     def get_public_article(self, article_id: str) -> dict[str, Any] | None: ...
 
-    def list_articles(self, *, limit: int, offset: int) -> list[dict[str, Any]]: ...
+    def list_articles(
+        self,
+        *,
+        limit: int,
+        offset: int,
+        keyword: str | None = None,
+        publication_status: str | None = None,
+        sort: str = "NEWEST",
+    ) -> list[dict[str, Any]]: ...
 
-    def list_review_queue(self, kind: str, *, limit: int) -> list[dict[str, Any]]: ...
+    def count_articles(
+        self, *, keyword: str | None = None, publication_status: str | None = None
+    ) -> int: ...
+
+    def get_article(self, article_id: str) -> dict[str, Any] | None: ...
+
+    def article_stats(self) -> dict[str, Any]: ...
+
+    def list_review_queue(
+        self,
+        kind: str,
+        *,
+        limit: int,
+        offset: int = 0,
+        keyword: str | None = None,
+        filter_value: str | None = None,
+        sort: str = "NEWEST",
+    ) -> list[dict[str, Any]]: ...
+
+    def count_review_queue(
+        self,
+        kind: str,
+        *,
+        keyword: str | None = None,
+        filter_value: str | None = None,
+    ) -> int: ...
 
     def resolve_quality_review(
         self,
