@@ -1,0 +1,195 @@
+name: tcp-private-qa
+
+x-api-environment: &api-environment
+  NODE_ENV: development
+  PORT: "3000"
+  BCRYPT_SALT_ROUNDS: "12"
+  JWT_SECRET: ${JWT_SECRET:?run bash private_qa.sh setup first}
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_USER: ${POSTGRES_USER:?run bash private_qa.sh setup first}
+  DB_PASSWORD: ${POSTGRES_PASSWORD:?run bash private_qa.sh setup first}
+  DB_NAME: ${POSTGRES_DB:?run bash private_qa.sh setup first}
+  TECH_ARTICLE_PIPELINE_BASE_URL: http://tech-article-pipeline:8080
+  PIPELINE_SERVICE_TOKEN: ${PIPELINE_SERVICE_TOKEN:?run bash private_qa.sh setup first}
+  TECH_ARTICLE_PIPELINE_READ_TIMEOUT_MS: ${TECH_ARTICLE_PIPELINE_READ_TIMEOUT_MS:-3000}
+  TECH_ARTICLE_PIPELINE_WRITE_TIMEOUT_MS: ${TECH_ARTICLE_PIPELINE_WRITE_TIMEOUT_MS:-10000}
+
+x-pipeline-environment: &pipeline-environment
+  PIPELINE_SERVICE_TOKEN: ${PIPELINE_SERVICE_TOKEN:?run bash private_qa.sh setup first}
+  TECH_ARTICLE_MYSQL_HOST: pipeline-mysql
+  TECH_ARTICLE_MYSQL_PORT: "3306"
+  TECH_ARTICLE_MYSQL_DATABASE: ${TECH_ARTICLE_MYSQL_DATABASE:-tech_articles}
+  TECH_ARTICLE_MYSQL_USER: ${TECH_ARTICLE_MYSQL_USER:-pipeline}
+  TECH_ARTICLE_MYSQL_PASSWORD: ${TECH_ARTICLE_MYSQL_PASSWORD:?run bash private_qa.sh setup first}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?run bash private_qa.sh setup first}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run bash private_qa.sh setup first}
+      POSTGRES_DB: ${POSTGRES_DB:?run bash private_qa.sh setup first}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $$POSTGRES_USER -d $$POSTGRES_DB || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks: [private-qa]
+    restart: unless-stopped
+
+  pipeline-mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${TECH_ARTICLE_MYSQL_DATABASE:-tech_articles}
+      MYSQL_USER: ${TECH_ARTICLE_MYSQL_USER:-pipeline}
+      MYSQL_PASSWORD: ${TECH_ARTICLE_MYSQL_PASSWORD:?run bash private_qa.sh setup first}
+      MYSQL_ROOT_PASSWORD: ${TECH_ARTICLE_MYSQL_ROOT_PASSWORD:?run bash private_qa.sh setup first}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    volumes:
+      - pipeline-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+    networks: [private-qa]
+    restart: unless-stopped
+
+  pipeline-migrate:
+    image: tcp-private-qa-pipeline:local
+    command: ["python", "-m", "tech_article_pipeline.persistence.migrate"]
+    environment: *pipeline-environment
+    depends_on:
+      pipeline-mysql:
+        condition: service_healthy
+    networks: [private-qa]
+    restart: "no"
+
+  tech-article-pipeline:
+    image: tcp-private-qa-pipeline:local
+    build:
+      context: ../../tech-article-pipeline
+    environment:
+      <<: *pipeline-environment
+      PIPELINE_BACKEND: mysql
+      PIPELINE_RUN_WORKER: "true"
+      PIPELINE_WORKER_CONCURRENCY: ${PIPELINE_WORKER_CONCURRENCY:-1}
+      PIPELINE_WORKER_POLL_SECONDS: ${PIPELINE_WORKER_POLL_SECONDS:-1}
+      PIPELINE_WORKER_LEASE_SECONDS: ${PIPELINE_WORKER_LEASE_SECONDS:-60}
+      PIPELINE_JOB_MAX_ATTEMPTS: ${PIPELINE_JOB_MAX_ATTEMPTS:-3}
+      TECH_ARTICLE_MYSQL_POOL_SIZE: ${TECH_ARTICLE_MYSQL_POOL_SIZE:-5}
+      CRAWLER_PUBLIC_URL: ${CRAWLER_PUBLIC_URL:?run bash private_qa.sh setup first}
+      CRAWLER_CONTACT: ${CRAWLER_CONTACT:?run bash private_qa.sh setup first}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
+    depends_on:
+      pipeline-mysql:
+        condition: service_healthy
+      pipeline-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/ready', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+    networks: [private-qa]
+    restart: unless-stopped
+
+  api-migrate:
+    image: tcp-private-qa-api:local
+    command: ["npx", "typeorm", "migration:run", "-d", "dist/data-source.js"]
+    environment: *api-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [private-qa]
+    restart: "no"
+
+  api-seed:
+    image: tcp-private-qa-api:local
+    command: ["node", "dist/seed.js"]
+    environment:
+      <<: *api-environment
+      ADMIN_USERNAME: ${ADMIN_USERNAME:?run bash private_qa.sh setup first}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?run bash private_qa.sh setup first}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?run bash private_qa.sh setup first}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api-migrate:
+        condition: service_completed_successfully
+    networks: [private-qa]
+    restart: "no"
+
+  api:
+    image: tcp-private-qa-api:local
+    build:
+      context: ../../api
+    command: ["node", "dist/main.js"]
+    environment: *api-environment
+    volumes:
+      - api-uploads:/var/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api-seed:
+        condition: service_completed_successfully
+      tech-article-pipeline:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/health/live >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+    networks: [private-qa]
+    restart: unless-stopped
+
+  web:
+    image: tcp-private-qa-web:local
+    build:
+      context: ../../web
+      dockerfile: ../CICDtools/PrivateQuickDeploy/Dockerfile.web
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks: [private-qa]
+    restart: unless-stopped
+
+  reverse-proxy:
+    image: nginx:1.25-alpine
+    ports:
+      - "${PRIVATE_QA_BIND_ADDRESS:-0.0.0.0}:${PRIVATE_QA_HTTP_PORT:-8088}:80"
+    volumes:
+      - ./nginx.private-qa.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/api/v1/tech-articles/tags >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks: [private-qa]
+    restart: unless-stopped
+
+networks:
+  private-qa:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  pipeline-mysql-data:
+  api-uploads:
