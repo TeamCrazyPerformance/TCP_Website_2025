@@ -32,7 +32,9 @@
 services:
   # API (NestJS)
   api:
-    command: sh -c "npx typeorm migration:run -d dist/data-source.js && npm run start:dev"
+    # ./api bind mount가 이미지의 dist/를 가리므로 개발 모드에서는 TS 설정으로
+    # 마이그레이션을 실행한 뒤 watch 서버를 시작한다.
+    command: sh -c "npm run migration:run && npm run start:dev"
     env_file:
       - ./envs/api.env
       - ./envs/db_dev.env
@@ -48,6 +50,7 @@ services:
       NODE_ENV: development
       PORT: 3000
       CHOKIDAR_USEPOLLING: "1"
+      PIPELINE_SERVICE_TOKEN: ${PIPELINE_SERVICE_TOKEN:-tcp-local-pipeline-token-change-before-deploy}
     ports:
       - "3000:3000"
     volumes:
@@ -67,6 +70,28 @@ services:
     ports:
       - "5432:5432"
 
+  # 기술 아티클 파이프라인의 로컬 전용 기본 자격 증명. 운영 배포에서는
+  # 루트 환경 또는 secret store의 값으로 반드시 덮어쓴다.
+  pipeline-mysql:
+    environment:
+      MYSQL_DATABASE: ${TECH_ARTICLE_MYSQL_DATABASE:-tech_articles}
+      MYSQL_USER: ${TECH_ARTICLE_MYSQL_USER:-pipeline}
+      MYSQL_PASSWORD: ${TECH_ARTICLE_MYSQL_PASSWORD:-tcp_local_pipeline_password}
+      MYSQL_ROOT_PASSWORD: ${TECH_ARTICLE_MYSQL_ROOT_PASSWORD:-tcp_local_pipeline_root_password}
+
+  pipeline-migrate:
+    environment:
+      TECH_ARTICLE_MYSQL_DATABASE: ${TECH_ARTICLE_MYSQL_DATABASE:-tech_articles}
+      TECH_ARTICLE_MYSQL_USER: ${TECH_ARTICLE_MYSQL_USER:-pipeline}
+      TECH_ARTICLE_MYSQL_PASSWORD: ${TECH_ARTICLE_MYSQL_PASSWORD:-tcp_local_pipeline_password}
+
+  tech-article-pipeline:
+    environment:
+      PIPELINE_SERVICE_TOKEN: ${PIPELINE_SERVICE_TOKEN:-tcp-local-pipeline-token-change-before-deploy}
+      TECH_ARTICLE_MYSQL_DATABASE: ${TECH_ARTICLE_MYSQL_DATABASE:-tech_articles}
+      TECH_ARTICLE_MYSQL_USER: ${TECH_ARTICLE_MYSQL_USER:-pipeline}
+      TECH_ARTICLE_MYSQL_PASSWORD: ${TECH_ARTICLE_MYSQL_PASSWORD:-tcp_local_pipeline_password}
+
   # Static web (nginx로 dist 서빙)
   web:
     ports:
@@ -80,6 +105,11 @@ services:
     # dev에서는 아래 dev용 conf로 덮어쓰는 걸 권장.
     volumes:
       - ./reverse-proxy/default.dev.conf:/etc/nginx/conf.d/default.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Elasticsearch (dev: disable security for simpler healthcheck)
   elasticsearch:
