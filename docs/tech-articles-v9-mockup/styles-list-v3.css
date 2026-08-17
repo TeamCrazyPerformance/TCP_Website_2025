@@ -1,0 +1,72 @@
+@import url("./styles-list-v2.css?v=20260807-v7");
+
+.result-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.request-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--accent-purple);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.article-list.is-loading {
+  opacity: 0.48;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+
+.filter-panel-v2:disabled {
+  opacity: 0.58;
+}
+
+.pagination-v3 {
+  flex-wrap: wrap;
+}
+
+.page-number-list {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.page-number {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.page-ellipsis {
+  min-width: 28px;
+  color: var(--gray-500);
+  text-align: center;
+}
+
+.pagination-status {
+  width: 100%;
+  margin-top: 4px;
+  color: var(--gray-500);
+  font-size: 12px;
+  text-align: center;
+}
+
+@media (max-width: 767px) {
+  .result-summary {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .page-number-list .page-button:not([aria-current="page"]) {
+    display: none;
+  }
+
+  .page-number-list .page-ellipsis {
+    display: none;
+  }
+}

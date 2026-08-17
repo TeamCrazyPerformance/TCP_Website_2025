@@ -1,0 +1,405 @@
+@import url("./styles-base.css?v=20260807-v7");
+
+.page-hero {
+  padding-top: 104px;
+  padding-bottom: 44px;
+}
+
+.hero-icon {
+  width: 76px;
+  height: 76px;
+  margin-bottom: 18px;
+}
+
+.hero-icon i {
+  font-size: 25px;
+}
+
+.page-hero h1 {
+  margin-bottom: 12px;
+  font-size: 58px;
+}
+
+.hero-lead {
+  margin-bottom: 14px;
+  font-size: 20px;
+}
+
+.hero-description {
+  font-size: 16px;
+}
+
+.last-collected {
+  margin-top: 12px;
+}
+
+.articles-section {
+  padding-top: 44px;
+}
+
+.section-heading {
+  margin-bottom: 28px;
+}
+
+.results-toolbar-v2 {
+  min-height: 40px;
+  margin-bottom: 20px;
+  scroll-margin-top: 84px;
+}
+
+.results-toolbar-v2:focus {
+  outline: none;
+}
+
+.results-toolbar-v2:focus-visible {
+  border-radius: 8px;
+  box-shadow: 0 0 0 2px rgba(168, 197, 230, 0.35);
+}
+
+.results-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.conditions-link,
+.back-to-list-link {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent-blue);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.conditions-link:hover,
+.back-to-list-link:hover {
+  color: #fff;
+}
+
+.results-actions .text-button {
+  min-height: 36px;
+}
+
+.article-list {
+  gap: 16px;
+}
+
+.article-card {
+  padding: 22px 24px;
+}
+
+.article-card:hover {
+  transform: translateY(-2px);
+}
+
+.article-card-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.article-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.article-summary {
+  display: block;
+  margin-top: 9px;
+  overflow: hidden;
+  color: var(--gray-300);
+  line-height: 1.65;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.article-card-bottom {
+  display: flex;
+  margin-top: 15px;
+  padding-top: 15px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-top: 1px solid var(--gray-800);
+}
+
+.article-card-info {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+}
+
+.article-tags {
+  margin-top: 0;
+}
+
+.tag-more {
+  color: var(--gray-300);
+  background: var(--gray-700);
+}
+
+.article-meta {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.article-meta .meta-divider {
+  color: var(--gray-700);
+}
+
+.article-meta time {
+  color: var(--gray-400);
+}
+
+.original-button {
+  min-height: 38px;
+  padding: 7px 14px;
+  flex: 0 0 auto;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.pagination {
+  margin-bottom: 56px;
+}
+
+.page-status {
+  min-width: 88px;
+  color: var(--gray-400);
+  font-size: 14px;
+  text-align: center;
+}
+
+.explore-section {
+  padding-top: 4px;
+  scroll-margin-top: 88px;
+}
+
+.explore-heading {
+  display: flex;
+  margin-bottom: 20px;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.explore-eyebrow {
+  margin: 0 0 5px;
+  color: var(--accent-purple);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.explore-heading h2 {
+  margin: 0;
+  color: var(--gray-300);
+  font-size: 24px;
+}
+
+.explore-heading > div > p:last-child {
+  margin: 7px 0 0;
+  color: var(--gray-400);
+  font-size: 14px;
+}
+
+.filter-panel-v2 {
+  margin-bottom: 40px;
+}
+
+.filter-apply-row {
+  display: flex;
+  margin-top: 14px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.filter-apply-row .filter-help {
+  margin: 0;
+}
+
+.apply-filter-button {
+  min-height: 38px;
+  padding: 7px 16px;
+  flex: 0 0 auto;
+  color: var(--gray-200, #e5e7eb);
+  background: var(--gray-700);
+  border: 1px solid var(--gray-600);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.apply-filter-button:hover {
+  color: #fff;
+  background: var(--gray-600);
+}
+
+.apply-filter-button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.source-notice {
+  margin-top: 0;
+}
+
+.empty-state {
+  min-height: 250px;
+}
+
+.skeleton-card {
+  min-height: 142px;
+  pointer-events: none;
+}
+
+.skeleton-card span {
+  display: block;
+  height: 13px;
+  margin-bottom: 17px;
+  background: linear-gradient(
+    90deg,
+    var(--gray-800) 20%,
+    var(--gray-700) 50%,
+    var(--gray-800) 80%
+  );
+  background-size: 200% 100%;
+  border-radius: 9999px;
+  animation: v2-skeleton 1.5s ease-in-out infinite;
+}
+
+.skeleton-card span:nth-child(1) {
+  width: 54%;
+  height: 18px;
+}
+
+.skeleton-card span:nth-child(2) {
+  width: 88%;
+}
+
+.skeleton-card span:nth-child(3) {
+  width: 42%;
+  margin-bottom: 0;
+}
+
+@keyframes v2-skeleton {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .page-hero {
+    padding-top: 92px;
+    padding-bottom: 34px;
+  }
+
+  .hero-icon {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 16px;
+  }
+
+  .hero-icon i {
+    font-size: 22px;
+  }
+
+  .page-hero h1 {
+    font-size: 42px;
+  }
+
+  .hero-lead {
+    font-size: 17px;
+  }
+
+  .articles-section {
+    padding-top: 34px;
+  }
+
+  .section-heading {
+    margin-bottom: 22px;
+  }
+
+  .results-toolbar-v2 {
+    align-items: flex-start;
+  }
+
+  .results-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .article-card {
+    padding: 18px;
+  }
+
+  .article-card-heading {
+    display: block;
+  }
+
+  .article-title {
+    font-size: 18px;
+  }
+
+  .article-card-bottom {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .original-button,
+  .share-button {
+    width: 100%;
+  }
+
+  .article-meta .meta-divider {
+    display: none;
+  }
+
+  .explore-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .filter-apply-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .apply-filter-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 639px) {
+  .page-hero h1 {
+    font-size: 36px;
+  }
+
+  .hero-lead {
+    font-family: "Spoqa Han Sans Neo", sans-serif;
+    font-size: 16px;
+  }
+
+  .article-summary {
+    font-size: 14px;
+  }
+
+  .article-card-info,
+  .article-meta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+}

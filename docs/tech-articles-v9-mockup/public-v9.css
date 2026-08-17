@@ -1,0 +1,351 @@
+/* v9 공개 페이지 전용 보정: 상·하단 분야 선택과 반응형 배치를 함께 관리한다. */
+
+.category-filter-panel {
+  margin-bottom: 16px;
+  padding: 10px 16px 12px;
+  scroll-margin-top: 88px;
+  background: rgba(17, 24, 39, 0.72);
+  border-color: rgba(147, 197, 253, 0.18);
+}
+
+.category-filter-panel legend {
+  padding: 0 6px;
+  color: var(--gray-200, #e5e7eb);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.category-filter-panel .desktop-filter {
+  display: grid;
+  margin-top: 3px;
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+}
+
+.category-filter-panel .tag-filter-list {
+  gap: 6px;
+}
+
+.category-filter-panel .tag-button {
+  min-height: 26px;
+  padding: 3px 10px;
+  font-size: 11px;
+}
+
+.tag-data-db,
+.tag-ai-ml {
+  color: #d8b4fe;
+  background: rgba(88, 28, 135, 0.8);
+}
+
+.tag-open-source {
+  color: #fde68a;
+  background: rgba(120, 53, 15, 0.8);
+}
+
+.tag-language-framework {
+  color: #a5f3fc;
+  background: rgba(21, 94, 117, 0.8);
+}
+
+.tag-architecture {
+  color: #c7d2fe;
+  background: rgba(49, 46, 129, 0.8);
+}
+
+.tag-blockchain-web3 {
+  color: #f0abfc;
+  background: rgba(112, 26, 117, 0.8);
+}
+
+.tag-industry-career {
+  color: #fed7aa;
+  background: rgba(124, 45, 18, 0.8);
+}
+
+.category-filter-panel .filter-apply-row {
+  margin: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.category-filter-panel .apply-filter-button {
+  min-height: 32px;
+  padding: 5px 12px;
+}
+
+.article-list-heading {
+  display: flex;
+  margin-bottom: 14px;
+  align-items: baseline;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  scroll-margin-top: 84px;
+}
+
+.article-list-heading:focus {
+  outline: none;
+}
+
+.article-list-heading:focus-visible {
+  border-radius: 8px;
+  box-shadow: 0 0 0 2px rgba(168, 197, 230, 0.35);
+}
+
+.article-list-heading .result-summary {
+  align-items: center;
+  flex-direction: row;
+  gap: 12px;
+}
+
+.article-list-heading #resultCount {
+  margin: 0;
+  color: var(--gray-300, #d1d5db);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.active-filters #resetAllButton {
+  margin-left: auto;
+}
+
+.article-card {
+  min-width: 0;
+  max-width: 100%;
+  padding-block: 18px;
+}
+
+.article-list {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.article-title {
+  overflow-wrap: anywhere;
+}
+
+.article-card-bottom {
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+.article-card-info {
+  row-gap: 6px;
+}
+
+#searchFieldset {
+  margin-bottom: 40px;
+}
+
+.search-category-filter {
+  margin-bottom: 18px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--gray-800);
+}
+
+.search-category-heading {
+  display: flex;
+  margin-bottom: 10px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.search-category-heading > span {
+  color: var(--gray-300);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.search-desktop-filter {
+  gap: 7px;
+}
+
+.search-desktop-filter .tag-button {
+  min-height: 30px;
+  padding: 4px 10px;
+  font-size: 11px;
+}
+
+.search-mobile-filter-button {
+  margin-top: 0;
+}
+
+.detail-one-line-summary {
+  margin: 0 0 26px;
+  padding: 17px 19px;
+  color: var(--gray-100, #f3f4f6);
+  background: rgba(30, 58, 138, 0.2);
+  border-left: 3px solid var(--accent-blue);
+  border-radius: 0 9px 9px 0;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.8;
+}
+
+.summary-body-v9 > p:first-child {
+  margin: 0 0 20px;
+  padding: 0;
+  color: #e5e7eb;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.9;
+}
+
+.source-language-value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.source-language-value span {
+  color: var(--gray-500);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.detail-data-error {
+  margin: 0 0 20px;
+  padding: 12px 14px;
+  color: #fde68a;
+  background: rgba(146, 64, 14, 0.24);
+  border: 1px solid rgba(253, 230, 138, 0.22);
+  border-radius: 9px;
+  font-size: 14px;
+}
+
+@media (max-width: 767px) {
+  .category-filter-panel .desktop-filter {
+    display: none;
+  }
+
+  .category-filter-panel {
+    padding: 0;
+    background: transparent;
+    border: 0;
+  }
+
+  .category-filter-panel legend {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .article-list-heading {
+    align-items: baseline;
+    flex-direction: row;
+  }
+
+  .article-list-heading .result-summary {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .category-filter-panel {
+    margin-bottom: 14px;
+  }
+
+  .category-filter-panel .mobile-filter-button {
+    display: flex;
+    min-height: 40px;
+    margin-top: 0;
+  }
+
+  .search-desktop-filter,
+  .search-category-heading .search-tag-reset {
+    display: none;
+  }
+
+  .search-category-heading {
+    margin-bottom: 8px;
+  }
+
+  .search-category-filter {
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+  }
+
+  .search-mobile-filter-button {
+    display: flex;
+    min-height: 42px;
+    margin-top: 0;
+  }
+
+  .article-summary {
+    display: -webkit-box;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .article-card-bottom {
+    align-items: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .article-card-info {
+    width: 100%;
+    flex: 1 1 230px;
+  }
+
+  .article-card-bottom .share-button {
+    width: auto;
+    min-width: 80px;
+    margin-left: auto;
+  }
+
+  .detail-one-line-summary {
+    padding: 15px 16px;
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 639px) {
+  .detail-title {
+    font-size: 24px;
+  }
+
+  .summary-card,
+  .score-card,
+  .source-card {
+    padding: 18px;
+  }
+
+  .summary-heading h2 {
+    font-size: 21px;
+  }
+
+  .detail-content-section {
+    padding-top: 22px;
+  }
+}
+
+@media (max-width: 479px) {
+  .article-list-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .article-list-heading #resultCount {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 359px) {
+  .site-header .brand-copy {
+    display: none;
+  }
+}

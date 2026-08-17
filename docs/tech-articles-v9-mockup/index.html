@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="TCP Tech Articles 서버 페이지네이션 바닐라 HTML, CSS, JavaScript 목업"
+    />
+    <meta name="theme-color" content="#0a0a0a" />
+    <title>Tech Articles v9 | Team Crazy Performance</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://spoqa.github.io/spoqa-han-sans/css/SpoqaHanSansNeo.css"
+    />
+    <link rel="stylesheet" href="./styles.css?v=20260807-v7" />
+    <link rel="stylesheet" href="./public-v9.css?v=20260813-v9" />
+    <script src="./public-data.js?v=20260813-v9" defer></script>
+    <script src="./page01.js?v=20260813-v9" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#tech-articles-list">아티클 목록으로 이동</a>
+
+    <header class="site-header">
+      <div class="container header-container">
+        <div class="header-inner">
+          <div class="header-brand-slot">
+            <a class="brand" href="#top" aria-label="TCP 홈">
+              <div class="brand-logo-box">
+                <img src="../../web/src/logo.svg" alt="TCP 로고" />
+              </div>
+              <div class="brand-copy">
+                <h1 class="orbitron gradient-text">TCP</h1>
+                <p class="orbitron">Team Crazy Performance</p>
+              </div>
+            </a>
+          </div>
+
+          <nav class="desktop-nav" aria-label="주요 메뉴">
+            <a class="nav-link demo-link" href="#about">About</a>
+            <a class="nav-link demo-link" href="#members">Members</a>
+            <a class="nav-link demo-link" href="#recruitment">Recruitment</a>
+            <a class="nav-link demo-link" href="#announcement">Announcement</a>
+            <a
+              class="nav-link active"
+              href="#tech-articles-list"
+              aria-current="page"
+            >
+              Tech Articles
+            </a>
+            <a class="nav-link demo-link" href="#study">Study</a>
+            <a class="nav-link demo-link" href="#team">Find Your Team</a>
+          </nav>
+
+          <div class="header-actions">
+            <div class="auth-links">
+              <button class="login-button demo-action" type="button">
+                <span>
+                  <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
+                  로그인
+                </span>
+              </button>
+              <button class="register-button demo-action" type="button">
+                <span>
+                  <i class="fas fa-user-plus" aria-hidden="true"></i>
+                  회원가입
+                </span>
+              </button>
+            </div>
+            <button
+              id="menuButton"
+              class="menu-button"
+              type="button"
+              aria-label="모바일 메뉴 열기"
+              aria-expanded="false"
+              aria-controls="mobileNav"
+            >
+              <i class="fas fa-bars" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="mobileNav" class="mobile-nav" hidden>
+          <nav aria-label="모바일 메뉴">
+            <a class="demo-link" href="#about">About</a>
+            <a class="demo-link" href="#members">Members</a>
+            <a class="demo-link" href="#recruitment">Recruitment</a>
+            <a class="demo-link" href="#announcement">Announcement</a>
+            <a class="active" href="#tech-articles-list" aria-current="page">
+              Tech Articles
+            </a>
+            <a class="demo-link" href="#study">Study</a>
+            <a class="demo-link" href="#team">Find Your Team</a>
+          </nav>
+        </div>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="page-hero">
+        <div class="container hero-content">
+          <div class="hero-icon" aria-hidden="true">
+            <i class="fas fa-newspaper"></i>
+          </div>
+          <h1 class="orbitron gradient-text">Tech Articles</h1>
+          <p class="hero-lead orbitron">
+            개발과 기술 분야의 읽을 만한 정보를 한곳에서 만나보세요
+          </p>
+          <p class="hero-description">
+            AI가 정리한 한 줄 요약과 분야, 원출처를 확인해 보세요.
+          </p>
+          <p class="last-collected">
+            <i class="fas fa-clock" aria-hidden="true"></i>
+            마지막 원문 수집:
+            <span id="lastCollectedValue">확인 중</span>
+          </p>
+        </div>
+      </section>
+
+      <section id="tech-articles-list" class="articles-section">
+        <div class="container">
+          <div
+            id="resultsStart"
+            class="section-heading article-list-heading"
+            tabindex="-1"
+          >
+            <h2 class="orbitron gradient-text">아티클 목록</h2>
+            <div class="result-summary">
+              <p id="resultCount">아티클을 불러오는 중입니다.</p>
+              <span id="requestProgress" class="request-progress" hidden>
+                <i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i>
+                목록 갱신 중
+              </span>
+            </div>
+          </div>
+
+          <fieldset
+            id="categoryFieldset"
+            class="filter-panel filter-panel-v2 category-filter-panel"
+          >
+            <legend id="category-filter">분야 선택</legend>
+
+            <div class="desktop-filter">
+              <div
+                id="desktopTagFilters"
+                class="tag-filter-list"
+                aria-label="분야 선택 항목"
+              ></div>
+              <div class="filter-apply-row">
+                <button
+                  id="resetDraftTagsButton"
+                  class="text-button"
+                  type="button"
+                >
+                  초기화
+                </button>
+                <button
+                  id="applyDesktopTagsButton"
+                  class="apply-filter-button"
+                  type="button"
+                >
+                  적용
+                </button>
+              </div>
+            </div>
+
+            <button
+              id="openFilterButton"
+              class="mobile-filter-button"
+              type="button"
+              aria-haspopup="dialog"
+              aria-expanded="false"
+              aria-controls="filterDialog"
+            >
+              <span>
+                <i class="fas fa-sliders-h" aria-hidden="true"></i>
+                분야 선택
+              </span>
+              <strong id="mobileFilterCount">0</strong>
+            </button>
+          </fieldset>
+
+          <div id="activeFilters" class="active-filters" hidden>
+            <span>적용 중</span>
+            <div id="filterChips" class="filter-chips"></div>
+            <button
+              id="resetAllButton"
+              class="text-button"
+              type="button"
+              hidden
+            >
+              <i class="fas fa-rotate-left" aria-hidden="true"></i>
+              전체 초기화
+            </button>
+          </div>
+
+          <p id="resultsLive" class="sr-only" aria-live="polite"></p>
+          <div id="articleList" class="article-list"></div>
+
+          <nav
+            id="pagination"
+            class="pagination pagination-v3"
+            aria-label="아티클 목록 페이지 이동"
+          ></nav>
+
+          <section
+            id="article-filters"
+            class="explore-section"
+            aria-labelledby="exploreHeading"
+          >
+            <div class="explore-heading">
+              <div>
+                <p class="orbitron explore-eyebrow">SEARCH</p>
+                <h2 id="exploreHeading">필요한 아티클 검색하기</h2>
+                <p>
+                  전체 아티클의 제목과 한 줄 요약에서 원하는 내용을
+                  검색할 수 있습니다.
+                </p>
+              </div>
+              <a class="back-to-list-link" href="#resultsStart">
+                목록으로 돌아가기
+                <i class="fas fa-arrow-up" aria-hidden="true"></i>
+              </a>
+            </div>
+
+            <fieldset
+              id="searchFieldset"
+              class="filter-panel filter-panel-v2"
+            >
+              <legend class="sr-only">아티클 검색</legend>
+              <form id="searchForm" role="search" aria-label="분야와 검색어로 아티클 검색">
+                <div class="search-category-filter">
+                  <div class="search-category-heading">
+                    <span>분야 선택</span>
+                    <button
+                      id="resetSearchDraftTagsButton"
+                      class="text-button search-tag-reset"
+                      type="button"
+                    >
+                      초기화
+                    </button>
+                  </div>
+                  <div
+                    id="searchTagFilters"
+                    class="tag-filter-list search-desktop-filter"
+                    aria-label="검색할 분야 선택 항목"
+                  ></div>
+                  <button
+                    id="openSearchFilterButton"
+                    class="mobile-filter-button search-mobile-filter-button"
+                    type="button"
+                    aria-haspopup="dialog"
+                    aria-expanded="false"
+                    aria-controls="filterDialog"
+                  >
+                    <span>
+                      <i class="fas fa-sliders-h" aria-hidden="true"></i>
+                      분야 선택
+                    </span>
+                    <strong id="searchMobileFilterCount">0</strong>
+                  </button>
+                </div>
+                <label for="searchInput">검색</label>
+                <div class="search-row">
+                  <div class="search-input-wrap">
+                    <input
+                      id="searchInput"
+                      name="q"
+                      type="search"
+                      autocomplete="off"
+                      placeholder="제목과 요약에서 아티클을 검색하세요."
+                    />
+                    <button
+                      id="clearSearchButton"
+                      class="search-clear"
+                      type="button"
+                      aria-label="검색어 지우기"
+                      hidden
+                    >
+                      <i class="fas fa-times" aria-hidden="true"></i>
+                    </button>
+                    <i class="fas fa-search search-icon" aria-hidden="true"></i>
+                  </div>
+                  <button class="cta-button search-submit" type="submit">
+                    검색
+                  </button>
+                </div>
+              </form>
+            </fieldset>
+          </section>
+
+          <aside class="source-notice">
+            <i class="fas fa-circle-info" aria-hidden="true"></i>
+            <div>
+              <h2 class="orbitron">데이터 출처 및 AI 요약 안내</h2>
+              <p>
+                공식 기술 블로그와 개발자 커뮤니티 등에서 수집한 자료 중
+                원문 게시일과 출처가 확인되고 AI 요약이 완료된 아티클만
+                제공합니다.
+              </p>
+              <p>
+                모든 한 줄 요약은 AI로 생성되며 원문의 전체 맥락을 대체하지
+                않습니다. 이 화면은 서버 페이지네이션을 재현한 팀 검토용
+                더미 데이터입니다.
+              </p>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div>
+            <div class="footer-brand">
+              <img src="../../web/src/logo.svg" alt="TCP 로고" />
+              <h3 class="orbitron gradient-text">TCP</h3>
+            </div>
+            <p>
+              Team Crazy Performance<br />
+              컴퓨터공학과 학술 동아리
+            </p>
+          </div>
+
+          <div>
+            <h4 class="orbitron">임원진</h4>
+            <p>
+              <span class="text-blue">회장:</span> 컴퓨터공학과 24학번 박연오
+            </p>
+            <p>
+              <span class="text-purple">부회장:</span> 컴퓨터공학과 23학번
+              김영진
+            </p>
+          </div>
+
+          <div>
+            <h4 class="orbitron">연락처</h4>
+            <p><i class="fas fa-phone text-blue"></i> 010-5096-3236</p>
+            <p>
+              <i class="fas fa-envelope text-purple"></i>
+              seoultechcstcp@gmail.com
+            </p>
+            <p>
+              <i class="fab fa-instagram text-pink"></i>
+              <a
+                href="https://www.instagram.com/seoultech.tcp"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                @seoultech.tcp
+              </a>
+            </p>
+          </div>
+
+          <div>
+            <h4 class="orbitron">법적 정보</h4>
+            <p><a class="demo-link" href="#terms">이용약관</a></p>
+            <p><a class="demo-link" href="#privacy">개인정보처리방침</a></p>
+            <p><a class="demo-link" href="#opensource">오픈소스 고지</a></p>
+          </div>
+        </div>
+
+        <div class="copyright">
+          © 2024 TCP (Team Crazy Performance). All rights reserved.
+        </div>
+      </div>
+    </footer>
+
+    <dialog id="filterDialog" class="filter-dialog">
+      <form method="dialog" class="filter-sheet">
+        <div class="filter-sheet-heading">
+          <div>
+            <p class="orbitron">FILTER</p>
+            <h2>분야 선택</h2>
+          </div>
+          <button class="sheet-close" value="cancel" aria-label="필터 닫기">
+            <i class="fas fa-times" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div id="mobileTagFilters" class="tag-filter-list"></div>
+        <div class="sheet-actions">
+          <button id="clearDraftTagsButton" type="button">초기화</button>
+          <button value="cancel">취소</button>
+          <button id="applyTagsButton" class="cta-button" type="button">
+            선택 조건으로 보기
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden>
+      <i class="fas fa-circle-info" aria-hidden="true"></i>
+      <p></p>
+    </div>
+
+    <noscript>
+      <div class="noscript-notice">
+        아티클 목업을 보려면 브라우저에서 JavaScript를 활성화해 주세요.
+      </div>
+    </noscript>
+  </body>
+</html>

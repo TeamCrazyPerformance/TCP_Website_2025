@@ -1,0 +1,88 @@
+/* Tech Articles 공개 화면의 정렬 레이어입니다.
+ *
+ * 자동 생성 파일인 techArticlesPublic.css 다음에 로드되며,
+ * 생성 파일을 직접 고치지 않고 모든 조정을 이 파일에 모아 둡니다. */
+
+/* ── Tailwind preflight 상쇄 ──────────────────────────────
+ * 관리자(techArticlesAdminAlign.css)와 같은 이유·같은 특정도 설계.
+ * (0,1,1) — preflight(0,0,1)는 이기고 v9의 `.클래스 요소`(0,2,1)에는 짐. */
+
+.ta-public h1 {
+  margin: 0.67em 0;
+  font-size: 2em;
+  font-weight: 700;
+}
+
+.ta-public h2 {
+  margin: 0.83em 0;
+  font-size: 1.5em;
+  font-weight: 700;
+}
+
+.ta-public h3 {
+  margin: 1em 0;
+  font-size: 1.17em;
+  font-weight: 700;
+}
+
+.ta-public h4 {
+  margin: 1.33em 0;
+  font-size: 1em;
+  font-weight: 700;
+}
+
+.ta-public h5 {
+  margin: 1.67em 0;
+  font-size: 0.83em;
+  font-weight: 700;
+}
+
+.ta-public h6 {
+  margin: 2.33em 0;
+  font-size: 0.67em;
+  font-weight: 700;
+}
+
+.ta-public p,
+.ta-public pre {
+  margin: 1em 0;
+}
+
+.ta-public blockquote {
+  margin: 1em 40px;
+}
+
+/* 상세 화면 요약 본문의 마크다운 불릿 복원 */
+.ta-public ul,
+.ta-public ol {
+  margin: 1em 0;
+  padding-left: 40px;
+}
+
+.ta-public ul {
+  list-style: disc outside;
+}
+
+.ta-public ol {
+  list-style: decimal outside;
+}
+
+.ta-public hr {
+  margin: 1em 0;
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* ── 공용 Header/Footer 전환에 따른 정렬 ──────────────────
+ * 공용 Header 는 fixed + h-16(64px). 기존 공개 페이지는 첫 섹션에 pt-24(96px).
+ * 목록 화면은 .page-hero 가 이미 96px 이라 그대로 맞음.
+ * 상세 화면은 .detail-main 이 목업 sticky 헤더 높이 64px 만 가져 헤더에 붙음.
+ * 같은 특정도이므로 나중에 로드되는 이 규칙이 적용됨. */
+.ta-public .detail-main {
+  padding-top: 6rem;
+}
+
+/* 목업 셸이 body 에 주던 배경을 스코프 루트가 대신 담당 */
+.ta-public {
+  background: var(--primary-black);
+}

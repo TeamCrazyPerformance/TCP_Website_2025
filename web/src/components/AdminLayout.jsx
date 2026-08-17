@@ -1,7 +1,7 @@
 // src/components/AdminLayout.jsx
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useLocation, Outlet } from 'react-router-dom';
-import AdminSidebar from './AdminSidebar';
+import React, { useEffect, useState } from "react";
+import { useNavigate, useLocation, Outlet } from "react-router-dom";
+import AdminSidebar from "./AdminSidebar";
 
 function AdminLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -14,19 +14,19 @@ function AdminLayout() {
   // Check admin authorization
   useEffect(() => {
     const checkAuth = () => {
-      const token = localStorage.getItem('access_token');
-      const storedUser = localStorage.getItem('auth_user');
+      const token = localStorage.getItem("access_token");
+      const storedUser = localStorage.getItem("auth_user");
       const userData = storedUser ? JSON.parse(storedUser) : null;
 
       if (!token || !userData) {
-        alert('로그인이 필요합니다.');
-        navigate('/login');
+        alert("로그인이 필요합니다.");
+        navigate("/login");
         return;
       }
 
-      if (userData.role !== 'ADMIN') {
-        alert('관리자만 접근할 수 있습니다.');
-        navigate('/');
+      if (userData.role !== "ADMIN") {
+        alert("관리자만 접근할 수 있습니다.");
+        navigate("/");
         return;
       }
 
@@ -49,8 +49,8 @@ function AdminLayout() {
   // 외부 클릭 시 사이드바 닫기 (모바일)
   useEffect(() => {
     const handleClickOutside = (event) => {
-      const sidebarElement = document.getElementById('sidebar');
-      const toggleButton = document.getElementById('sidebar-toggle');
+      const sidebarElement = document.getElementById("sidebar");
+      const toggleButton = document.getElementById("sidebar-toggle");
 
       if (window.innerWidth <= 768 && sidebarElement && toggleButton) {
         if (
@@ -63,19 +63,28 @@ function AdminLayout() {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isSidebarOpen]);
 
   const getPageTitle = () => {
     const path = location.pathname;
-    if (path === '/admin') return 'Dashboard';
-    if (path === '/admin/main') return 'Main Page Content';
-    if (path === '/admin/recruitment') return 'Recruitment Page Management';
+    if (path === "/admin") return "Dashboard";
+    if (path === "/admin/main") return "Main Page Content";
+    if (path === "/admin/recruitment") return "Recruitment Page Management";
+    // Tech Articles 3개 화면. 검토 화면은 품질·공개 두 탭을 한 화면에서 다룬다.
+    if (path === "/admin/tech-articles") return "Tech Articles · All Articles";
+    if (path === "/admin/tech-articles/reviews/duplicates")
+      return "Tech Articles · Suspected Duplicates";
+    if (
+      path === "/admin/tech-articles/reviews/quality" ||
+      path === "/admin/tech-articles/reviews/publication"
+    )
+      return "Tech Articles · Article Review";
     // ... 다른 관리 페이지 제목들
-    return 'Admin Panel';
+    return "Admin Panel";
   };
 
   // Show loading state while checking authorization
@@ -114,7 +123,7 @@ function AdminLayout() {
                 <i className="fas fa-bars text-base sm:text-lg"></i>
               </button>
               <h2
-                className={`orbitron text-base sm:text-lg md:text-2xl font-bold text-white truncate min-w-0 ${isSidebarOpen ? 'hidden md:block' : 'block'} md:mr-auto`}
+                className={`orbitron text-base sm:text-lg md:text-2xl font-bold text-white truncate min-w-0 ${isSidebarOpen ? "hidden md:block" : "block"} md:mr-auto`}
                 title={getPageTitle()}
               >
                 {getPageTitle()}
@@ -122,21 +131,23 @@ function AdminLayout() {
               <div className="flex items-center gap-2 sm:gap-3 ml-auto min-w-0">
                 <button
                   type="button"
-                  onClick={() => navigate('/')}
+                  onClick={() => navigate("/")}
                   className="text-gray-400 hover:text-white shrink-0 p-1"
                   title="Main Page"
                 >
                   <i className="fas fa-home text-lg"></i>
                 </button>
                 <div className="min-w-0 max-w-[9rem] sm:max-w-[12rem] md:max-w-[16rem]">
-                  <span className="text-sm font-medium truncate block">{user?.name || 'Admin'}</span>
+                  <span className="text-sm font-medium truncate block">
+                    {user?.name || "Admin"}
+                  </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => {
-                    localStorage.removeItem('access_token');
-                    localStorage.removeItem('auth_user');
-                    navigate('/login');
+                    localStorage.removeItem("access_token");
+                    localStorage.removeItem("auth_user");
+                    navigate("/login");
                   }}
                   className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-600 rounded-lg hover:border-gray-400 transition-colors whitespace-nowrap shrink-0"
                 >
@@ -147,7 +158,7 @@ function AdminLayout() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-primary-black p-6">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-primary-black p-3 sm:p-6">
           <Outlet />
         </main>
       </div>

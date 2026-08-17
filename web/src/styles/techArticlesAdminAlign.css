@@ -1,0 +1,461 @@
+/* Tech Articles 관리 화면의 정렬 레이어입니다.
+ *
+ * 자동 생성 파일인 techArticlesAdmin.css 다음에 로드되며,
+ * 생성 파일을 직접 고치지 않고 모든 조정을 이 파일에 모아 둡니다.
+ * 목업에 없던 스타일을 새로 추가할 때도 이 파일에 작성해 주세요. */
+
+/* ── Tailwind preflight 상쇄 ──────────────────────────────
+ * v9 CSS는 브라우저 기본 스타일을 전제로 작성됨. preflight가 초기화하는
+ * 텍스트 흐름 요소를 스코프 안에서만 되돌린다.
+ * 특정도 (0,1,1) — preflight(0,0,1)는 이기고 v9의 `.클래스 요소`(0,2,1)에는 짐.
+ * 값을 올리면 v9 스타일을 덮으므로 그대로 둘 것. */
+
+/* preflight: h1~h6 { font-size: inherit }. 클래스 없는 제목이 본문 크기로 무너짐 */
+.ta-admin h1 {
+  margin: 0.67em 0;
+  font-size: 2em;
+  font-weight: 700;
+}
+
+.ta-admin h2 {
+  margin: 0.83em 0;
+  font-size: 1.5em;
+  font-weight: 700;
+}
+
+.ta-admin h3 {
+  margin: 1em 0;
+  font-size: 1.17em;
+  font-weight: 700;
+}
+
+.ta-admin h4 {
+  margin: 1.33em 0;
+  font-size: 1em;
+  font-weight: 700;
+}
+
+.ta-admin h5 {
+  margin: 1.67em 0;
+  font-size: 0.83em;
+  font-weight: 700;
+}
+
+.ta-admin h6 {
+  margin: 2.33em 0;
+  font-size: 0.67em;
+  font-weight: 700;
+}
+
+/* preflight: p, pre, blockquote { margin: 0 } */
+.ta-admin p,
+.ta-admin pre {
+  margin: 1em 0;
+}
+
+.ta-admin blockquote {
+  margin: 1em 40px;
+}
+
+/* preflight: ol, ul { list-style: none }. SafeMarkdown 이 렌더하는 불릿 복원 */
+.ta-admin ul,
+.ta-admin ol {
+  margin: 1em 0;
+  padding-left: 40px;
+}
+
+.ta-admin ul {
+  list-style: disc outside;
+}
+
+.ta-admin ol {
+  list-style: decimal outside;
+}
+
+/* preflight: * { border-width: 0 } 로 hr 이 사라짐 */
+.ta-admin hr {
+  margin: 1em 0;
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* ── 기존 관리자 화면 컨벤션 정렬 ─────────────────────────
+ * 기준: AdminLayout <main class="p-3 sm:p-6"> +
+ *      기존 페이지의 "orbitron text-3xl gradient-text" 제목, "widget-card rounded-xl" 카드
+ *
+ * 본문 폭은 CSS로 잡지 않는다. AdminTechArticleContent 가 기존 페이지와 같은
+ * `container mx-auto max-w-7xl` 을 직접 써서 브레이크포인트 거동까지 일치시킴. */
+
+/* 페이지 제목: v9 clamp(27~38px) -> 기존 text-3xl(1.875rem) */
+.ta-admin .admin-intro h2 {
+  margin: 0;
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.ta-admin .admin-intro {
+  margin-bottom: 1.5rem;
+}
+
+.ta-admin .admin-intro p {
+  margin: 0.25rem 0 0;
+}
+
+/* 카드 표면을 index.css .widget-card 와 동일하게 (radius 는 rounded-xl 기준) */
+.ta-admin .widget-card {
+  background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+}
+
+.ta-admin .dialog-panel {
+  border-radius: 0.75rem;
+}
+
+/* ── 수집 실행 패널 ──────────────────────────────────────
+ * 별도 화면이 아니라 "전체 아티클" 하위 작업. 관리자 화면 수 3개 유지. */
+.ta-admin .admin-intro-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.ta-admin .crawl-panel-v9 {
+  margin-bottom: 1.5rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
+  border: 1px solid rgba(168, 197, 230, 0.28);
+  border-radius: 0.75rem;
+}
+
+.ta-admin .crawl-panel-heading-v9 {
+  margin-bottom: 1.25rem;
+}
+
+.ta-admin .crawl-panel-heading-v9 h3 {
+  margin: 0.25rem 0 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.ta-admin .crawl-panel-heading-v9 > p:last-child {
+  margin: 0;
+  color: var(--gray-400);
+  font-size: 0.8125rem;
+}
+
+/* 부모 화면이 떠 있는 toast 를 쓰므로 겹치지 않게 패널 안쪽 알림 */
+.ta-admin .crawl-panel-notice-v9 {
+  display: flex;
+  margin: 1rem 0 0;
+  padding: 0.625rem 0.875rem;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.ta-admin .crawl-panel-notice-v9.is-success {
+  color: var(--success);
+  background: var(--success-bg);
+}
+
+.ta-admin .crawl-panel-notice-v9.is-error {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+@media (max-width: 640px) {
+  .ta-admin .admin-intro-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .ta-admin .crawl-panel-v9 {
+    padding: 1rem;
+  }
+}
+
+/* 카드 안 섹션 제목: v9가 크기를 지정하지 않은 것만 기존 text-xl 로 */
+.ta-admin .filter-card > h3,
+.ta-admin .filter-card > .list-heading-row h3,
+.ta-admin .policy-card > h3,
+.ta-admin .article-management-section > h3 {
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+/* ── v9 목업에 없던 수집 화면 스타일 ──────────────────────
+ * 목업에는 수집 실행 화면이 없어 이 프로젝트에서 새로 작성했습니다.
+ * 목업 원본(docs/tech-articles-v9-mockup/)은 수정하지 않고 이곳에 둡니다. */
+.ta-admin .crawl-layout-v9 {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
+  align-items: start;
+  gap: 16px;
+}
+.ta-admin .crawl-card-v9 {
+  padding: 22px;
+}
+.ta-admin .crawl-card-v9 .section-heading-row h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 18px;
+}
+.ta-admin .crawl-field-v9 {
+  margin-top: 22px;
+}
+.ta-admin .crawl-capabilities-v9 {
+  padding: 0;
+  margin: 20px 0 0;
+  border: 0;
+}
+.ta-admin .crawl-capabilities-v9 legend {
+  margin-bottom: 8px;
+  color: var(--gray-400);
+  font-size: 11px;
+  font-weight: 800;
+}
+.ta-admin .crawl-capabilities-v9 > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.ta-admin .crawl-capabilities-v9 label {
+  cursor: pointer;
+}
+.ta-admin .crawl-capabilities-v9 input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.ta-admin .crawl-capabilities-v9 label > span {
+  display: block;
+  min-height: 62px;
+  padding: 11px;
+  background: var(--gray-900);
+  border: 1px solid var(--gray-800);
+  border-radius: 8px;
+}
+.ta-admin .crawl-capabilities-v9 strong {
+  display: block;
+}
+.ta-admin .crawl-capabilities-v9 small {
+  display: block;
+}
+.ta-admin .crawl-capabilities-v9 strong {
+  color: var(--gray-300);
+  font-size: 11px;
+}
+.ta-admin .crawl-capabilities-v9 small {
+  margin-top: 4px;
+  color: var(--gray-500);
+  font-size: 9px;
+}
+.ta-admin .crawl-capabilities-v9 input:checked + span {
+  background: rgba(30, 58, 138, 0.42);
+  border-color: rgba(147, 197, 253, 0.34);
+  box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.12);
+}
+.ta-admin .crawl-options-v9 {
+  display: grid;
+  margin-top: 20px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.ta-admin .crawl-follow-v9 {
+  display: flex;
+  margin-top: 18px;
+  padding: 13px;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--gray-900);
+  border: 1px solid var(--gray-800);
+  border-radius: 8px;
+}
+.ta-admin .crawl-follow-v9 input {
+  margin-top: 3px;
+  accent-color: var(--accent-blue);
+}
+.ta-admin .crawl-follow-v9 strong {
+  display: block;
+}
+.ta-admin .crawl-follow-v9 small {
+  display: block;
+}
+.ta-admin .crawl-follow-v9 strong {
+  color: var(--gray-300);
+  font-size: 11px;
+}
+.ta-admin .crawl-follow-v9 small {
+  margin-top: 3px;
+  color: var(--gray-500);
+  font-size: 9px;
+}
+.ta-admin .crawl-follow-v9.is-disabled {
+  opacity: 0.48;
+}
+.ta-admin .crawl-idempotency-v9 {
+  margin: 12px 0 0;
+  padding: 9px 11px;
+  color: var(--gray-500);
+  background: rgba(17, 24, 39, 0.7);
+  border-radius: 7px;
+  font-size: 9px;
+  overflow-wrap: anywhere;
+}
+.ta-admin .crawl-idempotency-v9 i {
+  margin-right: 7px;
+  color: var(--accent-blue);
+}
+.ta-admin .crawl-idempotency-v9 code {
+  color: var(--gray-300);
+}
+.ta-admin .crawl-submit-v9 {
+  width: 100%;
+  margin-top: 18px;
+}
+.ta-admin .crawl-status-v9 {
+  position: sticky;
+  top: 80px;
+}
+.ta-admin .crawl-empty-v9 {
+  display: grid;
+  min-height: 250px;
+  place-content: center;
+  color: var(--gray-500);
+  text-align: center;
+}
+.ta-admin .crawl-loading-v9 {
+  display: grid;
+  min-height: 250px;
+  place-content: center;
+  color: var(--gray-500);
+  text-align: center;
+}
+.ta-admin .crawl-empty-v9 i {
+  margin: 0 auto 12px;
+  color: var(--accent-purple);
+  font-size: 27px;
+}
+.ta-admin .crawl-loading-v9 i {
+  margin: 0 auto 12px;
+  color: var(--accent-purple);
+  font-size: 27px;
+}
+.ta-admin .crawl-empty-v9 p {
+  max-width: 250px;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.ta-admin .crawl-loading-v9 p {
+  max-width: 250px;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.ta-admin .crawl-run-heading-v9 {
+  display: flex;
+  margin-top: 20px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.ta-admin .crawl-run-heading-v9 small {
+  color: var(--gray-500);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+}
+.ta-admin .crawl-run-facts-v9 {
+  margin: 14px 0 0;
+}
+.ta-admin .crawl-run-facts-v9 > div {
+  display: flex;
+  padding: 9px 0;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--gray-800);
+}
+.ta-admin .crawl-statistics-v9 > div {
+  display: flex;
+  padding: 9px 0;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--gray-800);
+}
+.ta-admin .crawl-run-facts-v9 dt {
+  color: var(--gray-500);
+  font-size: 10px;
+}
+.ta-admin .crawl-statistics-v9 span {
+  color: var(--gray-500);
+  font-size: 10px;
+}
+.ta-admin .crawl-run-facts-v9 dd {
+  margin: 0;
+  color: var(--gray-300);
+  font-size: 10px;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.ta-admin .crawl-statistics-v9 strong {
+  margin: 0;
+  color: var(--gray-300);
+  font-size: 10px;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.ta-admin .crawl-statistics-v9 {
+  margin-top: 15px;
+  padding: 12px;
+  background: var(--gray-900);
+  border: 1px solid var(--gray-800);
+  border-radius: 8px;
+}
+.ta-admin .crawl-statistics-v9 h4 {
+  margin: 0 0 7px;
+  color: #fff;
+  font-size: 11px;
+}
+.ta-admin .crawl-error-v9 {
+  max-height: 170px;
+  margin-top: 13px;
+  padding: 11px;
+  overflow: auto;
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.26);
+  border: 1px solid rgba(248, 113, 113, 0.22);
+  border-radius: 8px;
+  font-size: 9px;
+  white-space: pre-wrap;
+}
+.ta-admin .crawl-refresh-v9 {
+  margin: 14px 0 0;
+  color: var(--accent-blue);
+  font-size: 10px;
+  text-align: center;
+}
+.ta-admin .crawl-refresh-v9 i {
+  margin-right: 6px;
+}
+@media (max-width: 900px) {
+  .ta-admin .crawl-layout-v9 {
+    grid-template-columns: 1fr;
+  }
+  .ta-admin .crawl-status-v9 {
+    position: static;
+  }
+}
+
+@media (max-width: 600px) {
+  .ta-admin .crawl-options-v9 {
+    grid-template-columns: 1fr;
+  }
+  .ta-admin .crawl-capabilities-v9 > div {
+    grid-template-columns: 1fr;
+  }
+}
