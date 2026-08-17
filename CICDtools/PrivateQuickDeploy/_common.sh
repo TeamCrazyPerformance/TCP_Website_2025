@@ -20,6 +20,37 @@ readonly PRIVATE_QA_PROJECT_NAME="tcp-private-qa"
 # shellcheck source=../utils/runtime.sh
 source "$PRIVATE_QA_DIR/../utils/runtime.sh"
 
+# Interactive prompts must stay on the foreground terminal. Redirecting the
+# whole process through sed/tee makes prompt text race with terminal input.
+# Keep console writes synchronous and append only structured log messages.
+private_qa_append_log() {
+  local level="$1"
+  shift
+  if [[ -n "${PRIVATE_QA_LOG_FILE:-}" ]]; then
+    printf '[%s] [%s] %s\n' "$(timestamp)" "$level" "$*" >>"$PRIVATE_QA_LOG_FILE"
+  fi
+}
+
+log_info() {
+  printf '%b\n' "${BLUE}[$(timestamp)] [INFO] ℹ️  $*${NC}"
+  private_qa_append_log INFO "$*"
+}
+
+log_success() {
+  printf '%b\n' "${GREEN}[$(timestamp)] [SUCCESS] ✅ $*${NC}"
+  private_qa_append_log SUCCESS "$*"
+}
+
+log_warn() {
+  printf '%b\n' "${YELLOW}[$(timestamp)] [WARN] ⚠️  $*${NC}"
+  private_qa_append_log WARN "$*"
+}
+
+log_error() {
+  printf '%b\n' "${RED}[$(timestamp)] [ERROR] ❌ $*${NC}" >&2
+  private_qa_append_log ERROR "$*"
+}
+
 private_qa_handle_exit() {
   local exit_code=$?
   if [[ $exit_code -eq 0 ]]; then
@@ -40,7 +71,7 @@ private_qa_setup_logging() {
     printf '[%s] STARTING private_qa %s (user: %s)\n' "$(timestamp)" "$command_name" "$(whoami)" >>"$log_file"
     chmod 600 "$log_file"
     export PRIVATE_QA_LOGGING_ACTIVE=1
-    exec > >(sed -u 's/^/    /' | tee -a "$log_file") 2>&1
+    export PRIVATE_QA_LOG_FILE="$log_file"
   fi
   trap private_qa_handle_exit EXIT
 }

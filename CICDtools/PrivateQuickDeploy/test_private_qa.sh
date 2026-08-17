@@ -43,5 +43,7 @@ grep -q '^name: tcp-private-qa$' "$SCRIPT_DIR/docker-compose.private-qa.yml" \
   || fail "fixed global container names would collide with another stack"
 grep -q 'down --volumes --remove-orphans' "$SCRIPT_DIR/private_qa.sh" \
   || fail "reset does not remove the isolated volumes"
+! grep -q 'exec > >(' "$SCRIPT_DIR/_common.sh" \
+  || fail "interactive output must not be redirected through an asynchronous process substitution"
 
 printf 'PASS: Private QA isolated environment, secrecy, idempotency, and port contracts\n'
