@@ -1,161 +1,144 @@
-# 🛠️ TCP Website CI/CD Tools Manual
+# CICDtools 운영 가이드
 
-이 문서는 `CICDtools` 디렉토리에 포함된 자동화 스크립트들의 사용법과 기능을 설명합니다.
+이 디렉터리의 스크립트는 저장소 어느 위치에서 실행해도 스크립트 자신의 경로로 프로젝트
+루트를 계산합니다. 운영·개발 구축과 일반 업데이트는 항상 Compose의 `tech-articles`
+프로필을 활성화합니다. 명령은 저장소 루트에서 `bash CICDtools/<script>.sh` 형식으로
+실행하는 것을 권장합니다.
 
-모든 스크립트는 **실행 전 사용자 확인(Yes/No)** 절차를 거치며, **자동 백업**, **로그 기록**, **Git 충돌 방지**, **무중단 배포(Frontend)** 기능을 포함하고 있습니다.
+## 최초 구축
 
----
+운영 서버에는 저장소 밖의 인증서 관리 절차로 다음 파일을 먼저 주입해야 합니다.
 
-## 📂 디렉토리 구조 및 핵심 기능
+- `reverse-proxy/certs/origin.crt`
+- `reverse-proxy/certs/origin.key`
 
-```
-CICDtools/
-├── update_frontend.sh      # 🎨 프론트엔드 무중단 업데이트
-├── update_backend.sh       # ⚙️ 백엔드 업데이트 (컨테이너 재시작)
-├── migrate_db.sh           # 🐘 DB 마이그레이션 도구
-├── update_all.sh           # 🌍 전체 업데이트 (순차 실행)
-├── check_health.sh         # 🏥 상태 점검
-├── backup_db.sh            # 💾 데이터 백업
-├── restore_db.sh           # ♻️ 데이터 복구
-├── inspect_backup.sh       # 🧐 백업 파일 검사
-├── utils/                  # 🔧 공통 유틸리티 (New!)
-│   ├── common_logging.sh   #    - 통합 로깅 시스템 (색상, 파일 저장)
-│   └── git_utils.sh        #    - Git 충돌 사전 감지 (Pre-flight Check)
-└── ServerSetupRemove/      # 🏗️ 서버 구축/제거 도구
-    └── set_env.sh          #    - 보안 환경변수 자동 생성
+그 다음 아래 중 하나를 실행합니다.
+
+```bash
+bash CICDtools/ServerSetupRemove/prodserver_quicksetup.sh
+bash CICDtools/ServerSetupRemove/devserver_quicksetup.sh
 ```
 
-### ✨ 주요 개선 사항
-1.  **무중단 프론트엔드 배포:** `dist_temp`에 빌드 후 성공 시에만 교체(Atomic Swap)하여 다운타임을 제거했습니다.
-2.  **Git 충돌 사전 감지 (Pre-flight Check):** `git pull` 전에 로컬 변경사항이나 브랜치 충돌 여부를 미리 확인하고 경고합니다.
-3.  **통합 로깅:** 모든 실행 기록은 `CICDtools/logs/`에 색상과 함께 저장됩니다.
-4.  **보안 환경 설정:** `set_env.sh`가 비밀번호를 자동 생성하여 보안성을 강화했습니다.
+두 스크립트 모두 환경 설정, `npm ci` 프론트 빌드, PostgreSQL/MySQL 기동과 migration,
+관리자 seed, 파이프라인 readiness, 프론트 활성화, 전체 헬스체크까지 수행합니다. 개발
+모드는 `docker-compose.dev.yml`을 함께 사용하고 Gemini 키 없이도 구축할 수 있습니다.
 
----
+환경만 준비하려면 다음 명령을 사용합니다.
 
-## 📂 스크립트 목록 및 사용법
+```bash
+bash CICDtools/ServerSetupRemove/set_env.sh prod
+bash CICDtools/ServerSetupRemove/set_env.sh dev
+```
 
-### 1. 🎨 프론트엔드 업데이트 (`update_frontend.sh`)
-*   **기능:** `main` 브랜치 코드를 받아 React 앱을 빌드하고 배포합니다.
-*   **특징:** **무중단 배포 (Zero-Downtime)** 를 지원합니다. 빌드 실패 시 기존 사이트에 영향을 주지 않습니다.
-*   **실행 방법:**
-    ```bash
-    ./CICDtools/update_frontend.sh
-    ```
+`set_env.sh`는 재실행해도 기존 비밀값을 유지하고 비어 있는 값만 생성하거나 질문합니다.
+화면과 실행 로그에는 비밀값을 출력하지 않으며 `.env`와 실제 `envs/*.env` 권한을
+`0600`으로 설정합니다.
 
-### 2. ⚙️ 백엔드 업데이트 (`update_backend.sh`)
-*   **기능:** 백엔드 코드를 받아 API 컨테이너를 재빌드하고 실행합니다.
-*   **특징:** 컨테이너 재시작 시간(약 1~5초) 동안만 짧은 중단이 발생합니다.
-*   **실행 방법:**
-    ```bash
-    sudo ./CICDtools/update_backend.sh
-    ```
+| 소유권 | 값 |
+|---|---|
+| 내부 자동 생성 | JWT, PostgreSQL 비밀번호, ELK 비밀번호, 파이프라인 서비스 토큰, MySQL 앱/root 비밀번호 |
+| 외부 입력 | 관리자 계정, Gemini API 키, 크롤러 공개 URL·연락 이메일 |
+| 저장소 밖 주입 | 운영 SSL 인증서와 개인키 |
 
-### 3. 🐘 DB 마이그레이션 (`migrate_db.sh`)
-*   **기능:** TypeORM 마이그레이션을 실행하여 DB 스키마를 변경합니다.
-*   **안전 장치:** 실행 전 'MIGRATE' 및 'YES' 입력 3단계 확인 절차가 있습니다.
-*   **실행 방법:**
-    ```bash
-    sudo ./CICDtools/migrate_db.sh
-    ```
+기본 크롤러 식별값은 `https://teamcrazyperformance.com/` 및
+`seoultech.tcp@gmail.com`입니다. 운영 Gemini 키는 필수이고 개발에서는 선택입니다.
+파이프라인 Compose 보간값은 루트 `.env`에만 두며, NestJS에는 MySQL/Gemini 자격
+증명을 주입하지 않습니다.
 
-### 4. 🌍 전체 업데이트 (`update_all.sh`)
-*   **기능:** [프론트엔드 -> DB 마이그레이션 -> 백엔드] 순서로 전체 시스템을 업데이트합니다.
-*   **실행 방법:**
-    ```bash
-    sudo ./CICDtools/update_all.sh
-    ```
+## 배포 명령
 
----
+```bash
+bash CICDtools/update_all.sh
+bash CICDtools/update_backend.sh
+bash CICDtools/update_frontend.sh
+bash CICDtools/update_pipeline.sh
+```
 
-## 🛡️ 유지보수 및 안전 장치
+`update_all.sh`는 확인, fast-forward Git pull, 통합 백업을 각각 한 번만 수행합니다.
+배포 순서는 다음과 같이 고정됩니다.
 
-### 5. 💾 DB 백업 (`backup_db.sh`)
-*   **기능:** DB 덤프와 주요 파일(uploads, logs)을 `backups/`에 저장합니다.
-*   **특징:** 업데이트 스크립트 실행 시 **자동 수행**되며, 오래된 백업은 자동 삭제됩니다.
-*   **실행 방법:**
-    ```bash
-    sudo ./CICDtools/backup_db.sh [라벨]
-    ```
+1. 프론트엔드를 비활성 `dist.next`에 `npm ci`로 빌드
+2. 파이프라인 이미지 빌드 → MySQL health → checksum migration → pipeline readiness
+3. 새 API 이미지 빌드 → TypeORM migration → API 재생성/health
+4. API에서 파이프라인 readiness 확인
+5. 프론트 번들 원자적 활성화(실패 시 이전 번들 복구)
+6. 전체 헬스체크
 
-### 6. ♻️ DB 복구 (`restore_db.sh`)
-*   **기능:** 최신 백업 파일로 시스템을 되돌립니다. (데이터 덮어쓰기)
-*   **주의:** **모든 데이터가 삭제**되고 백업 시점으로 복구됩니다.
-*   **실행 방법:**
-    ```bash
-    sudo ./CICDtools/restore_db.sh
-    ```
+배포 실패 시 성공 문구를 출력하지 않고 비정상 종료합니다. 파이프라인 장애는 기존 API
+컨테이너의 기동 의존성이 아니지만, 전체 배포는 기술 아티클 연동 검증이 실패하면 완료로
+간주하지 않습니다.
 
-### 7. 🏥 상태 확인 (`check_health.sh`)
-*   **기능:** Docker 컨테이너 상태와 API 응답을 점검합니다.
-*   **실행 방법:**
-    ```bash
-    ./CICDtools/check_health.sh
-    ```
+## 변경 빈도가 높은 설정
 
-### 8. 🧐 백업 파일 검사 (`inspect_backup.sh`)
-*   **기능:** 백업 파일의 내용과 테이블 구조를 미리 확인합니다.
-*   **실행 방법:**
-    ```bash
-    ./CICDtools/inspect_backup.sh
-    ```
+```bash
+bash CICDtools/update_tech_article_config.sh gemini-key
+bash CICDtools/update_tech_article_config.sh gemini-model
+bash CICDtools/update_tech_article_config.sh crawler-identity
+bash CICDtools/update_tech_article_config.sh service-token
+```
 
----
+한 번에 한 항목만 변경합니다. Gemini·크롤러 값은 파이프라인만, 서비스 토큰은 API와
+파이프라인만 재생성합니다. readiness 실패 시 루트 환경 파일을 바이트 단위의 이전
+사본으로 되돌리고 이전 컨테이너 구성을 재적용합니다.
 
-## 🏗️ 서버 구축 및 환경 설정 (`ServerSetupRemove/`)
+DB 자격 증명은 직접 편집하지 말고 다음을 사용합니다.
 
-### 9. � 보안 환경변수 설정 (`set_env.sh`)
-*   **기능:** 운영 서버용 환경변수 파일(`api.env`, `db_prod.env`)을 안전하게 생성합니다.
-*   **보안 강화:**
-    *   **자동 생성:** `JWT_SECRET`, `DB_PASSWORD` 등은 랜덤 난수로 자동 생성됩니다.
-    *   **고정값:** 포트 등은 표준값으로 자동 설정됩니다.
-    *   **수동 입력:** 관리자(Admin) 계정 정보만 입력하면 됩니다.
-*   **실행 방법:**
-    ```bash
-    ./CICDtools/ServerSetupRemove/set_env.sh
-    ```
+```bash
+bash CICDtools/rotate_db_password.sh postgres
+bash CICDtools/rotate_db_password.sh pipeline
+```
 
-### 10. � 운영 서버 초기 구축 (`prodserver_quicksetup.sh`)
-*   **기능:** 빈 서버에 필요한 모든 패키지 설치부터 실행까지 한 번에 처리합니다. 내부적으로 `set_env.sh`를 호출합니다.
-*   **실행 방법:**
-    ```bash
-    ./CICDtools/ServerSetupRemove/prodserver_quicksetup.sh
-    ```
+두 경로 모두 먼저 통합 백업을 만듭니다. `pipeline`은 MySQL 앱 사용자와 root 비밀번호를
+함께 변경한 뒤 MySQL, migration, 파이프라인만 재기동합니다. live MySQL 변경 이후의
+재기동 단계가 실패하면 루트 `.env`는 DB와 일치하는 새 값으로 유지됩니다. 이전 값만
+되돌리지 말고 오류 안내에 따라 재기동을 재시도하거나 직전 백업 세트를 복구합니다.
 
-### 11. 🔥 서버 완전 삭제 (`server_quickremove.sh`)
-*   **기능:** 서버의 모든 데이터와 컨테이너를 파괴하고 초기화합니다.
-*   **실행 방법:**
-    ```bash
-    ./CICDtools/ServerSetupRemove/server_quickremove.sh
-    ```
+## 통합 migration, 백업, 검사, 복구
 
----
+```bash
+bash CICDtools/migrate_db.sh
+bash CICDtools/backup_db.sh manual
+bash CICDtools/inspect_backup.sh                 # 최신 세트
+bash CICDtools/inspect_backup.sh 20260817_010203_manual
+bash CICDtools/restore_db.sh 20260817_010203_manual
+```
 
-### 12. � DB 비밀번호 변경 (`rotate_db_password.sh`)
-*   **기능:** 운영 중인 DB의 비밀번호를 안전하게 변경하고 API 서버에 적용합니다.
-*   **실행 방법:**
-    ```bash
-    sudo ./CICDtools/rotate_db_password.sh
-    ```
-    *(주의: `ROTATE` 입력 확인 필요. API 재시작으로 인한 1~5초 순단 발생)*
+백업은 저장소 상위 `backups/<UTC timestamp>_<label>/`에 원자적으로 생성됩니다.
 
----
+```text
+postgres.sql.gz
+pipeline-mysql.sql.gz        # 최초 파이프라인 도입 전이면 생략, metadata=NOT_PRESENT
+files.tar.gz
+metadata
+SHA256SUMS
+```
 
-## �🚦 운영 시나리오 가이드 (Operational Scenarios)
+임시 디렉터리에서 두 dump, 압축 무결성, SHA-256을 검증한 뒤에만 최종 이름으로
+이동합니다. `inspect_backup.sh`는 데이터 본문이나 비밀값을 출력하지 않고 체크섬,
+압축 스트림, 스키마/테이블 이름, 파일 경로만 보여 줍니다.
 
-### ✨ 상황별 추천 절차
+복구는 하나의 일치하는 세트만 사용합니다. 체크섬 검증 후 API/파이프라인 writer를
+중지하고 두 DB와 파일을 복구한 뒤 양쪽 migration, 재기동, 전체 health를 수행합니다.
+예전 PostgreSQL 단독 파일은 명시적으로만 지원합니다.
 
-| 상황 | 실행 스크립트 | 설명 |
-| :--- | :--- | :--- |
-| **코드 업데이트** (Routine) | `sudo ./CICDtools/update_all.sh` | Git Pull -> 빌드 -> 배포 -> 마이그레이션을 한 번에 처리합니다. <br> **가장 많이 사용하게 될 명령어입니다.** |
-| **환경변수 변경** (Config) | 1. `envs/` 파일 수정 <br> 2. `sudo ./CICDtools/update_all.sh` | 포트, API 키 등을 변경했다면 파일을 수정한 뒤 `update_all.sh`로 재배포하여 적용합니다. |
-| **DB 비밀번호 변경** (Security) | `sudo ./CICDtools/rotate_db_password.sh` | **운영 중인 DB**의 비밀번호를 바꿔야 한다면 반드시 이 전용 스크립트를 사용하세요. <br> (`set_env.sh`로 바꾸면 DB 접속 장애 발생함) |
-| **서버 초기 구축** (Setup) | `./CICDtools/ServerSetupRemove/prodserver_quicksetup.sh` | 새 서버 세팅 시에만 사용합니다. |
+```bash
+bash CICDtools/inspect_backup.sh --legacy /path/to/db_backup_....sql.gz
+bash CICDtools/restore_db.sh --legacy /path/to/db_backup_....sql.gz
+```
 
-### ❓ 환경변수(Env)를 자주 바꾸면 안 되나요?
-매번 배포할 때마다 `set_env.sh`를 실행하여 환경변수를 재생성하는 것은 **권장하지 않습니다.**
-1.  **사용자 로그아웃:** `JWT_SECRET`이 바뀌면 모든 사용자의 로그인 토큰이 무효화되어 강제 로그아웃됩니다.
-2.  **DB 접속 장애:** `DB_PASSWORD`가 바뀌면 실행 중인 DB 컨테이너와 비밀번호가 불일치하여 접속이 불가능해집니다.
-3.  **안정성:** 환경변수는 '상수'처럼 취급하여, 꼭 필요한 경우(보안 사고, 설정 변경)에만 신중하게 변경하는 것이 운영 안정성에 좋습니다.
+legacy 복구는 PostgreSQL만 변경하고 파이프라인 MySQL과 파일은 건드리지 않습니다.
 
-**결론:** 평소에는 **`update_all.sh`** 만 실행하세요! 🚀
+## 헬스체크와 제거
+
+```bash
+bash CICDtools/check_health.sh
+```
+
+검사 항목은 PostgreSQL/MySQL/API/pipeline/reverse-proxy 컨테이너 상태,
+`pipeline-migrate` 종료 코드 0, API live, pipeline ready, reverse proxy 경유 공개 태그
+API, `/tech-articles` SPA HTML입니다. Gemini 요청은 보내지 않습니다. 다른 공개 주소로
+확인하려면 `CICD_PUBLIC_BASE_URL=https://...`를 지정합니다.
+
+`ServerSetupRemove/server_quickremove.sh`는 PostgreSQL, pipeline MySQL,
+Elasticsearch 볼륨과 저장소 디렉터리를 영구 삭제합니다. 스크립트 위치로 대상을 계산하고
+정확한 저장소 이름까지 재확인하며, 자동 재부팅하지 않습니다.

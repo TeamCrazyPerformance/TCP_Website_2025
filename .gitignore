@@ -71,6 +71,8 @@ reverse-proxy/certs/
 # Build Artifacts & Output
 # -----------------------------------------------------------------------------
 dist/
+web/dist.next/
+web/dist.previous/
 build/
 out/
 coverage/

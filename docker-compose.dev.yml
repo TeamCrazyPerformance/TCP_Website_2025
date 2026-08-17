@@ -50,7 +50,7 @@ services:
       NODE_ENV: development
       PORT: 3000
       CHOKIDAR_USEPOLLING: "1"
-      PIPELINE_SERVICE_TOKEN: ${PIPELINE_SERVICE_TOKEN:-tcp-local-pipeline-token-change-before-deploy}
+      PIPELINE_SERVICE_TOKEN: ${PIPELINE_SERVICE_TOKEN:?run set_env.sh dev first}
     ports:
       - "3000:3000"
     volumes:
@@ -76,21 +76,21 @@ services:
     environment:
       MYSQL_DATABASE: ${TECH_ARTICLE_MYSQL_DATABASE:-tech_articles}
       MYSQL_USER: ${TECH_ARTICLE_MYSQL_USER:-pipeline}
-      MYSQL_PASSWORD: ${TECH_ARTICLE_MYSQL_PASSWORD:-tcp_local_pipeline_password}
-      MYSQL_ROOT_PASSWORD: ${TECH_ARTICLE_MYSQL_ROOT_PASSWORD:-tcp_local_pipeline_root_password}
+      MYSQL_PASSWORD: ${TECH_ARTICLE_MYSQL_PASSWORD:?run set_env.sh dev first}
+      MYSQL_ROOT_PASSWORD: ${TECH_ARTICLE_MYSQL_ROOT_PASSWORD:?run set_env.sh dev first}
 
   pipeline-migrate:
     environment:
       TECH_ARTICLE_MYSQL_DATABASE: ${TECH_ARTICLE_MYSQL_DATABASE:-tech_articles}
       TECH_ARTICLE_MYSQL_USER: ${TECH_ARTICLE_MYSQL_USER:-pipeline}
-      TECH_ARTICLE_MYSQL_PASSWORD: ${TECH_ARTICLE_MYSQL_PASSWORD:-tcp_local_pipeline_password}
+      TECH_ARTICLE_MYSQL_PASSWORD: ${TECH_ARTICLE_MYSQL_PASSWORD:?run set_env.sh dev first}
 
   tech-article-pipeline:
     environment:
-      PIPELINE_SERVICE_TOKEN: ${PIPELINE_SERVICE_TOKEN:-tcp-local-pipeline-token-change-before-deploy}
+      PIPELINE_SERVICE_TOKEN: ${PIPELINE_SERVICE_TOKEN:?run set_env.sh dev first}
       TECH_ARTICLE_MYSQL_DATABASE: ${TECH_ARTICLE_MYSQL_DATABASE:-tech_articles}
       TECH_ARTICLE_MYSQL_USER: ${TECH_ARTICLE_MYSQL_USER:-pipeline}
-      TECH_ARTICLE_MYSQL_PASSWORD: ${TECH_ARTICLE_MYSQL_PASSWORD:-tcp_local_pipeline_password}
+      TECH_ARTICLE_MYSQL_PASSWORD: ${TECH_ARTICLE_MYSQL_PASSWORD:?run set_env.sh dev first}
 
   # Static web (nginx로 dist 서빙)
   web:

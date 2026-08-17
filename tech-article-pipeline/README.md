@@ -49,15 +49,20 @@ contracts, verification evidence, and integration notes.
 ## TCP website deployment
 
 In the TCP website repository this image is integrated through the
-`tech-articles` Docker Compose profile. From the repository root, inject the
-pipeline secrets and run:
+`tech-articles` Docker Compose profile. Keep the profile for manual isolation,
+but use the repository operations scripts for deployable environments:
 
-```powershell
-docker compose --profile tech-articles up -d --build pipeline-mysql pipeline-migrate tech-article-pipeline
+```bash
+bash CICDtools/ServerSetupRemove/set_env.sh prod
+bash CICDtools/update_pipeline.sh
+# or deploy pipeline + API + frontend as one release
+bash CICDtools/update_all.sh
 ```
 
-The profile keeps normal website-only Compose commands independent of pipeline
-configuration and health. See `../docs/TECH_ARTICLE_PIPELINE_OPERATIONS.md` for
-the deployment, readiness, independent backup, and restore procedure.
+The operations scripts always enable the profile, wait for MySQL, require the
+checksum migration job to exit 0, and verify readiness. Pipeline MySQL is backed
+up and restored in the same manifest-verified set as PostgreSQL and persistent
+files; do not create independently matched production dumps. See
+`../docs/TECH_ARTICLE_PIPELINE_OPERATIONS.md` and `../CICDtools/README.md`.
 
 최초 모듈 구현자와 담당 범위는 [`CREDITS.md`](CREDITS.md)에 기록되어 있습니다.

@@ -1,243 +1,175 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
-# ==============================================================================
-# Environment Setup Script - Secured & Automated
-# ==============================================================================
-# Description:
-#   Generates secure .env files for production with minimal user input.
-#   - Auto-generates secrets (JWT, DB Passwords).
-#   - Uses safe defaults for ports and names.
-#   - Only prompts for Admin credentials.
-# ==============================================================================
-
-# Ensure we are in the script's directory for relative path loading
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")/.." # Go up from CICDtools/ServerSetupRemove to Project Root
-ENVS_DIR="$PROJECT_ROOT/envs"
+readonly SCRIPT_DIR
+# shellcheck source=../utils/runtime.sh
+source "$SCRIPT_DIR/../utils/runtime.sh"
 
-# ANSI Color Codes
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+mode="${1:-}"
+[[ "$mode" == "prod" || "$mode" == "dev" ]] || {
+  log_error "Usage: $0 prod|dev"
+  exit 2
+}
+export CICD_ENVIRONMENT="$mode"
+cicd_require_commands openssl awk mktemp
 
-# Logging functions (embedded for standalone use, but mimicking common logging)
-log_info() { echo -e "${BLUE}[INFO] $1${NC}"; }
-log_success() { echo -e "${GREEN}[SUCCESS] $1${NC}"; }
-log_warn() { echo -e "${YELLOW}[WARN] $1${NC}"; }
-log_error() { echo -e "${RED}[ERROR] $1${NC}"; }
-
-mkdir -p "$ENVS_DIR"
-
-log_info "🚀 Starting Secure Environment Setup..."
-
-# ==============================================================================
-# 0. Configuration & Defaults
-# ==============================================================================
-# Fixed Default Values (Safe to expose)
-DEFAULT_PORT=3000
-DEFAULT_NODE_ENV="production"
-DEFAULT_SALT=12
-DEFAULT_DB_HOST="db"
-DEFAULT_DB_PORT=5432
-DEFAULT_DB_USER="tcp_user"
-DEFAULT_DB_NAME="tcp_db"
-
-# ==============================================================================
-# 1. Existing Value Check (Idempotency)
-# ==============================================================================
-# If files exist, read them. If not, generate new secrets.
-
-# --- API Env ---
-if [ -f "$ENVS_DIR/api.env" ]; then
-    log_info "📄 Found existing api.env. Reading values..."
-    EXISTING_JWT=$(grep "JWT_SECRET=" "$ENVS_DIR/api.env" | cut -d '=' -f2)
-    # Use existing or generate if empty in file
-    JWT_SECRET=${EXISTING_JWT:-$(openssl rand -base64 64 | tr -d '\n')}
+if [[ "$mode" == "prod" ]]; then
+  mode_label="production / 운영"
+  gemini_rule="Gemini API key: required / 필수"
 else
-    log_info "🆕 Generating NEW JWT_SECRET..."
-    JWT_SECRET=$(openssl rand -base64 64 | tr -d '\n')
+  mode_label="development / 개발"
+  gemini_rule="Gemini API key: optional / 선택"
+fi
+cicd_print_banner "🔧" "Environment Setup ($mode_label) / 환경값 초기 설정" \
+  "📘 여러 서비스의 환경 파일을 안전하고 재실행 가능하게 구성합니다." \
+  "♻️  기존의 비어 있지 않은 값은 보존하고 누락된 내부 시크릿만 자동 생성합니다." \
+  "🎲 Auto-generated / 자동 생성: JWT, PostgreSQL, ELK, service token, pipeline MySQL passwords" \
+  "✍️  User input / 외부 입력: administrator, Gemini, crawler identity" \
+  "🤖 $gemini_rule" \
+  "🙈 시크릿 입력은 숨기며 값 자체를 화면이나 로그에 출력하지 않습니다." \
+  "🔒 생성·갱신한 .env와 envs/*.env 권한은 0600으로 설정합니다."
+
+readonly ROOT_ENV="$CICD_PROJECT_ROOT/.env"
+readonly API_ENV="$CICD_PROJECT_ROOT/envs/api.env"
+readonly ELK_ENV="$CICD_PROJECT_ROOT/envs/elk.env"
+if [[ "$mode" == "prod" ]]; then
+  readonly DB_ENV="$CICD_PROJECT_ROOT/envs/db_prod.env"
+  readonly NODE_ENV_VALUE="production"
+else
+  readonly DB_ENV="$CICD_PROJECT_ROOT/envs/db_dev.env"
+  readonly NODE_ENV_VALUE="development"
 fi
 
-# --- DB Env ---
-if [ -f "$ENVS_DIR/db_prod.env" ]; then
-    log_info "📄 Found existing db_prod.env. Reading values..."
-    EXISTING_DB_PASS=$(grep "POSTGRES_PASSWORD=" "$ENVS_DIR/db_prod.env" | cut -d '=' -f2)
-    DB_PASSWORD=${EXISTING_DB_PASS:-$(openssl rand -hex 32 | tr -d '\n')}
-    
-    # Check for existing Admin details
-    EXISTING_ADMIN_USER=$(grep "ADMIN_USERNAME=" "$ENVS_DIR/db_prod.env" | cut -d '=' -f2)
-    EXISTING_ADMIN_EMAIL=$(grep "ADMIN_EMAIL=" "$ENVS_DIR/db_prod.env" | cut -d '=' -f2)
-    # Password might not be easily grep-able if complex, but we try
-    ADMIN_USERNAME=$EXISTING_ADMIN_USER
-    ADMIN_EMAIL=$EXISTING_ADMIN_EMAIL
-    # We will prompt for Admin credentials only if username is missing
-else
-    log_info "🆕 Generating NEW DB_PASSWORD..."
-    DB_PASSWORD=$(openssl rand -hex 32 | tr -d '\n')
-fi
+cicd_print_section "🧭" "Configuration overview / 설정 항목 안내"
+printf '%s\n' "   🔧 Fixed defaults / 고정 기본값"
+printf '%s\n' "      - NODE_ENV=$NODE_ENV_VALUE, API port=3000, DB host=db, DB port=5432"
+printf '%s\n' "      - Crawler defaults: https://teamcrazyperformance.com/ · seoultech.tcp@gmail.com"
+printf '%s\n' "   🎲 Internal secrets / 내부 시크릿"
+printf '%s\n' "      - JWT, PostgreSQL, ELK, pipeline service token, MySQL passwords"
+printf '%s\n' "      - [Hidden / 숨김] Existing values are preserved; only missing values are generated."
+printf '%s\n' "   ✍️  External input / 외부 입력"
+printf '%s\n' "      - Administrator account, Gemini API key, crawler identity (only when missing)"
+printf '%s\n' "   📁 Managed files / 관리 파일"
+printf '%s\n' "      - .env, envs/api.env, $(basename "$DB_ENV"), envs/elk.env"
 
-# ==============================================================================
-# 2. Pre-execution Summary (Echo to User)
-# ==============================================================================
-echo ""
-echo "=============================================================================="
-echo "                       📋  Configuration Summary                              "
-echo "=============================================================================="
-echo -e "🔧 ${BLUE}FIXED DEFAULTS (Standard Config):${NC}"
-echo "   - PORT            : $DEFAULT_PORT"
-echo "   - NODE_ENV        : $DEFAULT_NODE_ENV"
-echo "   - DB_HOST         : $DEFAULT_DB_HOST"
-echo "   - DB_PORT         : $DEFAULT_DB_PORT"
-echo "   - DB_USER         : $DEFAULT_DB_USER"
-echo ""
-echo -e "🎲 ${YELLOW}GENERATED SECRETS (Auto-created):${NC}"
-echo "   - JWT_SECRET      : [Hidden] (Run 'cat envs/api.env' to view)"
-echo "   - DB_PASSWORD     : [Hidden] (Run 'cat envs/db_prod.env' to view)"
-echo ""
-echo -e "✍️  ${GREEN}MANUAL INPUT REQUIRED:${NC}"
-if [ -z "$ADMIN_USERNAME" ]; then
-    echo "   - Admin Credentials (Username, Email, Password)"
-else
-    echo "   - None (Admin credentials found)"
-fi
-echo "=============================================================================="
-echo ""
+ensure_value() {
+  local file="$1" key="$2" value="$3"
+  cicd_env_has_nonempty "$file" "$key" || cicd_env_set "$file" "$key" "$value"
+}
 
-# ==============================================================================
-# 3. User Input (Admin Credentials)
-# ==============================================================================
-# Only ask if not already found
-if [ -z "$ADMIN_USERNAME" ]; then
-    log_info "Please enter Admin Account details for initial seeding:"
-    
-    while [[ -z "$ADMIN_USERNAME" ]]; do
-        read -p "   👤 Admin Username: " ADMIN_USERNAME
-    done
-    export ADMIN_USERNAME # Temporarily export just in case
+prompt_plain_required() {
+  local prompt="$1" value=""
+  while [[ -z "$value" ]]; do read -r -p "✍️  $prompt: " value; done
+  printf '%s' "$value"
+}
 
-    while [[ -z "$ADMIN_EMAIL" ]]; do
-        read -p "   📧 Admin Email: " ADMIN_EMAIL
-    done
-    export ADMIN_EMAIL
+prompt_secret_required() {
+  local prompt="$1" value=""
+  while [[ -z "$value" ]]; do
+    read -r -s -p "🔐 $prompt: " value
+    printf '\n' >&2
+  done
+  printf '%s' "$value"
+}
 
-    while [[ -z "$ADMIN_PASSWORD" ]]; do
-        echo -n "   🔑 Admin Password: "
-        read -s ADMIN_PASSWORD
-        echo "" # Newline after silent input
-    done
-    export ADMIN_PASSWORD
-else
-    # If admin user exists, we might still need password if it wasn't readable from env file easily?
-    # Actually, we rely on writing what we read. If we read it, we write it back.
-    # If we read username but not password (unlikely unless file corrupted), we might write empty password.
-    # Let's try to read password too.
-    if [ -f "$ENVS_DIR/db_prod.env" ]; then
-         EXISTING_ADMIN_PASS=$(grep "ADMIN_PASSWORD=" "$ENVS_DIR/db_prod.env" | cut -d '=' -f2)
-         ADMIN_PASSWORD=$EXISTING_ADMIN_PASS
+log_info "♻️  Configuring $mode environment; existing non-empty values will be preserved. / 기존 설정은 보존합니다."
+mkdir -p "$CICD_PROJECT_ROOT/envs"
+
+# Root .env is the only source for Compose interpolation used by the pipeline.
+cicd_print_step 1 4 "🎲" "Fill missing internal pipeline settings / 누락된 파이프라인 내부 설정 생성"
+ensure_value "$ROOT_ENV" COMPOSE_PROJECT_NAME tcp-website
+ensure_value "$ROOT_ENV" PIPELINE_SERVICE_TOKEN "$(cicd_generate_hex 32)"
+ensure_value "$ROOT_ENV" TECH_ARTICLE_MYSQL_DATABASE tech_articles
+ensure_value "$ROOT_ENV" TECH_ARTICLE_MYSQL_USER pipeline
+ensure_value "$ROOT_ENV" TECH_ARTICLE_MYSQL_PASSWORD "$(cicd_generate_hex 32)"
+ensure_value "$ROOT_ENV" TECH_ARTICLE_MYSQL_ROOT_PASSWORD "$(cicd_generate_hex 32)"
+ensure_value "$ROOT_ENV" PIPELINE_WORKER_CONCURRENCY 1
+ensure_value "$ROOT_ENV" PIPELINE_WORKER_POLL_SECONDS 1
+ensure_value "$ROOT_ENV" PIPELINE_WORKER_LEASE_SECONDS 60
+ensure_value "$ROOT_ENV" PIPELINE_JOB_MAX_ATTEMPTS 3
+ensure_value "$ROOT_ENV" TECH_ARTICLE_MYSQL_POOL_SIZE 5
+ensure_value "$ROOT_ENV" GEMINI_MODEL gemini-3.5-flash-lite
+
+if { [[ "$mode" == "prod" ]] && ! cicd_env_has_nonempty "$ROOT_ENV" GEMINI_API_KEY; } || \
+   { [[ "$mode" == "dev" ]] && ! cicd_env_has_key "$ROOT_ENV" GEMINI_API_KEY; }; then
+  if [[ "$mode" == "prod" ]]; then
+    gemini_key="$(prompt_secret_required 'Gemini API key / Gemini API 키 (required in production / 운영 필수)')"
+    cicd_env_set "$ROOT_ENV" GEMINI_API_KEY "$gemini_key"
+  else
+    read -r -s -p "🤖 Gemini API key / Gemini API 키 (optional in development, Enter to skip / 개발 선택): " gemini_key
+    printf '\n'
+    if [[ -n "$gemini_key" ]]; then
+      cicd_env_set "$ROOT_ENV" GEMINI_API_KEY "$gemini_key"
+    else
+      cicd_env_set "$ROOT_ENV" GEMINI_API_KEY ""
+      log_warn "🤖 Gemini enrichment will be unavailable until a key is configured. / 키 설정 전까지 AI 보강 기능은 사용할 수 없습니다."
     fi
-    # If password still empty, ask for it?
-    if [ -z "$ADMIN_PASSWORD" ]; then
-        log_warn "⚠️  Admin Password missing in env file. Please enter it:"
-        read -s ADMIN_PASSWORD
-        echo ""
-    else 
-        log_info "👤 Admin Username found: $ADMIN_USERNAME"
-        log_info "   (Using existing Admin credentials)"
-    fi
+  fi
 fi
 
-# ==============================================================================
-# 4. Write Configuration Files
-# ==============================================================================
-log_info "💾 Writing configuration files..."
+if ! cicd_env_has_nonempty "$ROOT_ENV" CRAWLER_PUBLIC_URL; then
+  read -r -p "🌐 Crawler public URL / 크롤러 공개 URL [https://teamcrazyperformance.com/]: " crawler_url
+  crawler_url="${crawler_url:-https://teamcrazyperformance.com/}"
+  [[ "$crawler_url" =~ ^https?://[^[:space:]]+$ ]] || { log_error "Crawler URL must be an HTTP(S) URL."; exit 2; }
+  cicd_env_set "$ROOT_ENV" CRAWLER_PUBLIC_URL "$crawler_url"
+fi
+if ! cicd_env_has_nonempty "$ROOT_ENV" CRAWLER_CONTACT; then
+  read -r -p "📧 Crawler contact email / 크롤러 연락 이메일 [seoultech.tcp@gmail.com]: " crawler_contact
+  crawler_contact="${crawler_contact:-seoultech.tcp@gmail.com}"
+  [[ "$crawler_contact" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] || { log_error "Crawler contact must be an email address."; exit 2; }
+  cicd_env_set "$ROOT_ENV" CRAWLER_CONTACT "$crawler_contact"
+fi
 
-# --- api.env ---
-cat > "$ENVS_DIR/api.env" <<EOF
-# API Backend Environment Variables
-PORT=$DEFAULT_PORT
-NODE_ENV=$DEFAULT_NODE_ENV
-BCRYPT_SALT_ROUNDS=$DEFAULT_SALT
-JWT_SECRET=$JWT_SECRET
-EOF
+# API gets only API settings. Compose injects the shared service token directly.
+cicd_print_step 2 4 "⚙️" "Configure API and PostgreSQL / API·PostgreSQL 설정"
+ensure_value "$API_ENV" PORT 3000
+ensure_value "$API_ENV" NODE_ENV "$NODE_ENV_VALUE"
+ensure_value "$API_ENV" BCRYPT_SALT_ROUNDS 12
+ensure_value "$API_ENV" JWT_SECRET "$(cicd_generate_hex 64)"
 
-# --- db_prod.env ---
-cat > "$ENVS_DIR/db_prod.env" <<EOF
-# POSTGRES Container Init
-POSTGRES_USER=$DEFAULT_DB_USER
-POSTGRES_PASSWORD=$DB_PASSWORD
-POSTGRES_DB=$DEFAULT_DB_NAME
+postgres_password="$(cicd_env_get "$DB_ENV" POSTGRES_PASSWORD 2>/dev/null || true)"
+[[ -n "$postgres_password" ]] || postgres_password="$(cicd_env_get "$DB_ENV" DB_PASSWORD 2>/dev/null || true)"
+[[ -n "$postgres_password" ]] || postgres_password="$(cicd_generate_hex 32)"
+ensure_value "$DB_ENV" POSTGRES_USER tcp_user
+ensure_value "$DB_ENV" POSTGRES_PASSWORD "$postgres_password"
+ensure_value "$DB_ENV" POSTGRES_DB tcp_db
+ensure_value "$DB_ENV" DB_HOST db
+ensure_value "$DB_ENV" DB_PORT 5432
+ensure_value "$DB_ENV" DB_USER "$(cicd_env_get "$DB_ENV" POSTGRES_USER)"
+ensure_value "$DB_ENV" DB_PASSWORD "$postgres_password"
+ensure_value "$DB_ENV" DB_NAME "$(cicd_env_get "$DB_ENV" POSTGRES_DB)"
 
-# DB Connection
-DB_HOST=$DEFAULT_DB_HOST
-DB_PORT=$DEFAULT_DB_PORT
-DB_USER=$DEFAULT_DB_USER
-DB_PASSWORD=$DB_PASSWORD
-DB_NAME=$DEFAULT_DB_NAME
+if ! cicd_env_has_nonempty "$DB_ENV" ADMIN_USERNAME; then
+  cicd_env_set "$DB_ENV" ADMIN_USERNAME "$(prompt_plain_required 'Administrator username / 관리자 아이디')"
+fi
+if ! cicd_env_has_nonempty "$DB_ENV" ADMIN_EMAIL; then
+  admin_email="$(prompt_plain_required 'Administrator email / 관리자 이메일')"
+  [[ "$admin_email" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] || { log_error "Administrator email is invalid."; exit 2; }
+  cicd_env_set "$DB_ENV" ADMIN_EMAIL "$admin_email"
+fi
+if ! cicd_env_has_nonempty "$DB_ENV" ADMIN_PASSWORD; then
+  cicd_env_set "$DB_ENV" ADMIN_PASSWORD "$(prompt_secret_required 'Administrator password / 관리자 비밀번호')"
+fi
 
-# Admin Account w/ Seeding
-ADMIN_USERNAME=$ADMIN_USERNAME
-ADMIN_EMAIL=$ADMIN_EMAIL
-ADMIN_PASSWORD=$ADMIN_PASSWORD
-ADMIN_PASSWORD=$ADMIN_PASSWORD
-EOF
+cicd_print_step 3 4 "📊" "Configure ELK internal credentials / ELK 내부 자격 증명 설정"
+ensure_value "$ELK_ENV" ELASTIC_PASSWORD "$(cicd_generate_hex 24)"
+ensure_value "$ELK_ENV" KIBANA_SYSTEM_PASSWORD "$(cicd_generate_hex 24)"
+ensure_value "$ELK_ENV" LOGSTASH_PASSWORD "$(cicd_generate_hex 24)"
 
-# --- elk.env ---
-# Generate ELK passwords if not exists
-if [ -f "$ENVS_DIR/elk.env" ]; then
-    log_info "📄 Found existing elk.env. Reading values..."
-    EXISTING_ELASTIC_PASS=$(grep "ELASTIC_PASSWORD=" "$ENVS_DIR/elk.env" | cut -d '=' -f2)
-    ELASTIC_PASSWORD=${EXISTING_ELASTIC_PASS:-$(openssl rand -hex 16 | tr -d '\n')}
-    
-    EXISTING_KIBANA_PASS=$(grep "KIBANA_SYSTEM_PASSWORD=" "$ENVS_DIR/elk.env" | cut -d '=' -f2)
-    KIBANA_SYSTEM_PASSWORD=${EXISTING_KIBANA_PASS:-$(openssl rand -hex 16 | tr -d '\n')}
-    
-    EXISTING_LOGSTASH_PASS=$(grep "LOGSTASH_PASSWORD=" "$ENVS_DIR/elk.env" | cut -d '=' -f2)
-    LOGSTASH_PASSWORD=${EXISTING_LOGSTASH_PASS:-$(openssl rand -hex 16 | tr -d '\n')}
+cicd_print_step 4 4 "🔒" "Protect files and verify SSL requirements / 파일 권한·SSL 요구사항 확인"
+chmod 600 "$ROOT_ENV" "$API_ENV" "$DB_ENV" "$ELK_ENV"
+cicd_require_production_ssl
+log_success "🎉 Environment setup completed. Secret values were not printed or logged. / 환경값 설정을 완료했습니다."
+cicd_print_section "✅" "Saved configuration / 저장 결과"
+printf '%s\n' "   - Existing values: preserved / 기존 값: 보존"
+printf '%s\n' "   - Missing internal secrets: securely generated / 누락 내부 시크릿: 안전하게 생성"
+printf '%s\n' "   - File permissions: 0600 / 파일 권한: 0600"
+cicd_print_section "📌" "Next step / 다음 단계"
+if [[ "$mode" == "prod" ]]; then
+  printf '%s\n' "   ▶ Continue with prodserver_quicksetup.sh to build and start every service."
+  printf '%s\n' "   ▶ prodserver_quicksetup.sh로 돌아가 전체 서비스를 구축하세요."
 else
-    log_info "🆕 Generating NEW ELK Passwords..."
-    ELASTIC_PASSWORD=$(openssl rand -hex 16 | tr -d '\n')
-    KIBANA_SYSTEM_PASSWORD=$(openssl rand -hex 16 | tr -d '\n')
-    LOGSTASH_PASSWORD=$(openssl rand -hex 16 | tr -d '\n')
+  printf '%s\n' "   ▶ Continue with devserver_quicksetup.sh to build and start every service."
+  printf '%s\n' "   ▶ devserver_quicksetup.sh로 돌아가 전체 서비스를 구축하세요."
 fi
-
-cat > "$ENVS_DIR/elk.env" <<EOF
-# =============================================================================
-# Elasticsearch
-ELASTIC_PASSWORD=$ELASTIC_PASSWORD
-
-# Kibana (kibana_system User Password)
-KIBANA_SYSTEM_PASSWORD=$KIBANA_SYSTEM_PASSWORD
-
-# Logstash (Optional)
-LOGSTASH_PASSWORD=$LOGSTASH_PASSWORD
-EOF
-
-# --- root .env ---
-if [ ! -f "$PROJECT_ROOT/.env" ]; then
-    echo "COMPOSE_PROJECT_NAME=tcp-website" > "$PROJECT_ROOT/.env"
-fi
-
-# ==============================================================================
-# 5. Post-execution Instructions
-# ==============================================================================
-echo ""
-log_success "🎉 Environment setup completed successfully!"
-echo ""
-echo "=============================================================================="
-echo "🚀 NEXT STEPS / ACTION REQUIRED"
-echo "=============================================================================="
-echo "1. Apply changes to the server:"
-echo -e "   ${GREEN}sudo docker compose up -d --force-recreate${NC}"
-echo ""
-echo "2. ⚠️  IMPORTANT WARNING about Database Password:"
-echo -e "   If you changed ${YELLOW}DB_PASSWORD${NC} and a database volume already exists,"
-echo "   the running database WILL NOT update its password automatically."
-echo "   To force a password change, you may need to reset the volume:"
-echo "   (Only do this if you can afford to lose data or have a backup!)"
-echo "   - sudo docker compose down -v"
-echo "   - sudo docker compose up -d"
-echo "=============================================================================="
-echo ""
