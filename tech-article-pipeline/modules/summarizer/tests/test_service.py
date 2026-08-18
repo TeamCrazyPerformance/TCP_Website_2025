@@ -153,6 +153,22 @@ def test_non_pass_article_is_not_sent_to_model():
     assert client.models.last_call is None
 
 
+def test_quality_score_rejects_unexpected_dimensions():
+    client = FakeClient()
+    data = valid_input()
+    data["qualityEvaluation"]["score"]["dimensions"] = {
+        "relevance": 90,
+        "timeliness": 85,
+        "sourceReliability": 87,
+    }
+
+    result = DeveloperNewsSummarizer(client=client).process(data)
+
+    assert result["generation"]["status"] == "FAILED"
+    assert result["generation"]["error"]["code"] == "INVALID_INPUT"
+    assert client.models.last_call is None
+
+
 def test_invalid_json_is_returned_as_contract_failure():
     response = FakeResponse({})
     response.text = "not-json"

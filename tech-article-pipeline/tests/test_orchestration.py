@@ -5,6 +5,7 @@ import json
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from developer_news_summarizer.models import DeveloperNewsInput
 from tech_article_admission import create_memory_admission_service
 from tech_article_pipeline.contracts import NormalizedArticleCandidate, PublicationPolicy
 from tech_article_pipeline.orchestration import PipelineOrchestrator
@@ -79,6 +80,17 @@ class FakeSummarizer:
         }
 
 
+class ContractValidatingSummarizer(FakeSummarizer):
+    def __init__(self):
+        super().__init__()
+        self.last_input = None
+
+    def process(self, input_data):
+        validated = DeveloperNewsInput.model_validate(input_data)
+        self.last_input = validated.model_dump(by_alias=True, mode="json")
+        return super().process(input_data)
+
+
 def digest(payload):
     return hashlib.sha256(
         json.dumps(payload, sort_keys=True, ensure_ascii=False).encode()
@@ -124,11 +136,12 @@ def test_real_admission_and_quality_modules_connect_to_core(normalized_payload):
         normalized_payload
     ).model_dump(by_alias=True, mode="json")
     repository = MemoryPipelineRepository()
+    summarizer = ContractValidatingSummarizer()
     orchestrator = PipelineOrchestrator(
         repository,
         create_memory_admission_service(),
         QualityEvaluator(),
-        FakeSummarizer(),
+        summarizer,
         job_max_attempts=3,
     )
     worker = DurableWorker(repository, orchestrator)
@@ -146,6 +159,8 @@ def test_real_admission_and_quality_modules_connect_to_core(normalized_payload):
         "QUALITY",
         "ENRICHMENT",
     ]
+    assert summarizer.last_input is not None
+    assert set(summarizer.last_input["qualityEvaluation"]["score"]) == {"overall"}
 
 
 def test_review_publication_policy_does_not_expose_article(normalized_payload):

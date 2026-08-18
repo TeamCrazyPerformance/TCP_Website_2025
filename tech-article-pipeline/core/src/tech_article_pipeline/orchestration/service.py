@@ -99,6 +99,8 @@ class PipelineOrchestrator:
                     "retryable": False,
                 }
             )
+        quality_evaluation = quality_result["qualityEvaluation"]
+        quality_score = quality_evaluation.get("score")
         request = {
             "articleId": article_id,
             "article": {
@@ -107,8 +109,12 @@ class PipelineOrchestrator:
                 "language": payload["article"]["language"],
             },
             "qualityEvaluation": {
-                "decision": quality_result["qualityEvaluation"]["decision"],
-                "score": quality_result["qualityEvaluation"].get("score"),
+                "decision": quality_evaluation["decision"],
+                "score": (
+                    {"overall": quality_score["overall"]}
+                    if quality_score is not None
+                    else None
+                ),
             },
             "generationOptions": payload["generationOptions"],
         }
