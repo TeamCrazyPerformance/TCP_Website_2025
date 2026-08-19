@@ -64,6 +64,12 @@ Duplicate resolution bodies follow the admission module contract, including
 `resolvedAt`. Quality actions are `APPROVE|REJECT`. Publication actions are
 `PUBLISH|HIDE|ARCHIVE` and require the expected article record version.
 
+A successful quality `APPROVE` resolution records the approval and enqueues
+enrichment. It does not overwrite the stored `REVIEW_REQUIRED` quality decision.
+The orchestrator derives an effective `PASS` for the strict summarizer contract
+and forwards only the overall quality score; the original decision and dimension
+scores remain available in the persisted quality result and admin projections.
+
 The publication policy setting is `IMMEDIATE|REVIEW`, defaults to `IMMEDIATE`,
 and uses an optional expected version on PATCH for optimistic concurrency.
 

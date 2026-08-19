@@ -119,6 +119,7 @@ Python 명명 규칙을 적용한 `process_developer_news(input_data)`도 같은
 | `score.overall` | integer/float | N | 전체 품질 점수 |
 
 `qualityEvaluation`을 전달하면 `decision=PASS`인 기사만 Gemini를 호출한다. 필드 자체는 기존 프롬프트 예시와의 호환성을 위해 선택 사항이다.
+`score`에는 `overall`만 허용하며 `dimensions` 등 세부 점수를 추가하면 엄격한 입력 계약에 따라 `INVALID_INPUT`을 반환한다. 세부 점수의 저장과 관리자 승인 여부 판단은 이 모듈을 호출하는 상위 파이프라인의 책임이다.
 
 ### `generationOptions`
 

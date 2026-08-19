@@ -9,6 +9,7 @@ source crawl API -> MySQL crawl job -> in-memory source crawler + normalizer
   -> validated normalized candidate -> MySQL ADMISSION job
   -> admission UNIQUE -> QUALITY job
   -> quality PASS -> ENRICHMENT job
+  -> quality REVIEW_REQUIRED -> admin approval -> ENRICHMENT job
   -> Gemini success -> IMMEDIATE: PUBLISHED
                      -> REVIEW: publication review queue
 ```
@@ -27,6 +28,15 @@ core's strict Pydantic contract before admission.
 review table; approval as unique creates the article and enqueues quality.
 `REVIEW_REQUIRED` waits in `quality_review_cases`; approval enqueues enrichment.
 Quality rejection never calls Gemini.
+
+The core sends the summarizer an effective `PASS` decision and only
+`score.overall`. Quality dimension scores remain stored in the original quality
+result for administration and are not part of the summarizer's strict input
+contract. For a directly passed article, the effective decision comes from the
+original `PASS`. For a `REVIEW_REQUIRED` article, it comes from a resolved admin
+approval while the stored original decision remains `REVIEW_REQUIRED`.
+Unapproved or rejected articles are blocked before Gemini is called, including
+if an enrichment job is enqueued manually.
 
 Workers claim `PENDING/RETRY` rows under `SELECT ... FOR UPDATE SKIP LOCKED`,
 increment the attempt count, and attach a lease token. Expired leases become

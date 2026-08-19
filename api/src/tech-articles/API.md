@@ -119,6 +119,11 @@
 `CONFIRM_DUPLICATE`에만 `matchedArticleId`가 필요하다. 관리자 ID와 처리 시각은 서버가
 JWT와 서버 시각으로 생성한다.
 
+품질 검수 `APPROVE`가 성공하면 AI 후처리 작업이 비동기로 생성된다. 승인은 요약 완료를
+의미하지 않으며 처리 상태는 `ENRICHMENT_PENDING`을 거쳐 `ENRICHED` 또는
+`PROCESSING_FAILED`로 변경될 수 있다. 원래 `REVIEW_REQUIRED` 판정과 세부 품질 점수는
+관리자 조회를 위해 그대로 보존된다.
+
 Bulk 본문은 `{"items": [...]}`이며 최대 50개, ID 중복 금지다. 유효한 요청은 일부 항목이
 실패해도 HTTP 200을 반환하고 입력 순서대로 다음 결과를 제공한다.
 
