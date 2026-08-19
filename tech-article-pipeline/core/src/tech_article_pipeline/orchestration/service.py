@@ -101,6 +101,28 @@ class PipelineOrchestrator:
             )
         quality_evaluation = quality_result["qualityEvaluation"]
         quality_score = quality_evaluation.get("score")
+        quality_decision = quality_evaluation["decision"]
+        quality_review_approved = bool(
+            submission.get("quality_review_approved")
+            or submission.get("qualityReviewApproved")
+        )
+        if quality_decision != "PASS" and not (
+            quality_decision == "REVIEW_REQUIRED" and quality_review_approved
+        ):
+            raise StageExecutionError(
+                {
+                    "code": "ARTICLE_NOT_ELIGIBLE",
+                    "message": (
+                        "AI enrichment requires a passing quality decision "
+                        "or an approved quality review."
+                    ),
+                    "retryable": False,
+                    "details": {
+                        "decision": quality_decision,
+                        "qualityReviewApproved": quality_review_approved,
+                    },
+                }
+            )
         request = {
             "articleId": article_id,
             "article": {
@@ -109,7 +131,9 @@ class PipelineOrchestrator:
                 "language": payload["article"]["language"],
             },
             "qualityEvaluation": {
-                "decision": quality_evaluation["decision"],
+                # Preserve the original REVIEW_REQUIRED decision in persistence. The
+                # summarizer receives PASS only after the review approval is verified.
+                "decision": "PASS",
                 "score": (
                     {"overall": quality_score["overall"]}
                     if quality_score is not None

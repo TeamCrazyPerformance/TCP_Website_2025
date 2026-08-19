@@ -619,7 +619,12 @@ class MySQLPipelineRepository:
             cursor = connection.cursor(dictionary=True)
             try:
                 cursor.execute(
-                    "SELECT * FROM pipeline_submissions WHERE submission_id = %s",
+                    "SELECT s.*, EXISTS("
+                    "SELECT 1 FROM quality_review_cases q "
+                    "WHERE q.submission_id = s.submission_id "
+                    "AND q.status = 'RESOLVED_APPROVE'"
+                    ") AS quality_review_approved "
+                    "FROM pipeline_submissions s WHERE s.submission_id = %s",
                     (submission_id,),
                 )
                 row = cursor.fetchone()
@@ -627,6 +632,9 @@ class MySQLPipelineRepository:
                     raise NotFoundError(submission_id)
                 for name in ("payload", "admission_result", "quality_result", "enrichment_result"):
                     row[name] = _decode(row[name])
+                row["quality_review_approved"] = bool(
+                    row["quality_review_approved"]
+                )
                 return row
             finally:
                 cursor.close()

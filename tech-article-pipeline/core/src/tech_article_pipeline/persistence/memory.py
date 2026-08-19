@@ -407,9 +407,15 @@ class MemoryPipelineRepository:
     def get_submission(self, submission_id: str) -> dict[str, Any]:
         with self._lock:
             try:
-                return copy.deepcopy(self.submissions[submission_id])
+                submission = copy.deepcopy(self.submissions[submission_id])
             except KeyError as exc:
                 raise NotFoundError(submission_id) from exc
+            submission["quality_review_approved"] = any(
+                review["submissionId"] == submission_id
+                and review["status"] == "RESOLVED_APPROVE"
+                for review in self.quality_reviews.values()
+            )
+            return submission
 
     def mark_admission_result(self, submission_id: str, result: dict[str, Any]) -> None:
         with self._lock:

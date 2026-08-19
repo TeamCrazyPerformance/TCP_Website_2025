@@ -7,7 +7,11 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from developer_news_summarizer.models import DeveloperNewsInput
 from tech_article_admission import create_memory_admission_service
-from tech_article_pipeline.contracts import NormalizedArticleCandidate, PublicationPolicy
+from tech_article_pipeline.contracts import (
+    NormalizedArticleCandidate,
+    PublicationPolicy,
+    Stage,
+)
 from tech_article_pipeline.orchestration import PipelineOrchestrator
 from tech_article_pipeline.persistence.base import IdempotencyConflictError
 from tech_article_pipeline.persistence.memory import MemoryPipelineRepository
@@ -175,7 +179,12 @@ def test_review_publication_policy_does_not_expose_article(normalized_payload):
 
 
 def test_quality_review_approval_enqueues_enrichment(normalized_payload):
-    repository, worker, _ = runtime(normalized_payload, decision="REVIEW_REQUIRED")
+    summarizer = ContractValidatingSummarizer()
+    repository, worker, submission = runtime(
+        normalized_payload,
+        decision="REVIEW_REQUIRED",
+        summarizer=summarizer,
+    )
     worker.process_once()
     worker.process_once()
     case = repository.list_review_queue("quality", limit=10)[0]
@@ -190,6 +199,35 @@ def test_quality_review_approval_enqueues_enrichment(normalized_payload):
     worker.process_once()
 
     assert len(repository.list_public_articles(limit=10, offset=0)) == 1
+    assert summarizer.last_input is not None
+    assert summarizer.last_input["qualityEvaluation"]["decision"] == "PASS"
+    stored = repository.get_submission(submission["submissionId"])
+    assert stored["quality_result"]["qualityEvaluation"]["decision"] == "REVIEW_REQUIRED"
+    assert stored["quality_review_approved"] is True
+
+
+def test_unapproved_quality_review_cannot_run_enrichment(normalized_payload):
+    summarizer = ContractValidatingSummarizer()
+    repository, worker, submission = runtime(
+        normalized_payload,
+        decision="REVIEW_REQUIRED",
+        summarizer=summarizer,
+    )
+    worker.process_once()
+    worker.process_once()
+    enrichment_job_id = repository.enqueue(
+        submission["submissionId"],
+        Stage.ENRICHMENT,
+        max_attempts=3,
+        unique_key=f"{submission['submissionId']}:UNAPPROVED_ENRICHMENT",
+    )
+
+    worker.process_once()
+
+    enrichment_job = repository.jobs[enrichment_job_id]
+    assert enrichment_job["status"] == "DEAD"
+    assert enrichment_job["error"]["code"] == "ARTICLE_NOT_ELIGIBLE"
+    assert summarizer.calls == 0
 
 
 def test_retryable_ai_failure_becomes_dead_after_max_attempts(normalized_payload):
