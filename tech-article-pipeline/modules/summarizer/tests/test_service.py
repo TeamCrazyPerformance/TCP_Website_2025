@@ -72,7 +72,12 @@ def test_success_maps_contract_and_tokens():
                 "localizedTitle": "예시 기사 제목",
                 "tags": ["AI", "애플리케이션 개발"],
                 "oneLineSummary": "개발자에게 미치는 핵심 영향을 설명합니다.",
-                "summary": "주요 특징과 실무적 기대 효과를 설명합니다.",
+                "summary": (
+                    "### 주요 내용\n\n"
+                    "- **핵심 기능:** 주요 기술 특징을 설명합니다.\n\n"
+                    "### 의미와 고려사항\n\n"
+                    "- **실무 영향:** 원문에서 확인되는 기대 효과를 설명합니다."
+                ),
                 "localizedContent": None,
             }
         )
@@ -126,13 +131,22 @@ def test_success_maps_contract_and_tokens():
     assert "외부 지식으로 내용을 보충하지 마세요" in config.system_instruction
     assert "기사에 명시되지 않은 사실" in config.system_instruction
     assert "영문 표기와 원래 대소문자를 유지" in config.system_instruction
-    assert "코드 블록" not in config.system_instruction
+    assert "첫 번째 제목은 반드시 `### 주요 내용`" in config.system_instruction
+    assert "두 번째 제목은 반드시 `### 의미와 고려사항`" in config.system_instruction
+    assert "3~5개의 순서 없는 목록" in config.system_instruction
+    assert "1~3개의 순서 없는 목록" in config.system_instruction
+    assert "`- **구체적인 핵심어:** 설명`" in config.system_instruction
+    assert "표, 링크, 인용문 또는 코드 블록을 사용하지 말 것" in (
+        config.system_instruction
+    )
     assert config.response_json_schema["description"] == (
         "원문 기사에만 근거한 요약 및 메타데이터"
     )
     assert config.response_json_schema["properties"]["summary"]["description"] == (
-        "원문에 명시된 사실만 사용한 상세 요약"
+        "원문에 명시된 사실만 사용하고 '주요 내용'과 "
+        "'의미와 고려사항' 섹션으로 구조화한 Markdown 상세 요약"
     )
+    assert result["enrichment"]["summary"].startswith("### 주요 내용")
     contents = client.models.last_call["contents"]
     assert "<article_data>" in contents
     assert "</article_data>" in contents

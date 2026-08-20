@@ -23,7 +23,7 @@ from .models import (
 
 # 모델과 프롬프트 버전은 배포 없이 교체할 수 있도록 환경변수로 분리한다.
 MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
-PROMPT_VERSION = os.getenv("GEMINI_PROMPT_VERSION", "dev-news-summary-v9")
+PROMPT_VERSION = os.getenv("GEMINI_PROMPT_VERSION", "dev-news-summary-v10")
 try:
     DEFAULT_TIMEOUT_MS = int(os.getenv("GEMINI_TIMEOUT_MS", "60000"))
 except ValueError:
@@ -91,7 +91,13 @@ def _system_instruction(options: GenerationOptions) -> str:
    - 개발 조직: 팀 구조, 엔지니어링 리더십, 협업, 생산성 및 개발 프로세스
    - 산업 동향: 기업, 시장, 규제, 인수합병 및 기술 생태계 변화
 3. 한 줄 요약: 원문에 명시된 내용을 근거로 이 기술이나 뉴스가 개발자에게 미치는 핵심 영향을 {options.maximum_one_line_summary_length}자 이내의 한 줄로 작성할 것. 원문이 영향을 명시하지 않으면 핵심 사실을 요약하고 영향을 추측하지 말 것.
-4. 상세 요약: 원문에 명시된 사실만 사용해 {options.maximum_summary_length}자 이내의 일관된 문장으로 작성할 것. 주요 특징, 기존 방식과의 차이, 실무적 효과는 원문에서 확인되는 경우에만 포함하고, 내용을 채우기 위해 추측하지 말 것.
+4. 상세 요약: 원문에 명시된 사실만 사용해 {options.maximum_summary_length}자 이내의 Markdown으로 작성할 것. 다음 형식과 순서를 모든 기사에 동일하게 적용할 것.
+   - 첫 번째 제목은 반드시 `### 주요 내용`으로 작성하고, 아래에 핵심 사실을 3~5개의 순서 없는 목록으로 정리할 것.
+   - 두 번째 제목은 반드시 `### 의미와 고려사항`으로 작성하고, 아래에 원문에서 확인되는 영향, 적용 범위, 제약, 위험, 한계 또는 후속 계획을 1~3개의 순서 없는 목록으로 정리할 것.
+   - 각 목록 항목은 `- **구체적인 핵심어:** 설명` 형식으로 작성하고, 제품명, 기능명, 버전, 수치 및 기술 명칭을 가능한 한 구체적으로 보존할 것.
+   - `oneLineSummary`의 문장을 그대로 반복하거나 같은 내용을 표현만 바꿔 되풀이하지 말 것.
+   - 두 번째 섹션의 내용을 원문에서 확인하기 어렵다면 관련성이 가장 높은 적용 대상, 제약, 한계 또는 후속 계획만 간결하게 작성하고 추측으로 채우지 말 것.
+   - 두 섹션과 목록 밖에 도입 문장이나 맺음말을 추가하지 말고, 표, 링크, 인용문 또는 코드 블록을 사용하지 말 것.
 5. 제목 번역: {title_rule}
 6. 본문 번역: {content_rule}
 """
@@ -134,7 +140,10 @@ def _response_schema(options: GenerationOptions) -> dict[str, Any]:
             },
             "summary": {
                 "type": "string",
-                "description": "원문에 명시된 사실만 사용한 상세 요약",
+                "description": (
+                    "원문에 명시된 사실만 사용하고 '주요 내용'과 "
+                    "'의미와 고려사항' 섹션으로 구조화한 Markdown 상세 요약"
+                ),
             },
             "localizedContent": {
                 **content_schema,
