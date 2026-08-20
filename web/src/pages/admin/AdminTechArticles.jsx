@@ -23,12 +23,16 @@ import { SafeMarkdown } from "../../components/tech-articles/TechArticleCommon";
 import { getPageTokens } from "../../components/tech-articles/TechArticlePagination";
 import { useV9ConfirmDialog } from "../../components/tech-articles/V9ConfirmDialog";
 import {
+  MISMATCH_FILTER,
+  articleStage,
   canPublishArticle,
-  hasPublicationMismatch,
+  hasStateMismatch,
   partitionPublishable,
   publishBlockReason,
+  stageMeta,
   statusLabel,
   statusTone,
+  summarizeStages,
 } from "../../components/tech-articles/techArticleStatus";
 
 const PAGE_SIZE = 20;
@@ -41,6 +45,8 @@ const PUBLICATION_OPTIONS = [
   ["SCHEDULED", "공개 예정"],
 ];
 const ACTION_LABEL = { PUBLISH: "공개", HIDE: "비공개", ARCHIVE: "보관" };
+const MISMATCH_HINT =
+  "공개 처리 과정에서 검토 상태가 잘못 올라간 값입니다. 표시에만 영향이 있고 파이프라인 동작은 정상입니다.";
 
 function shortDate(value) {
   if (!value) return "—";
@@ -87,6 +93,28 @@ function StatusBadge({ status }) {
   );
 }
 
+// 세 축을 접은 파이프라인 단계. 표시 오류는 단계를 가리지 않고 옆에 덧붙입니다.
+function StageBadge({ article, withHint = false }) {
+  const meta = stageMeta(articleStage(article));
+  return (
+    <div className="stage-cell">
+      <span className={`status-badge stage-badge ${meta.tone}`}>
+        <i className={`fas ${meta.icon}`} aria-hidden="true"></i>
+        {meta.label}
+      </span>
+      {hasStateMismatch(article) && (
+        <span className="stage-flag" title={MISMATCH_HINT}>
+          <i className="fas fa-triangle-exclamation" aria-hidden="true"></i>
+          검토 상태 표시 오류
+        </span>
+      )}
+      {withHint && meta.hint && (
+        <small className="stage-hint">{meta.hint}</small>
+      )}
+    </div>
+  );
+}
+
 // 표 뷰와 모바일 카드 뷰가 함께 씁니다.
 function PublishControl({ article, isMutating, onToggle }) {
   const published = article.publicationStatus === "PUBLISHED";
@@ -119,11 +147,135 @@ function PublishControl({ article, isMutating, onToggle }) {
           {blockReason}
         </span>
       )}
-      {hasPublicationMismatch(article) && (
-        <span className="publish-mismatch-warning">
-          <i className="fas fa-triangle-exclamation" aria-hidden="true"></i>
-          공개 표시 · 실사이트 미노출
-        </span>
+    </div>
+  );
+}
+
+// 품질 평가는 관련성 45% + 시의성 30% + 출처 신뢰도 25% 가중 합산입니다.
+// 어느 축에서 깎였는지 보여야 관리자가 판정 사유를 납득할 수 있습니다.
+const QUALITY_DIMENSIONS = [
+  ["relevance", "개발 관련성", 0.45],
+  ["timeliness", "시의성", 0.3],
+  ["sourceReliability", "출처 신뢰도", 0.25],
+];
+
+function QualityEvaluation({ detail }) {
+  const evaluation = detail.evaluation;
+  const score = evaluation?.score;
+  const dimensions = score?.dimensions ?? score;
+  const overall = score?.overall ?? detail.valueScore ?? detail.score;
+  if (!evaluation && overall == null) return null;
+
+  return (
+    <section className="admin-detail-section">
+      <h4>품질 평가</h4>
+      {/* 블록 간격을 개별 margin 이 아니라 flex gap 으로 잡습니다.
+          문단의 반행간이 위아래로 더해져 margin 만으로는 눈에 같아 보이지 않습니다. */}
+      <div className="quality-body">
+        <div className="quality-overall">
+          <span className="admin-score">{overall ?? "—"}</span>
+          {evaluation?.decision && <StatusBadge status={evaluation.decision} />}
+        </div>
+        {dimensions && (
+          <ul className="quality-dimensions">
+            {QUALITY_DIMENSIONS.map(([key, label, weight]) => {
+              const value = dimensions[key];
+              return (
+                <li key={key}>
+                  <span className="quality-dimension-label">{label}</span>
+                  <span className="quality-dimension-bar" aria-hidden="true">
+                    <span
+                      style={{
+                        width: `${Math.max(0, Math.min(100, value ?? 0))}%`,
+                      }}
+                    />
+                  </span>
+                  <span className="quality-dimension-value">
+                    {value ?? "—"}
+                    <small>
+                      × {Math.round(weight * 100)}% ={" "}
+                      {value == null ? "—" : (value * weight).toFixed(1)}
+                    </small>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {evaluation?.reason && (
+          <p className="quality-reason">{evaluation.reason}</p>
+        )}
+        <div className="admin-detail-grid">
+          <DetailFact
+            label="정규화"
+            value={
+              detail.normalizedAt
+                ? `완료 ${fullDate(detail.normalizedAt)}`
+                : "정규화 기록 없음"
+            }
+          />
+          <DetailFact label="정규화 버전" value={detail.normalizerVersion} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// 목록 표 바로 위 툴바. 불러온 행을 좁히는 도구라 표에 붙여 둡니다.
+// 검색·공개 상태·정렬은 서버 필터라 위쪽 "검색 및 필터" 카드에 있습니다.
+// 범위가 다르므로 같은 카드에 두지 않습니다.
+function StageToolbar({ items, summary, mismatchCount, value, onChange }) {
+  const toggle = (next) => onChange(value === next ? "" : next);
+  return (
+    <div className="stage-toolbar">
+      <div className="stage-chips" role="group" aria-label="파이프라인 단계">
+        <button
+          type="button"
+          className={`stage-chip ${value ? "" : "is-active"}`}
+          onClick={() => onChange("")}
+          aria-pressed={!value}
+        >
+          전체<strong>{items.length}</strong>
+        </button>
+        {summary.map((entry) => (
+          <button
+            type="button"
+            key={entry.stage}
+            className={`stage-chip ${entry.tone} ${
+              value === entry.stage ? "is-active" : ""
+            }`}
+            onClick={() => toggle(entry.stage)}
+            aria-pressed={value === entry.stage}
+          >
+            <i className={`fas ${entry.icon}`} aria-hidden="true"></i>
+            {entry.label}
+            <strong>{entry.count}</strong>
+          </button>
+        ))}
+        {mismatchCount > 0 && (
+          <button
+            type="button"
+            className={`stage-chip stage-chip-flag ${
+              value === MISMATCH_FILTER ? "is-active" : ""
+            }`}
+            onClick={() => toggle(MISMATCH_FILTER)}
+            aria-pressed={value === MISMATCH_FILTER}
+          >
+            <i className="fas fa-triangle-exclamation" aria-hidden="true"></i>
+            검토 상태 표시 오류<strong>{mismatchCount}</strong>
+          </button>
+        )}
+        <span className="stage-toolbar-scope">현재 페이지 기준</span>
+      </div>
+      {value === MISMATCH_FILTER && (
+        <p className="stage-summary-note" role="status">
+          <i className="fas fa-circle-info" aria-hidden="true"></i>
+          공개 토글로 공개했다가 되돌린 아티클입니다. 그 과정에서 검토 상태가
+          &ldquo;검토 승인&rdquo;으로 잘못 올라갔습니다.{" "}
+          <strong>표시에만 영향이 있고 파이프라인 동작은 정상입니다</strong>
+          &nbsp;— AI 요약 자격과 공개 검토 큐는 이 값을 참조하지 않습니다. 공개
+          토글에 처리 단계 가드가 걸려 신규 발생은 차단된 상태입니다.
+        </p>
       )}
     </div>
   );
@@ -161,6 +313,7 @@ function AdminTechArticles() {
   const [keywordInput, setKeywordInput] = useState("");
   const [keyword, setKeyword] = useState("");
   const [publicationStatus, setPublicationStatus] = useState("");
+  const [stageFilter, setStageFilter] = useState("");
   const [sort, setSort] = useState("NEWEST");
   const [selected, setSelected] = useState({});
   const [isLoading, setIsLoading] = useState(true);
@@ -220,6 +373,8 @@ function AdminTechArticles() {
   }, [loadOverview]);
   useEffect(() => {
     setSelected({});
+    // 조회 조건이 바뀌면 불러온 목록이 달라지므로 단계 필터도 되돌립니다.
+    setStageFilter("");
   }, [page, keyword, publicationStatus, sort]);
 
   useEffect(() => {
@@ -236,7 +391,19 @@ function AdminTechArticles() {
   }, [notice]);
 
   const selectedRecords = useMemo(() => Object.values(selected), [selected]);
-  const pageItems = response?.items || [];
+  // 매 렌더마다 새 배열이 되면 아래 useMemo 가 무의미해집니다.
+  const loadedItems = useMemo(() => response?.items || [], [response]);
+  // 단계 필터는 서버가 processingStatus 를 받지 않아 불러온 목록에서 거릅니다.
+  const { stages: stageSummary, mismatchCount } = useMemo(
+    () => summarizeStages(loadedItems),
+    [loadedItems],
+  );
+  const pageItems = useMemo(() => {
+    if (!stageFilter) return loadedItems;
+    if (stageFilter === MISMATCH_FILTER)
+      return loadedItems.filter(hasStateMismatch);
+    return loadedItems.filter((item) => articleStage(item) === stageFilter);
+  }, [loadedItems, stageFilter]);
   const allPageSelected =
     pageItems.length > 0 && pageItems.every((item) => selected[item.articleId]);
   const publishedCount = stats?.publication?.PUBLISHED || 0;
@@ -723,6 +890,14 @@ function AdminTechArticles() {
           </p>
         </div>
 
+        <StageToolbar
+          items={loadedItems}
+          summary={stageSummary}
+          mismatchCount={mismatchCount}
+          value={stageFilter}
+          onChange={setStageFilter}
+        />
+
         {selectedRecords.length > 0 && (
           <div className="selection-action-bar">
             <div>
@@ -784,7 +959,7 @@ function AdminTechArticles() {
                   <th scope="col">출처 · 언어</th>
                   <th scope="col">가치 점수</th>
                   <th scope="col">원문 게시 · 수집</th>
-                  <th scope="col">검토 상태</th>
+                  <th scope="col">파이프라인 단계</th>
                   <th scope="col">공개 설정</th>
                   <th scope="col">작업</th>
                 </tr>
@@ -870,11 +1045,7 @@ function AdminTechArticles() {
                           </strong>
                         </td>
                         <td>
-                          <StatusBadge
-                            status={
-                              article.reviewStatus || "REVIEW_NOT_REQUIRED"
-                            }
-                          />
+                          <StageBadge article={article} />
                         </td>
                         <td>
                           <PublishControl
@@ -949,6 +1120,7 @@ function AdminTechArticles() {
                 <p className="admin-mobile-card-summary">
                   {article.oneLineSummary || "한 줄 요약 없음"}
                 </p>
+                <StageBadge article={article} withHint />
                 <div className="admin-mobile-meta">
                   <span>
                     출처<strong>{article.source?.name || "—"}</strong>
@@ -1078,20 +1250,34 @@ function AdminTechArticles() {
                   <span className="admin-article-id">{detail.articleId}</span>
                   <h3 className="admin-detail-title">{detail.title}</h3>
                   <div className="admin-detail-meta">
-                    <StatusBadge status={detail.publicationStatus} />
-                    <StatusBadge status={detail.reviewStatus} />
-                    <StatusBadge status={detail.processingStatus} />
+                    <StageBadge article={detail} />
                   </div>
-                  {hasPublicationMismatch(detail) && (
+                  {hasStateMismatch(detail) && (
                     <p className="admin-detail-mismatch" role="status">
-                      <i
-                        className="fas fa-triangle-exclamation"
-                        aria-hidden="true"
-                      ></i>
-                      공개 상태이지만 처리가 완료되지 않아 실사이트에는 노출되지
-                      않습니다. 비공개로 내린 뒤 처리 결과를 확인해 주세요.
+                      <i className="fas fa-circle-info" aria-hidden="true"></i>
+                      아래 검토 상태 &ldquo;검토 승인&rdquo;은 공개 처리
+                      과정에서 잘못 올라간 값입니다. 실제 승인 이력은 없습니다.
+                      표시에만 영향이 있고 처리 단계와 공개 여부는 정상입니다.
                     </p>
                   )}
+                  <section className="admin-detail-section">
+                    <h4>상태 세부</h4>
+                    <div className="admin-detail-axes">
+                      <div>
+                        <span>처리 상태</span>
+                        <StatusBadge status={detail.processingStatus} />
+                      </div>
+                      <div>
+                        <span>검토 상태</span>
+                        <StatusBadge status={detail.reviewStatus} />
+                      </div>
+                      <div>
+                        <span>공개 상태</span>
+                        <StatusBadge status={detail.publicationStatus} />
+                      </div>
+                    </div>
+                  </section>
+                  <QualityEvaluation detail={detail} />
                   <section className="admin-detail-section">
                     <h4>한 줄 요약</h4>
                     <p className="detail-one-line-summary">
@@ -1105,17 +1291,9 @@ function AdminTechArticles() {
                       className="admin-markdown-body"
                     />
                   </section>
-                  <section className="admin-detail-section detail-score-tags">
-                    <div>
-                      <h4>분야 태그</h4>
-                      <ArticleTags tags={detail.tags} />
-                    </div>
-                    <div>
-                      <h4>가치 점수</h4>
-                      <span className="admin-score">
-                        {detail.valueScore ?? detail.score ?? "—"}
-                      </span>
-                    </div>
+                  <section className="admin-detail-section">
+                    <h4>분야 태그</h4>
+                    <ArticleTags tags={detail.tags} />
                   </section>
                   <section className="admin-detail-section">
                     <h4>원문 및 처리 정보</h4>
@@ -1159,18 +1337,6 @@ function AdminTechArticles() {
                       <DetailFact
                         label="수집 완료"
                         value={fullDate(detail.crawledAt || detail.collectedAt)}
-                      />
-                      <DetailFact
-                        label="처리 상태"
-                        value={statusLabel(detail.processingStatus)}
-                      />
-                      <DetailFact
-                        label="검토 상태"
-                        value={statusLabel(detail.reviewStatus)}
-                      />
-                      <DetailFact
-                        label="공개 상태"
-                        value={statusLabel(detail.publicationStatus)}
                       />
                     </div>
                     {detail.source?.articleUrl && (

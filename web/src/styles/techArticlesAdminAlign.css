@@ -476,27 +476,23 @@
   line-height: 1.4;
 }
 
-.ta-admin .publish-mismatch-warning {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--danger);
-  font-size: 10px;
-  line-height: 1.4;
-}
-
 .ta-admin .admin-detail-mismatch {
   display: flex;
   align-items: flex-start;
   gap: 8px;
   padding: 10px 12px;
-  border: 1px solid rgba(252, 165, 165, 0.24);
+  border: 1px solid rgba(253, 230, 138, 0.22);
   border-radius: 10px;
   margin: 12px 0 0;
-  background: var(--danger-bg);
-  color: var(--danger);
+  background: var(--warning-bg);
+  color: var(--gray-200);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.ta-admin .admin-detail-mismatch i {
+  margin-top: 2px;
+  color: var(--warning);
 }
 
 /* v9 번들에 없는 실패 계열 배지 */
@@ -504,4 +500,234 @@
   color: var(--danger);
   background: var(--danger-bg);
   border-color: rgba(252, 165, 165, 0.16);
+}
+
+/* ── 파이프라인 단계 ───────────────────────────────────────
+ * processing / review / publication 세 축을 접은 단일 배지와
+ * 그 집계 칩입니다. 목록은 이 배지만 쓰고 원본 세 축은 상세에서 봅니다. */
+
+.ta-admin .stage-cell {
+  display: flex;
+  min-width: 132px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.ta-admin .stage-badge {
+  white-space: nowrap;
+}
+
+.ta-admin .stage-badge::before {
+  display: none;
+}
+
+.ta-admin .stage-hint {
+  color: var(--gray-400);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+/* ── 파이프라인 단계 툴바 ─────────────────────────────────
+ * 목록 표 바로 위. 불러온 행을 좁히는 도구라 표에 붙입니다.
+ * 위쪽 "검색 및 필터" 카드는 서버 필터라 범위가 다릅니다. */
+
+/* 위 간격은 .list-heading-row 의 margin-bottom(12px)이 만듭니다.
+ * 아래도 같은 값을 써서 칩이 제목과 표 사이 가운데에 놓이게 합니다. */
+.ta-admin .stage-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.ta-admin .stage-toolbar-scope {
+  margin-left: auto;
+  align-self: center;
+  color: var(--gray-500);
+  font-size: 11px;
+}
+
+.ta-admin .stage-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ta-admin .stage-chip {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--gray-300);
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* 라벨과 건수를 붙여 두면 어느 칩의 숫자인지 읽기 어렵습니다. */
+.ta-admin .stage-chip strong {
+  padding-left: 2px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ta-admin .stage-chip:hover {
+  border-color: var(--gray-500);
+}
+
+.ta-admin .stage-chip.is-active {
+  border-color: currentColor;
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
+.ta-admin .stage-chip:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
+/* 표시 오류 표식. 단계 배지와 구분되도록 테두리만 있는 형태 */
+.ta-admin .stage-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--warning);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.ta-admin .stage-chip-flag {
+  color: var(--warning);
+  background: var(--warning-bg);
+  border-color: rgba(253, 230, 138, 0.24);
+}
+
+/* 파이프라인 동작에는 영향이 없으므로 경고가 아닌 안내 톤 */
+.ta-admin .stage-summary-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(253, 230, 138, 0.22);
+  border-radius: 10px;
+  margin: 0;
+  background: var(--warning-bg);
+  color: var(--gray-200);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ta-admin .stage-summary-note i {
+  margin-top: 2px;
+  color: var(--warning);
+}
+
+.ta-admin .stage-summary-note strong {
+  color: var(--warning);
+}
+
+/* ── 상세: 상태 3축과 품질 평가 ──────────────────────────── */
+
+.ta-admin .admin-detail-axes {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.ta-admin .admin-detail-axes > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.ta-admin .admin-detail-axes span {
+  color: var(--gray-400);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* 품질 평가 섹션은 블록 간격을 flex gap 하나로 관리합니다.
+ * 개별 margin 을 쓰면 문단의 반행간이 더해져 위아래 간격이 달라 보입니다. */
+.ta-admin .quality-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ta-admin .quality-overall {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ta-admin .quality-dimensions {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.ta-admin .quality-dimensions li {
+  display: grid;
+  align-items: center;
+  gap: 10px;
+  grid-template-columns: 88px 1fr 132px;
+}
+
+.ta-admin .quality-dimension-label {
+  color: var(--gray-300);
+  font-size: 11px;
+}
+
+.ta-admin .quality-dimension-bar {
+  overflow: hidden;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.16);
+}
+
+.ta-admin .quality-dimension-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent-blue);
+}
+
+.ta-admin .quality-dimension-value {
+  color: var(--gray-200);
+  font-size: 12px;
+  text-align: right;
+}
+
+.ta-admin .quality-dimension-value small {
+  margin-left: 6px;
+  color: var(--gray-400);
+  font-size: 10px;
+}
+
+.ta-admin .quality-reason {
+  margin: 0;
+  color: var(--gray-300);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+@media (max-width: 600px) {
+  .ta-admin .quality-dimensions li {
+    grid-template-columns: 76px 1fr;
+  }
+  .ta-admin .quality-dimension-value {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
 }
