@@ -35,6 +35,8 @@ GEMINI_REQUESTS_PER_MINUTE = 15
 GEMINI_REQUEST_INTERVAL_SECONDS = (
     60 / GEMINI_REQUESTS_PER_MINUTE
 ) * 1.05
+ONE_LINE_SUMMARY_LENGTH_TOLERANCE = 10
+SUMMARY_LENGTH_TOLERANCE = 50
 
 
 class _GeminiRequestRateLimiter:
@@ -298,16 +300,23 @@ def _validate_generated_payload(
         raise _GeneratedTextConstraintError(
             f"summary는 최소 {minimum_summary_length}자여야 합니다."
         )
-    if len(payload.one_line_summary) > options.maximum_one_line_summary_length:
+    one_line_hard_limit = (
+        options.maximum_one_line_summary_length
+        + ONE_LINE_SUMMARY_LENGTH_TOLERANCE
+    )
+    if len(payload.one_line_summary) > one_line_hard_limit:
         raise _GeneratedTextConstraintError(
-            "maximumOneLineSummaryLength를 초과했습니다.",
+            "maximumOneLineSummaryLength 허용 범위를 초과했습니다.",
             one_line_too_long=True,
         )
     if "\n" in payload.one_line_summary or "\r" in payload.one_line_summary:
         raise _GeneratedTextConstraintError("oneLineSummary는 한 줄이어야 합니다.")
-    if len(payload.summary) > options.maximum_summary_length:
+    summary_hard_limit = (
+        options.maximum_summary_length + SUMMARY_LENGTH_TOLERANCE
+    )
+    if len(payload.summary) > summary_hard_limit:
         raise _GeneratedTextConstraintError(
-            "maximumSummaryLength를 초과했습니다.",
+            "maximumSummaryLength 허용 범위를 초과했습니다.",
             summary_too_long=True,
         )
     if options.translate_title != (payload.localized_title is not None):

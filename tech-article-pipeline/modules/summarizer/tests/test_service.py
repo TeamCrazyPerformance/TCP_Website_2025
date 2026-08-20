@@ -374,13 +374,34 @@ def test_maximum_tag_count_is_capped_by_allowed_tag_count_in_schema():
     assert config.response_json_schema["properties"]["tags"]["maxItems"] == 15
 
 
+def test_summary_at_tolerance_limit_is_accepted_without_regeneration():
+    client = FakeClient(
+        result=FakeResponse(
+            {
+                "localizedTitle": "예시 기사 제목",
+                "tags": [],
+                "oneLineSummary": "개발자에게 미치는 핵심 영향입니다.",
+                "summary": "가" * 150,
+                "localizedContent": None,
+            }
+        )
+    )
+
+    result = make_summarizer(client=client).process(
+        valid_input(maximumSummaryLength=100)
+    )
+
+    assert result["generation"]["status"] == "SUCCESS"
+    assert len(client.models.calls) == 1
+
+
 def test_overlong_summary_is_regenerated_once_with_reduced_target():
     first = FakeResponse(
         {
             "localizedTitle": "예시 기사 제목",
             "tags": ["클라우드"],
             "oneLineSummary": "개발자에게 미치는 핵심 영향입니다.",
-            "summary": "가" * 101,
+            "summary": "가" * 151,
             "localizedContent": None,
         },
         input_tokens=10,
@@ -406,6 +427,54 @@ def test_overlong_summary_is_regenerated_once_with_reduced_target():
     assert result["generation"]["status"] == "SUCCESS"
     assert result["generation"]["inputTokenCount"] == 40
     assert result["generation"]["outputTokenCount"] == 60
+    assert len(client.models.calls) == 2
+    retry_config = client.models.calls[1]["config"]
+    assert "90자 이내" in retry_config.system_instruction
+
+
+def test_one_line_summary_at_tolerance_limit_is_accepted_without_regeneration():
+    client = FakeClient(
+        result=FakeResponse(
+            {
+                "localizedTitle": "예시 기사 제목",
+                "tags": [],
+                "oneLineSummary": "가" * 110,
+                "summary": "기사의 주요 내용을 설명하는 상세 요약입니다.",
+                "localizedContent": None,
+            }
+        )
+    )
+
+    result = make_summarizer(client=client).process(valid_input())
+
+    assert result["generation"]["status"] == "SUCCESS"
+    assert len(client.models.calls) == 1
+
+
+def test_overlong_one_line_summary_is_regenerated_with_reduced_target():
+    first = FakeResponse(
+        {
+            "localizedTitle": "예시 기사 제목",
+            "tags": [],
+            "oneLineSummary": "가" * 111,
+            "summary": "기사의 주요 내용을 설명하는 상세 요약입니다.",
+            "localizedContent": None,
+        }
+    )
+    second = FakeResponse(
+        {
+            "localizedTitle": "예시 기사 제목",
+            "tags": [],
+            "oneLineSummary": "나" * 100,
+            "summary": "기사의 주요 내용을 설명하는 상세 요약입니다.",
+            "localizedContent": None,
+        }
+    )
+    client = FakeClient(result=[first, second])
+
+    result = make_summarizer(client=client).process(valid_input())
+
+    assert result["generation"]["status"] == "SUCCESS"
     assert len(client.models.calls) == 2
     retry_config = client.models.calls[1]["config"]
     assert "90자 이내" in retry_config.system_instruction
@@ -498,7 +567,7 @@ def test_text_constraint_failure_stops_after_one_regeneration():
         "localizedTitle": "예시 기사 제목",
         "tags": [],
         "oneLineSummary": "개발자에게 미치는 핵심 영향입니다.",
-        "summary": "가" * 101,
+        "summary": "가" * 151,
         "localizedContent": None,
     }
     client = FakeClient(
