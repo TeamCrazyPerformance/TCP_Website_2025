@@ -21,6 +21,7 @@ import AdminTechArticleContent from "../../components/tech-articles/AdminTechArt
 import TechArticleCrawlPanel from "../../components/tech-articles/TechArticleCrawlPanel";
 import { SafeMarkdown } from "../../components/tech-articles/TechArticleCommon";
 import { getPageTokens } from "../../components/tech-articles/TechArticlePagination";
+import { QualityEvaluationPanel } from "../../components/tech-articles/ArticleQualityPanel";
 import { useV9ConfirmDialog } from "../../components/tech-articles/V9ConfirmDialog";
 import {
   MISMATCH_FILTER,
@@ -148,76 +149,6 @@ function PublishControl({ article, isMutating, onToggle }) {
         </span>
       )}
     </div>
-  );
-}
-
-// 품질 평가는 관련성 45% + 시의성 30% + 출처 신뢰도 25% 가중 합산입니다.
-// 어느 축에서 깎였는지 보여야 관리자가 판정 사유를 납득할 수 있습니다.
-const QUALITY_DIMENSIONS = [
-  ["relevance", "개발 관련성", 0.45],
-  ["timeliness", "시의성", 0.3],
-  ["sourceReliability", "출처 신뢰도", 0.25],
-];
-
-function QualityEvaluation({ detail }) {
-  const evaluation = detail.evaluation;
-  const score = evaluation?.score;
-  const dimensions = score?.dimensions ?? score;
-  const overall = score?.overall ?? detail.valueScore ?? detail.score;
-  if (!evaluation && overall == null) return null;
-
-  return (
-    <section className="admin-detail-section">
-      <h4>품질 평가</h4>
-      {/* 블록 간격을 개별 margin 이 아니라 flex gap 으로 잡습니다.
-          문단의 반행간이 위아래로 더해져 margin 만으로는 눈에 같아 보이지 않습니다. */}
-      <div className="quality-body">
-        <div className="quality-overall">
-          <span className="admin-score">{overall ?? "—"}</span>
-          {evaluation?.decision && <StatusBadge status={evaluation.decision} />}
-        </div>
-        {dimensions && (
-          <ul className="quality-dimensions">
-            {QUALITY_DIMENSIONS.map(([key, label, weight]) => {
-              const value = dimensions[key];
-              return (
-                <li key={key}>
-                  <span className="quality-dimension-label">{label}</span>
-                  <span className="quality-dimension-bar" aria-hidden="true">
-                    <span
-                      style={{
-                        width: `${Math.max(0, Math.min(100, value ?? 0))}%`,
-                      }}
-                    />
-                  </span>
-                  <span className="quality-dimension-value">
-                    {value ?? "—"}
-                    <small>
-                      × {Math.round(weight * 100)}% ={" "}
-                      {value == null ? "—" : (value * weight).toFixed(1)}
-                    </small>
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        {evaluation?.reason && (
-          <p className="quality-reason">{evaluation.reason}</p>
-        )}
-        <div className="admin-detail-grid">
-          <DetailFact
-            label="정규화"
-            value={
-              detail.normalizedAt
-                ? `완료 ${fullDate(detail.normalizedAt)}`
-                : "정규화 기록 없음"
-            }
-          />
-          <DetailFact label="정규화 버전" value={detail.normalizerVersion} />
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -1277,7 +1208,26 @@ function AdminTechArticles() {
                       </div>
                     </div>
                   </section>
-                  <QualityEvaluation detail={detail} />
+                  <QualityEvaluationPanel
+                    evaluation={detail.evaluation}
+                    fallbackScore={detail.valueScore ?? detail.score}
+                    extraFacts={
+                      <div className="admin-detail-grid">
+                        <DetailFact
+                          label="정규화"
+                          value={
+                            detail.normalizedAt
+                              ? `완료 ${fullDate(detail.normalizedAt)}`
+                              : "정규화 기록 없음"
+                          }
+                        />
+                        <DetailFact
+                          label="정규화 버전"
+                          value={detail.normalizerVersion}
+                        />
+                      </div>
+                    }
+                  />
                   <section className="admin-detail-section">
                     <h4>한 줄 요약</h4>
                     <p className="detail-one-line-summary">

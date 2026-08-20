@@ -731,3 +731,51 @@
     text-align: left;
   }
 }
+
+/* 강제 정책 신호. 점수와 무관하게 판정을 뒤집는 항목이라 함께 보여줍니다. */
+.ta-admin .quality-signal-list h5 {
+  margin: 0 0 8px;
+  color: var(--gray-400);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ta-admin .quality-signal-list ul {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.ta-admin .quality-signal-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 11px;
+  background: var(--gray-900);
+  border: 1px solid var(--gray-800);
+  border-radius: 8px;
+}
+
+.ta-admin .quality-signal-list span {
+  color: var(--gray-500);
+  font-size: 10px;
+}
+
+.ta-admin .quality-signal-list strong {
+  color: var(--gray-200);
+  font-size: 12px;
+}
+
+.ta-admin .quality-signal-list li.is-adverse {
+  border-color: rgba(252, 165, 165, 0.24);
+}
+
+.ta-admin .quality-signal-list li.is-adverse strong {
+  color: var(--danger);
+}

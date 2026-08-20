@@ -85,13 +85,6 @@ describe("파이프라인 단계 표시", () => {
     // 남겨두면 다른 페이지에서 빈 목록으로 보임
     expect(SOURCE).toMatch(/setStageFilter\(""\);[\s\S]{0,80}\[page, keyword/);
   });
-
-  test("품질 평가 가중치가 파이프라인 정책과 일치한다", () => {
-    // evaluator.py: relevance*0.45 + timeliness*0.30 + sourceReliability*0.25
-    expect(SOURCE).toMatch(/\["relevance", "[^"]+", 0\.45\]/);
-    expect(SOURCE).toMatch(/\["timeliness", "[^"]+", 0\.3\]/);
-    expect(SOURCE).toMatch(/\["sourceReliability", "[^"]+", 0\.25\]/);
-  });
 });
 
 describe("표시 오류 표식", () => {
@@ -128,5 +121,73 @@ describe("단계 툴바 배치", () => {
   test("집계 범위를 문구로 밝힌다", () => {
     // 서버 필터와 범위가 달라 명시가 없으면 건수를 오독합니다.
     expect(SOURCE).toMatch(/현재 페이지 기준/);
+  });
+});
+
+/* 원문 링크와 품질 평가 근거는 전체 아티클 화면과 검토 큐 화면이 같은 형식으로
+ * 보여야 합니다. 한쪽만 고치면 검토자가 두 화면에서 다른 정보를 봅니다. */
+const PANEL = fs.readFileSync(
+  path.join(
+    __dirname,
+    "..",
+    "..",
+    "components",
+    "tech-articles",
+    "ArticleQualityPanel.jsx",
+  ),
+  "utf8",
+);
+const REVIEWS = fs.readFileSync(
+  path.join(__dirname, "AdminTechArticleReviews.jsx"),
+  "utf8",
+);
+
+describe("품질 평가 근거 공유", () => {
+  test("가중치가 파이프라인 정책과 일치한다", () => {
+    // evaluator.py: relevance*0.45 + timeliness*0.30 + sourceReliability*0.25
+    expect(PANEL).toMatch(/\["relevance", "[^"]+", 0\.45\]/);
+    expect(PANEL).toMatch(/\["timeliness", "[^"]+", 0\.3\]/);
+    expect(PANEL).toMatch(/\["sourceReliability", "[^"]+", 0\.25\]/);
+  });
+
+  test("가중치 정의가 한 곳에만 있다", () => {
+    for (const source of [SOURCE, REVIEWS]) {
+      expect(source).not.toMatch(/"sourceReliability", "[^"]+", 0\.25/);
+    }
+  });
+
+  test("두 화면 모두 공유 패널을 쓴다", () => {
+    for (const source of [SOURCE, REVIEWS]) {
+      expect(source).toMatch(/<QualityEvaluationPanel/);
+      expect(source).toMatch(/ArticleQualityPanel/);
+    }
+  });
+
+  test("검토 큐 두 탭 모두 원문 링크를 보여준다", () => {
+    // 품질 검토 · 공개 검토 각각 1회
+    expect((REVIEWS.match(/<OriginalSourceLink/g) || []).length).toBe(2);
+    expect(REVIEWS).toMatch(/detail\.source\?\.articleUrl/);
+  });
+
+  test("중복 검토가 양쪽 원문 링크를 모두 보여준다", () => {
+    // 중복 판정은 두 글을 견주는 작업이라 한쪽만 열리면 비교가 안 됩니다.
+    expect(REVIEWS).toMatch(/후보 원문 보기/);
+    expect(REVIEWS).toMatch(/기존 원문 보기/);
+    expect(REVIEWS).toMatch(
+      /matched\?\.articleUrl \|\| matched\?\.source\?\.articleUrl/,
+    );
+  });
+
+  test("비교 카드 양쪽이 같은 항목을 보여준다", () => {
+    // 후보 카드에만 있던 항목이 기존 카드에도 있어야 비교가 성립합니다.
+    const existing = REVIEWS.slice(REVIEWS.indexOf("existing-card"));
+    for (const field of ["출처", "원문 언어", "원문 게시일"]) {
+      expect(existing.slice(0, 2000)).toContain(field);
+    }
+  });
+
+  test("검토 큐가 평가 신호를 원본 키 그대로 늘어놓지 않는다", () => {
+    expect(REVIEWS).not.toMatch(/JSON\.stringify\(value\)/);
+    expect(PANEL).toMatch(/SIGNAL_LABEL/);
   });
 });

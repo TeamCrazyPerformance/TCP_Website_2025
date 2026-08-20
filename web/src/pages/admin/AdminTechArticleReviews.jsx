@@ -20,6 +20,11 @@ import {
   techArticleErrorMessage,
 } from "../../api/techArticles";
 import AdminTechArticleContent from "../../components/tech-articles/AdminTechArticleContent";
+import {
+  OriginalSourceLink,
+  QualityEvaluationPanel,
+  QualitySignals,
+} from "../../components/tech-articles/ArticleQualityPanel";
 import { SafeMarkdown } from "../../components/tech-articles/TechArticleCommon";
 import { getPageTokens } from "../../components/tech-articles/TechArticlePagination";
 import { useV9ConfirmDialog } from "../../components/tech-articles/V9ConfirmDialog";
@@ -503,6 +508,12 @@ function AdminTechArticleReviews({ kind }) {
 
   const matchedArticle = (item) =>
     item.matched || item.candidates?.[0]?.article || item.candidates?.[0];
+
+  // 응답에 따라 articleUrl 이 항목에 직접 오기도 하고 source 안에 오기도 합니다.
+  const matchedUrl = (item) => {
+    const matched = matchedArticle(item);
+    return matched?.articleUrl || matched?.source?.articleUrl || null;
+  };
 
   return (
     <AdminTechArticleContent>
@@ -1149,7 +1160,36 @@ function AdminTechArticleReviews({ kind }) {
                           <dt>출처</dt>
                           <dd>{sourceName(matchedArticle(detail)?.source)}</dd>
                         </div>
+                        <div>
+                          <dt>원문 언어</dt>
+                          <dd>
+                            {languageLabel(
+                              matchedArticle(detail)?.originalLanguage,
+                            )}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>원문 게시일</dt>
+                          <dd>
+                            {formatDate(
+                              matchedArticle(detail)?.originalPublishedAt,
+                            )}
+                          </dd>
+                        </div>
                       </dl>
+                      {matchedUrl(detail) && (
+                        <a
+                          href={matchedUrl(detail)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          기존 원문 보기
+                          <i
+                            className="fas fa-arrow-up-right-from-square"
+                            aria-hidden="true"
+                          ></i>
+                        </a>
+                      )}
                     </article>
                   </div>
                   <p className="decision-guidance">
@@ -1182,30 +1222,12 @@ function AdminTechArticleReviews({ kind }) {
                       </div>
                     </div>
                   </section>
-                  <section className="admin-detail-section quality-signals">
-                    <div className="quality-score-block">
-                      <span>가치 점수</span>
-                      <strong className="orbitron">
-                        {detail.valueScore ?? detail.score ?? "—"}
-                      </strong>
-                      <small>/ 100</small>
-                    </div>
-                    <div>
-                      <h4>품질 평가 신호</h4>
-                      <ul>
-                        {Object.entries(detail.signals || {}).map(
-                          ([key, value]) => (
-                            <li key={key}>
-                              {key}:{" "}
-                              {typeof value === "object"
-                                ? JSON.stringify(value)
-                                : String(value)}
-                            </li>
-                          ),
-                        )}
-                      </ul>
-                    </div>
-                  </section>
+                  <OriginalSourceLink url={detail.source?.articleUrl} />
+                  <QualityEvaluationPanel
+                    evaluation={detail.evaluation}
+                    fallbackScore={detail.valueScore ?? detail.score}
+                    extraFacts={<QualitySignals signals={detail.signals} />}
+                  />
                   <section className="admin-detail-section">
                     <h4>원문 및 처리 정보</h4>
                     <div className="admin-detail-grid">
@@ -1263,17 +1285,16 @@ function AdminTechArticleReviews({ kind }) {
                       className="admin-markdown-body"
                     />
                   </section>
-                  <section className="admin-detail-section detail-score-tags">
-                    <div>
-                      <h4>분야 태그</h4>
-                      <ArticleTags tags={detail.tags} />
-                    </div>
-                    <div>
-                      <h4>가치 점수</h4>
-                      <span className="admin-score">
-                        {detail.valueScore ?? detail.score ?? "—"}
-                      </span>
-                    </div>
+                  <OriginalSourceLink
+                    url={detail.source?.articleUrl || detail.canonicalUrl}
+                  />
+                  <QualityEvaluationPanel
+                    evaluation={detail.evaluation}
+                    fallbackScore={detail.valueScore ?? detail.score}
+                  />
+                  <section className="admin-detail-section">
+                    <h4>분야 태그</h4>
+                    <ArticleTags tags={detail.tags} />
                   </section>
                 </article>
               ))}
