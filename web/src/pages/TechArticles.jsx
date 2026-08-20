@@ -15,6 +15,7 @@ import {
   formatTechArticleDate,
   shouldOpenFromCardClick,
 } from "../components/tech-articles/TechArticleCommon";
+import { shareArticle } from "../components/tech-articles/articleShare";
 import { getPageTokens } from "../components/tech-articles/TechArticlePagination";
 import TechArticlePublicContent from "../components/tech-articles/TechArticlePublicContent";
 
@@ -268,22 +269,18 @@ function TechArticles() {
 
   const handleShare = async (article) => {
     const url = `${window.location.origin}/tech-articles/${encodeURIComponent(article.id)}`;
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: article.title,
-          text: article.oneLineSummary,
-          url,
-        });
-        setToast("세부 페이지를 공유했습니다.");
-      } else {
-        await navigator.clipboard.writeText(url);
-        setToast("세부 페이지 주소를 복사했습니다.");
-      }
-    } catch (shareError) {
-      if (shareError?.name !== "AbortError") {
-        setToast("세부 페이지 주소를 복사하지 못했습니다.");
-      }
+    const result = await shareArticle({
+      title: article.title,
+      text: article.oneLineSummary,
+      url,
+    });
+
+    if (result === "shared") {
+      setToast("세부 페이지를 공유했습니다.");
+    } else if (result === "copied") {
+      setToast("세부 페이지 주소를 복사했습니다.");
+    } else if (result === "failed") {
+      setToast("세부 페이지 주소를 복사하지 못했습니다.");
     }
   };
 
