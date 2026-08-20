@@ -459,3 +459,49 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── 공개 가능 여부 표시 ─────────────────────────────────── */
+
+.ta-admin .publish-control-group {
+  display: flex;
+  min-width: 132px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.ta-admin .publish-blocked-reason {
+  color: var(--warning);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.ta-admin .publish-mismatch-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--danger);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.ta-admin .admin-detail-mismatch {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(252, 165, 165, 0.24);
+  border-radius: 10px;
+  margin: 12px 0 0;
+  background: var(--danger-bg);
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* v9 번들에 없는 실패 계열 배지 */
+.ta-admin .status-failed {
+  color: var(--danger);
+  background: var(--danger-bg);
+  border-color: rgba(252, 165, 165, 0.16);
+}

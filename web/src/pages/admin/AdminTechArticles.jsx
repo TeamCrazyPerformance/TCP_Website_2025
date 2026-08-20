@@ -22,6 +22,14 @@ import TechArticleCrawlPanel from "../../components/tech-articles/TechArticleCra
 import { SafeMarkdown } from "../../components/tech-articles/TechArticleCommon";
 import { getPageTokens } from "../../components/tech-articles/TechArticlePagination";
 import { useV9ConfirmDialog } from "../../components/tech-articles/V9ConfirmDialog";
+import {
+  canPublishArticle,
+  hasPublicationMismatch,
+  partitionPublishable,
+  publishBlockReason,
+  statusLabel,
+  statusTone,
+} from "../../components/tech-articles/techArticleStatus";
 
 const PAGE_SIZE = 20;
 const PUBLICATION_OPTIONS = [
@@ -72,25 +80,53 @@ function sourceLanguage(article) {
 }
 
 function StatusBadge({ status }) {
-  const normalized = String(status || "").toUpperCase();
-  const label =
-    {
-      PUBLISHED: "공개",
-      HIDDEN: "비공개",
-      ARCHIVED: "보관",
-      APPROVED: "검토 승인",
-      NOT_REQUIRED: "검토 불필요",
-      REVIEW_NOT_REQUIRED: "검토 불필요",
-    }[normalized] ||
-    status ||
-    "확인 중";
-  const className =
-    normalized === "PUBLISHED" || normalized === "APPROVED"
-      ? "status-published"
-      : normalized === "HIDDEN" || normalized === "ARCHIVED"
-        ? "status-hidden"
-        : "status-processing";
-  return <span className={`status-badge ${className}`}>{label}</span>;
+  return (
+    <span className={`status-badge ${statusTone(status)}`}>
+      {statusLabel(status)}
+    </span>
+  );
+}
+
+// 표 뷰와 모바일 카드 뷰가 함께 씁니다.
+function PublishControl({ article, isMutating, onToggle }) {
+  const published = article.publicationStatus === "PUBLISHED";
+  const blockReason = publishBlockReason(article);
+  // 공개로 켜는 것만 막습니다. 내리는 길까지 막으면 잘못 공개된 건을 되돌릴 수 없습니다.
+  const blocked = !published && Boolean(blockReason);
+  return (
+    <div className="publish-control-group">
+      <label className="publish-control">
+        <span className="switch">
+          <input
+            type="checkbox"
+            checked={published}
+            onChange={() => onToggle(article, published ? "HIDE" : "PUBLISH")}
+            disabled={isMutating || blocked}
+            aria-label={`${article.title || article.articleId} 공개 설정`}
+            aria-describedby={
+              blocked ? `publish-block-${article.articleId}` : undefined
+            }
+          />
+          <span className="switch-track"></span>
+        </span>
+        <span>{published ? "공개" : "비공개"}</span>
+      </label>
+      {blocked && (
+        <span
+          className="publish-blocked-reason"
+          id={`publish-block-${article.articleId}`}
+        >
+          {blockReason}
+        </span>
+      )}
+      {hasPublicationMismatch(article) && (
+        <span className="publish-mismatch-warning">
+          <i className="fas fa-triangle-exclamation" aria-hidden="true"></i>
+          공개 표시 · 실사이트 미노출
+        </span>
+      )}
+    </div>
+  );
 }
 
 function ArticleTags({ tags = [] }) {
@@ -243,6 +279,11 @@ function AdminTechArticles() {
   };
 
   const runSingleAction = async (article, action) => {
+    // 토글과 중복이지만, 호출 경로가 늘어도 규칙이 유지되도록 둡니다.
+    if (action === "PUBLISH" && !canPublishArticle(article)) {
+      setNotice({ type: "error", message: publishBlockReason(article) });
+      return;
+    }
     if (
       action === "ARCHIVE" &&
       !(await askConfirmation({
@@ -284,12 +325,31 @@ function AdminTechArticles() {
 
   const runBulkAction = async (action) => {
     if (!selectedRecords.length) return;
+    const { publishable, blocked } =
+      action === "PUBLISH"
+        ? partitionPublishable(selectedRecords)
+        : { publishable: selectedRecords, blocked: [] };
+
+    if (!publishable.length) {
+      setNotice({
+        type: "error",
+        message: `선택한 ${blocked.length}건 모두 처리가 완료되지 않아 공개할 수 없습니다.`,
+      });
+      return;
+    }
+
     const accepted = await askConfirmation({
-      title: `${selectedRecords.length}개 아티클을 ${ACTION_LABEL[action]}할까요?`,
-      description:
+      title: `${publishable.length}개 아티클을 ${ACTION_LABEL[action]}할까요?`,
+      description: [
         action === "ARCHIVE"
           ? "선택한 아티클을 공개 목록에서 제외하고 장기 보관 상태로 전환합니다."
           : "현재 페이지에서 선택한 아티클의 공개 상태만 변경합니다.",
+        blocked.length
+          ? `선택한 ${selectedRecords.length}건 중 ${blocked.length}건은 처리가 완료되지 않아 제외됩니다.`
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" "),
       confirmLabel: ACTION_LABEL[action],
     });
     if (!accepted) return;
@@ -297,7 +357,7 @@ function AdminTechArticles() {
     setIsMutating(true);
     try {
       const result = await changeArticlePublicationBulk(
-        selectedRecords.map((article) => ({
+        publishable.map((article) => ({
           articleId: article.articleId,
           action,
           expectedRecordVersion: article.recordVersion,
@@ -310,11 +370,14 @@ function AdminTechArticles() {
           .map((item) => item.id),
       );
       const failed = result.summary?.failed || 0;
+      const excluded = blocked.length
+        ? ` ${blocked.length}건은 처리 미완료로 제외했습니다.`
+        : "";
       setNotice({
         type: failed ? "error" : "success",
         message: failed
-          ? `${result.summary.succeeded}건 성공, ${failed}건 실패했습니다. 실패 항목은 선택을 유지했습니다.`
-          : `${result.summary?.succeeded || selectedRecords.length}건을 ${ACTION_LABEL[action]} 처리했습니다.`,
+          ? `${result.summary.succeeded}건 성공, ${failed}건 실패했습니다. 실패 항목은 선택을 유지했습니다.${excluded}`
+          : `${result.summary?.succeeded || publishable.length}건을 ${ACTION_LABEL[action]} 처리했습니다.${excluded}`,
       });
       const [freshResponse] = await Promise.all([
         loadInventory(),
@@ -747,7 +810,6 @@ function AdminTechArticles() {
                   </tr>
                 ) : (
                   pageItems.map((article) => {
-                    const published = article.publicationStatus === "PUBLISHED";
                     return (
                       <tr
                         key={article.articleId}
@@ -815,24 +877,11 @@ function AdminTechArticles() {
                           />
                         </td>
                         <td>
-                          <label className="publish-control">
-                            <span className="switch">
-                              <input
-                                type="checkbox"
-                                checked={published}
-                                onChange={() =>
-                                  runSingleAction(
-                                    article,
-                                    published ? "HIDE" : "PUBLISH",
-                                  )
-                                }
-                                disabled={isMutating}
-                                aria-label={`${article.title} 공개 설정`}
-                              />
-                              <span className="switch-track"></span>
-                            </span>
-                            <span>{published ? "공개" : "비공개"}</span>
-                          </label>
+                          <PublishControl
+                            article={article}
+                            isMutating={isMutating}
+                            onToggle={runSingleAction}
+                          />
                         </td>
                         <td>
                           <div className="row-actions">
@@ -925,23 +974,11 @@ function AdminTechArticles() {
                   </span>
                 </div>
                 <div className="admin-mobile-controls">
-                  <label className="publish-control">
-                    <span className="switch">
-                      <input
-                        type="checkbox"
-                        checked={published}
-                        onChange={() =>
-                          runSingleAction(
-                            article,
-                            published ? "HIDE" : "PUBLISH",
-                          )
-                        }
-                        disabled={isMutating}
-                      />
-                      <span className="switch-track"></span>
-                    </span>
-                    <span>{published ? "공개" : "비공개"}</span>
-                  </label>
+                  <PublishControl
+                    article={article}
+                    isMutating={isMutating}
+                    onToggle={runSingleAction}
+                  />
                   <div className="row-actions">
                     <button
                       className="row-action"
@@ -1045,6 +1082,16 @@ function AdminTechArticles() {
                     <StatusBadge status={detail.reviewStatus} />
                     <StatusBadge status={detail.processingStatus} />
                   </div>
+                  {hasPublicationMismatch(detail) && (
+                    <p className="admin-detail-mismatch" role="status">
+                      <i
+                        className="fas fa-triangle-exclamation"
+                        aria-hidden="true"
+                      ></i>
+                      공개 상태이지만 처리가 완료되지 않아 실사이트에는 노출되지
+                      않습니다. 비공개로 내린 뒤 처리 결과를 확인해 주세요.
+                    </p>
+                  )}
                   <section className="admin-detail-section">
                     <h4>한 줄 요약</h4>
                     <p className="detail-one-line-summary">
@@ -1115,15 +1162,15 @@ function AdminTechArticles() {
                       />
                       <DetailFact
                         label="처리 상태"
-                        value={detail.processingStatus}
+                        value={statusLabel(detail.processingStatus)}
                       />
                       <DetailFact
                         label="검토 상태"
-                        value={detail.reviewStatus}
+                        value={statusLabel(detail.reviewStatus)}
                       />
                       <DetailFact
                         label="공개 상태"
-                        value={detail.publicationStatus}
+                        value={statusLabel(detail.publicationStatus)}
                       />
                     </div>
                     {detail.source?.articleUrl && (
