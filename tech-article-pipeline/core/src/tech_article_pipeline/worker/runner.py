@@ -71,7 +71,7 @@ class DurableWorker:
                 job,
                 exc.error,
                 retryable=exc.retryable,
-                available_at=self._retry_at(job.attempt_count),
+                available_at=self._retry_at(job.attempt_count, exc.error),
             )
         except Exception as exc:
             error: dict[str, Any] = {
@@ -121,6 +121,11 @@ class DurableWorker:
         return True
 
     @staticmethod
-    def _retry_at(attempt_count: int) -> datetime:
-        delay = min(300, 2 ** max(0, attempt_count - 1))
+    def _retry_at(
+        attempt_count: int, error: dict[str, Any] | None = None
+    ) -> datetime:
+        if error and error.get("code") == "RATE_LIMITED":
+            delay = min(900, 65 * 2 ** max(0, attempt_count - 1))
+        else:
+            delay = min(300, 2 ** max(0, attempt_count - 1))
         return datetime.now(UTC) + timedelta(seconds=delay)

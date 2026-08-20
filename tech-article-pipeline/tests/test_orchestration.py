@@ -50,9 +50,10 @@ class FakeQuality:
 
 
 class FakeSummarizer:
-    def __init__(self, *, failures=0, retryable=True):
+    def __init__(self, *, failures=0, retryable=True, error_code="MODEL_TIMEOUT"):
         self.failures = failures
         self.retryable = retryable
+        self.error_code = error_code
         self.calls = 0
 
     def process(self, input_data):
@@ -64,7 +65,7 @@ class FakeSummarizer:
                 "generation": {
                     "status": "FAILED",
                     "error": {
-                        "code": "MODEL_TIMEOUT",
+                        "code": self.error_code,
                         "message": "timeout",
                         "retryable": self.retryable,
                     },
@@ -245,6 +246,32 @@ def test_retryable_ai_failure_becomes_dead_after_max_attempts(normalized_payload
     enrichment_job["available_at"] = datetime.now(UTC) - timedelta(seconds=1)
     worker.process_once()
     assert enrichment_job["status"] == "DEAD"
+
+
+def test_rate_limited_ai_failure_waits_beyond_one_minute(normalized_payload):
+    summarizer = FakeSummarizer(
+        failures=1, retryable=True, error_code="RATE_LIMITED"
+    )
+    repository, worker, _ = runtime(normalized_payload, summarizer=summarizer)
+    worker.process_once()
+    worker.process_once()
+    before_failure = datetime.now(UTC)
+
+    worker.process_once()
+
+    enrichment_job = next(
+        job for job in repository.jobs.values() if job["stage"] == "ENRICHMENT"
+    )
+    assert enrichment_job["status"] == "RETRY"
+    assert enrichment_job["available_at"] >= before_failure + timedelta(seconds=64)
+
+
+def test_non_rate_limited_failure_keeps_short_backoff():
+    before_failure = datetime.now(UTC)
+
+    retry_at = DurableWorker._retry_at(1, {"code": "MODEL_TIMEOUT"})
+
+    assert retry_at < before_failure + timedelta(seconds=2)
 
 
 def test_expired_lease_is_recovered(normalized_payload):

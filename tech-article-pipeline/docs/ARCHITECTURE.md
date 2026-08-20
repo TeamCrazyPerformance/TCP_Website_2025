@@ -44,6 +44,13 @@ increment the attempt count, and attach a lease token. Expired leases become
 `retryable` value and exponential backoff. Stage job unique keys make enqueueing
 and recovery idempotent.
 
+Gemini request starts are serialized through a process-wide summarizer limiter
+with a 4.2-second minimum interval, covering both initial generation and the one
+allowed regeneration. This keeps the single deployed pipeline process below the
+configured model's 15 RPM quota. A `RATE_LIMITED` enrichment job waits at least
+65 seconds before retrying; other retryable stage failures keep the standard
+short exponential backoff. TPM and RPD enforcement remains provider-owned.
+
 `crawl_jobs` uses the same lease and retry model independently of article stage
 jobs. A completed crawl transaction stores crawl items and creates each ADMISSION
 job atomically. Source run `FAILED` uses source error retryability; partial runs

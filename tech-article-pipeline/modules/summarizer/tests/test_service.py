@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import json
 
-from developer_news_summarizer.service import DeveloperNewsSummarizer
+from developer_news_summarizer.service import (
+    GEMINI_REQUEST_INTERVAL_SECONDS,
+    DeveloperNewsSummarizer,
+    _GeminiRequestRateLimiter,
+)
 from google.genai import errors
 
 
@@ -65,6 +69,26 @@ class FakeClient:
         self.models = FakeModels(result=result, exception=exception)
 
 
+class FakeClock:
+    def __init__(self):
+        self.now = 100.0
+        self.sleeps = []
+
+    def monotonic(self):
+        return self.now
+
+    def sleep(self, seconds):
+        self.sleeps.append(seconds)
+        self.now += seconds
+
+
+def make_summarizer(*, client):
+    return DeveloperNewsSummarizer(
+        client=client,
+        request_rate_limiter=_GeminiRequestRateLimiter(0),
+    )
+
+
 def test_success_maps_contract_and_tokens():
     client = FakeClient(
         result=FakeResponse(
@@ -83,7 +107,7 @@ def test_success_maps_contract_and_tokens():
         )
     )
 
-    result = DeveloperNewsSummarizer(client=client).process(valid_input())
+    result = make_summarizer(client=client).process(valid_input())
 
     assert set(result) == {"articleId", "enrichment", "generation"}
     assert set(result["enrichment"]) == {
@@ -160,7 +184,7 @@ def test_non_pass_article_is_not_sent_to_model():
     data = valid_input()
     data["qualityEvaluation"]["decision"] = "REJECT"
 
-    result = DeveloperNewsSummarizer(client=client).process(data)
+    result = make_summarizer(client=client).process(data)
 
     assert result["generation"]["status"] == "FAILED"
     assert result["generation"]["error"]["code"] == "ARTICLE_NOT_ELIGIBLE"
@@ -176,7 +200,7 @@ def test_quality_score_rejects_unexpected_dimensions():
         "sourceReliability": 87,
     }
 
-    result = DeveloperNewsSummarizer(client=client).process(data)
+    result = make_summarizer(client=client).process(data)
 
     assert result["generation"]["status"] == "FAILED"
     assert result["generation"]["error"]["code"] == "INVALID_INPUT"
@@ -186,7 +210,7 @@ def test_quality_score_rejects_unexpected_dimensions():
 def test_invalid_json_is_returned_as_contract_failure():
     response = FakeResponse({})
     response.text = "not-json"
-    result = DeveloperNewsSummarizer(client=FakeClient(result=response)).process(
+    result = make_summarizer(client=FakeClient(result=response)).process(
         valid_input()
     )
 
@@ -206,12 +230,67 @@ def test_rate_limit_is_retryable():
             }
         },
     )
-    result = DeveloperNewsSummarizer(
-        client=FakeClient(exception=api_error)
-    ).process(valid_input())
+    result = make_summarizer(client=FakeClient(exception=api_error)).process(
+        valid_input()
+    )
 
     assert result["generation"]["error"]["code"] == "RATE_LIMITED"
     assert result["generation"]["error"]["retryable"] is True
+
+
+def test_request_rate_limiter_spaces_calls_with_safety_margin():
+    clock = FakeClock()
+    limiter = _GeminiRequestRateLimiter(
+        GEMINI_REQUEST_INTERVAL_SECONDS,
+        clock=clock.monotonic,
+        sleeper=clock.sleep,
+    )
+
+    limiter.acquire()
+    limiter.acquire()
+    limiter.acquire()
+
+    assert clock.sleeps == [
+        GEMINI_REQUEST_INTERVAL_SECONDS,
+        GEMINI_REQUEST_INTERVAL_SECONDS,
+    ]
+    assert GEMINI_REQUEST_INTERVAL_SECONDS == 4.2
+
+
+def test_regeneration_acquires_rate_limit_for_each_gemini_call():
+    first = FakeResponse(
+        {
+            "localizedTitle": "예시 기사 제목",
+            "tags": [],
+            "oneLineSummary": "개발자에게 미치는 핵심 영향입니다.",
+            "summary": "짧은 요약",
+            "localizedContent": None,
+        }
+    )
+    second = FakeResponse(
+        {
+            "localizedTitle": "예시 기사 제목",
+            "tags": [],
+            "oneLineSummary": "개발자에게 미치는 핵심 영향입니다.",
+            "summary": "최소 글자 수를 충족하는 상세 요약입니다.",
+            "localizedContent": None,
+        }
+    )
+    clock = FakeClock()
+    limiter = _GeminiRequestRateLimiter(
+        GEMINI_REQUEST_INTERVAL_SECONDS,
+        clock=clock.monotonic,
+        sleeper=clock.sleep,
+    )
+    client = FakeClient(result=[first, second])
+
+    result = DeveloperNewsSummarizer(
+        client=client, request_rate_limiter=limiter
+    ).process(valid_input())
+
+    assert result["generation"]["status"] == "SUCCESS"
+    assert len(client.models.calls) == 2
+    assert clock.sleeps == [GEMINI_REQUEST_INTERVAL_SECONDS]
 
 
 def test_title_translation_false_requires_null():
@@ -226,7 +305,7 @@ def test_title_translation_false_requires_null():
             }
         )
     )
-    result = DeveloperNewsSummarizer(client=client).process(
+    result = make_summarizer(client=client).process(
         valid_input(translateTitle=False, maximumTagCount=0)
     )
 
@@ -245,7 +324,7 @@ def test_removed_generation_options_are_rejected():
     data["generationOptions"]["preserveCodeBlocks"] = True
     data["generationOptions"]["includeEvaluationExplanation"] = False
 
-    result = DeveloperNewsSummarizer(client=FakeClient()).process(data)
+    result = make_summarizer(client=FakeClient()).process(data)
 
     assert result["generation"]["status"] == "FAILED"
     assert result["generation"]["error"]["code"] == "INVALID_INPUT"
@@ -264,7 +343,7 @@ def test_maximum_tag_count_is_caller_configurable():
         )
     )
 
-    result = DeveloperNewsSummarizer(client=client).process(
+    result = make_summarizer(client=client).process(
         valid_input(maximumTagCount=4)
     )
 
@@ -286,7 +365,7 @@ def test_maximum_tag_count_is_capped_by_allowed_tag_count_in_schema():
         )
     )
 
-    result = DeveloperNewsSummarizer(client=client).process(
+    result = make_summarizer(client=client).process(
         valid_input(maximumTagCount=100)
     )
 
@@ -320,7 +399,7 @@ def test_overlong_summary_is_regenerated_once_with_reduced_target():
     )
     client = FakeClient(result=[first, second])
 
-    result = DeveloperNewsSummarizer(client=client).process(
+    result = make_summarizer(client=client).process(
         valid_input(maximumSummaryLength=100)
     )
 
@@ -353,7 +432,7 @@ def test_short_summary_is_regenerated_once():
     )
     client = FakeClient(result=[first, second])
 
-    result = DeveloperNewsSummarizer(client=client).process(valid_input())
+    result = make_summarizer(client=client).process(valid_input())
 
     assert result["generation"]["status"] == "SUCCESS"
     assert len(client.models.calls) == 2
@@ -380,7 +459,7 @@ def test_short_one_line_summary_is_regenerated_once():
     )
     client = FakeClient(result=[first, second])
 
-    result = DeveloperNewsSummarizer(client=client).process(valid_input())
+    result = make_summarizer(client=client).process(valid_input())
 
     assert result["generation"]["status"] == "SUCCESS"
     assert len(client.models.calls) == 2
@@ -407,7 +486,7 @@ def test_blank_localized_title_is_regenerated_once():
     )
     client = FakeClient(result=[first, second])
 
-    result = DeveloperNewsSummarizer(client=client).process(valid_input())
+    result = make_summarizer(client=client).process(valid_input())
 
     assert result["generation"]["status"] == "SUCCESS"
     assert result["enrichment"]["localizedTitle"] == "정상적으로 번역된 기사 제목"
@@ -429,7 +508,7 @@ def test_text_constraint_failure_stops_after_one_regeneration():
         ]
     )
 
-    result = DeveloperNewsSummarizer(client=client).process(
+    result = make_summarizer(client=client).process(
         valid_input(maximumSummaryLength=100)
     )
 
@@ -453,7 +532,7 @@ def test_deprecated_combined_tag_is_rejected():
         )
     )
 
-    result = DeveloperNewsSummarizer(client=client).process(valid_input())
+    result = make_summarizer(client=client).process(valid_input())
 
     assert result["generation"]["status"] == "FAILED"
     assert result["generation"]["error"]["code"] == "INVALID_MODEL_RESPONSE"
