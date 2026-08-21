@@ -82,6 +82,31 @@ export const STATUS_TONE = {
 // 공개 목록 쿼리가 요구하는 단계. 이 값이 아니면 공개해도 실사이트에 뜨지 않습니다.
 export const PUBLISHABLE_PROCESSING_STATUS = "ENRICHED";
 
+const DECISION_TONE = {
+  PASS: "score-pass",
+  REVIEW_REQUIRED: "score-review",
+  REJECT: "score-reject",
+};
+
+// 가치 점수 배지의 색은 숫자를 다시 해석하지 않고 품질 평가 판정을 따릅니다.
+// 점수 기준은 요청별 정책과 강제 탈락 조건에 따라 달라질 수 있습니다.
+export function scoreTone(article) {
+  const decision = article?.evaluation?.decision ?? article?.qualityDecision;
+  return DECISION_TONE[decision] || "score-unknown";
+}
+
+const SCORE_TONE_LABEL = {
+  "score-pass": "AI 요약 자동 생성 대상",
+  "score-review": "관리자 승인 후 AI 요약 가능",
+  "score-reject": "AI 요약 생성 제외",
+  "score-unknown": "품질 평가 전",
+};
+
+// 색약 사용자를 위해 색과 같은 정보를 글로도 제공합니다.
+export function scoreToneLabel(article) {
+  return SCORE_TONE_LABEL[scoreTone(article)];
+}
+
 const PUBLISH_BLOCK_REASON = {
   QUALITY_REJECTED: "품질 기준 미달 — 공개 불가",
   PROCESSING_FAILED: "처리 실패 — 공개 불가",

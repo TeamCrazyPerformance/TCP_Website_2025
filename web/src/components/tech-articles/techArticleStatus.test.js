@@ -13,6 +13,8 @@ import {
   hasStateMismatch,
   partitionPublishable,
   publishBlockReason,
+  scoreTone,
+  scoreToneLabel,
   MISMATCH_FILTER,
   stageMeta,
   statusLabel,
@@ -446,5 +448,71 @@ describe("결측·비정상 입력 내성", () => {
   test("일괄 분리가 입력 건수를 보존한다", () => {
     const { publishable, blocked } = partitionPublishable(HOSTILE);
     expect(publishable.length + blocked.length).toBe(HOSTILE.length);
+  });
+});
+
+/* 가치 점수 배지 색은 점수를 다시 해석하지 않고 품질 평가 판정을 따릅니다.
+ * 점수 기준은 요청별 정책과 강제 탈락 조건에 따라 달라질 수 있습니다. */
+describe("가치 점수 배색", () => {
+  test("판정값이 있으면 점수와 무관하게 판정을 따른다", () => {
+    // 정책이 바뀌어 임계값이 달라져도 색과 판정이 어긋나지 않아야 합니다.
+    expect(
+      scoreTone({ valueScore: 20, evaluation: { decision: "PASS" } }),
+    ).toBe("score-pass");
+    expect(
+      scoreTone({ valueScore: 95, evaluation: { decision: "REJECT" } }),
+    ).toBe("score-reject");
+    expect(
+      scoreTone({
+        valueScore: 95,
+        evaluation: { decision: "REVIEW_REQUIRED" },
+      }),
+    ).toBe("score-review");
+  });
+
+  test("평가 상세가 없으면 저장된 품질 판정값을 사용한다", () => {
+    expect(scoreTone({ valueScore: 20, qualityDecision: "PASS" })).toBe(
+      "score-pass",
+    );
+    expect(scoreTone({ valueScore: 95, qualityDecision: "REJECT" })).toBe(
+      "score-reject",
+    );
+  });
+
+  test("판정값이 없으면 점수로 색을 추정하지 않는다", () => {
+    for (const item of [
+      { valueScore: 100 },
+      { valueScore: 70 },
+      { valueScore: 0 },
+      { evaluation: { score: { overall: 100 } } },
+    ]) {
+      expect(scoreTone(item)).toBe("score-unknown");
+    }
+  });
+
+  test("점수가 없으면 초록으로 보이지 않는다", () => {
+    // v9 원본은 색이 초록 고정이라 미평가 건도 통과처럼 보였습니다.
+    for (const item of [
+      undefined,
+      {},
+      { valueScore: null },
+      { valueScore: "x" },
+    ]) {
+      expect(scoreTone(item)).toBe("score-unknown");
+    }
+  });
+
+  test("색과 같은 AI 요약 자격 정보를 글로도 제공한다", () => {
+    // 적록색약 사용자는 초록과 빨강을 구분하지 못합니다.
+    expect(scoreToneLabel({ evaluation: { decision: "PASS" } })).toBe(
+      "AI 요약 자동 생성 대상",
+    );
+    expect(
+      scoreToneLabel({ evaluation: { decision: "REVIEW_REQUIRED" } }),
+    ).toBe("관리자 승인 후 AI 요약 가능");
+    expect(scoreToneLabel({ evaluation: { decision: "REJECT" } })).toBe(
+      "AI 요약 생성 제외",
+    );
+    expect(scoreToneLabel({})).toBe("품질 평가 전");
   });
 });

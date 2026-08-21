@@ -30,6 +30,8 @@ import {
   hasStateMismatch,
   partitionPublishable,
   publishBlockReason,
+  scoreTone,
+  scoreToneLabel,
   stageMeta,
   statusLabel,
   statusTone,
@@ -956,7 +958,10 @@ function AdminTechArticles() {
                           </span>
                         </td>
                         <td>
-                          <span className="admin-score">
+                          <span
+                            className={`admin-score ${scoreTone(article)}`}
+                            title={scoreToneLabel(article)}
+                          >
                             {article.valueScore ?? article.score ?? "—"}
                           </span>
                         </td>

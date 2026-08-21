@@ -25,6 +25,10 @@ import {
   QualityEvaluationPanel,
   QualitySignals,
 } from "../../components/tech-articles/ArticleQualityPanel";
+import {
+  scoreTone,
+  scoreToneLabel,
+} from "../../components/tech-articles/techArticleStatus";
 import { SafeMarkdown } from "../../components/tech-articles/TechArticleCommon";
 import { getPageTokens } from "../../components/tech-articles/TechArticlePagination";
 import { useV9ConfirmDialog } from "../../components/tech-articles/V9ConfirmDialog";
@@ -917,7 +921,10 @@ function AdminTechArticleReviews({ kind }) {
                               </p>
                             </td>
                             <td>
-                              <span className="admin-score">
+                              <span
+                                className={`admin-score ${scoreTone(item)}`}
+                                title={scoreToneLabel(item)}
+                              >
                                 {item.valueScore ?? item.score ?? "—"}
                               </span>
                             </td>
@@ -1141,9 +1148,7 @@ function AdminTechArticleReviews({ kind }) {
                     </article>
                     <div className="comparison-score">
                       <span>Jaccard 계수</span>
-                      <strong className="orbitron">
-                        {similarityValue(detail)}
-                      </strong>
+                      <strong>{similarityValue(detail)}</strong>
                       <small>기준 0.92 이상</small>
                     </div>
                     <article className="comparison-card existing-card">

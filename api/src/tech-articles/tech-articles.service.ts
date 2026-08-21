@@ -470,6 +470,8 @@ export class TechArticlesService {
       canonicalUrl: article.canonicalUrl,
       originalLanguage: article.originalLanguage,
       valueScore: article.valueScore ?? article.qualityScore,
+      qualityDecision:
+        article.qualityDecision ?? article.evaluation?.decision ?? null,
       evaluation: article.evaluation ?? null,
       originalPublishedAt: article.originalPublishedAt,
       crawledAt: article.collectedAt,

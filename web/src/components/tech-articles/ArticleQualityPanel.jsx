@@ -3,7 +3,12 @@
 // 아티클 상세에서 원문 링크와 품질 평가 근거를 보여줍니다.
 // 전체 아티클 화면과 검토 큐 화면이 같은 형식으로 쓰도록 여기에 모았습니다.
 import React from "react";
-import { statusLabel, statusTone } from "./techArticleStatus";
+import {
+  scoreTone,
+  scoreToneLabel,
+  statusLabel,
+  statusTone,
+} from "./techArticleStatus";
 
 // 파이프라인 가중치(evaluator.py). 값이 바뀌면 판정 결과 설명이 어긋납니다.
 const QUALITY_DIMENSIONS = [
@@ -84,7 +89,12 @@ export function QualityEvaluationPanel({
           문단의 반행간이 위아래로 더해져 margin 만으로는 눈에 같아 보이지 않습니다. */}
       <div className="quality-body">
         <div className="quality-overall">
-          <span className="admin-score">{overall ?? "—"}</span>
+          <span
+            className={`admin-score ${scoreTone({ evaluation, valueScore: overall })}`}
+            title={scoreToneLabel({ evaluation, valueScore: overall })}
+          >
+            {overall ?? "—"}
+          </span>
           {evaluation?.decision && (
             <span className={`status-badge ${statusTone(evaluation.decision)}`}>
               {statusLabel(evaluation.decision)}

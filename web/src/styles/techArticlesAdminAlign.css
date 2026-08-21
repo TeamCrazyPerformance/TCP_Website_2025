@@ -779,3 +779,51 @@
 .ta-admin .quality-signal-list li.is-adverse strong {
   color: var(--danger);
 }
+
+/* ── 숫자 표시 ────────────────────────────────────────────
+ * v9 는 숫자에도 Orbitron 을 씁니다. 정사각 기하 디스플레이 서체라
+ * 0/8, 1, 6/9 판별이 어렵고 tabular 자릿수도 없습니다.
+ * 제목의 Orbitron 은 브랜드 요소라 두고, 숫자만 본문 서체로 되돌립니다. */
+.ta-admin .admin-score,
+.ta-admin .jaccard-score,
+.ta-admin .total-article-count,
+.ta-admin .stage-chip strong,
+.ta-admin .quality-dimension-value,
+.ta-admin .quality-signal-list strong,
+.ta-admin .comparison-score strong,
+.ta-admin .queue-metric strong {
+  font-family:
+    "Spoqa Han Sans Neo",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+/* ── 가치 점수 구간 배색 ──────────────────────────────────
+ * v9 의 .admin-score 는 색이 초록으로 고정이라 41점도 통과처럼 보입니다.
+ * 색은 보조 신호입니다. 숫자가 배지 안에 함께 있고 title 로 판정명을 답니다. */
+.ta-admin .admin-score.score-pass {
+  color: var(--success);
+  background: var(--success-bg);
+  border-color: rgba(134, 239, 172, 0.28);
+}
+
+.ta-admin .admin-score.score-review {
+  color: var(--warning);
+  background: var(--warning-bg);
+  border-color: rgba(253, 230, 138, 0.28);
+}
+
+.ta-admin .admin-score.score-reject {
+  color: var(--danger);
+  background: var(--danger-bg);
+  border-color: rgba(252, 165, 165, 0.28);
+}
+
+.ta-admin .admin-score.score-unknown {
+  color: var(--gray-400);
+  background: rgba(148, 163, 184, 0.12);
+  border-color: rgba(203, 213, 225, 0.16);
+}
