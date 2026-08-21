@@ -84,8 +84,14 @@
 ## 관리자 조회 API
 
 - `GET /api/v1/admin/tech-articles`: `page`, `pageSize`, `keyword`, `publicationStatus`,
-  `sort=NEWEST|SCORE_DESC|SCORE_ASC`.
-- `GET /api/v1/admin/tech-articles/stats`: 공개·처리 상태별 개수와 세 검수 큐 개수.
+  `stage=INGESTED|QUALITY_REVIEW|ENRICHING|PUBLICATION_REVIEW|COMPLETED|FAILED_AFTER_APPROVAL|FAILED|QUALITY_REJECTED`,
+  `statusMismatch=true`, `sort=NEWEST|OLDEST|SCORE_DESC|SCORE_ASC`. `stage` 와
+  `statusMismatch` 는 선택이며, 없으면 전체를 돌려줍니다. 둘은 별개 축이라 함께
+  쓸 수 있습니다. 각 항목에는 같은 규칙으로 계산된 `stage` 가 함께 옵니다.
+- `GET /api/v1/admin/tech-articles/stats`: 공개·처리 상태별 개수, 단계별 개수(`stages`,
+  0 건인 단계도 키를 유지), 단계별 최장 체류 시각(`stageOldest`), 검수 큐 개수와
+  `reviews.statusMismatch`(검토 상태 표시 오류). `stageOldest` 는 `updated_at` 기준이라
+  "마지막 수정" 시각이며 "단계 진입" 시각의 하한으로만 읽어야 합니다.
 - `GET /api/v1/admin/tech-articles/:articleId`: 원문을 제외한 관리자 상세 projection.
 - `GET /api/v1/admin/tech-articles/reviews/duplicates`: `filter=JACCARD`,
   `sort=NEWEST|SIMILARITY_DESC`.

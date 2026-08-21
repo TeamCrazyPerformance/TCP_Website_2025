@@ -16,7 +16,13 @@ from tech_article_pipeline.contracts import (
     Stage,
 )
 
-from .base import IdempotencyConflictError, NotFoundError, VersionConflictError
+from .base import (
+    APPROVED_COMPATIBLE_PROCESSING,
+    STAGE_NAMES,
+    IdempotencyConflictError,
+    NotFoundError,
+    VersionConflictError,
+)
 
 
 def _now() -> datetime:
@@ -616,6 +622,11 @@ class MemoryPipelineRepository:
             return self.policy, self.policy_version
 
     @staticmethod
+    def _updated_time(article: dict[str, Any]) -> str:
+        value = article.get("updatedAt") or article.get("createdAt")
+        return value.isoformat() if isinstance(value, datetime) else str(value or "")
+
+    @staticmethod
     def _article_time(article: dict[str, Any]) -> str:
         value = article.get("originalPublishedAt") or article.get("createdAt")
         return value.isoformat() if isinstance(value, datetime) else str(value or "")
@@ -641,6 +652,45 @@ class MemoryPipelineRepository:
                 return False
         return not tags or bool(set(article.get("tags") or []).intersection(tags))
 
+    # mysql.STATUS_MISMATCH_PREDICATE 와 같은 판정입니다.
+    @staticmethod
+    def _has_status_mismatch(article: dict[str, Any]) -> bool:
+        return (
+            article.get("reviewStatus") == "APPROVED"
+            and article.get("processingStatus") not in APPROVED_COMPATIBLE_PROCESSING
+        )
+
+    def _quality_review_approved(self, article_id: str) -> bool:
+        return any(
+            case.get("articleId") == article_id
+            and case.get("status") == "RESOLVED_APPROVE"
+            for case in self.quality_reviews.values()
+        )
+
+    # mysql.STAGE_PREDICATES 와 같은 판정입니다. 한쪽만 고치면 테스트 더블이
+    # 운영과 갈라지므로 반드시 함께 수정하십시오 (tests/test_stage_filter.py 가
+    # 두 구현의 단계 이름 집합이 같은지 확인합니다).
+    def _article_stage(self, article: dict[str, Any]) -> str:
+        processing = article.get("processingStatus")
+        if processing == "INGESTED":
+            return "INGESTED"
+        if processing == "QUALITY_EVALUATED":
+            return "QUALITY_REVIEW"
+        if processing == "ENRICHMENT_PENDING":
+            return "ENRICHING"
+        if processing == "QUALITY_REJECTED":
+            return "QUALITY_REJECTED"
+        if processing == "ENRICHED":
+            awaiting_publication = (
+                article.get("reviewStatus") == "PENDING"
+                and article.get("publicationStatus") == "UNPUBLISHED"
+            )
+            return "PUBLICATION_REVIEW" if awaiting_publication else "COMPLETED"
+        if processing == "PROCESSING_FAILED":
+            approved = self._quality_review_approved(article.get("articleId", ""))
+            return "FAILED_AFTER_APPROVAL" if approved else "FAILED"
+        return "UNKNOWN"
+
     def _project_article(self, article: dict[str, Any]) -> dict[str, Any]:
         projected = copy.deepcopy(article)
         crawl_item = self.crawl_items.get(str(article.get("crawlItemId")))
@@ -658,6 +708,7 @@ class MemoryPipelineRepository:
                 "evaluation": copy.deepcopy(article.get("qualityEvaluation")),
                 "valueScore": article.get("qualityScore"),
                 "duplicateStatus": "UNIQUE",
+                "stage": self._article_stage(article),
             }
         )
         return projected
@@ -715,6 +766,8 @@ class MemoryPipelineRepository:
         offset: int,
         keyword: str | None = None,
         publication_status: str | None = None,
+        stage: str | None = None,
+        status_mismatch: bool = False,
         sort: str = "NEWEST",
     ) -> list[dict[str, Any]]:
         with self._lock:
@@ -722,6 +775,8 @@ class MemoryPipelineRepository:
                 article
                 for article in self.articles.values()
                 if (publication_status is None or article["publicationStatus"] == publication_status)
+                and (stage is None or self._article_stage(article) == stage)
+                and (not status_mismatch or self._has_status_mismatch(article))
                 and self._matches_article(article, keyword, (), include_admin_fields=True)
             ]
             if sort == "SCORE_DESC":
@@ -731,6 +786,13 @@ class MemoryPipelineRepository:
                         item.get("articleId", ""),
                     ),
                     reverse=True,
+                )
+            elif sort == "OLDEST":
+                values.sort(
+                    key=lambda item: (
+                        self._updated_time(item),
+                        item.get("articleId", ""),
+                    )
                 )
             elif sort == "SCORE_ASC":
                 values.sort(
@@ -747,13 +809,20 @@ class MemoryPipelineRepository:
             return [self._project_article(item) for item in values[offset : offset + limit]]
 
     def count_articles(
-        self, *, keyword: str | None = None, publication_status: str | None = None
+        self,
+        *,
+        keyword: str | None = None,
+        publication_status: str | None = None,
+        stage: str | None = None,
+        status_mismatch: bool = False,
     ) -> int:
         with self._lock:
             return sum(
                 1
                 for article in self.articles.values()
                 if (publication_status is None or article["publicationStatus"] == publication_status)
+                and (stage is None or self._article_stage(article) == stage)
+                and (not status_mismatch or self._has_status_mismatch(article))
                 and self._matches_article(article, keyword, (), include_admin_fields=True)
             )
 
@@ -773,14 +842,34 @@ class MemoryPipelineRepository:
                 processing[article["processingStatus"]] = (
                     processing.get(article["processingStatus"], 0) + 1
                 )
+            stages = dict.fromkeys(STAGE_NAMES, 0)
+            stage_oldest: dict[str, Any] = dict.fromkeys(STAGE_NAMES, None)
+            # 비교는 정규화한 문자열로, 응답에는 원본 값을 담습니다.
+            oldest_sort_key: dict[str, str] = {}
+            for article in self.articles.values():
+                key = self._article_stage(article)
+                stages[key] = stages.get(key, 0) + 1
+                seen = self._updated_time(article)
+                if seen and (key not in oldest_sort_key or seen < oldest_sort_key[key]):
+                    oldest_sort_key[key] = seen
+                    stage_oldest[key] = article.get("updatedAt") or article.get(
+                        "createdAt"
+                    )
             return {
                 "totalCount": len(self.articles),
                 "publication": publication,
                 "processing": processing,
+                "stages": stages,
+                "stageOldest": stage_oldest,
                 "reviews": {
                     "duplicates": self.count_review_queue("duplicate"),
                     "quality": self.count_review_queue("quality"),
                     "publication": self.count_review_queue("publication"),
+                    "statusMismatch": sum(
+                        1
+                        for item in self.articles.values()
+                        if self._has_status_mismatch(item)
+                    ),
                 },
             }
 

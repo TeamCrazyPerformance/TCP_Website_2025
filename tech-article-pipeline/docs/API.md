@@ -65,6 +65,16 @@ through less than 92%.
 - `GET /public/articles` — keeps `limit|offset` and adds `keyword`, repeated
   canonical `tags`, `totalCount`, and `lastCrawledAt`.
 - `GET /public/tags` and `GET /public/articles/{articleId}`
+- `GET /admin/articles` — also supports `stage`, one of `INGESTED`, `QUALITY_REVIEW`,
+  `ENRICHING`, `PUBLICATION_REVIEW`, `COMPLETED`, `FAILED_AFTER_APPROVAL`, `FAILED`,
+  `QUALITY_REJECTED`. The stage rule lives in `persistence.mysql.STAGE_PREDICATES`;
+  `FAILED_AFTER_APPROVAL` reads `quality_review_cases`, not `review_status`.
+  `statusMismatch=true` narrows to articles whose `review_status` is `APPROVED` on a
+  processing status that cannot produce it; it is a separate axis from `stage`.
+  `GET /admin/articles/stats` adds `stages` (a count per stage over every article, zero
+  counts included), `stageOldest` (oldest `updated_at` per stage, a lower bound for how
+  long an article has sat there), and `reviews.statusMismatch`. `sort` also accepts
+  `OLDEST`.
 - `GET /admin/articles` — supports `keyword`, `publicationStatus`, and
   `NEWEST|SCORE_DESC|SCORE_ASC`; returns `totalCount`.
 - `GET /admin/articles/stats` and `GET /admin/articles/{articleId}`

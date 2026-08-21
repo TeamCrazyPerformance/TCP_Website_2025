@@ -181,6 +181,8 @@ export class TechArticlesService {
         offset: (query.page - 1) * query.pageSize,
         keyword: query.keyword,
         publicationStatus: query.publicationStatus,
+        stage: query.stage,
+        statusMismatch: query.statusMismatch || undefined,
         sort: query.sort,
       },
     );
