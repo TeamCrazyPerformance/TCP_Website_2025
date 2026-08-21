@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { TechArticlePipelineClient } from './tech-article-pipeline.client';
 import { TechArticlesService } from './tech-articles.service';
 
@@ -124,5 +124,96 @@ describe('TechArticlesService', () => {
       expect.objectContaining({ articleId: 'article-new', recordVersion: 1 }),
     );
     expect(JSON.stringify(result)).not.toContain('must-not-leak');
+  });
+
+  it('forwards a valid GitHub Trending crawl request', async () => {
+    pipeline.post.mockResolvedValue({ crawlRunId: 'crawl-github-1' });
+    const dto = {
+      source: {
+        sourceId: 'github-trending' as const,
+        sourceType: 'WEB_CRAWL' as const,
+        sectionKey: 'REPOSITORIES' as const,
+      },
+      crawlOptions: {
+        maximumArticleCount: 3,
+        requestTimeoutMs: 15000,
+      },
+    };
+
+    await service.startCrawl(dto, 'manual-github-1');
+
+    expect(pipeline.post).toHaveBeenCalledWith(
+      '/internal/v1/crawl-runs',
+      dto,
+      { 'Idempotency-Key': 'manual-github-1' },
+    );
+  });
+
+  it('defaults a GitHub Trending crawl request to three repositories', async () => {
+    pipeline.post.mockResolvedValue({ crawlRunId: 'crawl-github-default' });
+
+    await service.startCrawl(
+      {
+        source: {
+          sourceId: 'github-trending',
+          sourceType: 'WEB_CRAWL',
+          sectionKey: 'REPOSITORIES',
+        },
+      },
+      'manual-github-default',
+    );
+
+    expect(pipeline.post).toHaveBeenCalledWith(
+      '/internal/v1/crawl-runs',
+      {
+        source: {
+          sourceId: 'github-trending',
+          sourceType: 'WEB_CRAWL',
+          sectionKey: 'REPOSITORIES',
+        },
+        crawlOptions: { maximumArticleCount: 3 },
+      },
+      { 'Idempotency-Key': 'manual-github-default' },
+    );
+  });
+
+  it.each([
+    {
+      source: {
+        sourceId: 'github-trending' as const,
+        sourceType: 'RSS' as const,
+        sectionKey: 'REPOSITORIES' as const,
+      },
+      crawlOptions: { maximumArticleCount: 3 },
+    },
+    {
+      source: {
+        sourceId: 'github-trending' as const,
+        sourceType: 'WEB_CRAWL' as const,
+        sectionKey: 'REPOSITORIES' as const,
+      },
+      crawlOptions: { maximumArticleCount: 4 },
+    },
+    {
+      source: {
+        sourceId: 'github-trending' as const,
+        sourceType: 'WEB_CRAWL' as const,
+        sectionKey: 'REPOSITORIES' as const,
+      },
+      crawlOptions: { maximumArticleCount: 3, followPagination: true },
+    },
+    {
+      source: {
+        sourceId: 'github-trending' as const,
+        sourceType: 'WEB_CRAWL' as const,
+        sectionKey: 'REPOSITORIES' as const,
+      },
+      crawlOptions: { maximumArticleCount: 3, maximumPageCount: 2 },
+    },
+  ])('rejects an unsupported GitHub Trending request', (dto) => {
+    expect(() => service.startCrawl(dto, 'manual-github-invalid')).toThrow(
+      BadRequestException,
+    );
+    expect(pipeline.post).not.toHaveBeenCalled();
   });
 });

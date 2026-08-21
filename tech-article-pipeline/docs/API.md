@@ -41,8 +41,14 @@ becoming an SSRF proxy; entry points are selected from the registered source:
 
 Supported combinations are Cloudflare `RSS/BLOG`, InfoQ
 `RSS|WEB_CRAWL` with `NEWS|ENGINEERING`, and SD Times
-`RSS|WEB_CRAWL|API` with `NEWS`. Duplicate, quality, and generation policies may
-be supplied on the same request and otherwise use the core defaults.
+`RSS|WEB_CRAWL|API` with `NEWS`, plus GitHub Trending
+`WEB_CRAWL/REPOSITORIES`. Duplicate, quality, and generation policies may be
+supplied on the same request and otherwise use the core defaults.
+
+GitHub Trending requests accept `maximumArticleCount` from 1 through 3 and
+`requestTimeoutMs`. `followPagination` must be false and `maximumPageCount` must
+remain 1. Discovery is always `https://github.com/trending?since=daily` with no
+language filter; the selected rank is never backfilled after a README failure.
 
 ## Reads and administration
 

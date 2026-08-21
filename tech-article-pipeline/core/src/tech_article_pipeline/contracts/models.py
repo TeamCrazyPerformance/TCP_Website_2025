@@ -57,9 +57,13 @@ class Source(ContractModel):
 
 
 class CrawlSource(ContractModel):
-    source_id: Literal["cloudflare-blog", "infoq", "sdtimes"] = Field(alias="sourceId")
+    source_id: Literal[
+        "cloudflare-blog", "infoq", "sdtimes", "github-trending"
+    ] = Field(alias="sourceId")
     source_type: Literal["WEB_CRAWL", "RSS", "API"] = Field(alias="sourceType")
-    section_key: Literal["BLOG", "NEWS", "ENGINEERING"] = Field(alias="sectionKey")
+    section_key: Literal["BLOG", "NEWS", "ENGINEERING", "REPOSITORIES"] = Field(
+        alias="sectionKey"
+    )
 
     @model_validator(mode="after")
     def validate_source_capability(self) -> CrawlSource:
@@ -68,6 +72,7 @@ class CrawlSource(ContractModel):
             "infoq": {("RSS", "NEWS"), ("RSS", "ENGINEERING"),
                       ("WEB_CRAWL", "NEWS"), ("WEB_CRAWL", "ENGINEERING")},
             "sdtimes": {("WEB_CRAWL", "NEWS"), ("RSS", "NEWS"), ("API", "NEWS")},
+            "github-trending": {("WEB_CRAWL", "REPOSITORIES")},
         }
         if (self.source_type, self.section_key) not in allowed[self.source_id]:
             raise ValueError(
@@ -242,6 +247,13 @@ class CrawlRequested(ContractModel):
             raise ValueError("followPagination is supported only for WEB_CRAWL")
         if self.source.source_id != "infoq" and self.crawl_options.follow_pagination:
             raise ValueError("followPagination is implemented only by the infoq adapter")
+        if self.source.source_id == "github-trending":
+            if "maximum_article_count" not in self.crawl_options.model_fields_set:
+                self.crawl_options.maximum_article_count = 3
+            if self.crawl_options.maximum_article_count > 3:
+                raise ValueError("github-trending maximumArticleCount cannot exceed 3")
+            if self.crawl_options.maximum_page_count != 1:
+                raise ValueError("github-trending maximumPageCount must be 1")
         return self
 
 

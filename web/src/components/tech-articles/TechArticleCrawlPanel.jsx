@@ -17,8 +17,13 @@ const TERMINAL_STATUSES = new Set([
   "FAILED",
 ]);
 
-function optionDefault(source, key, fallback) {
-  return source?.crawlOptions?.[key]?.default ?? fallback;
+function optionDefaults(source) {
+  return Object.fromEntries(
+    Object.entries(source?.crawlOptions || {}).map(([key, contract]) => [
+      key,
+      contract.default,
+    ]),
+  );
 }
 
 function makeIdempotencyKey() {
@@ -46,13 +51,7 @@ function TechArticleCrawlPanel() {
   const [sources, setSources] = useState([]);
   const [sourceId, setSourceId] = useState("");
   const [capabilityIndex, setCapabilityIndex] = useState(0);
-  const [options, setOptions] = useState({
-    maximumArticleCount: 10,
-    maximumAgeHours: 720,
-    followPagination: false,
-    maximumPageCount: 1,
-    requestTimeoutMs: 15000,
-  });
+  const [options, setOptions] = useState({});
   const [run, setRun] = useState(null);
   const [isLoadingSources, setIsLoadingSources] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -67,8 +66,11 @@ function TechArticleCrawlPanel() {
   const capability =
     currentSource?.capabilities?.[capabilityIndex] ||
     currentSource?.capabilities?.[0];
+  const optionContract = currentSource?.crawlOptions || {};
   const canFollowPagination =
-    sourceId === "infoq" && capability?.sourceType === "WEB_CRAWL";
+    sourceId === "infoq" &&
+    Boolean(optionContract.followPagination) &&
+    capability?.sourceType === "WEB_CRAWL";
 
   useEffect(() => {
     let active = true;
@@ -101,17 +103,7 @@ function TechArticleCrawlPanel() {
   useEffect(() => {
     if (!currentSource) return;
     setCapabilityIndex(0);
-    setOptions({
-      maximumArticleCount: optionDefault(
-        currentSource,
-        "maximumArticleCount",
-        10,
-      ),
-      maximumAgeHours: optionDefault(currentSource, "maximumAgeHours", 720),
-      followPagination: false,
-      maximumPageCount: optionDefault(currentSource, "maximumPageCount", 1),
-      requestTimeoutMs: optionDefault(currentSource, "requestTimeoutMs", 15000),
-    });
+    setOptions(optionDefaults(currentSource));
     setIdempotencyKey("");
   }, [currentSource]);
 
@@ -166,6 +158,20 @@ function TechArticleCrawlPanel() {
     setIsSubmitting(true);
     setNotice(null);
     try {
+      const crawlOptions = Object.fromEntries(
+        Object.entries(optionContract).map(([key, contract]) => {
+          const value = options[key];
+          if (typeof contract.default === "boolean") {
+            return [
+              key,
+              key === "followPagination" && !canFollowPagination
+                ? false
+                : Boolean(value),
+            ];
+          }
+          return [key, Number(value)];
+        }),
+      );
       const accepted = await startCrawlRun(
         {
           source: {
@@ -173,15 +179,7 @@ function TechArticleCrawlPanel() {
             sourceType: capability.sourceType,
             sectionKey: capability.sectionKey,
           },
-          crawlOptions: {
-            maximumArticleCount: Number(options.maximumArticleCount),
-            maximumAgeHours: Number(options.maximumAgeHours),
-            followPagination: canFollowPagination
-              ? Boolean(options.followPagination)
-              : false,
-            maximumPageCount: Number(options.maximumPageCount),
-            requestTimeoutMs: Number(options.requestTimeoutMs),
-          },
+          crawlOptions,
         },
         key,
       );
@@ -201,7 +199,6 @@ function TechArticleCrawlPanel() {
     }
   };
 
-  const optionContract = currentSource?.crawlOptions || {};
   const statistics =
     run?.statistics || run?.job?.result?.completion?.statistics;
 
@@ -260,88 +257,98 @@ function TechArticleCrawlPanel() {
             </fieldset>
 
             <div className="crawl-options-v9">
-              <div className="form-field">
-                <label htmlFor="maximumArticleCount">최대 아티클 수</label>
-                <input
-                  id="maximumArticleCount"
-                  className="form-input"
-                  type="number"
-                  required
-                  min={optionContract.maximumArticleCount?.minimum || 1}
-                  max={optionContract.maximumArticleCount?.maximum || 100}
-                  value={options.maximumArticleCount}
-                  onChange={(event) =>
-                    updateOption("maximumArticleCount", event.target.value)
-                  }
-                />
-              </div>
-              <div className="form-field">
-                <label htmlFor="maximumAgeHours">최대 원문 나이 (시간)</label>
-                <input
-                  id="maximumAgeHours"
-                  className="form-input"
-                  type="number"
-                  required
-                  min={optionContract.maximumAgeHours?.minimum || 1}
-                  value={options.maximumAgeHours}
-                  onChange={(event) =>
-                    updateOption("maximumAgeHours", event.target.value)
-                  }
-                />
-              </div>
-              <div className="form-field">
-                <label htmlFor="maximumPageCount">최대 페이지 수</label>
-                <input
-                  id="maximumPageCount"
-                  className="form-input"
-                  type="number"
-                  required
-                  min={optionContract.maximumPageCount?.minimum || 1}
-                  max={optionContract.maximumPageCount?.maximum || 10}
-                  value={options.maximumPageCount}
-                  onChange={(event) =>
-                    updateOption("maximumPageCount", event.target.value)
-                  }
-                />
-              </div>
-              <div className="form-field">
-                <label htmlFor="requestTimeoutMs">요청 제한 시간 (ms)</label>
-                <input
-                  id="requestTimeoutMs"
-                  className="form-input"
-                  type="number"
-                  required
-                  step="1000"
-                  min={optionContract.requestTimeoutMs?.minimum || 1000}
-                  max={optionContract.requestTimeoutMs?.maximum || 60000}
-                  value={options.requestTimeoutMs}
-                  onChange={(event) =>
-                    updateOption("requestTimeoutMs", event.target.value)
-                  }
-                />
-              </div>
+              {optionContract.maximumArticleCount && (
+                <div className="form-field">
+                  <label htmlFor="maximumArticleCount">최대 아티클 수</label>
+                  <input
+                    id="maximumArticleCount"
+                    className="form-input"
+                    type="number"
+                    required
+                    min={optionContract.maximumArticleCount.minimum ?? 1}
+                    max={optionContract.maximumArticleCount.maximum ?? 100}
+                    value={options.maximumArticleCount ?? ""}
+                    onChange={(event) =>
+                      updateOption("maximumArticleCount", event.target.value)
+                    }
+                  />
+                </div>
+              )}
+              {optionContract.maximumAgeHours && (
+                <div className="form-field">
+                  <label htmlFor="maximumAgeHours">최대 원문 나이 (시간)</label>
+                  <input
+                    id="maximumAgeHours"
+                    className="form-input"
+                    type="number"
+                    required
+                    min={optionContract.maximumAgeHours.minimum ?? 1}
+                    value={options.maximumAgeHours ?? ""}
+                    onChange={(event) =>
+                      updateOption("maximumAgeHours", event.target.value)
+                    }
+                  />
+                </div>
+              )}
+              {optionContract.maximumPageCount && (
+                <div className="form-field">
+                  <label htmlFor="maximumPageCount">최대 페이지 수</label>
+                  <input
+                    id="maximumPageCount"
+                    className="form-input"
+                    type="number"
+                    required
+                    min={optionContract.maximumPageCount.minimum ?? 1}
+                    max={optionContract.maximumPageCount.maximum ?? 10}
+                    value={options.maximumPageCount ?? ""}
+                    onChange={(event) =>
+                      updateOption("maximumPageCount", event.target.value)
+                    }
+                  />
+                </div>
+              )}
+              {optionContract.requestTimeoutMs && (
+                <div className="form-field">
+                  <label htmlFor="requestTimeoutMs">요청 제한 시간 (ms)</label>
+                  <input
+                    id="requestTimeoutMs"
+                    className="form-input"
+                    type="number"
+                    required
+                    step="1000"
+                    min={optionContract.requestTimeoutMs.minimum ?? 1000}
+                    max={optionContract.requestTimeoutMs.maximum ?? 60000}
+                    value={options.requestTimeoutMs ?? ""}
+                    onChange={(event) =>
+                      updateOption("requestTimeoutMs", event.target.value)
+                    }
+                  />
+                </div>
+              )}
             </div>
 
-            <label
-              className={`crawl-follow-v9 ${canFollowPagination ? "" : "is-disabled"}`}
-            >
-              <input
-                type="checkbox"
-                checked={Boolean(options.followPagination)}
-                disabled={!canFollowPagination}
-                onChange={(event) =>
-                  updateOption("followPagination", event.target.checked)
-                }
-              />
-              <span>
-                <strong>페이지네이션 따라가기</strong>
-                <small>
-                  {canFollowPagination
-                    ? "InfoQ WEB_CRAWL 방식에서만 지원됩니다."
-                    : "현재 소스·방식 조합에서는 사용할 수 없습니다."}
-                </small>
-              </span>
-            </label>
+            {optionContract.followPagination && (
+              <label
+                className={`crawl-follow-v9 ${canFollowPagination ? "" : "is-disabled"}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={Boolean(options.followPagination)}
+                  disabled={!canFollowPagination}
+                  onChange={(event) =>
+                    updateOption("followPagination", event.target.checked)
+                  }
+                />
+                <span>
+                  <strong>페이지네이션 따라가기</strong>
+                  <small>
+                    {canFollowPagination
+                      ? "현재 WEB_CRAWL 방식에서 지원됩니다."
+                      : "현재 소스·방식 조합에서는 사용할 수 없습니다."}
+                  </small>
+                </span>
+              </label>
+            )}
             {idempotencyKey && (
               <p className="crawl-idempotency-v9">
                 <i className="fas fa-key" aria-hidden="true"></i>재시도 키{" "}

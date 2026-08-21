@@ -53,6 +53,14 @@ const SCHEDULED_CRAWL_PROFILES: readonly ScheduledCrawlProfile[] = [
       sectionKey: 'NEWS',
     },
   },
+  {
+    id: 'github-trending-web-repositories-daily',
+    source: {
+      sourceId: 'github-trending',
+      sourceType: 'WEB_CRAWL',
+      sectionKey: 'REPOSITORIES',
+    },
+  },
 ];
 
 @Injectable()
@@ -99,10 +107,17 @@ export class TechArticleCrawlScheduler {
 
       this.inFlightKeys.add(idempotencyKey);
       try {
+        const profileCrawlOptions =
+          profile.source.sourceId === 'github-trending'
+            ? {
+                maximumArticleCount: 3,
+                requestTimeoutMs: DEFAULT_REQUEST_TIMEOUT_MS,
+              }
+            : crawlOptions;
         const accepted = (await this.techArticles.startCrawl(
           {
             source: profile.source,
-            crawlOptions,
+            crawlOptions: profileCrawlOptions,
           },
           idempotencyKey,
         )) as CrawlRunAccepted;

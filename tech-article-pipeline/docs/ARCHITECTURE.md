@@ -14,8 +14,8 @@ source crawl API -> MySQL crawl job -> in-memory source crawler + normalizer
                      -> REVIEW: publication review queue
 ```
 
-Cloudflare, InfoQ, and SD Times adapters contain no production database client.
-They return source events in memory. MySQL remains the durable boundary for crawl
+Cloudflare, InfoQ, SD Times, and GitHub Trending adapters contain no production
+database client. They return source events in memory. MySQL remains the durable boundary for crawl
 commands, worker leases, raw event records, and downstream submission links. A
 restart can repeat network collection but cannot create a second pipeline
 submission for the same `crawlRunId + crawlItemId`.
@@ -23,6 +23,20 @@ submission for the same `crawlRunId + crawlItemId`.
 Crawler entry URLs are derived from a closed registry rather than accepted from
 API clients. Source-native contracts are projected and then validated by the
 core's strict Pydantic contract before admission.
+
+GitHub Trending follows the same boundary with an especially narrow dependency
+direction:
+
+```text
+github_trending_pipeline (contracts + HTTP + parser + crawler + normalizer)
+  -> tech_article_sources.GitHubTrendingSourceAdapter
+  -> CrawlBatch
+  -> core validation, admission, quality, and enrichment
+```
+
+The source package does not import `tech_article_sources`, core, persistence,
+FastAPI, or Gemini. Rank and star/fork discovery metadata remain outside the
+normalized article body so recurring appearances do not change its content hash.
 
 `DUPLICATE` is terminal. `POSSIBLE_DUPLICATE` waits in the admission module's
 review table; approval as unique creates the article and enqueues quality.

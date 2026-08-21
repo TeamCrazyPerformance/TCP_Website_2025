@@ -5,6 +5,16 @@ import threading
 from datetime import datetime
 from typing import Any, Protocol
 
+from github_trending_pipeline import (
+    CrawlOptions as GitHubTrendingCrawlOptions,
+)
+from github_trending_pipeline import (
+    CrawlRequest as GitHubTrendingCrawlRequest,
+)
+from github_trending_pipeline import (
+    GitHubTrendingPipeline,
+)
+from github_trending_pipeline.http_client import GitHubTrendingHttpClient
 from sdtimes_crawler.crawler import SDTimesCrawler
 from sdtimes_crawler.models import (
     CrawlOptions as SDTimesCrawlOptions,
@@ -233,6 +243,80 @@ class SDTimesSourceAdapter:
         )
 
 
+class GitHubTrendingSourceAdapter:
+    def __init__(
+        self,
+        *,
+        public_url: str | None,
+        contact: str | None,
+        pipeline: GitHubTrendingPipeline | None = None,
+    ) -> None:
+        self.public_url = public_url
+        self.contact = contact
+        self.pipeline = pipeline
+
+    def run(self, crawl_run_id: str, request: dict[str, Any]) -> CrawlBatch:
+        source = _source(request)
+        if source["sourceType"] != "WEB_CRAWL":
+            raise SourceAdapterError(
+                "SOURCE_TYPE_UNSUPPORTED",
+                "github-trending supports only WEB_CRAWL collection.",
+                retryable=False,
+            )
+        if source["sectionKey"] != "REPOSITORIES":
+            raise SourceAdapterError(
+                "SOURCE_SECTION_UNSUPPORTED",
+                "github-trending supports only the REPOSITORIES section.",
+                retryable=False,
+            )
+        if not self.public_url or not self.contact:
+            raise SourceAdapterError(
+                "CRAWLER_IDENTITY_NOT_CONFIGURED",
+                "CRAWLER_PUBLIC_URL and CRAWLER_CONTACT are required for GitHub crawling.",
+                retryable=False,
+            )
+
+        options = _options(request)
+        native_request = GitHubTrendingCrawlRequest(
+            crawlRunId=crawl_run_id,
+            requestedAt=request["requestedAt"],
+            crawlOptions=GitHubTrendingCrawlOptions(
+                maximumArticleCount=options["maximumArticleCount"],
+                requestTimeoutMs=options["requestTimeoutMs"],
+            ),
+        )
+        pipeline = self.pipeline
+        http: GitHubTrendingHttpClient | None = None
+        if pipeline is None:
+            user_agent = (
+                "TCP-Tech-Article-Pipeline/0.2 "
+                f"(+{self.public_url}; contact={self.contact})"
+            )
+            http = GitHubTrendingHttpClient(
+                user_agent=user_agent,
+                timeout_seconds=options["requestTimeoutMs"] / 1000,
+            )
+            pipeline = GitHubTrendingPipeline(http=http)
+        try:
+            result = pipeline.run(native_request)
+        finally:
+            if http is not None:
+                http.close()
+        return CrawlBatch(
+            completion=result.crawl_run_completed.model_dump(
+                by_alias=True, mode="json"
+            ),
+            crawl_items=[
+                item.model_dump(by_alias=True, mode="json")
+                for item in result.crawl_items
+            ],
+            normalized_articles=[
+                item.model_dump(by_alias=True, mode="json")
+                for item in result.normalized_articles
+            ],
+        )
+
+
 class SourceAdapterRegistry:
     def __init__(self, adapters: dict[str, SourceAdapter]) -> None:
         self._adapters = dict(adapters)
@@ -253,6 +337,10 @@ class SourceAdapterRegistry:
                 "infoq": InfoQSourceAdapter(user_agent=user_agent),
                 "sdtimes": SDTimesSourceAdapter(
                     crawler=SDTimesCrawler(user_agent=user_agent)
+                ),
+                "github-trending": GitHubTrendingSourceAdapter(
+                    public_url=public_url,
+                    contact=contact,
                 ),
             }
         )

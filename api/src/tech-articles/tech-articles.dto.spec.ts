@@ -1,7 +1,11 @@
 import 'reflect-metadata';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { BulkPublicationDto, PublicArticleQueryDto } from './tech-articles.dto';
+import {
+  BulkPublicationDto,
+  CrawlRunDto,
+  PublicArticleQueryDto,
+} from './tech-articles.dto';
 
 describe('tech article DTO validation', () => {
   it('normalizes a single repeated-query tag value to an array', async () => {
@@ -31,5 +35,21 @@ describe('tech article DTO validation', () => {
       })),
     });
     expect(await validate(oversized)).not.toHaveLength(0);
+  });
+
+  it('accepts the GitHub Trending source literals', async () => {
+    const dto = plainToInstance(CrawlRunDto, {
+      source: {
+        sourceId: 'github-trending',
+        sourceType: 'WEB_CRAWL',
+        sectionKey: 'REPOSITORIES',
+      },
+      crawlOptions: {
+        maximumArticleCount: 3,
+        requestTimeoutMs: 15000,
+      },
+    });
+
+    expect(await validate(dto)).toHaveLength(0);
   });
 });

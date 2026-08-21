@@ -1,9 +1,9 @@
 # TCP technical article pipeline
 
 This directory is the canonical, independently deployable Python 3.12 pipeline
-for Cloudflare Blog, InfoQ, and SD Times collection and normalization, normalized
-article admission, deterministic quality evaluation, Gemini enrichment, review,
-and publication. The source fragment directories one level
+for Cloudflare Blog, InfoQ, SD Times, and GitHub Trending collection and
+normalization, normalized article admission, deterministic quality evaluation,
+Gemini enrichment, review, and publication. The source fragment directories one level
 above are retained only for provenance.
 
 ## Local development
@@ -29,7 +29,9 @@ HTTP 409.
 Each source adapter uses only process-memory storage. The core MySQL repository
 durably stores crawl commands, leases, raw crawl events, and links to downstream
 article submissions. Set `CRAWLER_PUBLIC_URL` and `CRAWLER_CONTACT` to an actual
-service URL and operational address before running the Cloudflare crawler.
+service URL and operational address before running the Cloudflare or GitHub
+crawler. GitHub Trending uses the public daily listing and unauthenticated README
+API; no GitHub token is read by the pipeline.
 
 Database changes are applied only by the one-shot migration command. The runner
 records each filename and SHA-256 checksum in `pipeline_migration_history` and

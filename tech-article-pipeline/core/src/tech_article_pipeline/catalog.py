@@ -30,6 +30,17 @@ SOURCE_CATALOG: dict[str, dict[str, Any]] = {
             {"sourceType": "API", "sectionKey": "NEWS"},
         ],
     },
+    "github-trending": {
+        "name": "GitHub Trending",
+        "domain": "github.com",
+        "capabilities": [
+            {"sourceType": "WEB_CRAWL", "sectionKey": "REPOSITORIES"},
+        ],
+        "crawlOptionKeys": ["maximumArticleCount", "requestTimeoutMs"],
+        "crawlOptionOverrides": {
+            "maximumArticleCount": {"default": 3, "minimum": 1, "maximum": 3},
+        },
+    },
 }
 
 
@@ -48,16 +59,23 @@ def crawl_source_catalog() -> list[dict[str, Any]]:
         "maximumPageCount": {"default": 1, "minimum": 1, "maximum": 10},
         "requestTimeoutMs": {"default": 15_000, "minimum": 1_000, "maximum": 60_000},
     }
-    return [
-        {
-            "sourceId": source_id,
-            "name": metadata["name"],
-            "domain": metadata["domain"],
-            "capabilities": metadata["capabilities"],
-            "crawlOptions": option_contract,
+    catalog = []
+    for source_id, metadata in SOURCE_CATALOG.items():
+        keys = metadata.get("crawlOptionKeys", option_contract.keys())
+        overrides = metadata.get("crawlOptionOverrides", {})
+        source_options = {
+            key: {**option_contract[key], **overrides.get(key, {})} for key in keys
         }
-        for source_id, metadata in SOURCE_CATALOG.items()
-    ]
+        catalog.append(
+            {
+                "sourceId": source_id,
+                "name": metadata["name"],
+                "domain": metadata["domain"],
+                "capabilities": metadata["capabilities"],
+                "crawlOptions": source_options,
+            }
+        )
+    return catalog
 
 
 def source_projection(

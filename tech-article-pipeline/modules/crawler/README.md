@@ -6,6 +6,7 @@ tests:
 - `tech_articles_ingestion`: Cloudflare Blog RSS and article pages
 - `technical_news_pipeline`: InfoQ news/articles through RSS or web listings
 - `sdtimes_crawler`: SD Times through web, RSS, or WordPress API
+- `github_trending_pipeline`: GitHub Trending Daily discovery and rendered README normalization
 - `tech_article_sources`: the source-neutral adapters and registry used by core
 
 The stable boundary is `CrawlRequested -> CrawlBatch`. A batch contains the
@@ -31,6 +32,13 @@ entry points from `sourceId`, `sourceType`, and `sectionKey`:
 | `cloudflare-blog` | `RSS` | `BLOG` |
 | `infoq` | `RSS`, `WEB_CRAWL` | `NEWS`, `ENGINEERING` |
 | `sdtimes` | `RSS`, `WEB_CRAWL`, `API` | `NEWS` |
+| `github-trending` | `WEB_CRAWL` | `REPOSITORIES` |
+
+GitHub Trending is fixed to the daily, all-language listing. A request selects
+one to three repositories in DOM rank order and fetches only those rendered
+READMEs; a failed README is retained as an item failure and is not replaced with
+a lower-ranked repository. The package has no core, database, queue, or Gemini
+dependency.
 
 Live network tests remain opt-in. Fixture-backed source regression tests run in
 the default suite.

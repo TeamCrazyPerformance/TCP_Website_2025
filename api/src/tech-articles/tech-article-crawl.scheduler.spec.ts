@@ -36,12 +36,12 @@ describe('TechArticleCrawlScheduler', () => {
     expect(techArticles.startCrawl).not.toHaveBeenCalled();
   });
 
-  it('enqueues all RSS profiles for the current Seoul six-hour window', async () => {
+  it('enqueues every profile for the current Seoul six-hour window', async () => {
     settings.TECH_ARTICLE_AUTO_CRAWL_ENABLED = 'true';
 
     await scheduler.runScheduledCrawls(new Date('2026-08-21T04:25:00Z'));
 
-    expect(techArticles.startCrawl).toHaveBeenCalledTimes(4);
+    expect(techArticles.startCrawl).toHaveBeenCalledTimes(5);
     expect(techArticles.startCrawl).toHaveBeenNthCalledWith(
       1,
       {
@@ -84,6 +84,21 @@ describe('TechArticleCrawlScheduler', () => {
       sectionKey: 'NEWS',
     });
     expect(sdTimesKey).toBe('auto-crawl:v1:20260821T1200KST:sdtimes-rss-news');
+    expect(techArticles.startCrawl).toHaveBeenNthCalledWith(
+      5,
+      {
+        source: {
+          sourceId: 'github-trending',
+          sourceType: 'WEB_CRAWL',
+          sectionKey: 'REPOSITORIES',
+        },
+        crawlOptions: {
+          maximumArticleCount: 3,
+          requestTimeoutMs: 15000,
+        },
+      },
+      'auto-crawl:v1:20260821T1200KST:github-trending-web-repositories-daily',
+    );
   });
 
   it('does not enqueue a completed profile twice in the same window', async () => {
@@ -93,7 +108,7 @@ describe('TechArticleCrawlScheduler', () => {
     await scheduler.runScheduledCrawls(now);
     await scheduler.runScheduledCrawls(now);
 
-    expect(techArticles.startCrawl).toHaveBeenCalledTimes(4);
+    expect(techArticles.startCrawl).toHaveBeenCalledTimes(5);
   });
 
   it('enqueues profiles again when the next window begins', async () => {
@@ -102,9 +117,9 @@ describe('TechArticleCrawlScheduler', () => {
     await scheduler.runScheduledCrawls(new Date('2026-08-21T08:59:59Z'));
     await scheduler.runScheduledCrawls(new Date('2026-08-21T09:00:00Z'));
 
-    expect(techArticles.startCrawl).toHaveBeenCalledTimes(8);
+    expect(techArticles.startCrawl).toHaveBeenCalledTimes(10);
     expect(techArticles.startCrawl).toHaveBeenNthCalledWith(
-      5,
+      6,
       expect.any(Object),
       'auto-crawl:v1:20260821T1800KST:cloudflare-blog-rss-blog',
     );
@@ -112,19 +127,26 @@ describe('TechArticleCrawlScheduler', () => {
 
   it('retries only a profile that failed to enqueue', async () => {
     settings.TECH_ARTICLE_AUTO_CRAWL_ENABLED = 'true';
-    techArticles.startCrawl
-      .mockRejectedValueOnce(new Error('pipeline unavailable'))
-      .mockResolvedValue({ operation: 'CREATED', crawlRunId: 'crawl-run-2' });
+    let githubAttempt = 0;
+    techArticles.startCrawl.mockImplementation((crawl) => {
+      if (
+        crawl.source.sourceId === 'github-trending' &&
+        githubAttempt++ === 0
+      ) {
+        return Promise.reject(new Error('pipeline unavailable'));
+      }
+      return Promise.resolve({ operation: 'CREATED', crawlRunId: 'crawl-run-2' });
+    });
     const now = new Date('2026-08-21T12:00:00Z');
 
     await scheduler.runScheduledCrawls(now);
     await scheduler.runScheduledCrawls(now);
 
-    expect(techArticles.startCrawl).toHaveBeenCalledTimes(5);
-    const [retriedCrawl, retriedKey] = techArticles.startCrawl.mock.calls[4];
-    expect(retriedCrawl.source.sourceId).toBe('cloudflare-blog');
+    expect(techArticles.startCrawl).toHaveBeenCalledTimes(6);
+    const [retriedCrawl, retriedKey] = techArticles.startCrawl.mock.calls[5];
+    expect(retriedCrawl.source.sourceId).toBe('github-trending');
     expect(retriedKey).toBe(
-      'auto-crawl:v1:20260821T1800KST:cloudflare-blog-rss-blog',
+      'auto-crawl:v1:20260821T1800KST:github-trending-web-repositories-daily',
     );
   });
 
@@ -144,5 +166,10 @@ describe('TechArticleCrawlScheduler', () => {
         maximumAgeHours: 72,
       }),
     );
+    const [githubCrawl] = techArticles.startCrawl.mock.calls[4];
+    expect(githubCrawl.crawlOptions).toEqual({
+      maximumArticleCount: 3,
+      requestTimeoutMs: 15000,
+    });
   });
 });

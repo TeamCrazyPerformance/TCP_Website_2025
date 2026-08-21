@@ -361,7 +361,18 @@ export class TechArticlesService {
       });
     }
     this.validateCrawlSource(dto);
-    return this.pipeline.post('/internal/v1/crawl-runs', dto, {
+    const request =
+      dto.source.sourceId === 'github-trending'
+        ? {
+            ...dto,
+            crawlOptions: {
+              ...dto.crawlOptions,
+              maximumArticleCount:
+                dto.crawlOptions?.maximumArticleCount ?? 3,
+            },
+          }
+        : dto;
+    return this.pipeline.post('/internal/v1/crawl-runs', request, {
       'Idempotency-Key': idempotencyKey,
     });
   }
@@ -382,6 +393,7 @@ export class TechArticlesService {
         'WEB_CRAWL:ENGINEERING',
       ],
       sdtimes: ['RSS:NEWS', 'WEB_CRAWL:NEWS', 'API:NEWS'],
+      'github-trending': ['WEB_CRAWL:REPOSITORIES'],
     };
     const capability = `${dto.source.sourceType}:${dto.source.sectionKey}`;
     if (!allowed[dto.source.sourceId].includes(capability)) {
@@ -403,6 +415,23 @@ export class TechArticlesService {
     if (dto.crawlOptions?.followPagination && dto.source.sourceId !== 'infoq') {
       throw new BadRequestException(
         'followPagination은 infoq 소스에서만 지원합니다.',
+      );
+    }
+    if (
+      dto.source.sourceId === 'github-trending' &&
+      (dto.crawlOptions?.maximumArticleCount ?? 3) > 3
+    ) {
+      throw new BadRequestException(
+        'github-trending은 최대 3개 저장소만 수집할 수 있습니다.',
+      );
+    }
+    if (
+      dto.source.sourceId === 'github-trending' &&
+      dto.crawlOptions?.maximumPageCount !== undefined &&
+      dto.crawlOptions.maximumPageCount !== 1
+    ) {
+      throw new BadRequestException(
+        'github-trending은 페이지네이션을 지원하지 않습니다.',
       );
     }
   }

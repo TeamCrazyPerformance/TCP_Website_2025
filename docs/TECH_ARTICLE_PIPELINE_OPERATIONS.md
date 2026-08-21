@@ -57,13 +57,25 @@ file and affected service configuration if readiness fails.
 
 Automatic crawling is disabled by default. When enabled, the NestJS scheduler
 checks the current six-hour KST window every ten minutes and idempotently queues
-four RSS profiles: Cloudflare Blog, InfoQ News, InfoQ Articles, and SD Times.
+five profiles: Cloudflare Blog RSS, InfoQ News RSS, InfoQ Articles RSS, SD Times
+RSS, and GitHub Trending Daily web crawl.
 The windows begin at 00:00, 06:00, 12:00, and 18:00 KST. Each profile checks at
 most 10 articles from the previous 48 hours unless the corresponding root
-environment tuning values are changed. Repeated checks, API restarts, and
+environment tuning values are changed. GitHub is the exception: it always
+selects exactly the daily Top 3, sends only count and timeout options, and uses
+`auto-crawl:v1:{window}:github-trending-web-repositories-daily` as its key.
+Repeated checks, API restarts, and
 multiple API replicas reuse the same window key instead of creating another
 crawl run. Enabling the setting can create new articles and, under the
 `IMMEDIATE` publication policy, expose eligible articles publicly.
+
+GitHub README requests are deliberately unauthenticated, so no token or new
+secret is configured. Before enabling unattended crawling, operators must
+confirm the current `https://github.com/robots.txt` guidance and that
+`CRAWLER_PUBLIC_URL`/`CRAWLER_CONTACT` identify the deployment. For `403`/`429`,
+inspect the stored rate-limit headers and let the retryable crawl job back off;
+do not add a token as an incident workaround. A README `404` affects only that
+rank, is non-retryable, and never causes rank 4 or lower to be fetched.
 
 ## Data protection and recovery
 

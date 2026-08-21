@@ -8,13 +8,14 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 from tech_article_pipeline.api import create_app
+from tech_article_pipeline.catalog import crawl_source_catalog
 from tech_article_pipeline.contracts import CrawlRequested
 from tech_article_pipeline.orchestration import CrawlOrchestrator, PipelineOrchestrator
 from tech_article_pipeline.persistence.base import IdempotencyConflictError
 from tech_article_pipeline.persistence.memory import MemoryPipelineRepository
 from tech_article_pipeline.settings import Settings
 from tech_article_pipeline.worker import DurableWorker
-from tech_article_sources import CrawlBatch
+from tech_article_sources import CrawlBatch, SourceAdapterError, SourceAdapterRegistry
 from test_orchestration import FakeAdmission, FakeQuality, FakeSummarizer
 
 
@@ -233,3 +234,120 @@ def test_crawl_api_auth_validation_and_replay(normalized_payload):
 def test_crawl_contract_rejects_unsupported_source_combinations(source):
     with pytest.raises(ValueError):
         CrawlRequested.model_validate({"source": source})
+
+
+def test_crawl_contract_accepts_github_trending_top_three():
+    command = CrawlRequested.model_validate(
+        {
+            "source": {
+                "sourceId": "github-trending",
+                "sourceType": "WEB_CRAWL",
+                "sectionKey": "REPOSITORIES",
+            },
+            "crawlOptions": {
+                "maximumArticleCount": 3,
+                "followPagination": False,
+                "maximumPageCount": 1,
+            },
+        }
+    )
+
+    assert command.source.source_id == "github-trending"
+    assert command.crawl_options.maximum_article_count == 3
+
+
+def test_crawl_contract_defaults_github_trending_to_top_three():
+    command = CrawlRequested.model_validate(
+        {
+            "source": {
+                "sourceId": "github-trending",
+                "sourceType": "WEB_CRAWL",
+                "sectionKey": "REPOSITORIES",
+            }
+        }
+    )
+
+    assert command.crawl_options.maximum_article_count == 3
+
+
+@pytest.mark.parametrize(
+    "crawl_options",
+    [
+        {"maximumArticleCount": 4},
+        {"maximumArticleCount": 3, "followPagination": True},
+        {"maximumArticleCount": 3, "maximumPageCount": 2},
+    ],
+)
+def test_crawl_contract_rejects_unsupported_github_options(crawl_options):
+    with pytest.raises(ValueError):
+        CrawlRequested.model_validate(
+            {
+                "source": {
+                    "sourceId": "github-trending",
+                    "sourceType": "WEB_CRAWL",
+                    "sectionKey": "REPOSITORIES",
+                },
+                "crawlOptions": crawl_options,
+            }
+        )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        {
+            "sourceId": "github-trending",
+            "sourceType": "RSS",
+            "sectionKey": "REPOSITORIES",
+        },
+        {
+            "sourceId": "github-trending",
+            "sourceType": "WEB_CRAWL",
+            "sectionKey": "NEWS",
+        },
+    ],
+)
+def test_crawl_contract_rejects_invalid_github_combinations(source):
+    with pytest.raises(ValueError):
+        CrawlRequested.model_validate({"source": source, "crawlOptions": {"maximumArticleCount": 3}})
+
+
+def test_github_adapter_requires_crawler_identity_before_network():
+    registry = SourceAdapterRegistry.default(public_url=None, contact=None)
+    command = CrawlRequested.model_validate(
+        {
+            "source": {
+                "sourceId": "github-trending",
+                "sourceType": "WEB_CRAWL",
+                "sectionKey": "REPOSITORIES",
+            },
+            "crawlOptions": {"maximumArticleCount": 1},
+        }
+    ).model_dump(by_alias=True, mode="json")
+    command["requestedAt"] = "2026-08-22T00:00:00Z"
+
+    with pytest.raises(SourceAdapterError) as exc_info:
+        registry.run("crawl-github", command)
+
+    assert exc_info.value.code == "CRAWLER_IDENTITY_NOT_CONFIGURED"
+
+
+def test_github_catalog_exposes_only_applicable_top_three_options():
+    source = next(
+        item
+        for item in crawl_source_catalog()
+        if item["sourceId"] == "github-trending"
+    )
+
+    assert source["capabilities"] == [
+        {"sourceType": "WEB_CRAWL", "sectionKey": "REPOSITORIES"}
+    ]
+    assert set(source["crawlOptions"]) == {
+        "maximumArticleCount",
+        "requestTimeoutMs",
+    }
+    assert source["crawlOptions"]["maximumArticleCount"] == {
+        "default": 3,
+        "minimum": 1,
+        "maximum": 3,
+    }

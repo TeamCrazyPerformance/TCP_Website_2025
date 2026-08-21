@@ -40,12 +40,29 @@ Integration routes RSS through the configured session and timeout, validates
 HTTPS/exact hosts and every redirect, adds robots/rate handling for web crawling,
 rejects off-domain canonical metadata, avoids input mutation/default model reuse,
 and marks missing title/content/canonical URL as normalization failure. Core then
-applies the same strict candidate validation used for the other two sources.
+applies the same strict candidate validation used for the other registered sources.
+
+## GitHub Trending
+
+This is a new canonical implementation rather than a copy of a prior source
+module. It accepts only exact HTTPS `github.com` and `api.github.com` hosts,
+revalidates every redirect, bounds response bodies, and checks GitHub robots
+policy before fetching the daily Trending listing. The crawler identity requires
+the configured public URL and contact address before any network request.
+
+Repository cards are parsed in DOM order and the first one to three ranks are
+fixed before README retrieval. READMEs are fetched sequentially from the public
+repository README endpoint using GitHub's rendered-HTML media type and without a
+token. `403`/`429`, `5xx`, timeout, and connection failures are retryable;
+README `404`, invalid structure, unsafe redirects, and robots refusal are not.
+Rendered README HTML is reduced to plain text after active/non-content elements
+are removed. The normalized body contains only the repository description and
+README text; ranking and repository counters remain in discovery/raw events.
 
 ## Shared operational decision
 
 No source adapter writes PostgreSQL, SQLite, MySQL, or output files in the service
-execution path. All three return a `CrawlBatch` in memory. The core MySQL layer is
+execution path. All four return a `CrawlBatch` in memory. The core MySQL layer is
 separate and stores durable crawl commands, leases, raw events, completion stats,
 and downstream submission links. Live network tests are opt-in; deterministic
 fixture regression tests are part of the default suite.

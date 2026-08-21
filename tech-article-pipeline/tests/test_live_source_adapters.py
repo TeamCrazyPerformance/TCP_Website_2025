@@ -22,11 +22,18 @@ pytestmark = pytest.mark.skipif(
         ("cloudflare-blog", "RSS", "BLOG"),
         ("infoq", "RSS", "NEWS"),
         ("sdtimes", "RSS", "NEWS"),
+        ("github-trending", "WEB_CRAWL", "REPOSITORIES"),
     ],
 )
 def test_live_source_adapter_reaches_core_submission(
     source_id: str, source_type: str, section_key: str
 ) -> None:
+    crawl_options = {
+        "maximumArticleCount": 1,
+        "requestTimeoutMs": 15_000,
+    }
+    if source_id != "github-trending":
+        crawl_options["maximumAgeHours"] = 2_160
     command = CrawlRequested.model_validate(
         {
             "source": {
@@ -34,11 +41,7 @@ def test_live_source_adapter_reaches_core_submission(
                 "sourceType": source_type,
                 "sectionKey": section_key,
             },
-            "crawlOptions": {
-                "maximumArticleCount": 1,
-                "maximumAgeHours": 2_160,
-                "requestTimeoutMs": 15_000,
-            },
+            "crawlOptions": crawl_options,
         }
     ).model_dump(by_alias=True, mode="json")
     encoded = json.dumps(

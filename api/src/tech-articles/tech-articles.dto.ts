@@ -192,14 +192,14 @@ export class PublicationPolicyDto {
 }
 
 export class CrawlSourceDto {
-  @IsIn(['cloudflare-blog', 'infoq', 'sdtimes'])
-  sourceId: 'cloudflare-blog' | 'infoq' | 'sdtimes';
+  @IsIn(['cloudflare-blog', 'infoq', 'sdtimes', 'github-trending'])
+  sourceId: 'cloudflare-blog' | 'infoq' | 'sdtimes' | 'github-trending';
 
   @IsIn(['RSS', 'WEB_CRAWL', 'API'])
   sourceType: 'RSS' | 'WEB_CRAWL' | 'API';
 
-  @IsIn(['BLOG', 'NEWS', 'ENGINEERING'])
-  sectionKey: 'BLOG' | 'NEWS' | 'ENGINEERING';
+  @IsIn(['BLOG', 'NEWS', 'ENGINEERING', 'REPOSITORIES'])
+  sectionKey: 'BLOG' | 'NEWS' | 'ENGINEERING' | 'REPOSITORIES';
 }
 
 export class CrawlOptionsDto {

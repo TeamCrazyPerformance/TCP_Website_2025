@@ -147,3 +147,7 @@ Bulk 본문은 `{"items": [...]}`이며 최대 50개, ID 중복 금지다. 유�
 
 수집 본문은 등록된 `sourceId`, `sourceType`, `sectionKey`와 제한된 `crawlOptions`만 받는다.
 임의 URL, 직접 정규화 제출, 저수준 job 조회, 영구 삭제는 외부 API에 없다.
+
+GitHub Trending은 `github-trending / WEB_CRAWL / REPOSITORIES` 조합만 허용한다.
+`maximumArticleCount`는 1~3, `maximumPageCount`는 1, `followPagination`은 false다.
+카탈로그는 이 소스에 `maximumArticleCount`와 `requestTimeoutMs`만 노출한다.

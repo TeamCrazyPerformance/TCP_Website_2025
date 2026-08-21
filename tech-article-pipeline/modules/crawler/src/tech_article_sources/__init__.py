@@ -1,5 +1,6 @@
 from .adapters import (
     CloudflareSourceAdapter,
+    GitHubTrendingSourceAdapter,
     InfoQSourceAdapter,
     SDTimesSourceAdapter,
     SourceAdapterError,
@@ -10,6 +11,7 @@ from .models import CrawlBatch
 __all__ = [
     "CloudflareSourceAdapter",
     "CrawlBatch",
+    "GitHubTrendingSourceAdapter",
     "InfoQSourceAdapter",
     "SDTimesSourceAdapter",
     "SourceAdapterError",
