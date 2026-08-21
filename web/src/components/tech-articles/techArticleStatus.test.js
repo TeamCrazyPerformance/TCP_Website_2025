@@ -329,6 +329,44 @@ describe("파이프라인 단계", () => {
     }
   });
 
+  test("요약 칩은 정상 파이프라인 순서 뒤에 실패·종료 상태를 둔다", () => {
+    const items = [
+      article({ processingStatus: "INGESTED" }),
+      article({ processingStatus: "QUALITY_EVALUATED" }),
+      article({ processingStatus: "ENRICHMENT_PENDING" }),
+      article({
+        processingStatus: "ENRICHED",
+        reviewStatus: "PENDING",
+        publicationStatus: "UNPUBLISHED",
+      }),
+      article({ processingStatus: "ENRICHED" }),
+      article({
+        processingStatus: "PROCESSING_FAILED",
+        reviewStatus: "APPROVED",
+      }),
+      article({ processingStatus: "PROCESSING_FAILED" }),
+      article({ processingStatus: "QUALITY_REJECTED" }),
+    ];
+
+    expect(summarizeStages(items).stages.map(({ stage }) => stage)).toEqual([
+      STAGE.INGESTED,
+      STAGE.QUALITY_REVIEW,
+      STAGE.ENRICHING,
+      STAGE.PUBLICATION_REVIEW,
+      STAGE.COMPLETED,
+      STAGE.FAILED_AFTER_APPROVAL,
+      STAGE.FAILED,
+      STAGE.QUALITY_REJECTED,
+    ]);
+  });
+
+  test("자동 평가와 관리자 검토를 라벨에서 구분한다", () => {
+    expect(stageMeta(STAGE.INGESTED).label).toBe("자동 품질 평가 중");
+    expect(stageMeta(STAGE.QUALITY_REVIEW).label).toBe("관리자 품질 검토 필요");
+    expect(stageMeta(STAGE.ENRICHING).label).toBe("AI 요약 중");
+    expect(stageMeta(STAGE.PUBLICATION_REVIEW).label).toBe("공개 검토 필요");
+  });
+
   test("모르는 처리 상태를 견딘다", () => {
     expect(articleStage(article({ processingStatus: "NEW_STATE" }))).toBe(
       STAGE.UNKNOWN,

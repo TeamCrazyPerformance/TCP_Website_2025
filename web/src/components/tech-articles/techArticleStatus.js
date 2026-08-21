@@ -165,64 +165,65 @@ export const STAGE = {
   UNKNOWN: "UNKNOWN",
 };
 
-// order 는 목록 정렬과 요약 바 표기 순서. 낮을수록 먼저.
+// order 는 목록 정렬과 요약 바 표기 순서. 정상 파이프라인 진행 단계를 먼저
+// 시간순으로 보여주고, 실패·종료 상태는 그 뒤에 둡니다.
 const STAGE_META = {
+  [STAGE.INGESTED]: {
+    order: 0,
+    label: "자동 품질 평가 중",
+    tone: "status-processing",
+    icon: "fa-inbox",
+  },
+  [STAGE.QUALITY_REVIEW]: {
+    order: 1,
+    label: "관리자 품질 검토 필요",
+    tone: "status-pending",
+    icon: "fa-user-check",
+    hint: "관리자 판단을 기다립니다.",
+  },
+  [STAGE.ENRICHING]: {
+    order: 2,
+    label: "AI 요약 중",
+    tone: "status-processing",
+    icon: "fa-wand-magic-sparkles",
+  },
+  [STAGE.PUBLICATION_REVIEW]: {
+    order: 3,
+    label: "공개 검토 필요",
+    tone: "status-pending",
+    icon: "fa-user-check",
+    hint: "요약까지 끝났고 공개 승인을 기다립니다.",
+  },
+  // 노출 여부는 "공개 상태" 필터가 담당합니다. 여기서 나누면 이름이 겹쳐
+  // 같은 라벨의 두 컨트롤이 서로 다른 개수를 보여주게 됩니다.
+  [STAGE.COMPLETED]: {
+    order: 4,
+    label: "처리 완료",
+    tone: "status-published",
+    icon: "fa-circle-check",
+  },
   // 관리자 승인까지 끝난 뒤 요약만 실패한 건. 승인 판단이 이미 있어
   // 재처리 대상이므로 일반 실패와 구분합니다.
   [STAGE.FAILED_AFTER_APPROVAL]: {
-    order: 0,
+    order: 5,
     label: "승인 후 요약 실패",
     tone: "status-failed",
     icon: "fa-rotate-right",
     hint: "관리자 승인은 정상입니다. AI 요약 작업만 실패해 재처리가 필요합니다.",
   },
   [STAGE.FAILED]: {
-    order: 1,
+    order: 6,
     label: "처리 실패",
     tone: "status-failed",
     icon: "fa-circle-xmark",
     hint: "파이프라인이 중단되었습니다.",
   },
   [STAGE.QUALITY_REJECTED]: {
-    order: 2,
+    order: 7,
     label: "품질 미달",
     tone: "status-failed",
     icon: "fa-ban",
     hint: "품질 기준에 미달해 종료되었습니다.",
-  },
-  [STAGE.QUALITY_REVIEW]: {
-    order: 3,
-    label: "품질 검토 대기",
-    tone: "status-pending",
-    icon: "fa-user-check",
-    hint: "관리자 판단을 기다립니다.",
-  },
-  [STAGE.PUBLICATION_REVIEW]: {
-    order: 4,
-    label: "공개 검토 대기",
-    tone: "status-pending",
-    icon: "fa-user-check",
-    hint: "요약까지 끝났고 공개 승인을 기다립니다.",
-  },
-  [STAGE.ENRICHING]: {
-    order: 5,
-    label: "AI 요약 대기",
-    tone: "status-processing",
-    icon: "fa-wand-magic-sparkles",
-  },
-  [STAGE.INGESTED]: {
-    order: 6,
-    label: "품질 평가 대기",
-    tone: "status-processing",
-    icon: "fa-inbox",
-  },
-  // 노출 여부는 "공개 상태" 필터가 담당합니다. 여기서 나누면 이름이 겹쳐
-  // 같은 라벨의 두 컨트롤이 서로 다른 개수를 보여주게 됩니다.
-  [STAGE.COMPLETED]: {
-    order: 7,
-    label: "처리 완료",
-    tone: "status-published",
-    icon: "fa-circle-check",
   },
   [STAGE.UNKNOWN]: {
     order: 8,

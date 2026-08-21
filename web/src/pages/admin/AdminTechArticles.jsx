@@ -578,10 +578,7 @@ function AdminTechArticles() {
           <h2 id="adminViewTitle" className="orbitron gradient-text">
             전체 아티클
           </h2>
-          <p>
-            중복 검사와 품질 처리를 마친 아티클의 공개 상태와 최종 콘텐츠를
-            관리합니다.
-          </p>
+          <p>수집된 아티클의 처리 현황과 공개 상태를 관리합니다.</p>
         </div>
         <div className="admin-intro-actions">
           <button
