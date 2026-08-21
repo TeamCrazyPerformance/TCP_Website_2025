@@ -10,6 +10,7 @@ import {
   STAGE,
   articleStage,
   canPublishArticle,
+  formatWaiting,
   hasStateMismatch,
   partitionPublishable,
   publishBlockReason,
@@ -514,5 +515,31 @@ describe("가치 점수 배색", () => {
       "AI 요약 생성 제외",
     );
     expect(scoreToneLabel({})).toBe("품질 평가 전");
+  });
+});
+
+describe("체류 시간 표기", () => {
+  const NOW = new Date("2026-08-21T12:00:00Z").getTime();
+  const ago = (ms) => new Date(NOW - ms).toISOString();
+
+  test.each([
+    [0, "0분"],
+    [45 * 60 * 1000, "45분"],
+    [5 * 3600 * 1000, "5시간"],
+    [26 * 3600 * 1000, "1일 2시간"],
+    [48 * 3600 * 1000, "2일"],
+  ])("%s ms 전 -> %s", (elapsed, expected) => {
+    expect(formatWaiting(ago(elapsed), NOW)).toBe(expected);
+  });
+
+  test("값이 없거나 이상하면 아무것도 그리지 않는다", () => {
+    // 0 건인 단계는 stageOldest 가 null 입니다.
+    expect(formatWaiting(null)).toBeNull();
+    expect(formatWaiting(undefined)).toBeNull();
+    expect(formatWaiting("어제쯤")).toBeNull();
+  });
+
+  test("시계가 어긋나도 음수로 내려가지 않는다", () => {
+    expect(formatWaiting(new Date(NOW + 60000).toISOString(), NOW)).toBe("0분");
   });
 });

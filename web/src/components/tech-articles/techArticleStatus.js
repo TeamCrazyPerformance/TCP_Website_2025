@@ -288,6 +288,34 @@ export function stageMeta(stage) {
   return STAGE_META[stage] || STAGE_META[STAGE.UNKNOWN];
 }
 
+// 칩을 그리는 순서. 서버가 단계별 건수를 주므로 화면은 이 순서로 늘어놓기만
+// 합니다. UNKNOWN 은 도달 경로가 없어 칩으로 만들지 않습니다.
+export const STAGE_ORDER = Object.entries(STAGE_META)
+  .filter(([stage]) => stage !== STAGE.UNKNOWN)
+  .sort(([, a], [, b]) => a.order - b.order)
+  .map(([stage]) => stage);
+
+// 단계에 머문 시간. 서버의 stageOldest 는 updated_at 기준이라 "마지막 수정"
+// 시각입니다. 실제 대기 시간의 하한으로만 읽어야 하므로 문구에서도 그렇게 밝힙니다.
+export function formatWaiting(value, now = Date.now()) {
+  if (!value) return null;
+  const started = new Date(value).getTime();
+  if (Number.isNaN(started)) return null;
+  const minutes = Math.max(0, Math.floor((now - started) / 60000));
+  if (minutes < 60) return `${minutes}분`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}시간`;
+  const days = Math.floor(hours / 24);
+  const restHours = hours % 24;
+  return restHours ? `${days}일 ${restHours}시간` : `${days}일`;
+}
+
+// 서버가 준 단계를 쓰고, 아직 안 오는 동안에는 기존 규칙으로 떨어집니다.
+// 서버 배포가 안정되면 이 함수와 articleStage 를 함께 지웁니다.
+export function resolveStage(article) {
+  return article?.stage || articleStage(article);
+}
+
 // 요약 바용 집계. 단계는 order 순으로, 표시 오류는 별도로 셉니다.
 export function summarizeStages(articles = []) {
   const counts = new Map();

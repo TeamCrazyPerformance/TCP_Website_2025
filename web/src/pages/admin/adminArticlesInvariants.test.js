@@ -81,28 +81,49 @@ describe("파이프라인 단계 표시", () => {
     }
   });
 
-  test("단계 필터가 조회 조건 변경 시 초기화된다", () => {
-    // 남겨두면 다른 페이지에서 빈 목록으로 보임
-    expect(SOURCE).toMatch(/setStageFilter\(""\);[\s\S]{0,80}\[page, keyword/);
+  test("단계 필터가 서버 조회 조건으로 나간다", () => {
+    // 불러온 목록에서 거르면 그 페이지에 있던 것만 걸러져 전수를 볼 수 없습니다.
+    expect(SOURCE).toMatch(/stage:[\s\S]{0,120}stageFilter !== MISMATCH_FILTER/);
+    expect(SOURCE).toMatch(/statusMismatch: stageFilter === MISMATCH_FILTER/);
+    // 칩을 누르면 다시 조회되도록 의존성에 들어가 있어야 합니다.
+    expect(SOURCE).toMatch(/\[keyword, page, publicationStatus, sort, stageFilter\]/);
+  });
+
+  test("페이지를 넘겨도 단계 필터가 풀리지 않는다", () => {
+    // 예전에는 page 가 바뀌면 setStageFilter("") 가 돌아 필터가 사라졌습니다.
+    // 이제 서버가 걸러 주므로 다른 페이지에서 빈 목록이 되지 않습니다.
+    expect(SOURCE).not.toMatch(/setStageFilter\(""\)/);
+    expect(SOURCE).toMatch(/setPage\(1\);[\s\S]{0,60}\[stageFilter, keyword/);
   });
 });
 
 describe("표시 오류 표식", () => {
   test("단계 배지를 대체하지 않고 별도 표식으로 붙는다", () => {
     // 단계를 덮으면 아티클이 어디서 멈췄는지가 가려짐
-    expect(SOURCE).toMatch(/stageMeta\(articleStage\(article\)\)/);
+    expect(SOURCE).toMatch(/stageMeta\(resolveStage\(article\)\)/);
     expect(SOURCE).toMatch(/hasStateMismatch\(article\) && \(/);
     expect(SOURCE).toMatch(/className="stage-flag"/);
   });
 
   test("요약에서 단계 칩과 분리되어 집계된다", () => {
-    expect(SOURCE).toMatch(/const \{ stages: stageSummary, mismatchCount \}/);
+    // 단계는 stages, 표시 오류는 reviews.statusMismatch — 축이 다릅니다.
+    expect(SOURCE).toMatch(/stats\?\.stages\?\.\[stage\]/);
+    expect(SOURCE).toMatch(/stats\?\.reviews\?\.statusMismatch/);
     expect(SOURCE).toMatch(/stage-chip-flag/);
   });
 
+  test("칩 숫자를 화면에서 다시 세지 않는다", () => {
+    // 불러온 페이지를 세면 페이지마다 숫자가 달라집니다. 서버 집계만 씁니다.
+    expect(SOURCE).not.toMatch(/summarizeStages/);
+    expect(SOURCE).not.toMatch(/loadedItems/);
+  });
+
   test("필터가 단계와 별도 토큰을 쓴다", () => {
+    // 표시 오류는 단계가 아니므로 stage 파라미터로 보내면 안 됩니다.
     expect(SOURCE).toMatch(/stageFilter === MISMATCH_FILTER/);
-    expect(SOURCE).toMatch(/loadedItems\.filter\(hasStateMismatch\)/);
+    expect(SOURCE).toMatch(
+      /statusMismatch: stageFilter === MISMATCH_FILTER \? true : undefined/,
+    );
   });
 });
 
@@ -119,8 +140,15 @@ describe("단계 툴바 배치", () => {
   });
 
   test("집계 범위를 문구로 밝힌다", () => {
-    // 서버 필터와 범위가 달라 명시가 없으면 건수를 오독합니다.
-    expect(SOURCE).toMatch(/현재 페이지 기준/);
+    // 칩과 목록 총계가 같은 모집단을 센다는 것을 문구로도 밝힙니다.
+    expect(SOURCE).toMatch(/전체 기준/);
+    expect(SOURCE).not.toMatch(/현재 페이지 기준/);
+  });
+
+  test("목록 총계가 필터를 반영한다", () => {
+    // 헤더가 전역 총계를 그대로 찍으면 칩 숫자와 어긋나 보입니다.
+    expect(SOURCE).toMatch(/const totalCount = response\?\.pagination\?\.totalCount/);
+    expect(SOURCE).toMatch(/총 \{totalCount\}건/);
   });
 });
 

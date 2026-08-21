@@ -587,6 +587,17 @@
   box-shadow: inset 0 0 0 1px currentColor;
 }
 
+/* 0 건인 단계. 칩을 감추면 0 건인지 이 페이지에 없는 건지 구분되지 않으므로
+   자리를 지키되 눌리지 않게 둡니다. */
+.ta-admin .stage-chip.is-empty {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.ta-admin .stage-chip.is-empty:hover {
+  transform: none;
+}
+
 .ta-admin .stage-chip:focus-visible {
   outline: 2px solid var(--accent-blue);
   outline-offset: 2px;

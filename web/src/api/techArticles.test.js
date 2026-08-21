@@ -1,5 +1,6 @@
 import { apiGet, apiPost } from "./client";
 import {
+  getAdminTechArticles,
   getTechArticles,
   startCrawlRun,
   techArticleErrorMessage,
@@ -49,4 +50,34 @@ test("파이프라인 장애를 사용자 안내 문구로 바꾼다", () => {
   expect(
     techArticleErrorMessage({ response: { status: 503, data: {} } }),
   ).toContain("일시적으로 응답하지 않습니다");
+});
+
+test("관리자 목록이 단계와 표시 오류를 서버 쿼리로 보낸다", async () => {
+  apiGet.mockResolvedValue({ items: [] });
+
+  await getAdminTechArticles({
+    page: 2,
+    pageSize: 20,
+    stage: "QUALITY_REVIEW",
+  });
+
+  expect(apiGet).toHaveBeenCalledWith(
+    "/api/v1/admin/tech-articles?page=2&pageSize=20&stage=QUALITY_REVIEW&sort=NEWEST",
+  );
+
+  await getAdminTechArticles({ statusMismatch: true });
+  expect(apiGet).toHaveBeenLastCalledWith(
+    "/api/v1/admin/tech-articles?page=1&pageSize=20&statusMismatch=true&sort=NEWEST",
+  );
+});
+
+test("단계를 고르지 않으면 쿼리에 실리지 않는다", async () => {
+  // 예전 동작과 완전히 같은 요청이어야 서버 구버전에서도 안전합니다.
+  apiGet.mockResolvedValue({ items: [] });
+
+  await getAdminTechArticles({ page: 1, pageSize: 20 });
+
+  expect(apiGet).toHaveBeenCalledWith(
+    "/api/v1/admin/tech-articles?page=1&pageSize=20&sort=NEWEST",
+  );
 });

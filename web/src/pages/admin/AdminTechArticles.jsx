@@ -25,17 +25,18 @@ import { QualityEvaluationPanel } from "../../components/tech-articles/ArticleQu
 import { useV9ConfirmDialog } from "../../components/tech-articles/V9ConfirmDialog";
 import {
   MISMATCH_FILTER,
-  articleStage,
+  STAGE_ORDER,
   canPublishArticle,
+  formatWaiting,
   hasStateMismatch,
   partitionPublishable,
   publishBlockReason,
+  resolveStage,
   scoreTone,
   scoreToneLabel,
   stageMeta,
   statusLabel,
   statusTone,
-  summarizeStages,
 } from "../../components/tech-articles/techArticleStatus";
 
 const PAGE_SIZE = 20;
@@ -98,7 +99,7 @@ function StatusBadge({ status }) {
 
 // 세 축을 접은 파이프라인 단계. 표시 오류는 단계를 가리지 않고 옆에 덧붙입니다.
 function StageBadge({ article, withHint = false }) {
-  const meta = stageMeta(articleStage(article));
+  const meta = stageMeta(resolveStage(article));
   return (
     <div className="stage-cell">
       <span className={`status-badge stage-badge ${meta.tone}`}>
@@ -157,8 +158,10 @@ function PublishControl({ article, isMutating, onToggle }) {
 // 목록 표 바로 위 툴바. 불러온 행을 좁히는 도구라 표에 붙여 둡니다.
 // 검색·공개 상태·정렬은 서버 필터라 위쪽 "검색 및 필터" 카드에 있습니다.
 // 범위가 다르므로 같은 카드에 두지 않습니다.
-function StageToolbar({ items, summary, mismatchCount, value, onChange }) {
+function StageToolbar({ total, summary, mismatchCount, value, onChange }) {
   const toggle = (next) => onChange(value === next ? "" : next);
+  const selected = summary.find((entry) => entry.stage === value);
+  const waiting = selected && formatWaiting(selected.oldest);
   return (
     <div className="stage-toolbar">
       <div className="stage-chips" role="group" aria-label="파이프라인 단계">
@@ -168,7 +171,7 @@ function StageToolbar({ items, summary, mismatchCount, value, onChange }) {
           onClick={() => onChange("")}
           aria-pressed={!value}
         >
-          전체<strong>{items.length}</strong>
+          전체<strong>{total}</strong>
         </button>
         {summary.map((entry) => (
           <button
@@ -176,9 +179,15 @@ function StageToolbar({ items, summary, mismatchCount, value, onChange }) {
             key={entry.stage}
             className={`stage-chip ${entry.tone} ${
               value === entry.stage ? "is-active" : ""
-            }`}
+            } ${entry.count ? "" : "is-empty"}`}
             onClick={() => toggle(entry.stage)}
             aria-pressed={value === entry.stage}
+            disabled={!entry.count && value !== entry.stage}
+            title={
+              entry.count
+                ? `가장 오래 머문 건 ${formatWaiting(entry.oldest) || "-"} 경과`
+                : "이 단계에 머문 아티클이 없습니다"
+            }
           >
             <i className={`fas ${entry.icon}`} aria-hidden="true"></i>
             {entry.label}
@@ -198,16 +207,25 @@ function StageToolbar({ items, summary, mismatchCount, value, onChange }) {
             검토 상태 표시 오류<strong>{mismatchCount}</strong>
           </button>
         )}
-        <span className="stage-toolbar-scope">현재 페이지 기준</span>
+        <span className="stage-toolbar-scope">전체 기준</span>
       </div>
+      {waiting && (
+        <p className="stage-summary-note" role="status">
+          <i className="fas fa-clock" aria-hidden="true"></i>이 단계에 가장 오래
+          머문 아티클이 <strong>{waiting}</strong> 지났습니다. &nbsp;— 마지막
+          수정 시각 기준이라 실제 대기 시간은 이보다 길 수 있습니다. 정렬을{" "}
+          <strong>오래 머문 순</strong>으로 바꾸면 그 건부터 보입니다.
+        </p>
+      )}
       {value === MISMATCH_FILTER && (
         <p className="stage-summary-note" role="status">
           <i className="fas fa-circle-info" aria-hidden="true"></i>
           공개 토글로 공개했다가 되돌린 아티클입니다. 그 과정에서 검토 상태가
           &ldquo;검토 승인&rdquo;으로 잘못 올라갔습니다.{" "}
           <strong>표시에만 영향이 있고 파이프라인 동작은 정상입니다</strong>
-          &nbsp;— AI 요약 자격과 공개 검토 큐는 이 값을 참조하지 않습니다. 공개
-          토글에 처리 단계 가드가 걸려 신규 발생은 차단된 상태입니다.
+          &nbsp;— AI 요약 자격과 공개 검토 큐, 파이프라인 단계는 모두 이 값을
+          참조하지 않습니다. 공개 토글에는 처리 단계 가드가 걸려 있지만 관리자
+          화면 경로에만 있어, API 를 직접 호출하면 아직 새로 생길 수 있습니다.
         </p>
       )}
     </div>
@@ -265,6 +283,12 @@ function AdminTechArticles() {
         pageSize: PAGE_SIZE,
         keyword: keyword || undefined,
         publicationStatus: publicationStatus || undefined,
+        // 단계와 표시 오류는 별개 축이라 서버에서 각각 거릅니다.
+        stage:
+          stageFilter && stageFilter !== MISMATCH_FILTER
+            ? stageFilter
+            : undefined,
+        statusMismatch: stageFilter === MISMATCH_FILTER ? true : undefined,
         sort,
       });
       setResponse(data);
@@ -284,7 +308,7 @@ function AdminTechArticles() {
     } finally {
       setIsLoading(false);
     }
-  }, [keyword, page, publicationStatus, sort]);
+  }, [keyword, page, publicationStatus, sort, stageFilter]);
 
   const loadOverview = useCallback(async () => {
     const [statsResult, policyResult] = await Promise.allSettled([
@@ -304,11 +328,15 @@ function AdminTechArticles() {
   useEffect(() => {
     loadOverview();
   }, [loadOverview]);
+  // 페이지를 넘겨도 단계 필터는 유지됩니다. 서버가 걸러 주므로 다른 페이지에서
+  // 빈 목록이 되지 않습니다.
   useEffect(() => {
     setSelected({});
-    // 조회 조건이 바뀌면 불러온 목록이 달라지므로 단계 필터도 되돌립니다.
-    setStageFilter("");
-  }, [page, keyword, publicationStatus, sort]);
+  }, [page]);
+  // 조회 조건이 바뀌면 결과 집합이 달라지므로 첫 페이지로 되돌립니다.
+  useEffect(() => {
+    setPage(1);
+  }, [stageFilter, keyword, publicationStatus, sort]);
 
   useEffect(() => {
     const dialog = detailDialogRef.current;
@@ -325,18 +353,22 @@ function AdminTechArticles() {
 
   const selectedRecords = useMemo(() => Object.values(selected), [selected]);
   // 매 렌더마다 새 배열이 되면 아래 useMemo 가 무의미해집니다.
-  const loadedItems = useMemo(() => response?.items || [], [response]);
-  // 단계 필터는 서버가 processingStatus 를 받지 않아 불러온 목록에서 거릅니다.
-  const { stages: stageSummary, mismatchCount } = useMemo(
-    () => summarizeStages(loadedItems),
-    [loadedItems],
+  // 서버가 stage 로 이미 걸러 보냅니다. 화면은 받은 그대로 그립니다.
+  const pageItems = useMemo(() => response?.items || [], [response]);
+  // 칩 숫자는 전체 아티클 기준 집계에서 옵니다. 목록 총계와 같은 모집단입니다.
+  const stageSummary = useMemo(
+    () =>
+      STAGE_ORDER.map((stage) => ({
+        stage,
+        count: stats?.stages?.[stage] ?? 0,
+        oldest: stats?.stageOldest?.[stage] ?? null,
+        ...stageMeta(stage),
+      })),
+    [stats],
   );
-  const pageItems = useMemo(() => {
-    if (!stageFilter) return loadedItems;
-    if (stageFilter === MISMATCH_FILTER)
-      return loadedItems.filter(hasStateMismatch);
-    return loadedItems.filter((item) => articleStage(item) === stageFilter);
-  }, [loadedItems, stageFilter]);
+  const mismatchCount = stats?.reviews?.statusMismatch ?? 0;
+  // 서버가 stage / statusMismatch 로 걸러 센 값입니다. 칩 숫자와 같은 모집단입니다.
+  const totalCount = response?.pagination?.totalCount ?? 0;
   const allPageSelected =
     pageItems.length > 0 && pageItems.every((item) => selected[item.articleId]);
   const publishedCount = stats?.publication?.PUBLISHED || 0;
@@ -798,6 +830,7 @@ function AdminTechArticles() {
               }}
             >
               <option value="NEWEST">최근 대기·등록순</option>
+              <option value="OLDEST">오래 머문 순</option>
               <option value="SCORE_DESC">가치 점수 높은순</option>
               <option value="SCORE_ASC">가치 점수 낮은순</option>
             </select>
@@ -815,13 +848,13 @@ function AdminTechArticles() {
             <h3 id="recordListTitle">아티클 목록</h3>
           </div>
           <p className="result-count" role="status" aria-live="polite">
-            총 {response?.pagination?.totalCount || 0}건 ·{" "}
-            {response?.pagination?.currentPage || page}페이지
+            총 {totalCount}건 · {response?.pagination?.currentPage || page}
+            페이지
           </p>
         </div>
 
         <StageToolbar
-          items={loadedItems}
+          total={stats?.totalCount ?? 0}
           summary={stageSummary}
           mismatchCount={mismatchCount}
           value={stageFilter}

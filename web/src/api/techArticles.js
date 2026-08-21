@@ -42,6 +42,8 @@ export function getAdminTechArticles({
   pageSize = 20,
   keyword,
   publicationStatus,
+  stage,
+  statusMismatch,
   sort = "NEWEST",
 } = {}) {
   return apiGet(
@@ -50,6 +52,8 @@ export function getAdminTechArticles({
       pageSize,
       keyword,
       publicationStatus,
+      stage,
+      statusMismatch,
       sort,
     }),
   );
