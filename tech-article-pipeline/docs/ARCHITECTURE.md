@@ -37,6 +37,17 @@ github_trending_pipeline (contracts + HTTP + parser + crawler + normalizer)
 The source package does not import `tech_article_sources`, core, persistence,
 FastAPI, or Gemini. Rank and star/fork discovery metadata remain outside the
 normalized article body so recurring appearances do not change its content hash.
+The core stores `discovery` with the admitted article, but the enrichment request
+contains only title, content, and language, and public/admin article projections
+currently omit `discovery`. Trending rank and observation time are therefore
+internal crawl evidence rather than user-visible article fields.
+
+An exact canonical URL is used to load an existing article as a duplicate
+candidate. Under `duplicate-policy-v1`, however, canonical equality is evidence,
+not a terminal decision by itself: automatic `DUPLICATE` still requires an exact
+content hash or at least 92% content Jaccard similarity, while 80% through less
+than 92% becomes `POSSIBLE_DUPLICATE`. A substantially changed README can
+therefore be admitted as unique even when the repository URL is unchanged.
 
 `DUPLICATE` is terminal. `POSSIBLE_DUPLICATE` waits in the admission module's
 review table; approval as unique creates the article and enqueues quality.

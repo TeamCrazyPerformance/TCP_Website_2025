@@ -49,6 +49,16 @@ GitHub Trending requests accept `maximumArticleCount` from 1 through 3 and
 `requestTimeoutMs`. `followPagination` must be false and `maximumPageCount` must
 remain 1. Discovery is always `https://github.com/trending?since=daily` with no
 language filter; the selected rank is never backfilled after a README failure.
+Rank, period, counters, contributors, and crawl time are retained in crawl-item
+records rather than inserted into normalized article content. Crawl-run reads
+may expose that raw item evidence, but article reads and Gemini enrichment do not
+currently project it, so it is not visible on the public website.
+
+For a repository seen in an earlier window, canonical URL equality selects the
+existing article as an admission candidate. It is not an unconditional duplicate
+key: the current policy returns automatic `DUPLICATE` for an exact content hash
+or content Jaccard similarity of at least 92%, and `POSSIBLE_DUPLICATE` from 80%
+through less than 92%.
 
 ## Reads and administration
 

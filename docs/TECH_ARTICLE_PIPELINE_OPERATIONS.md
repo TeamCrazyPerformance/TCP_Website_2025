@@ -77,6 +77,14 @@ inspect the stored rate-limit headers and let the retryable crawl job back off;
 do not add a token as an incident workaround. A README `404` affects only that
 rank, is non-retryable, and never causes rank 4 or lower to be fetched.
 
+Daily rank and counters are operational crawl evidence only. They are not added
+to normalized content, Gemini prompts, or public article responses. A repository
+seen in another window is looked up by canonical URL, but canonical equality is
+not an unconditional duplicate decision under the current admission policy;
+unchanged content is rejected as an exact duplicate, while a substantially
+changed README may be admitted as a new article. Inspect the crawl run and
+admission result when investigating repeat repositories.
+
 ## Data protection and recovery
 
 Pipeline MySQL is part of the same immutable backup set as website PostgreSQL

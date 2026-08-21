@@ -151,3 +151,6 @@ Bulk 본문은 `{"items": [...]}`이며 최대 50개, ID 중복 금지다. 유�
 GitHub Trending은 `github-trending / WEB_CRAWL / REPOSITORIES` 조합만 허용한다.
 `maximumArticleCount`는 1~3, `maximumPageCount`는 1, `followPagination`은 false다.
 카탈로그는 이 소스에 `maximumArticleCount`와 `requestTimeoutMs`만 노출한다.
+Trending 순위·기간·star/fork와 수집 시각은 내부 crawl/discovery 기록에만
+보존한다. 현재 관리자·공개 아티클 응답에는 이를 투영하지 않으므로 사용자
+화면에 노출되지 않으며, README 기반 콘텐츠에도 접두 정보로 삽입하지 않는다.

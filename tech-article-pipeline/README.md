@@ -33,6 +33,10 @@ service URL and operational address before running the Cloudflare or GitHub
 crawler. GitHub Trending uses the public daily listing and unauthenticated README
 API; no GitHub token is read by the pipeline.
 
+GitHub rank, counters, and observation time stay in internal crawl/discovery
+records. They are not inserted into README-derived normalized content and are not
+currently exposed through Gemini summaries or public article responses.
+
 Database changes are applied only by the one-shot migration command. The runner
 records each filename and SHA-256 checksum in `pipeline_migration_history` and
 refuses changed applied migrations.

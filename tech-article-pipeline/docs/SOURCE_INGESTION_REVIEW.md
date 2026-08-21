@@ -58,6 +58,17 @@ README `404`, invalid structure, unsafe redirects, and robots refusal are not.
 Rendered README HTML is reduced to plain text after active/non-content elements
 are removed. The normalized body contains only the repository description and
 README text; ranking and repository counters remain in discovery/raw events.
+The crawl timestamp is the observation time. Date, rank, and counters are
+deliberately not prepended to normalized content because doing so would change
+the exact content hash on every observation and weaken duplicate detection.
+
+`discovery` is persisted as internal evidence but is not sent to Gemini or
+included in the current public/admin article projection. Consequently, the
+website does not display Trending rank or observation date. Repeated repository
+URLs enter admission's candidate set through canonical URL lookup, but canonical
+equality alone is not terminal under the current policy; unchanged content is an
+exact duplicate and heavily changed README content may still be admitted as a
+new article.
 
 ## Shared operational decision
 
