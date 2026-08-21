@@ -18,6 +18,11 @@ or SQLite adapters are retained as provenance code but are not imported by the
 registry or used by their canonical CLIs. Durable queue, run, item, and submission
 state belongs exclusively to the core MySQL repository.
 
+The legacy `tech_articles_ingestion run-scheduled` CLI is retained for standalone
+Cloudflare development only. Website and Private QA deployments do not run it.
+Recurring website collection is owned by the NestJS scheduler, which submits all
+configured source profiles through the core MySQL crawl queue.
+
 Collection never accepts an arbitrary target host. The registry derives fixed
 entry points from `sourceId`, `sourceType`, and `sectionKey`:
 

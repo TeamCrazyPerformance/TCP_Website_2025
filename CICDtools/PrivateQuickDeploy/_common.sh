@@ -245,6 +245,9 @@ private_qa_ensure_env() {
   private_qa_ensure_value PIPELINE_JOB_MAX_ATTEMPTS 3
   private_qa_ensure_value TECH_ARTICLE_PIPELINE_READ_TIMEOUT_MS 3000
   private_qa_ensure_value TECH_ARTICLE_PIPELINE_WRITE_TIMEOUT_MS 10000
+  private_qa_ensure_value TECH_ARTICLE_AUTO_CRAWL_ENABLED false
+  private_qa_ensure_value TECH_ARTICLE_AUTO_CRAWL_MAX_ARTICLES 10
+  private_qa_ensure_value TECH_ARTICLE_AUTO_CRAWL_MAX_AGE_HOURS 48
   chmod 600 "$PRIVATE_QA_ENV_FILE"
 }
 
@@ -274,6 +277,24 @@ private_qa_validate_env() {
     log_error "GEMINI_API_KEY contains unsupported environment-file characters."
     return 1
   }
+  local auto_crawl_enabled auto_crawl_max_articles auto_crawl_max_age_hours
+  auto_crawl_enabled="$(cicd_env_get "$PRIVATE_QA_ENV_FILE" TECH_ARTICLE_AUTO_CRAWL_ENABLED 2>/dev/null || printf false)"
+  auto_crawl_max_articles="$(cicd_env_get "$PRIVATE_QA_ENV_FILE" TECH_ARTICLE_AUTO_CRAWL_MAX_ARTICLES 2>/dev/null || printf 10)"
+  auto_crawl_max_age_hours="$(cicd_env_get "$PRIVATE_QA_ENV_FILE" TECH_ARTICLE_AUTO_CRAWL_MAX_AGE_HOURS 2>/dev/null || printf 48)"
+  [[ "$auto_crawl_enabled" == "true" || "$auto_crawl_enabled" == "false" ]] || {
+    log_error "TECH_ARTICLE_AUTO_CRAWL_ENABLED must be true or false."
+    return 1
+  }
+  [[ "$auto_crawl_max_articles" =~ ^[0-9]+$ ]] \
+    && (( auto_crawl_max_articles >= 1 && auto_crawl_max_articles <= 100 )) || {
+      log_error "TECH_ARTICLE_AUTO_CRAWL_MAX_ARTICLES must be between 1 and 100."
+      return 1
+    }
+  [[ "$auto_crawl_max_age_hours" =~ ^[0-9]+$ ]] \
+    && (( auto_crawl_max_age_hours >= 1 )) || {
+      log_error "TECH_ARTICLE_AUTO_CRAWL_MAX_AGE_HOURS must be positive."
+      return 1
+    }
   log_success "🔐 Isolated Private QA configuration is valid. / 격리된 QA 설정을 확인했습니다."
 }
 
@@ -488,6 +509,16 @@ private_qa_update_config() {
       cicd_env_set "$PRIVATE_QA_ENV_FILE" CRAWLER_CONTACT "$crawler_contact"
       services=(tech-article-pipeline)
       ;;
+    auto-crawl)
+      read -r -p "🕒 Enable automatic article crawling? [true/false] / 자동 수집 활성화 여부: " value
+      [[ "$value" == "true" || "$value" == "false" ]] || {
+        rm -f "$rollback_file"
+        log_error "Automatic crawling must be true or false. / 자동 수집 값은 true 또는 false여야 합니다."
+        return 2
+      }
+      cicd_env_set "$PRIVATE_QA_ENV_FILE" TECH_ARTICLE_AUTO_CRAWL_ENABLED "$value"
+      services=(api)
+      ;;
     service-token)
       read -r -s -p "🔐 New service token (Enter: generate securely) / 새 내부 토큰: " value
       printf '\n'
@@ -512,7 +543,7 @@ private_qa_update_config() {
       ;;
     *)
       rm -f "$rollback_file"
-      log_error "Config usage: bash private_qa.sh config [gemini-key|gemini-model|crawler-identity|service-token|http-port]"
+      log_error "Config usage: bash private_qa.sh config [gemini-key|gemini-model|crawler-identity|auto-crawl|service-token|http-port]"
       return 2
       ;;
   esac

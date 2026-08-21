@@ -28,7 +28,7 @@ print_usage() {
     "   bash private_qa.sh stop               컨테이너 중지(DB 보존)" \
     "   bash private_qa.sh status             전체 상태·접속 주소 확인" \
     "   bash private_qa.sh logs [service]     최근 로그 실시간 확인" \
-    "   bash private_qa.sh config <item>      Gemini·크롤러·포트·내부 토큰 변경" \
+    "   bash private_qa.sh config <item>      Gemini·자동 수집·크롤러·포트·내부 토큰 변경" \
     "   bash private_qa.sh reset              QA DB·업로드 삭제 후 빈 상태 재구축"
 }
 
@@ -133,7 +133,7 @@ case "$command_name" in
     cicd_print_banner "🛠️" "Private QA Configuration / Private QA 설정 변경" \
       "📘 선택한 설정만 변경하고 영향받는 컨테이너만 재생성합니다." \
       "🧯 readiness 실패 시 정확한 이전 환경 파일로 자동 복구합니다." \
-      "🔐 Supported: gemini-key, gemini-model, crawler-identity, service-token, http-port"
+      "🔐 Supported: gemini-key, gemini-model, crawler-identity, auto-crawl, service-token, http-port"
     private_qa_require_commands
     private_qa_update_config "$setting"
     private_qa_show_access

@@ -48,11 +48,22 @@ For routine changes, use:
 bash CICDtools/update_tech_article_config.sh gemini-key
 bash CICDtools/update_tech_article_config.sh gemini-model
 bash CICDtools/update_tech_article_config.sh crawler-identity
+bash CICDtools/update_tech_article_config.sh auto-crawl
 bash CICDtools/update_tech_article_config.sh service-token
 ```
 
 The command preserves all unrelated environment bytes and rolls back both the
 file and affected service configuration if readiness fails.
+
+Automatic crawling is disabled by default. When enabled, the NestJS scheduler
+checks the current six-hour KST window every ten minutes and idempotently queues
+four RSS profiles: Cloudflare Blog, InfoQ News, InfoQ Articles, and SD Times.
+The windows begin at 00:00, 06:00, 12:00, and 18:00 KST. Each profile checks at
+most 10 articles from the previous 48 hours unless the corresponding root
+environment tuning values are changed. Repeated checks, API restarts, and
+multiple API replicas reuse the same window key instead of creating another
+crawl run. Enabling the setting can create new articles and, under the
+`IMMEDIATE` publication policy, expose eligible articles publicly.
 
 ## Data protection and recovery
 

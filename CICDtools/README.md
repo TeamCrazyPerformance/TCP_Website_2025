@@ -74,12 +74,13 @@ bash CICDtools/update_pipeline.sh
 bash CICDtools/update_tech_article_config.sh gemini-key
 bash CICDtools/update_tech_article_config.sh gemini-model
 bash CICDtools/update_tech_article_config.sh crawler-identity
+bash CICDtools/update_tech_article_config.sh auto-crawl
 bash CICDtools/update_tech_article_config.sh service-token
 ```
 
-한 번에 한 항목만 변경합니다. Gemini·크롤러 값은 파이프라인만, 서비스 토큰은 API와
-파이프라인만 재생성합니다. readiness 실패 시 루트 환경 파일을 바이트 단위의 이전
-사본으로 되돌리고 이전 컨테이너 구성을 재적용합니다.
+한 번에 한 항목만 변경합니다. Gemini·크롤러 값은 파이프라인만, 자동 수집은 API만,
+서비스 토큰은 API와 파이프라인만 재생성합니다. readiness 실패 시 루트 환경 파일을
+바이트 단위의 이전 사본으로 되돌리고 이전 컨테이너 구성을 재적용합니다.
 
 DB 자격 증명은 직접 편집하지 말고 다음을 사용합니다.
 

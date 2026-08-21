@@ -85,6 +85,24 @@ grep -q '^GEMINI_MODEL=gemini-model-test$' "$test_root/.env" || fail "selected c
 grep -Eq 'compose .*--profile tech-articles up -d --no-deps --force-recreate tech-article-pipeline' "$test_root/docker.trace" \
   || fail "pipeline was not selectively recreated"
 
+cp "$test_root/.env" "$test_root/before-auto-crawl.env"
+: >"$test_root/docker.trace"
+printf 'true\n' \
+  | PATH="$mock_bin:$PATH" MOCK_DOCKER_TRACE="$test_root/docker.trace" \
+    CICD_PROJECT_ROOT_OVERRIDE="$test_root" CICD_ENVIRONMENT=dev CICD_NO_SUDO=1 \
+    bash "$PROJECT_ROOT/CICDtools/update_tech_article_config.sh" auto-crawl \
+    >"$test_root/auto-crawl-output.log" 2>&1
+grep -v '^TECH_ARTICLE_AUTO_CRAWL_ENABLED=' "$test_root/before-auto-crawl.env" >"$test_root/before-auto-crawl-unselected"
+grep -v '^TECH_ARTICLE_AUTO_CRAWL_ENABLED=' "$test_root/.env" >"$test_root/after-auto-crawl-unselected"
+cmp -s "$test_root/before-auto-crawl-unselected" "$test_root/after-auto-crawl-unselected" \
+  || fail "auto-crawl changed unrelated config bytes"
+grep -q '^TECH_ARTICLE_AUTO_CRAWL_ENABLED=true$' "$test_root/.env" \
+  || fail "auto-crawl setting was not enabled"
+grep -Eq 'compose .*--profile tech-articles up -d --no-deps --force-recreate api' "$test_root/docker.trace" \
+  || fail "auto-crawl did not selectively recreate api"
+! grep -Eq 'force-recreate .*tech-article-pipeline' "$test_root/docker.trace" \
+  || fail "auto-crawl unexpectedly recreated the pipeline"
+
 update_script="$PROJECT_ROOT/CICDtools/update_all.sh"
 stage_line="$(grep -n '^cicd_stage_frontend$' "$update_script" | cut -d: -f1)"
 pipeline_line="$(grep -n '^cicd_deploy_pipeline$' "$update_script" | cut -d: -f1)"

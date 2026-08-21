@@ -89,6 +89,9 @@ ensure_value "$ROOT_ENV" PIPELINE_WORKER_POLL_SECONDS 1
 ensure_value "$ROOT_ENV" PIPELINE_WORKER_LEASE_SECONDS 60
 ensure_value "$ROOT_ENV" PIPELINE_JOB_MAX_ATTEMPTS 3
 ensure_value "$ROOT_ENV" TECH_ARTICLE_MYSQL_POOL_SIZE 5
+ensure_value "$ROOT_ENV" TECH_ARTICLE_AUTO_CRAWL_ENABLED false
+ensure_value "$ROOT_ENV" TECH_ARTICLE_AUTO_CRAWL_MAX_ARTICLES 10
+ensure_value "$ROOT_ENV" TECH_ARTICLE_AUTO_CRAWL_MAX_AGE_HOURS 48
 ensure_value "$ROOT_ENV" GEMINI_MODEL gemini-3.5-flash-lite
 
 if { [[ "$mode" == "prod" ]] && ! cicd_env_has_nonempty "$ROOT_ENV" GEMINI_API_KEY; } || \

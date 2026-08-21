@@ -12,14 +12,15 @@ cicd_validate_env_files
 
 setting="${1:-}"
 case "$setting" in
-  gemini-key|gemini-model|crawler-identity|service-token) ;;
-  *) log_error "Usage: $0 [gemini-key|gemini-model|crawler-identity|service-token]"; exit 2 ;;
+  gemini-key|gemini-model|crawler-identity|auto-crawl|service-token) ;;
+  *) log_error "Usage: $0 [gemini-key|gemini-model|crawler-identity|auto-crawl|service-token]"; exit 2 ;;
 esac
 
 case "$setting" in
   gemini-key) setting_description="Gemini API key / Gemini API 키"; affected_description="tech-article-pipeline" ;;
   gemini-model) setting_description="Gemini model / Gemini 모델"; affected_description="tech-article-pipeline" ;;
   crawler-identity) setting_description="Crawler URL and contact / 크롤러 URL·연락처"; affected_description="tech-article-pipeline" ;;
+  auto-crawl) setting_description="Automatic article crawling / 기술 기사 자동 수집"; affected_description="api" ;;
   service-token) setting_description="Internal API-to-pipeline token / 내부 서비스 토큰"; affected_description="api + tech-article-pipeline" ;;
 esac
 cicd_print_banner "🛠️" "Technical-Article Configuration / 기술 아티클 설정 변경" \
@@ -59,6 +60,12 @@ case "$setting" in
     cicd_env_set "$root_env" CRAWLER_PUBLIC_URL "$crawler_url"
     cicd_env_set "$root_env" CRAWLER_CONTACT "$crawler_contact"
     services=(tech-article-pipeline)
+    ;;
+  auto-crawl)
+    read -r -p "🕒 Enable automatic article crawling? [true/false] / 자동 수집 활성화 여부: " value
+    [[ "$value" == "true" || "$value" == "false" ]] || { log_error "Automatic crawling must be true or false."; exit 2; }
+    cicd_env_set "$root_env" TECH_ARTICLE_AUTO_CRAWL_ENABLED "$value"
+    services=(api)
     ;;
   service-token)
     read -r -s -p "🔐 New service token / 새 토큰 (Enter: secure auto-generate / 안전한 자동 생성): " value
