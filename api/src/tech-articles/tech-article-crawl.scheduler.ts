@@ -1,0 +1,155 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Cron } from '@nestjs/schedule';
+import { CrawlRunDto } from './tech-articles.dto';
+import { TechArticlesService } from './tech-articles.service';
+
+const SEOUL_UTC_OFFSET_MS = 9 * 60 * 60 * 1000;
+const CRAWL_WINDOW_HOURS = 6;
+const DEFAULT_MAXIMUM_ARTICLE_COUNT = 10;
+const DEFAULT_MAXIMUM_AGE_HOURS = 48;
+const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
+
+interface ScheduledCrawlProfile {
+  id: string;
+  source: CrawlRunDto['source'];
+}
+
+interface CrawlRunAccepted {
+  crawlRunId?: string;
+  operation?: string;
+}
+
+const SCHEDULED_CRAWL_PROFILES: readonly ScheduledCrawlProfile[] = [
+  {
+    id: 'cloudflare-blog-rss-blog',
+    source: {
+      sourceId: 'cloudflare-blog',
+      sourceType: 'RSS',
+      sectionKey: 'BLOG',
+    },
+  },
+  {
+    id: 'infoq-rss-news',
+    source: {
+      sourceId: 'infoq',
+      sourceType: 'RSS',
+      sectionKey: 'NEWS',
+    },
+  },
+  {
+    id: 'infoq-rss-engineering',
+    source: {
+      sourceId: 'infoq',
+      sourceType: 'RSS',
+      sectionKey: 'ENGINEERING',
+    },
+  },
+  {
+    id: 'sdtimes-rss-news',
+    source: {
+      sourceId: 'sdtimes',
+      sourceType: 'RSS',
+      sectionKey: 'NEWS',
+    },
+  },
+];
+
+@Injectable()
+export class TechArticleCrawlScheduler {
+  private readonly logger = new Logger(TechArticleCrawlScheduler.name);
+  private readonly completedWindowByProfile = new Map<string, string>();
+  private readonly inFlightKeys = new Set<string>();
+
+  constructor(
+    private readonly config: ConfigService,
+    private readonly techArticles: TechArticlesService,
+  ) {}
+
+  @Cron('0 */10 * * * *', {
+    name: 'tech-article-auto-crawl',
+    timeZone: 'Asia/Seoul',
+  })
+  async runScheduledCrawls(now: Date = new Date()): Promise<void> {
+    if (!this.enabled()) return;
+
+    const windowKey = this.windowKey(now);
+    const crawlOptions = {
+      maximumArticleCount: this.integerSetting(
+        'TECH_ARTICLE_AUTO_CRAWL_MAX_ARTICLES',
+        DEFAULT_MAXIMUM_ARTICLE_COUNT,
+        100,
+      ),
+      maximumAgeHours: this.integerSetting(
+        'TECH_ARTICLE_AUTO_CRAWL_MAX_AGE_HOURS',
+        DEFAULT_MAXIMUM_AGE_HOURS,
+      ),
+      followPagination: false,
+      maximumPageCount: 1,
+      requestTimeoutMs: DEFAULT_REQUEST_TIMEOUT_MS,
+    };
+
+    for (const profile of SCHEDULED_CRAWL_PROFILES) {
+      if (this.completedWindowByProfile.get(profile.id) === windowKey) {
+        continue;
+      }
+
+      const idempotencyKey = `auto-crawl:v1:${windowKey}:${profile.id}`;
+      if (this.inFlightKeys.has(idempotencyKey)) continue;
+
+      this.inFlightKeys.add(idempotencyKey);
+      try {
+        const accepted = (await this.techArticles.startCrawl(
+          {
+            source: profile.source,
+            crawlOptions,
+          },
+          idempotencyKey,
+        )) as CrawlRunAccepted;
+        this.completedWindowByProfile.set(profile.id, windowKey);
+        this.logger.log(
+          `Scheduled crawl ${accepted.operation ?? 'ACCEPTED'}: ${profile.id} ` +
+            `window=${windowKey} crawlRunId=${accepted.crawlRunId ?? 'unknown'}`,
+        );
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'unknown error';
+        this.logger.error(
+          `Scheduled crawl enqueue failed: ${profile.id} window=${windowKey} ${message}`,
+        );
+      } finally {
+        this.inFlightKeys.delete(idempotencyKey);
+      }
+    }
+  }
+
+  private enabled(): boolean {
+    return (
+      this.config
+        .get<string>('TECH_ARTICLE_AUTO_CRAWL_ENABLED')
+        ?.trim()
+        .toLowerCase() === 'true'
+    );
+  }
+
+  private integerSetting(
+    name: string,
+    fallback: number,
+    maximum?: number,
+  ): number {
+    const parsed = Number(this.config.get<string>(name));
+    if (!Number.isInteger(parsed) || parsed < 1) return fallback;
+    if (maximum !== undefined && parsed > maximum) return fallback;
+    return parsed;
+  }
+
+  private windowKey(now: Date): string {
+    const seoul = new Date(now.getTime() + SEOUL_UTC_OFFSET_MS);
+    const hour =
+      Math.floor(seoul.getUTCHours() / CRAWL_WINDOW_HOURS) * CRAWL_WINDOW_HOURS;
+    const year = seoul.getUTCFullYear();
+    const month = String(seoul.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(seoul.getUTCDate()).padStart(2, '0');
+    return `${year}${month}${day}T${String(hour).padStart(2, '0')}00KST`;
+  }
+}
