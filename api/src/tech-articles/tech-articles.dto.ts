@@ -53,6 +53,17 @@ export class PublicArticleQueryDto extends PageQueryDto {
   @MaxLength(64, { each: true })
   @IsOptional()
   tags: string[] = [];
+
+  // 소스는 계속 늘어나므로 개수 상한을 태그보다 넉넉히 둡니다.
+  // 유효한 소스인지는 파이프라인이 카탈로그로 검증합니다.
+  @Transform(toArray)
+  @IsArray()
+  @ArrayUnique()
+  @ArrayMaxSize(50)
+  @IsString({ each: true })
+  @MaxLength(128, { each: true })
+  @IsOptional()
+  sources: string[] = [];
 }
 
 // 파이프라인 단계. 값 집합은 tech_article_pipeline.persistence.base.STAGE_NAMES

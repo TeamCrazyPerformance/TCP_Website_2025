@@ -17,6 +17,11 @@ export class TechArticlesController {
     return this.service.tags();
   }
 
+  @Get('sources')
+  sources() {
+    return this.service.sources();
+  }
+
   @Get(':articleId')
   @UseGuards(JwtAuthGuard)
   detail(@Param() params: ArticleIdParamDto) {

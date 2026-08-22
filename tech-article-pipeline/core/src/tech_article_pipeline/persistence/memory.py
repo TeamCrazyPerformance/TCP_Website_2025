@@ -18,6 +18,7 @@ from tech_article_pipeline.contracts import (
 
 from .base import (
     APPROVED_COMPATIBLE_PROCESSING,
+    NEW_ARTICLE_WINDOW_HOURS,
     STAGE_NAMES,
     IdempotencyConflictError,
     NotFoundError,
@@ -816,6 +817,32 @@ class MemoryPipelineRepository:
             return "FAILED_AFTER_APPROVAL" if approved else "FAILED"
         return "UNKNOWN"
 
+    def public_source_counts(self) -> dict[str, int]:
+        with self._lock:
+            counts: dict[str, int] = {}
+            for article in self.articles.values():
+                if (
+                    article["processingStatus"] == "ENRICHED"
+                    and article["publicationStatus"] == "PUBLISHED"
+                ):
+                    key = article.get("sourceId") or "unknown"
+                    counts[key] = counts.get(key, 0) + 1
+            return counts
+
+    # mysql._is_new 와 같은 판정입니다.
+    @staticmethod
+    def _is_new(collected_at: Any) -> bool:
+        if collected_at is None:
+            return False
+        if isinstance(collected_at, str):
+            try:
+                collected_at = datetime.fromisoformat(collected_at)
+            except ValueError:
+                return False
+        if collected_at.tzinfo is None:
+            collected_at = collected_at.replace(tzinfo=UTC)
+        return _now() - collected_at < timedelta(hours=NEW_ARTICLE_WINDOW_HOURS)
+
     def _project_article(self, article: dict[str, Any]) -> dict[str, Any]:
         projected = copy.deepcopy(article)
         crawl_item = self.crawl_items.get(str(article.get("crawlItemId")))
@@ -829,6 +856,7 @@ class MemoryPipelineRepository:
                 ),
                 "originalLanguage": language_projection(article.get("language")),
                 "collectedAt": collected_at,
+                "isNew": self._is_new(collected_at),
                 "summaryMarkdown": article.get("summary"),
                 "evaluation": copy.deepcopy(article.get("qualityEvaluation")),
                 "valueScore": article.get("qualityScore"),
@@ -845,6 +873,7 @@ class MemoryPipelineRepository:
         offset: int,
         keyword: str | None = None,
         tags: tuple[str, ...] = (),
+        sources: tuple[str, ...] = (),
     ) -> list[dict[str, Any]]:
         with self._lock:
             values = [
@@ -852,6 +881,7 @@ class MemoryPipelineRepository:
                 for article in self.articles.values()
                 if article["processingStatus"] == "ENRICHED"
                 and article["publicationStatus"] == "PUBLISHED"
+                and (not sources or article.get("sourceId") in sources)
                 and self._matches_article(article, keyword, tags)
             ]
             values.sort(
@@ -861,7 +891,11 @@ class MemoryPipelineRepository:
             return [self._project_article(item) for item in values[offset : offset + limit]]
 
     def count_public_articles(
-        self, *, keyword: str | None = None, tags: tuple[str, ...] = ()
+        self,
+        *,
+        keyword: str | None = None,
+        tags: tuple[str, ...] = (),
+        sources: tuple[str, ...] = (),
     ) -> int:
         with self._lock:
             return sum(
@@ -869,6 +903,7 @@ class MemoryPipelineRepository:
                 for article in self.articles.values()
                 if article["processingStatus"] == "ENRICHED"
                 and article["publicationStatus"] == "PUBLISHED"
+                and (not sources or article.get("sourceId") in sources)
                 and self._matches_article(article, keyword, tags)
             )
 
