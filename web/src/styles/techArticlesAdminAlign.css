@@ -113,8 +113,7 @@
   border-radius: 0.75rem;
 }
 
-/* ── 수집 실행 패널 ──────────────────────────────────────
- * 별도 화면이 아니라 "전체 아티클" 하위 작업. 관리자 화면 수 3개 유지. */
+/* ── 크롤링 관리 화면 ──────────────────────────────────── */
 .ta-admin .admin-intro-actions {
   display: flex;
   align-items: center;
@@ -123,8 +122,10 @@
 }
 
 .ta-admin .crawl-panel-v9 {
+  display: flex;
   margin-bottom: 1.5rem;
   padding: 1.5rem;
+  flex-direction: column;
   background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
   border: 1px solid rgba(168, 197, 230, 0.28);
   border-radius: 0.75rem;
@@ -132,6 +133,27 @@
 
 .ta-admin .crawl-panel-heading-v9 {
   margin-bottom: 1.25rem;
+}
+
+.ta-admin .crawl-operations-panel-v9 > .crawl-history-v9 {
+  margin-top: 0;
+}
+
+.ta-admin .crawl-operations-panel-v9 > .crawl-layout-v9,
+.ta-admin .crawl-operations-panel-v9 > .crawl-loading-v9 {
+  margin-top: 16px;
+}
+
+.ta-admin .crawl-runner-toggle-v9 {
+  display: flex;
+  margin-top: 16px;
+  padding-top: 16px;
+  justify-content: flex-end;
+  border-top: 1px solid var(--gray-800);
+}
+
+.ta-admin .crawl-runner-toggle-v9 .btn-secondary {
+  gap: 8px;
 }
 
 .ta-admin .crawl-panel-heading-v9 h3 {
@@ -196,6 +218,12 @@
   grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
   align-items: start;
   gap: 16px;
+}
+.ta-admin .crawl-layout-v9.is-detail-only {
+  grid-template-columns: 1fr;
+}
+.ta-admin .crawl-layout-v9.is-detail-only .crawl-status-v9 {
+  position: static;
 }
 .ta-admin .crawl-card-v9 {
   padding: 22px;
@@ -431,6 +459,24 @@
   border: 1px solid rgba(248, 113, 113, 0.22);
   border-radius: 8px;
   font-size: 9px;
+}
+.ta-admin .crawl-error-v9 > strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 10px;
+}
+.ta-admin .crawl-error-v9 p {
+  margin: 0;
+  line-height: 1.5;
+}
+.ta-admin .crawl-error-v9 details {
+  margin-top: 8px;
+}
+.ta-admin .crawl-error-v9 summary {
+  cursor: pointer;
+}
+.ta-admin .crawl-error-v9 pre {
+  margin: 8px 0 0;
   white-space: pre-wrap;
 }
 .ta-admin .crawl-refresh-v9 {
@@ -441,6 +487,150 @@
 }
 .ta-admin .crawl-refresh-v9 i {
   margin-right: 6px;
+}
+.ta-admin .crawl-history-v9 {
+  margin-top: 18px;
+  padding: 22px;
+}
+.ta-admin .crawl-history-heading-v9 h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 18px;
+}
+.ta-admin .crawl-history-title-v9 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.ta-admin .crawl-history-total-v9 {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 8px;
+  color: var(--accent-blue);
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  border-radius: 5px;
+  font-size: 10px;
+  line-height: 1.2;
+}
+.ta-admin .crawl-history-total-v9 strong {
+  color: inherit;
+  font-size: inherit;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: inherit;
+}
+.ta-admin .crawl-history-heading-v9 p:last-child {
+  margin: 6px 0 0;
+  color: var(--gray-500);
+  font-size: 10px;
+}
+.ta-admin .crawl-history-heading-v9 .crawl-history-contract-v9 {
+  color: var(--accent-blue);
+}
+.ta-admin .crawl-history-heading-v9 .btn-small {
+  gap: 6px;
+}
+.ta-admin .crawl-history-filters-v9 {
+  display: grid;
+  margin: 20px 0 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.ta-admin .crawl-history-table-wrap-v9 {
+  overflow-x: auto;
+  border: 1px solid var(--gray-800);
+  border-radius: 9px;
+}
+.ta-admin .crawl-history-table-v9 {
+  width: 100%;
+  min-width: 820px;
+  border-collapse: collapse;
+}
+.ta-admin .crawl-history-table-v9 th {
+  padding: 10px 12px;
+  color: var(--gray-500);
+  background: var(--gray-900);
+  border-bottom: 1px solid var(--gray-800);
+  font-size: 9px;
+  font-weight: 800;
+  text-align: left;
+}
+.ta-admin .crawl-history-table-v9 td {
+  padding: 12px;
+  color: var(--gray-300);
+  border-top: 1px solid var(--gray-800);
+  font-size: 10px;
+  vertical-align: middle;
+}
+.ta-admin .crawl-history-table-v9 tbody tr {
+  cursor: pointer;
+  transition: background 0.16s ease;
+}
+.ta-admin .crawl-history-table-v9 tbody tr:hover {
+  background: rgba(59, 130, 246, 0.07);
+}
+.ta-admin .crawl-history-table-v9 tbody tr.is-selected {
+  background: rgba(59, 130, 246, 0.12);
+  box-shadow: inset 3px 0 var(--accent-blue);
+}
+.ta-admin .crawl-history-table-v9 td button {
+  display: grid;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  gap: 3px;
+  text-align: left;
+}
+.ta-admin .crawl-history-table-v9 td strong {
+  color: var(--gray-200);
+  font-size: 10px;
+}
+.ta-admin .crawl-history-table-v9 td small {
+  display: block;
+  margin-top: 3px;
+  color: var(--gray-500);
+  font-size: 9px;
+}
+.ta-admin .crawl-history-empty-v9 {
+  display: flex;
+  min-height: 150px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: var(--gray-500);
+  border: 1px dashed var(--gray-800);
+  border-radius: 9px;
+  font-size: 11px;
+}
+.ta-admin .crawl-history-pagination-v9 {
+  display: flex;
+  margin-top: 14px;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--gray-500);
+  font-size: 10px;
+}
+.ta-admin .crawl-history-page-v9 {
+  display: grid;
+  min-width: 92px;
+  gap: 2px;
+  color: var(--gray-300);
+  text-align: center;
+}
+.ta-admin .crawl-history-page-v9 strong {
+  color: #fff;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.ta-admin .crawl-history-page-v9 small {
+  color: var(--gray-500);
+  font-size: 9px;
 }
 @media (max-width: 900px) {
   .ta-admin .crawl-layout-v9 {
@@ -457,6 +647,15 @@
   }
   .ta-admin .crawl-capabilities-v9 > div {
     grid-template-columns: 1fr;
+  }
+  .ta-admin .crawl-history-filters-v9 {
+    grid-template-columns: 1fr;
+  }
+  .ta-admin .crawl-history-v9 {
+    padding: 16px;
+  }
+  .ta-admin .crawl-history-pagination-v9 {
+    flex-wrap: wrap;
   }
 }
 

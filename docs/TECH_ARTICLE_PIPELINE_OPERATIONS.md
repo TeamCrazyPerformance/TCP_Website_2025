@@ -27,6 +27,14 @@ without replacing the current service, waits for MySQL, runs the checksum-enforc
 API-to-pipeline route. Exit code 0 from the one-shot migration container is the
 expected healthy terminal state.
 
+The Crawl Operations release changes the pipeline schema, NestJS facade, and
+frontend together, so deploy it with `update_all.sh`; do not publish only the API
+or frontend first. While migration `004` is being applied, do not start a manual
+crawl. If automatic crawling is enabled, schedule the deployment outside its run
+window or temporarily disable it so the old pipeline cannot write a scheduled run
+with the compatibility default `MANUAL` between the provenance backfill and the
+new pipeline process starting.
+
 ## Configuration ownership
 
 Root `.env` owns Compose interpolation for:
@@ -108,6 +116,34 @@ pipeline MySQL container existed.
 Rotate MySQL credentials through
 `bash CICDtools/rotate_db_password.sh pipeline`; it backs up first and rotates
 both the application user and root credentials together.
+
+### Interrupted pipeline migration
+
+Pipeline migrations contain MySQL DDL, which commits independently from the
+migration-history insert. If `pipeline-migrate` fails, do not edit an applied SQL
+file or repeatedly restart the migration job. First keep the automatic
+`pre-update-*` backup, then inspect both the recorded version and the actual
+schema:
+
+```sql
+SELECT version, filename, checksum_sha256
+FROM pipeline_migration_history
+ORDER BY version;
+
+SHOW COLUMNS FROM crawl_runs LIKE 'trigger_type';
+SHOW INDEX FROM crawl_runs;
+SELECT CONSTRAINT_NAME
+FROM information_schema.TABLE_CONSTRAINTS
+WHERE TABLE_SCHEMA = DATABASE()
+  AND TABLE_NAME = 'crawl_runs'
+  AND CONSTRAINT_TYPE = 'CHECK';
+```
+
+If version `004` is recorded, its file is immutable and any correction must be a
+new migration. If `004` is not recorded but one of its schema objects exists, the
+safest recovery is to restore the pre-update backup and rerun the canonical
+deployment. Only perform a manual schema reconciliation when restoring is not
+possible and the exact partial state has been reviewed.
 
 ## Health and incident checks
 

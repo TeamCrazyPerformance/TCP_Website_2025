@@ -15,13 +15,63 @@ from tech_article_pipeline.persistence.mysql import MySQLPipelineRepository
 pytestmark = pytest.mark.mysql_integration
 
 
+def _insert_migration_004_probe(pool):
+    suffix = uuid4().hex
+    updated_at = datetime(2026, 8, 20, 1, 2, 3, 456789)
+    rows = [
+        (
+            f"migration-auto-{suffix}",
+            f"auto-crawl:v1:20260820T0000KST:{suffix}",
+            f"migration-auto-source-{suffix}",
+        ),
+        (
+            f"migration-manual-{suffix}",
+            f"tech-article-crawl-{suffix}",
+            f"migration-manual-source-{suffix}",
+        ),
+    ]
+    connection = pool.get_connection()
+    try:
+        cursor = connection.cursor()
+        for crawl_run_id, idempotency_key, source_id in rows:
+            cursor.execute(
+                "INSERT INTO crawl_runs "
+                "(crawl_run_id, idempotency_key, body_digest, source_id, status, "
+                "request_payload, created_at, updated_at) "
+                "VALUES (%s, %s, %s, %s, 'COMPLETED', '{}', %s, %s)",
+                (
+                    crawl_run_id,
+                    idempotency_key,
+                    bytes.fromhex("05" * 32),
+                    source_id,
+                    updated_at - timedelta(minutes=1),
+                    updated_at,
+                ),
+            )
+        connection.commit()
+    finally:
+        connection.close()
+    return {"rows": rows, "updated_at": updated_at}
+
+
 @pytest.fixture(scope="module")
 def mysql_pool():
     if os.getenv("PIPELINE_TEST_MYSQL") != "1":
         pytest.skip("set PIPELINE_TEST_MYSQL=1 for the disposable MySQL 8.4 suite")
-    apply_migrations()
+    apply_migrations(through_version="003")
     settings = MySQLSettings.from_env()
-    return MySQLConnectionPool(settings)
+    pool = MySQLConnectionPool(settings)
+    connection = pool.get_connection()
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("SELECT version FROM pipeline_migration_history WHERE version = '004'")
+        already_applied = cursor.fetchone() is not None
+    finally:
+        connection.close()
+    probe = None if already_applied else _insert_migration_004_probe(pool)
+    apply_migrations()
+    pool.migration_004_probe = probe
+    return pool
 
 
 def admission_payload(item_id: str, content: str, canonical_url: str):
@@ -77,8 +127,64 @@ def test_migrations_are_idempotent_and_checksummed(mysql_pool):
             ("001", 64),
             ("002", 64),
             ("003", 64),
+            ("004", 64),
         ]
     finally:
+        connection.close()
+
+
+def test_migration_004_backfills_provenance_without_changing_history_time(mysql_pool):
+    probe = mysql_pool.migration_004_probe
+    if probe is None:
+        pytest.skip("migration 004 was already applied before this test session")
+    connection = mysql_pool.get_connection()
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute(
+            "SELECT crawl_run_id, trigger_type, completed_at, updated_at "
+            "FROM crawl_runs WHERE crawl_run_id IN (%s, %s) ORDER BY crawl_run_id",
+            tuple(row[0] for row in probe["rows"]),
+        )
+        actual = {row["crawl_run_id"]: row for row in cursor.fetchall()}
+    finally:
+        connection.close()
+
+    auto_id, _, _ = probe["rows"][0]
+    manual_id, _, _ = probe["rows"][1]
+    assert actual[auto_id]["trigger_type"] == "SCHEDULED"
+    assert actual[manual_id]["trigger_type"] == "MANUAL"
+    for row in actual.values():
+        assert row["completed_at"] == probe["updated_at"]
+        assert row["updated_at"] == probe["updated_at"]
+
+
+def test_crawl_history_count_uses_the_same_job_backed_population_as_the_list(mysql_pool):
+    repository = MySQLPipelineRepository(mysql_pool)
+    suffix = uuid4().hex
+    crawl_run_id = f"orphan-crawl-{suffix}"
+    source_id = f"orphan-source-{suffix}"
+    connection = mysql_pool.get_connection()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            "INSERT INTO crawl_runs "
+            "(crawl_run_id, idempotency_key, body_digest, source_id, trigger_type, status, "
+            "request_payload) VALUES (%s, %s, %s, %s, 'MANUAL', 'COMPLETED', '{}')",
+            (
+                crawl_run_id,
+                f"orphan-key-{suffix}",
+                bytes.fromhex("06" * 32),
+                source_id,
+            ),
+        )
+        connection.commit()
+        assert repository.list_crawl_runs(limit=20, source_id=source_id) == []
+        assert repository.count_crawl_runs(source_id=source_id) == 0
+    finally:
+        cleanup_cursor = connection.cursor()
+        cleanup_cursor.execute("DELETE FROM crawl_runs WHERE crawl_run_id = %s", (crawl_run_id,))
+        connection.commit()
+        cleanup_cursor.close()
         connection.close()
 
 
@@ -211,6 +317,110 @@ def test_crawl_queue_lease_and_atomic_submission_link(mysql_pool):
     assert run is not None
     assert run["status"] == "COMPLETED"
     assert run["items"][0]["submissionId"].startswith("submission-")
+
+
+def test_crawl_history_uses_stored_trigger_and_redacts_raw_failure(mysql_pool):
+    repository = MySQLPipelineRepository(mysql_pool)
+    suffix = uuid4().hex
+    source_id = f"integration-{suffix}"
+    command = {
+        "source": {
+            "sourceId": source_id,
+            "sourceType": "WEB_CRAWL",
+            "sectionKey": "NEWS",
+        }
+    }
+    response, created = repository.submit_crawl(
+        idempotency_key=f"scheduled-without-prefix-{suffix}",
+        body_digest=bytes.fromhex("03" * 32),
+        payload=command,
+        max_attempts=1,
+        trigger="SCHEDULED",
+    )
+    assert created is True
+    job = repository.claim_crawl_job(lease_seconds=5)
+    assert job is not None
+    assert job.crawl_run_id == response["crawlRunId"]
+    repository.fail_crawl_job(
+        job,
+        {
+            "code": "SOURCE_CRAWL_FAILED",
+            "message": "source failed",
+            "retryable": False,
+            "details": {
+                "completion": {"statistics": {"articlesSucceeded": 0, "articlesFailed": 1}},
+                "crawlItems": [
+                    {
+                        "crawlRunId": job.crawl_run_id,
+                        "crawlItemId": f"failed-{suffix}",
+                        "crawl": {"status": "FAILED"},
+                        "rawArticle": {
+                            "contentHtml": "<article>must-not-leak</article>",
+                            "contentText": "must-not-leak",
+                        },
+                    }
+                ],
+            },
+        },
+        retryable=False,
+        available_at=datetime.now(UTC),
+    )
+
+    history = repository.list_crawl_runs(
+        limit=20,
+        source_id=source_id,
+        trigger="SCHEDULED",
+    )
+    detail = repository.get_crawl_run(job.crawl_run_id)
+
+    assert len(history) == 1
+    assert history[0]["trigger"] == "SCHEDULED"
+    assert history[0]["statistics"] == {"articlesSucceeded": 0, "articlesFailed": 1}
+    assert "must-not-leak" not in str(history)
+    assert detail is not None
+    assert detail["items"][0]["crawlStatus"] == "FAILED"
+    assert "must-not-leak" not in str(detail)
+
+
+def test_terminal_crawl_lease_expiry_records_completion(mysql_pool):
+    repository = MySQLPipelineRepository(mysql_pool)
+    suffix = uuid4().hex
+    response, created = repository.submit_crawl(
+        idempotency_key=f"expired-crawl-{suffix}",
+        body_digest=bytes.fromhex("04" * 32),
+        payload={
+            "source": {
+                "sourceId": f"expired-{suffix}",
+                "sourceType": "WEB_CRAWL",
+                "sectionKey": "NEWS",
+            }
+        },
+        max_attempts=1,
+        trigger="MANUAL",
+    )
+    assert created is True
+    job = repository.claim_crawl_job(lease_seconds=5)
+    assert job is not None
+    connection = mysql_pool.get_connection()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            "UPDATE crawl_jobs SET lease_expires_at = %s WHERE job_id = %s",
+            ((datetime.now(UTC) - timedelta(seconds=1)).replace(tzinfo=None), job.job_id),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    assert repository.claim_crawl_job(lease_seconds=5) is None
+    run = repository.get_crawl_run(response["crawlRunId"])
+
+    assert run is not None
+    assert run["status"] == "FAILED"
+    assert run["completedAt"] is not None
+    assert run["error"]["retryable"] is False
+    assert run["job"]["status"] == "DEAD"
+    assert run["job"]["error"]["retryable"] is False
 
 
 def test_admission_rolls_back_if_bucket_write_fails(mysql_pool):

@@ -119,6 +119,7 @@ export class TechArticleCrawlScheduler {
             crawlOptions: profileCrawlOptions,
           },
           idempotencyKey,
+          'SCHEDULED',
         )) as CrawlRunAccepted;
         this.completedDayByProfile.set(profile.id, dayKey);
         this.logger.log(

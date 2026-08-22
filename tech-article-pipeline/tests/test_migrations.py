@@ -34,3 +34,15 @@ def test_crawl_migration_has_durable_queue_and_submission_linkage():
     assert "normalization_payload JSON" in sql
     assert "submission_id VARCHAR(64)" in sql
     assert "idx_crawl_job_claim" in sql
+
+
+def test_crawl_operations_migration_persists_trigger_and_history_indexes():
+    sql = (ROOT / "migrations" / "004_crawl_operations.sql").read_text(encoding="utf-8")
+    assert "trigger_type" in sql
+    assert "WHERE idempotency_key LIKE 'auto-crawl:%'" in sql
+    assert "WHERE trigger_type IS NULL" not in sql
+    assert sql.count("updated_at = updated_at") == 2
+    assert "idx_crawl_run_created" in sql
+    assert "idx_crawl_run_source" in sql
+    assert "idx_crawl_run_trigger" in sql
+    assert "completed_at = COALESCE" in sql

@@ -7,6 +7,7 @@ import {
   BulkPublicationDto,
   BulkQualityResolutionDto,
   CrawlRunDto,
+  CrawlRunQueryDto,
   DuplicateResolutionDto,
   PageQueryDto,
   PublicationActionDto,
@@ -135,6 +136,7 @@ export interface BulkResult {
 }
 
 type ReviewKind = 'duplicate' | 'quality' | 'publication';
+type CrawlTrigger = 'MANUAL' | 'SCHEDULED';
 
 @Injectable()
 export class TechArticlesService {
@@ -358,7 +360,31 @@ export class TechArticlesService {
     return this.pipeline.get('/internal/v1/admin/crawl-sources');
   }
 
-  startCrawl(dto: CrawlRunDto, idempotencyKey: string | undefined) {
+  async crawlRuns(query: CrawlRunQueryDto) {
+    const upstream = await this.pipeline.get<
+      PipelinePage<Record<string, unknown>>
+    >('/internal/v1/crawl-runs', {
+      limit: query.pageSize,
+      offset: (query.page - 1) * query.pageSize,
+      status: query.status,
+      sourceId: query.sourceId,
+      trigger: query.trigger,
+    });
+    return {
+      items: upstream.items.map((run) => this.crawlRunItem(run)),
+      pagination: this.pagination(
+        upstream.totalCount,
+        query.page,
+        query.pageSize,
+      ),
+    };
+  }
+
+  startCrawl(
+    dto: CrawlRunDto,
+    idempotencyKey: string | undefined,
+    trigger: CrawlTrigger = 'MANUAL',
+  ) {
     if (!idempotencyKey || !/^[\x21-\x7e]{1,255}$/.test(idempotencyKey)) {
       throw new BadRequestException({
         statusCode: 400,
@@ -373,20 +399,21 @@ export class TechArticlesService {
             ...dto,
             crawlOptions: {
               ...dto.crawlOptions,
-              maximumArticleCount:
-                dto.crawlOptions?.maximumArticleCount ?? 3,
+              maximumArticleCount: dto.crawlOptions?.maximumArticleCount ?? 3,
             },
           }
         : dto;
     return this.pipeline.post('/internal/v1/crawl-runs', request, {
       'Idempotency-Key': idempotencyKey,
+      'X-Crawl-Trigger': trigger,
     });
   }
 
-  crawlRun(crawlRunId: string) {
-    return this.pipeline.get(
+  async crawlRun(crawlRunId: string) {
+    const run = await this.pipeline.get<Record<string, unknown>>(
       `/internal/v1/crawl-runs/${encodeURIComponent(crawlRunId)}`,
     );
+    return this.crawlRunItem(run);
   }
 
   private validateCrawlSource(dto: CrawlRunDto): void {
@@ -452,6 +479,76 @@ export class TechArticlesService {
       currentPage,
       totalPages: Math.ceil(totalCount / pageSize),
       pageSize,
+    };
+  }
+
+  private crawlRunItem(run: Record<string, unknown>) {
+    const result: Record<string, unknown> = {};
+    for (const key of [
+      'crawlRunId',
+      'sourceId',
+      'sourceType',
+      'sectionKey',
+      'trigger',
+      'status',
+      'requestedAt',
+      'createdAt',
+      'startedAt',
+      'completedAt',
+      'updatedAt',
+      'statistics',
+      'itemCount',
+    ]) {
+      result[key] = run[key];
+    }
+    result.error = this.crawlError(
+      run.error,
+      run.status === 'FAILED' ? false : undefined,
+    );
+    result.job = this.crawlJob(run.job);
+    if (Array.isArray(run.items)) {
+      result.items = run.items
+        .filter(
+          (item): item is Record<string, unknown> =>
+            Boolean(item) && typeof item === 'object' && !Array.isArray(item),
+        )
+        .map((item) => ({
+          crawlItemId: item.crawlItemId,
+          crawlStatus: item.crawlStatus,
+          submissionId: item.submissionId,
+          normalizationStatus: item.normalizationStatus,
+        }));
+    }
+    return result;
+  }
+
+  private crawlJob(value: unknown) {
+    if (!value || typeof value !== 'object' || Array.isArray(value))
+      return null;
+    const job = value as Record<string, unknown>;
+    return {
+      jobId: job.jobId,
+      crawlRunId: job.crawlRunId,
+      status: job.status,
+      attemptCount: job.attemptCount,
+      maxAttempts: job.maxAttempts,
+      availableAt: job.availableAt,
+      leaseExpiresAt: job.leaseExpiresAt,
+      error: this.crawlError(
+        job.error,
+        job.status === 'DEAD' ? false : undefined,
+      ),
+    };
+  }
+
+  private crawlError(value: unknown, retryable?: boolean) {
+    if (!value || typeof value !== 'object' || Array.isArray(value))
+      return null;
+    const error = value as Record<string, unknown>;
+    return {
+      code: error.code,
+      message: error.message,
+      retryable: retryable ?? error.retryable,
     };
   }
 

@@ -59,6 +59,7 @@ describe('TechArticleCrawlScheduler', () => {
         },
       },
       'auto-crawl:v1:20260821T0000KST:cloudflare-blog-rss-blog',
+      'SCHEDULED',
     );
     const [infoQNews, infoQNewsKey] = techArticles.startCrawl.mock.calls[1];
     expect(infoQNews.source).toEqual({
@@ -98,6 +99,7 @@ describe('TechArticleCrawlScheduler', () => {
         },
       },
       'auto-crawl:v1:20260821T0000KST:github-trending-web-repositories-daily',
+      'SCHEDULED',
     );
   });
 
@@ -122,6 +124,7 @@ describe('TechArticleCrawlScheduler', () => {
       6,
       expect.any(Object),
       'auto-crawl:v1:20260822T0000KST:cloudflare-blog-rss-blog',
+      'SCHEDULED',
     );
   });
 

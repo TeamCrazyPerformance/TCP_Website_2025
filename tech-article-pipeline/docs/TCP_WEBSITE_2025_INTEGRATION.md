@@ -37,10 +37,20 @@ Proxy public list/detail, admin inventory, all three review queues and resolutio
 publication actions, and publication-policy GET/PATCH. Public endpoints must rely
 on the pipeline's `ENRICHED + PUBLISHED` filter rather than reimplement it.
 
-Add an admin-only crawl trigger/status proxy for `POST /internal/v1/crawl-runs`
-and `GET /internal/v1/crawl-runs/{crawlRunId}`. Do not allow the browser or NestJS
+Add an admin-only crawl trigger/status proxy for `POST /internal/v1/crawl-runs`,
+`GET /internal/v1/crawl-runs`, and `GET /internal/v1/crawl-runs/{crawlRunId}`.
+Do not allow the browser or NestJS
 request body to supply an arbitrary crawl URL; forward only the registered
 `sourceId`, `sourceType`, section, bounded options, and policy fields.
+NestJS assigns `X-Crawl-Trigger: MANUAL` to administrator requests and
+`X-Crawl-Trigger: SCHEDULED` to scheduler requests. Both services must project
+an explicit allowlist for crawl reads and must never return request payloads,
+lease tokens, job results, or raw crawl-item evidence to the browser.
+
+Proxy the run state without inventing a live phase or percentage. Source
+adapters return their `CrawlBatch` only after collection finishes, so active
+runs expose status, timestamps, attempts, and errors; the six official crawl
+statistics and persisted item count are final-result data.
 
 ## Operations
 

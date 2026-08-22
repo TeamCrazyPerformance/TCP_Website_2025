@@ -34,6 +34,7 @@ const SCOPES = [
     markup: [
       "pages/admin/AdminTechArticles.jsx",
       "pages/admin/AdminTechArticleReviews.jsx",
+      "pages/admin/AdminCrawlOperations.jsx",
       "components/tech-articles/AdminTechArticleContent.jsx",
       "components/tech-articles/TechArticleCrawlPanel.jsx",
       "components/tech-articles/V9ConfirmDialog.jsx",
@@ -96,8 +97,7 @@ function usedClasses(files) {
     const re = /className=(?:"([^"]*)"|\{`([^`]*)`\})/g;
     let m;
     while ((m = re.exec(text)) !== null) {
-      const raw =
-        m[1] !== undefined ? m[1] : m[2].replace(/\$\{[^}]*\}/g, " ");
+      const raw = m[1] !== undefined ? m[1] : m[2].replace(/\$\{[^}]*\}/g, " ");
       for (const token of raw.split(/\s+/)) {
         if (/^[A-Za-z0-9_-]+$/.test(token)) used.add(token);
       }
@@ -112,9 +112,9 @@ function scopedProps(files, scope) {
   for (const file of files) {
     eachRule(fs.readFileSync(path.join(SRC, file), "utf8"), (head, body) => {
       for (const selector of head.split(",")) {
-        const match = new RegExp(
-          `^\\${scope} \\.([A-Za-z0-9_-]+)$`,
-        ).exec(selector.trim());
+        const match = new RegExp(`^\\${scope} \\.([A-Za-z0-9_-]+)$`).exec(
+          selector.trim(),
+        );
         if (!match) continue;
         const set = map.get(match[1]) || new Set();
         declaredProps(body).forEach((p) => set.add(p));

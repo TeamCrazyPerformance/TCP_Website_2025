@@ -18,7 +18,6 @@ import {
   updatePublicationPolicy,
 } from "../../api/techArticles";
 import AdminTechArticleContent from "../../components/tech-articles/AdminTechArticleContent";
-import TechArticleCrawlPanel from "../../components/tech-articles/TechArticleCrawlPanel";
 import { SafeMarkdown } from "../../components/tech-articles/TechArticleCommon";
 import { getPageTokens } from "../../components/tech-articles/TechArticlePagination";
 import { QualityEvaluationPanel } from "../../components/tech-articles/ArticleQualityPanel";
@@ -421,9 +420,6 @@ function AdminTechArticles() {
       (stats.publication?.ARCHIVED || 0) +
       (stats.publication?.UNPUBLISHED || 0)
     : 0;
-  // 수집 패널 열림 상태. 기본 닫힘 (주 작업 가리지 않도록)
-  const [isCrawlOpen, setCrawlOpen] = useState(false);
-
   const toggleRecord = (record) => {
     setSelected((current) => {
       const next = { ...current };
@@ -659,19 +655,6 @@ function AdminTechArticles() {
           <p>수집된 아티클의 처리 현황과 공개 상태를 관리합니다.</p>
         </div>
         <div className="admin-intro-actions">
-          <button
-            className="btn-secondary"
-            type="button"
-            aria-expanded={isCrawlOpen}
-            aria-controls="crawlPanel"
-            onClick={() => setCrawlOpen((open) => !open)}
-          >
-            <i
-              className={`fas ${isCrawlOpen ? "fa-xmark" : "fa-satellite-dish"}`}
-              aria-hidden="true"
-            ></i>
-            {isCrawlOpen ? "비동기 수집 실행 닫기" : "비동기 수집 실행"}
-          </button>
           <Link className="public-page-link" to="/tech-articles">
             공개 페이지 보기
             <i
@@ -681,25 +664,6 @@ function AdminTechArticles() {
           </Link>
         </div>
       </section>
-
-      {/* 수집 실행은 하위 작업. 관리자 화면은 3개(전체/중복/검토) 유지 */}
-      {isCrawlOpen && (
-        <section
-          id="crawlPanel"
-          className="crawl-panel-v9"
-          aria-label="기술 아티클 수집 실행"
-        >
-          <div className="crawl-panel-heading-v9">
-            <p className="section-eyebrow orbitron">CRAWL OPERATIONS</p>
-            <h3>기술 아티클 수집</h3>
-            <p>
-              서버가 허용한 소스와 수집 방식만 선택해 비동기 수집 실행을
-              시작합니다.
-            </p>
-          </div>
-          <TechArticleCrawlPanel />
-        </section>
-      )}
 
       <section className="admin-overview-grid" aria-label="아티클 운영 현황">
         <article className="widget-card total-card">

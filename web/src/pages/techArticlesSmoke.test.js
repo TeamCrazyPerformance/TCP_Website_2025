@@ -1,4 +1,4 @@
-/* Tech Articles 5개 화면의 렌더 스모크 테스트입니다.
+/* Tech Articles 공개·관리 화면의 렌더 스모크 테스트입니다.
  *
  * 셸 통합과 Shadow DOM 제거 과정에서 생기는 배선 오류는 빌드를 통과하고
  * 런타임에서만 드러납니다. 실제로 이 테스트로 사문이 된 <V9PublicFooter /> 와
@@ -6,7 +6,7 @@
  *
  * API 는 모킹하며, 엔드포인트 정합성은 백엔드 라우트 대조로 따로 확인합니다. */
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 jest.mock(
   "react-router-dom",
@@ -68,6 +68,10 @@ beforeEach(() => {
   });
   api.getPublicationPolicy.mockResolvedValue({ policy: "REVIEW", version: 1 });
   api.getCrawlSources.mockResolvedValue({ items: [] });
+  api.getCrawlRuns.mockResolvedValue({
+    items: [],
+    pagination: PAGINATION,
+  });
   api.techArticleErrorMessage.mockImplementation((_e, fallback) => fallback);
   api.isVersionConflict.mockReturnValue(false);
 });
@@ -129,18 +133,59 @@ describe("관리자 화면", () => {
     expect(container.querySelector(".admin-topbar")).toBeNull();
   });
 
-  test("수집 실행 패널은 기본 닫힘이고 라벨이 '비동기 수집 실행'이다", async () => {
+  test("전체 아티클에는 사이드바와 중복되는 크롤링 이동 버튼이 없다", async () => {
     asAdmin();
     const AdminTechArticles = require("./admin/AdminTechArticles").default;
     const { container } = renderWithAuth(<AdminTechArticles />);
 
     await waitFor(() => expect(api.getAdminTechArticles).toHaveBeenCalled());
 
-    const toggle = screen.getByRole("button", { name: /비동기 수집 실행/ });
-    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.queryByRole("link", { name: /크롤링 관리/ }),
+    ).not.toBeInTheDocument();
     expect(container.querySelector("#crawlPanel")).toBeNull();
-    // 닫힘 상태에서는 소스 미조회
     expect(api.getCrawlSources).not.toHaveBeenCalled();
+  });
+
+  test("크롤링 관리 화면은 이력을 우선 표시하고 실행 폼을 토글로 연다", async () => {
+    asAdmin();
+    const AdminCrawlOperations =
+      require("./admin/AdminCrawlOperations").default;
+    const { container } = renderWithAuth(<AdminCrawlOperations />);
+
+    await waitFor(() => expect(api.getCrawlSources).toHaveBeenCalled());
+    expect(api.getCrawlRuns).toHaveBeenCalled();
+    expect(container.querySelector(".ta-admin")).not.toBeNull();
+    expect(
+      screen.queryByRole("link", { name: /전체 아티클 보기/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("크롤링 실행 이력")).toBeInTheDocument();
+    expect(container.querySelector("#asyncCrawlRunner")).toBeNull();
+    expect(
+      container.querySelector(".admin-intro .crawl-runner-toggle-v9"),
+    ).toBeNull();
+    expect(
+      container.querySelector(
+        ".crawl-operations-panel-v9 > .crawl-runner-toggle-v9",
+      ),
+    ).not.toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /비동기 수집 실행/ }));
+
+    expect(container.querySelector("#asyncCrawlRunner")).not.toBeNull();
+    expect(
+      screen.getByRole("heading", { name: "비동기 수집 실행" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /실행 설정 닫기/ }),
+    ).toHaveAttribute("aria-expanded", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: /실행 설정 닫기/ }));
+
+    expect(container.querySelector("#asyncCrawlRunner")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: /비동기 수집 실행/ }),
+    ).toHaveAttribute("aria-expanded", "false");
   });
 
   test("중복 의심 아티클이 중복 큐만 요청한다", async () => {

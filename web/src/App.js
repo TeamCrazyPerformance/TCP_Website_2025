@@ -66,6 +66,9 @@ const AdminTechArticles = lazy(() => import("./pages/admin/AdminTechArticles"));
 const AdminTechArticleReviews = lazy(
   () => import("./pages/admin/AdminTechArticleReviews"),
 );
+const AdminCrawlOperations = lazy(
+  () => import("./pages/admin/AdminCrawlOperations"),
+);
 
 // 공개 화면 청크 로딩 표시. 공용 Header 가 fixed 이므로 pt-24 확보.
 function PublicChunkFallback() {
@@ -221,7 +224,14 @@ function AppContent() {
               </Suspense>
             }
           />
-          {/* 수집 실행은 "전체 아티클" 화면의 하위 패널. 별도 라우트 없음 */}
+          <Route
+            path="tech-articles/crawls"
+            element={
+              <Suspense fallback={<AdminChunkFallback />}>
+                <AdminCrawlOperations />
+              </Suspense>
+            }
+          />
         </Route>
       </Routes>
       {!isNonCommonLayout && <Footer />}

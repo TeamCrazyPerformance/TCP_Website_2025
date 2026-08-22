@@ -153,10 +153,21 @@ Bulk 본문은 `{"items": [...]}`이며 최대 50개, ID 중복 금지다. 유�
   - PATCH: `{"policy":"IMMEDIATE|REVIEW","expectedVersion":1}`.
 - `GET /api/v1/admin/tech-articles/crawl-sources`: 허용된 소스 조합과 옵션 범위.
 - `POST /api/v1/admin/tech-articles/crawl-runs`: `Idempotency-Key` 헤더 필수, HTTP 202.
+- `GET /api/v1/admin/tech-articles/crawl-runs`: 최신순 실행 이력과 상태·시각·재시도·종료 결과.
 - `GET /api/v1/admin/tech-articles/crawl-runs/:crawlRunId`: 비동기 실행 상태 조회.
 
 수집 본문은 등록된 `sourceId`, `sourceType`, `sectionKey`와 제한된 `crawlOptions`만 받는다.
 임의 URL, 직접 정규화 제출, 저수준 job 조회, 영구 삭제는 외부 API에 없다.
+관리자 요청은 서버가 `MANUAL`, 자동 스케줄 요청은 `SCHEDULED`로 기록한다. 이력과
+상세 응답은 실행·소스·시각·시도 횟수·최종 통계·저장 건수 및
+`error: {code, message, retryable}`만 제공한다. 요청 원문, job 결과, lease token,
+수집 항목의 `rawArticle`은 관리자 응답에도 포함하지 않는다.
+현재 소스 어댑터는 실행이 끝난 뒤 하나의 완료 배치를 반환하므로 실행 중 페이지·아티클
+진행률은 제공하지 않는다. 대기·실행·재시도 중에는 실행 상태, 시각, 시도 횟수와 오류만
+표시하며, `statistics`와 저장 항목 수는 종료 후 확정 결과로만 사용한다. 종료 통계는
+`pagesVisited`, `articlesDiscovered`, `articlesExcludedByAge`, `articlesAttempted`,
+`articlesSucceeded`, `articlesFailed` 여섯 항목이다. `maximumArticleCount`는 발견 총량이
+아니라 상한이므로 진행률의 분모로 사용하지 않는다.
 
 GitHub Trending은 `github-trending / WEB_CRAWL / REPOSITORIES` 조합만 허용한다.
 `maximumArticleCount`는 1~3, `maximumPageCount`는 1, `followPagination`은 false다.

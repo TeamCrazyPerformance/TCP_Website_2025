@@ -5,7 +5,7 @@ import hashlib
 import json
 import os
 from contextlib import asynccontextmanager, suppress
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
@@ -35,6 +35,73 @@ def _digest(payload: dict[str, Any]) -> bytes:
         payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
     ).encode("utf-8")
     return hashlib.sha256(canonical).digest()
+
+
+def _crawl_error_read(
+    error: Any,
+    *,
+    retryable: bool | None = None,
+) -> dict[str, Any] | None:
+    if not isinstance(error, dict):
+        return None
+    result = {key: error[key] for key in ("code", "message", "retryable") if key in error}
+    if retryable is not None:
+        result["retryable"] = retryable
+    return result or None
+
+
+def _crawl_run_read(run: dict[str, Any]) -> dict[str, Any]:
+    fields = (
+        "crawlRunId",
+        "sourceId",
+        "sourceType",
+        "sectionKey",
+        "trigger",
+        "status",
+        "requestedAt",
+        "createdAt",
+        "startedAt",
+        "completedAt",
+        "updatedAt",
+        "statistics",
+        "itemCount",
+    )
+    result = {key: run.get(key) for key in fields}
+    result["error"] = _crawl_error_read(
+        run.get("error"), retryable=False if run.get("status") == "FAILED" else None
+    )
+    job = run.get("job")
+    if isinstance(job, dict):
+        result["job"] = {
+            key: job.get(key)
+            for key in (
+                "jobId",
+                "crawlRunId",
+                "status",
+                "attemptCount",
+                "maxAttempts",
+                "availableAt",
+                "leaseExpiresAt",
+            )
+        }
+        result["job"]["error"] = _crawl_error_read(
+            job.get("error"), retryable=False if job.get("status") == "DEAD" else None
+        )
+    if isinstance(run.get("items"), list):
+        result["items"] = [
+            {
+                key: item.get(key)
+                for key in (
+                    "crawlItemId",
+                    "crawlStatus",
+                    "submissionId",
+                    "normalizationStatus",
+                )
+            }
+            for item in run["items"]
+            if isinstance(item, dict)
+        ]
+    return result
 
 
 def create_app(
@@ -80,7 +147,9 @@ def create_app(
     @app.exception_handler(VersionConflictError)
     async def version_handler(request: Request, exc: VersionConflictError) -> JSONResponse:
         del request
-        return JSONResponse(status_code=409, content={"code": "VERSION_CONFLICT", "message": str(exc)})
+        return JSONResponse(
+            status_code=409, content={"code": "VERSION_CONFLICT", "message": str(exc)}
+        )
 
     @app.get("/health/live")
     async def live() -> dict[str, str]:
@@ -140,6 +209,9 @@ def create_app(
             max_length=255,
             pattern=r"^[\x21-\x7E]+$",
         ),
+        crawl_trigger: Literal["MANUAL", "SCHEDULED"] = Header(
+            default="MANUAL", alias="X-Crawl-Trigger"
+        ),
     ) -> JSONResponse:
         payload = command.model_dump(by_alias=True, mode="json")
         try:
@@ -149,6 +221,7 @@ def create_app(
                 body_digest=_digest(payload),
                 payload=payload,
                 max_attempts=request.app.state.settings.job_max_attempts,
+                trigger=crawl_trigger,
             )
         except IdempotencyConflictError as exc:
             raise HTTPException(
@@ -161,6 +234,42 @@ def create_app(
         response["operation"] = "CREATED" if created else "REPLAYED"
         return JSONResponse(status_code=202, content=response)
 
+    @internal.get("/crawl-runs")
+    async def list_crawl_runs(
+        request: Request,
+        limit: int = Query(default=20, ge=1, le=100),
+        offset: int = Query(default=0, ge=0),
+        crawl_status: Literal[
+            "QUEUED",
+            "RUNNING",
+            "RETRY",
+            "COMPLETED",
+            "PARTIALLY_COMPLETED",
+            "FAILED",
+        ]
+        | None = Query(default=None, alias="status"),
+        source_id: Literal["cloudflare-blog", "infoq", "sdtimes", "github-trending"] | None = Query(
+            default=None, alias="sourceId"
+        ),
+        trigger: Literal["MANUAL", "SCHEDULED"] | None = Query(default=None),
+    ) -> dict[str, Any]:
+        filters = {
+            "status": crawl_status,
+            "source_id": source_id,
+            "trigger": trigger,
+        }
+        items = await asyncio.to_thread(
+            request.app.state.runtime.repository.list_crawl_runs,
+            limit=limit,
+            offset=offset,
+            **filters,
+        )
+        total_count = await asyncio.to_thread(
+            request.app.state.runtime.repository.count_crawl_runs,
+            **filters,
+        )
+        return {"items": [_crawl_run_read(item) for item in items], "totalCount": total_count}
+
     @internal.get("/crawl-runs/{crawl_run_id}")
     async def get_crawl_run(request: Request, crawl_run_id: str) -> dict[str, Any]:
         run = await asyncio.to_thread(
@@ -168,7 +277,7 @@ def create_app(
         )
         if run is None:
             raise HTTPException(status_code=404, detail={"code": "CRAWL_RUN_NOT_FOUND"})
-        return run
+        return _crawl_run_read(run)
 
     @internal.get("/jobs/{job_id}")
     async def get_job(request: Request, job_id: str) -> dict[str, Any]:
@@ -235,13 +344,9 @@ def create_app(
             alias="publicationStatus",
             pattern=r"^(UNPUBLISHED|SCHEDULED|PUBLISHED|HIDDEN|ARCHIVED)$",
         ),
-        stage: str | None = Query(
-            default=None, pattern=r"^(" + "|".join(STAGE_NAMES) + r")$"
-        ),
+        stage: str | None = Query(default=None, pattern=r"^(" + "|".join(STAGE_NAMES) + r")$"),
         status_mismatch: bool = Query(default=False, alias="statusMismatch"),
-        sort: str = Query(
-            default="NEWEST", pattern=r"^(NEWEST|OLDEST|SCORE_DESC|SCORE_ASC)$"
-        ),
+        sort: str = Query(default="NEWEST", pattern=r"^(NEWEST|OLDEST|SCORE_DESC|SCORE_ASC)$"),
     ) -> dict[str, Any]:
         items, total_count = await asyncio.gather(
             asyncio.to_thread(
@@ -301,9 +406,7 @@ def create_app(
     ) -> dict[str, Any]:
         if kind not in {"duplicate", "quality", "publication"}:
             raise HTTPException(status_code=404, detail={"code": "REVIEW_QUEUE_NOT_FOUND"})
-        allowed_sorts = {"duplicate": {"NEWEST", "SIMILARITY_DESC"}}.get(
-            kind, {"NEWEST"}
-        )
+        allowed_sorts = {"duplicate": {"NEWEST", "SIMILARITY_DESC"}}.get(kind, {"NEWEST"})
         if sort not in allowed_sorts:
             raise HTTPException(status_code=422, detail={"code": "INVALID_REVIEW_SORT"})
         allowed_filters = {

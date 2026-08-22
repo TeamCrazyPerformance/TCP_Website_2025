@@ -159,6 +159,24 @@ export function startCrawlRun(payload, idempotencyKey) {
   });
 }
 
+export function getCrawlRuns({
+  page = 1,
+  pageSize = 20,
+  status,
+  sourceId,
+  trigger,
+} = {}) {
+  return apiGet(
+    withQuery(`${ADMIN_BASE}/crawl-runs`, {
+      page,
+      pageSize,
+      status,
+      sourceId,
+      trigger,
+    }),
+  );
+}
+
 export function getCrawlRun(crawlRunId) {
   return apiGet(`${ADMIN_BASE}/crawl-runs/${encodeURIComponent(crawlRunId)}`);
 }

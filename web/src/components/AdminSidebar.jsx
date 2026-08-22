@@ -106,6 +106,13 @@ function AdminSidebar({ isOpen = false }) {
             <i className="fas fa-user-check"></i>
             <span className="ml-2">Article Review</span>
           </Link>
+          <Link
+            to="/admin/tech-articles/crawls"
+            className={`sidebar-link ${isActive("/admin/tech-articles/crawls") ? "bg-gray-700 text-white" : ""}`}
+          >
+            <i className="fas fa-satellite-dish"></i>
+            <span className="ml-2">Crawl Operations</span>
+          </Link>
         </div>
         <div>
           <h3 className="px-4 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">

@@ -5,10 +5,17 @@ routes (`/health/live`, `/health/ready`) are the only exceptions.
 
 ## Submission and jobs
 
-- `POST /crawl-runs` — requires `Idempotency-Key`; enqueues one source crawl and
-  returns HTTP 202 with `crawlRunId`, `jobId`, and `operation`.
+- `POST /crawl-runs` — requires `Idempotency-Key`; the trusted website service sets
+  `X-Crawl-Trigger: MANUAL|SCHEDULED` (default `MANUAL`). It enqueues one source
+  crawl and returns HTTP 202 with `crawlRunId`, `jobId`, `trigger`, and `operation`.
 - `GET /crawl-runs/{crawlRunId}` — returns crawl/job status, attempts, aggregate
   statistics, errors, and each item's downstream `submissionId` when available.
+- `GET /crawl-runs` — returns newest-first crawl history with `limit|offset` and
+  optional `status`, `sourceId`, and `trigger=MANUAL|SCHEDULED` filters. Each row
+  includes timing, source capability, retry state, stored item count, and final
+  statistics when the source adapter has finished. Errors are limited to `code`,
+  `message`, and `retryable`; job results, request payloads, leases, and raw crawl
+  evidence are not part of either crawl-run read response.
 - `POST /normalized-articles` — requires `Idempotency-Key`; returns HTTP 202 with
   `submissionId`, the initial `jobId`, and `operation: CREATED|REPLAYED`.
 - `GET /jobs/{jobId}` — returns stage, status, attempts, lease, result, and error.
@@ -39,6 +46,14 @@ becoming an SSRF proxy; entry points are selected from the registered source:
 }
 ```
 
+The current source adapter contract returns one completed `CrawlBatch`; it does
+not stream per-page or per-article progress. While a run is queued, running, or
+waiting to retry, clients may display its run/job status, timestamps, attempts,
+and error. `statistics` is `null` until the adapter finishes, and `itemCount`
+counts only records already persisted by the worker. Clients must not derive a
+live phase or percentage from `maximumArticleCount`, because that option is an
+upper bound rather than the number of articles that will be discovered.
+
 Supported combinations are Cloudflare `RSS/BLOG`, InfoQ
 `RSS|WEB_CRAWL` with `NEWS|ENGINEERING`, and SD Times
 `RSS|WEB_CRAWL|API` with `NEWS`, plus GitHub Trending
@@ -49,10 +64,10 @@ GitHub Trending requests accept `maximumArticleCount` from 1 through 3 and
 `requestTimeoutMs`. `followPagination` must be false and `maximumPageCount` must
 remain 1. Discovery is always `https://github.com/trending?since=daily` with no
 language filter; the selected rank is never backfilled after a README failure.
-Rank, period, counters, contributors, and crawl time are retained in crawl-item
-records rather than inserted into normalized article content. Crawl-run reads
-may expose that raw item evidence, but article reads and Gemini enrichment do not
-currently project it, so it is not visible on the public website.
+Rank, period, counters, contributors, and crawl time are retained in internal
+crawl-item records rather than inserted into normalized article content. Crawl-run
+reads expose only item identifiers and processing outcomes; raw item evidence is
+not returned by the API, article reads, or Gemini enrichment.
 
 For a repository seen in an earlier window, canonical URL equality selects the
 existing article as an admission candidate. It is not an unconditional duplicate

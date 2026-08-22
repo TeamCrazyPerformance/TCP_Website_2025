@@ -283,6 +283,27 @@ export class CrawlRunDto {
   crawlOptions?: CrawlOptionsDto;
 }
 
+export class CrawlRunQueryDto extends PageQueryDto {
+  @IsIn([
+    'QUEUED',
+    'RUNNING',
+    'RETRY',
+    'COMPLETED',
+    'PARTIALLY_COMPLETED',
+    'FAILED',
+  ])
+  @IsOptional()
+  status?: string;
+
+  @IsIn(['cloudflare-blog', 'infoq', 'sdtimes', 'github-trending'])
+  @IsOptional()
+  sourceId?: string;
+
+  @IsIn(['MANUAL', 'SCHEDULED'])
+  @IsOptional()
+  trigger?: 'MANUAL' | 'SCHEDULED';
+}
+
 export class ArticleIdParamDto {
   @IsString()
   @IsNotEmpty()

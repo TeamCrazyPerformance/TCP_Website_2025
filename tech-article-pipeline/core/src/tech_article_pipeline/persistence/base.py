@@ -5,7 +5,6 @@ from typing import Any, Protocol
 
 from tech_article_pipeline.contracts import CrawlJobRecord, JobRecord, PublicationPolicy, Stage
 
-
 # 관리자 화면의 파이프라인 단계. 표시 순서대로 둡니다.
 # 판정 규칙은 mysql.STAGE_PREDICATES(SQL) 와 memory._article_stage(파이썬)에
 # 각각 있고, 이름 목록만 여기서 공유합니다.
@@ -43,6 +42,26 @@ class NotFoundError(RuntimeError):
     pass
 
 
+def crawl_error_summary(
+    error: dict[str, Any] | None,
+    *,
+    retryable: bool | None = None,
+) -> dict[str, Any] | None:
+    """Return the small, raw-content-free error contract exposed by crawl reads."""
+    if not isinstance(error, dict):
+        return None
+    summary: dict[str, Any] = {}
+    if isinstance(error.get("code"), str):
+        summary["code"] = error["code"]
+    if isinstance(error.get("message"), str):
+        summary["message"] = error["message"]
+    if retryable is not None:
+        summary["retryable"] = retryable
+    elif isinstance(error.get("retryable"), bool):
+        summary["retryable"] = error["retryable"]
+    return summary or None
+
+
 class PipelineRepository(Protocol):
     def check_readiness(self) -> None: ...
 
@@ -62,9 +81,28 @@ class PipelineRepository(Protocol):
         body_digest: bytes,
         payload: dict[str, Any],
         max_attempts: int,
+        trigger: str = "MANUAL",
     ) -> tuple[dict[str, Any], bool]: ...
 
     def get_crawl_run(self, crawl_run_id: str) -> dict[str, Any] | None: ...
+
+    def list_crawl_runs(
+        self,
+        *,
+        limit: int,
+        offset: int = 0,
+        status: str | None = None,
+        source_id: str | None = None,
+        trigger: str | None = None,
+    ) -> list[dict[str, Any]]: ...
+
+    def count_crawl_runs(
+        self,
+        *,
+        status: str | None = None,
+        source_id: str | None = None,
+        trigger: str | None = None,
+    ) -> int: ...
 
     def claim_crawl_job(self, *, lease_seconds: int) -> CrawlJobRecord | None: ...
 

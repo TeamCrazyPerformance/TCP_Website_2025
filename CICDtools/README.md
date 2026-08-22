@@ -55,6 +55,8 @@ bash CICDtools/update_pipeline.sh
 ```
 
 `update_all.sh`는 확인, fast-forward Git pull, 통합 백업을 각각 한 번만 수행합니다.
+크롤링 관리처럼 파이프라인 스키마·API·화면이 함께 바뀌는 릴리스는 개별 업데이트가 아니라
+반드시 `update_all.sh`를 사용합니다.
 배포 순서는 다음과 같이 고정됩니다.
 
 1. 프론트엔드를 비활성 `dist.next`에 `npm ci`로 빌드

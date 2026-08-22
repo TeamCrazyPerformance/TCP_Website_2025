@@ -25,8 +25,15 @@ cd web && bash tools/dev.sh
 PORT=4000 node tools/mock-tech-articles-api.mjs   # 단독 실행
 ```
 
-관리자 목록·검수 큐·공개 화면이 쓰는 응답만 흉내 냅니다. 백엔드나 DB 없이 화면을 확인할 때
-씁니다.
+관리자 목록·검수 큐·공개 화면과 크롤링 관리 화면이 쓰는 응답을 흉내 냅니다. 크롤링 실행
+이력에는 대기·실행·재시도·완료·일부 성공·실패 상태가 포함됩니다. 실제 어댑터 계약과 같이
+실행 중 숫자 진행률은 제공하지 않고, 여섯 가지 수집 통계는 종료 후에만 제공합니다. 백엔드나
+DB 없이 화면을 확인할 때 씁니다. 로컬 로그인 화면에서는 비어 있지 않은 아이디와 비밀번호를
+입력하면 데모 관리자로 로그인됩니다.
+
+서버는 기본적으로 로컬 루프백 주소인 `localhost`에만 바인딩됩니다. 격리된 개발망에서 다른 기기의 접근이
+꼭 필요한 경우에만 `MOCK_HOST=0.0.0.0`을 명시하세요. 이 경우 데모 관리자 인증도 함께
+노출되므로 인터넷이나 공용 네트워크에서는 실행하면 안 됩니다.
 
 ### 서버 동작을 그대로 따라가야 하는 부분
 
@@ -40,6 +47,7 @@ PORT=4000 node tools/mock-tech-articles-api.mjs   # 단독 실행
 | `hasStatusMismatch()` | `persistence/mysql.py` 의 `STATUS_MISMATCH_PREDICATE` |
 | `publicationQueue()` | `persistence/mysql.py` 의 `_review_conditions("publication")` |
 | `applyPublication()` | `persistence/mysql.py` 의 `apply_publication_action` |
+| `demoCrawlRuns` | crawl run/job 상태와 종료 시점의 공식 `CrawlRunCompleted.statistics` |
 
 `applyPublication()` 의 `reviewStatus = "APPROVED"` 승격은 **알려진 서버 결함을 그대로 재현한
 것**입니다. 서버에서 이 승격에 처리 단계 조건이 붙으면 이 줄도 함께 고쳐야 합니다.

@@ -142,11 +142,62 @@ describe('TechArticlesService', () => {
 
     await service.startCrawl(dto, 'manual-github-1');
 
-    expect(pipeline.post).toHaveBeenCalledWith(
-      '/internal/v1/crawl-runs',
-      dto,
-      { 'Idempotency-Key': 'manual-github-1' },
-    );
+    expect(pipeline.post).toHaveBeenCalledWith('/internal/v1/crawl-runs', dto, {
+      'Idempotency-Key': 'manual-github-1',
+      'X-Crawl-Trigger': 'MANUAL',
+    });
+  });
+
+  it('returns paginated crawl history with operational filters', async () => {
+    pipeline.get.mockResolvedValue({
+      items: [
+        {
+          crawlRunId: 'crawl-1',
+          status: 'RUNNING',
+          requestPayload: { rawArticle: { content: 'must-not-leak' } },
+          error: {
+            code: 'SOURCE_CRAWL_FAILED',
+            message: 'failed',
+            retryable: true,
+            details: { crawlItems: [{ rawArticle: 'must-not-leak' }] },
+          },
+          job: {
+            status: 'RETRY',
+            result: { rawArticle: 'must-not-leak' },
+            leaseToken: 'must-not-leak',
+          },
+        },
+      ],
+      totalCount: 21,
+    });
+
+    const result = await service.crawlRuns({
+      page: 2,
+      pageSize: 20,
+      status: 'RUNNING',
+      sourceId: 'infoq',
+      trigger: 'SCHEDULED',
+    });
+
+    expect(pipeline.get).toHaveBeenCalledWith('/internal/v1/crawl-runs', {
+      limit: 20,
+      offset: 20,
+      status: 'RUNNING',
+      sourceId: 'infoq',
+      trigger: 'SCHEDULED',
+    });
+    expect(result.pagination).toEqual({
+      totalCount: 21,
+      currentPage: 2,
+      totalPages: 2,
+      pageSize: 20,
+    });
+    expect(JSON.stringify(result)).not.toContain('must-not-leak');
+    expect(result.items[0].error).toEqual({
+      code: 'SOURCE_CRAWL_FAILED',
+      message: 'failed',
+      retryable: true,
+    });
   });
 
   it('defaults a GitHub Trending crawl request to three repositories', async () => {
@@ -173,8 +224,53 @@ describe('TechArticlesService', () => {
         },
         crawlOptions: { maximumArticleCount: 3 },
       },
-      { 'Idempotency-Key': 'manual-github-default' },
+      {
+        'Idempotency-Key': 'manual-github-default',
+        'X-Crawl-Trigger': 'MANUAL',
+      },
     );
+  });
+
+  it('removes internal crawl evidence from crawl details', async () => {
+    pipeline.get.mockResolvedValue({
+      crawlRunId: 'crawl-1',
+      status: 'FAILED',
+      requestPayload: { rawArticle: 'must-not-leak' },
+      error: {
+        code: 'SOURCE_CRAWL_FAILED',
+        message: 'failed',
+        retryable: false,
+        details: { crawlItems: [{ rawArticle: 'must-not-leak' }] },
+      },
+      job: {
+        status: 'DEAD',
+        result: { rawArticle: 'must-not-leak' },
+        error: {
+          code: 'SOURCE_CRAWL_FAILED',
+          message: 'failed',
+          retryable: false,
+        },
+      },
+      items: [
+        {
+          crawlItemId: 'item-1',
+          crawlStatus: 'FAILED',
+          rawArticle: 'must-not-leak',
+        },
+      ],
+    });
+
+    const result = await service.crawlRun('crawl-1');
+
+    expect(JSON.stringify(result)).not.toContain('must-not-leak');
+    expect(result.items).toEqual([
+      {
+        crawlItemId: 'item-1',
+        crawlStatus: 'FAILED',
+        submissionId: undefined,
+        normalizationStatus: undefined,
+      },
+    ]);
   });
 
   it.each([

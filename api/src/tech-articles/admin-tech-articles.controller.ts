@@ -26,6 +26,7 @@ import {
   BulkQualityResolutionDto,
   CrawlRunDto,
   CrawlRunIdParamDto,
+  CrawlRunQueryDto,
   DuplicateResolutionDto,
   DuplicateReviewQueryDto,
   ProcessingReviewQueryDto,
@@ -139,6 +140,11 @@ export class AdminTechArticlesController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.service.startCrawl(dto, idempotencyKey);
+  }
+
+  @Get('crawl-runs')
+  crawlRuns(@Query() query: CrawlRunQueryDto) {
+    return this.service.crawlRuns(query);
   }
 
   @Get('crawl-runs/:crawlRunId')

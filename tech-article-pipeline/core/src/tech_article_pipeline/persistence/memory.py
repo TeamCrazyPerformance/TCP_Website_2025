@@ -22,6 +22,7 @@ from .base import (
     IdempotencyConflictError,
     NotFoundError,
     VersionConflictError,
+    crawl_error_summary,
 )
 
 
@@ -97,7 +98,10 @@ class MemoryPipelineRepository:
         body_digest: bytes,
         payload: dict[str, Any],
         max_attempts: int,
+        trigger: str = "MANUAL",
     ) -> tuple[dict[str, Any], bool]:
+        if trigger not in {"MANUAL", "SCHEDULED"}:
+            raise ValueError(f"Unsupported crawl trigger: {trigger}")
         with self._lock:
             existing_id = self.crawl_idempotency.get(idempotency_key)
             if existing_id:
@@ -116,12 +120,16 @@ class MemoryPipelineRepository:
                 "idempotency_key": idempotency_key,
                 "body_digest": body_digest,
                 "source_id": payload["source"]["sourceId"],
+                "trigger_type": trigger,
                 "status": "QUEUED",
                 "request_payload": request_payload,
                 "job_id": job_id,
                 "statistics": None,
                 "error": None,
                 "created_at": now,
+                "started_at": None,
+                "completed_at": None,
+                "updated_at": now,
             }
             self.crawl_runs[crawl_run_id] = run
             self.crawl_idempotency[idempotency_key] = crawl_run_id
@@ -147,31 +155,68 @@ class MemoryPipelineRepository:
                 return None
             job = self.crawl_jobs[run["job_id"]]
             items = [
-                item
-                for item in self.crawl_items.values()
-                if item["crawl_run_id"] == crawl_run_id
+                item for item in self.crawl_items.values() if item["crawl_run_id"] == crawl_run_id
             ]
             return copy.deepcopy(
-                {
-                    "crawlRunId": crawl_run_id,
-                    "sourceId": run["source_id"],
-                    "status": run["status"],
-                    "requestPayload": run["request_payload"],
-                    "statistics": run.get("statistics"),
-                    "error": run.get("error"),
-                    "job": self._external_crawl_job(job),
-                    "items": [
-                        {
-                            "crawlItemId": item["crawl_item_id"],
-                            "crawlStatus": item["item_payload"].get("crawl", {}).get("status"),
-                            "submissionId": item.get("submission_id"),
-                            "normalizationStatus": (
-                                "SUCCESS" if item.get("normalization_payload") else None
-                            ),
-                        }
-                        for item in items
-                    ],
-                }
+                self._external_crawl_run(
+                    run,
+                    job,
+                    items=items,
+                    include_request_payload=True,
+                )
+            )
+
+    def list_crawl_runs(
+        self,
+        *,
+        limit: int,
+        offset: int = 0,
+        status: str | None = None,
+        source_id: str | None = None,
+        trigger: str | None = None,
+    ) -> list[dict[str, Any]]:
+        with self._lock:
+            runs = [
+                run
+                for run in self.crawl_runs.values()
+                if (status is None or run["status"] == status)
+                and (source_id is None or run["source_id"] == source_id)
+                and (trigger is None or run["trigger_type"] == trigger)
+            ]
+            runs.sort(
+                key=lambda item: (item["created_at"], item["crawl_run_id"]),
+                reverse=True,
+            )
+            return copy.deepcopy(
+                [
+                    self._external_crawl_run(
+                        run,
+                        self.crawl_jobs[run["job_id"]],
+                        item_count=sum(
+                            1
+                            for item in self.crawl_items.values()
+                            if item["crawl_run_id"] == run["crawl_run_id"]
+                        ),
+                        include_items=False,
+                    )
+                    for run in runs[offset : offset + limit]
+                ]
+            )
+
+    def count_crawl_runs(
+        self,
+        *,
+        status: str | None = None,
+        source_id: str | None = None,
+        trigger: str | None = None,
+    ) -> int:
+        with self._lock:
+            return sum(
+                1
+                for run in self.crawl_runs.values()
+                if (status is None or run["status"] == status)
+                and (source_id is None or run["source_id"] == source_id)
+                and (trigger is None or run["trigger_type"] == trigger)
             )
 
     def claim_crawl_job(self, *, lease_seconds: int) -> CrawlJobRecord | None:
@@ -188,15 +233,16 @@ class MemoryPipelineRepository:
                     }
                     job["lease_token"] = None
                     job["lease_expires_at"] = None
-                    self.crawl_runs[job["crawl_run_id"]]["status"] = (
-                        "RETRY" if can_retry else "FAILED"
-                    )
+                    run = self.crawl_runs[job["crawl_run_id"]]
+                    run["status"] = "RETRY" if can_retry else "FAILED"
+                    run["error"] = copy.deepcopy(job["error"])
+                    run["updated_at"] = now
+                    run["completed_at"] = None if can_retry else now
             candidates = sorted(
                 (
                     job
                     for job in self.crawl_jobs.values()
-                    if job["status"] in {"PENDING", "RETRY"}
-                    and job["available_at"] <= now
+                    if job["status"] in {"PENDING", "RETRY"} and job["available_at"] <= now
                 ),
                 key=lambda item: (item["available_at"], item["created_at"]),
             )
@@ -207,8 +253,24 @@ class MemoryPipelineRepository:
             job["attempt_count"] += 1
             job["lease_token"] = uuid4().hex
             job["lease_expires_at"] = now + timedelta(seconds=lease_seconds)
-            self.crawl_runs[job["crawl_run_id"]]["status"] = "RUNNING"
-            return CrawlJobRecord.model_validate(self._external_crawl_job(job))
+            run = self.crawl_runs[job["crawl_run_id"]]
+            run["status"] = "RUNNING"
+            run["started_at"] = run.get("started_at") or now
+            run["updated_at"] = now
+            return CrawlJobRecord.model_validate(
+                {
+                    "jobId": job["job_id"],
+                    "crawlRunId": job["crawl_run_id"],
+                    "status": job["status"],
+                    "attemptCount": job["attempt_count"],
+                    "maxAttempts": job["max_attempts"],
+                    "availableAt": job["available_at"],
+                    "leaseExpiresAt": job.get("lease_expires_at"),
+                    "leaseToken": job.get("lease_token"),
+                    "result": job.get("result"),
+                    "error": job.get("error"),
+                }
+            )
 
     def complete_crawl_job(
         self, job: CrawlJobRecord, result: dict[str, Any], *, max_attempts: int
@@ -217,9 +279,7 @@ class MemoryPipelineRepository:
             stored_job = self.crawl_jobs[job.job_id]
             if stored_job.get("lease_token") != job.lease_token:
                 raise VersionConflictError("crawler job lease changed")
-            normalized_by_id = {
-                item["crawlItemId"]: item for item in result["normalizedArticles"]
-            }
+            normalized_by_id = {item["crawlItemId"]: item for item in result["normalizedArticles"]}
             for item in result["crawlItems"]:
                 item_id = item["crawlItemId"]
                 normalized = normalized_by_id.get(item_id)
@@ -248,10 +308,20 @@ class MemoryPipelineRepository:
             run["status"] = completion["status"]
             run["statistics"] = copy.deepcopy(completion.get("statistics"))
             run["error"] = (
-                {"normalizationFailures": copy.deepcopy(result["normalizationFailures"])}
+                {
+                    "code": "NORMALIZATION_PARTIALLY_FAILED",
+                    "message": (
+                        f"{len(result['normalizationFailures'])} collected article(s) "
+                        "failed normalization."
+                    ),
+                    "retryable": False,
+                }
                 if result["normalizationFailures"]
                 else None
             )
+            now = _now()
+            run["completed_at"] = now
+            run["updated_at"] = now
             stored_job.update(
                 {
                     "status": "SUCCEEDED",
@@ -279,10 +349,11 @@ class MemoryPipelineRepository:
             if stored.get("lease_token") != job.lease_token:
                 raise VersionConflictError("crawler job lease changed")
             retry = retryable and job.attempt_count < job.max_attempts
+            safe_error = crawl_error_summary(error, retryable=retry)
             stored.update(
                 {
                     "status": "RETRY" if retry else "DEAD",
-                    "error": copy.deepcopy(error),
+                    "error": safe_error,
                     "available_at": available_at,
                     "lease_token": None,
                     "lease_expires_at": None,
@@ -290,7 +361,12 @@ class MemoryPipelineRepository:
             )
             run = self.crawl_runs[job.crawl_run_id]
             run["status"] = "RETRY" if retry else "FAILED"
-            run["error"] = copy.deepcopy(error)
+            run["error"] = copy.deepcopy(safe_error)
+            run["statistics"] = copy.deepcopy(
+                error.get("details", {}).get("completion", {}).get("statistics")
+            )
+            run["updated_at"] = _now()
+            run["completed_at"] = None if retry else run["updated_at"]
             for item in error.get("details", {}).get("crawlItems", []):
                 self.crawl_items[item["crawlItemId"]] = {
                     "crawl_item_id": item["crawlItemId"],
@@ -307,9 +383,60 @@ class MemoryPipelineRepository:
             "crawlRunId": run["crawl_run_id"],
             "jobId": run["job_id"],
             "sourceId": run["source_id"],
+            "trigger": run["trigger_type"],
             "status": run["status"],
             "jobStatus": job["status"] if job else "PENDING",
         }
+
+    @classmethod
+    def _external_crawl_run(
+        cls,
+        run: dict[str, Any],
+        job: dict[str, Any],
+        *,
+        items: list[dict[str, Any]] | None = None,
+        item_count: int | None = None,
+        include_items: bool = True,
+        include_request_payload: bool = False,
+    ) -> dict[str, Any]:
+        payload = run["request_payload"]
+        source = payload.get("source", {})
+        count = len(items or []) if item_count is None else item_count
+        status = run["status"]
+        result: dict[str, Any] = {
+            "crawlRunId": run["crawl_run_id"],
+            "sourceId": run["source_id"],
+            "sourceType": source.get("sourceType"),
+            "sectionKey": source.get("sectionKey"),
+            "trigger": run["trigger_type"],
+            "status": status,
+            "requestedAt": payload.get("requestedAt"),
+            "createdAt": run.get("created_at"),
+            "startedAt": run.get("started_at"),
+            "completedAt": run.get("completed_at"),
+            "updatedAt": run.get("updated_at"),
+            "statistics": run.get("statistics"),
+            "itemCount": count,
+            "error": crawl_error_summary(
+                run.get("error"), retryable=False if status == "FAILED" else None
+            ),
+            "job": cls._external_crawl_job(job),
+        }
+        if include_items:
+            result["items"] = [
+                {
+                    "crawlItemId": item["crawl_item_id"],
+                    "crawlStatus": item["item_payload"].get("crawl", {}).get("status"),
+                    "submissionId": item.get("submission_id"),
+                    "normalizationStatus": (
+                        "SUCCESS" if item.get("normalization_payload") else None
+                    ),
+                }
+                for item in (items or [])
+            ]
+        if include_request_payload:
+            result["requestPayload"] = copy.deepcopy(payload)
+        return result
 
     @staticmethod
     def _external_crawl_job(job: dict[str, Any]) -> dict[str, Any]:
@@ -321,15 +448,13 @@ class MemoryPipelineRepository:
             "maxAttempts": job["max_attempts"],
             "availableAt": job["available_at"],
             "leaseExpiresAt": job.get("lease_expires_at"),
-            "leaseToken": job.get("lease_token"),
-            "result": job.get("result"),
-            "error": job.get("error"),
+            "error": crawl_error_summary(
+                job.get("error"), retryable=False if job["status"] == "DEAD" else None
+            ),
         }
 
     @staticmethod
-    def _submission_response(
-        submission: dict[str, Any], job: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _submission_response(submission: dict[str, Any], job: dict[str, Any]) -> dict[str, Any]:
         return {
             "submissionId": submission["submission_id"],
             "jobId": job["job_id"],
@@ -387,15 +512,12 @@ class MemoryPipelineRepository:
                     job["lease_token"] = None
                     job["lease_expires_at"] = None
                     if not can_retry:
-                        self.submissions[job["submission_id"]]["state"] = (
-                            "PROCESSING_FAILED"
-                        )
+                        self.submissions[job["submission_id"]]["state"] = "PROCESSING_FAILED"
             candidates = sorted(
                 (
                     job
                     for job in self.jobs.values()
-                    if job["status"] in {"PENDING", "RETRY"}
-                    and job["available_at"] <= now
+                    if job["status"] in {"PENDING", "RETRY"} and job["available_at"] <= now
                 ),
                 key=lambda item: (item["available_at"], item["created_at"]),
             )
@@ -406,9 +528,9 @@ class MemoryPipelineRepository:
             job["attempt_count"] += 1
             job["lease_token"] = uuid4().hex
             job["lease_expires_at"] = now + timedelta(seconds=lease_seconds)
-            return JobRecord.model_validate(self._external_job(job) | {
-                "leaseToken": job["lease_token"]
-            })
+            return JobRecord.model_validate(
+                self._external_job(job) | {"leaseToken": job["lease_token"]}
+            )
 
     def get_submission(self, submission_id: str) -> dict[str, Any]:
         with self._lock:
@@ -417,8 +539,7 @@ class MemoryPipelineRepository:
             except KeyError as exc:
                 raise NotFoundError(submission_id) from exc
             submission["quality_review_approved"] = any(
-                review["submissionId"] == submission_id
-                and review["status"] == "RESOLVED_APPROVE"
+                review["submissionId"] == submission_id and review["status"] == "RESOLVED_APPROVE"
                 for review in self.quality_reviews.values()
             )
             return submission
@@ -581,7 +702,12 @@ class MemoryPipelineRepository:
             stored = self.jobs[job.job_id]
             if stored["lease_token"] != job.lease_token:
                 raise VersionConflictError("job lease changed")
-            stored.update(status="SUCCEEDED", result=copy.deepcopy(result), lease_token=None, lease_expires_at=None)
+            stored.update(
+                status="SUCCEEDED",
+                result=copy.deepcopy(result),
+                lease_token=None,
+                lease_expires_at=None,
+            )
 
     def fail_job(
         self,
@@ -662,8 +788,7 @@ class MemoryPipelineRepository:
 
     def _quality_review_approved(self, article_id: str) -> bool:
         return any(
-            case.get("articleId") == article_id
-            and case.get("status") == "RESOLVED_APPROVE"
+            case.get("articleId") == article_id and case.get("status") == "RESOLVED_APPROVE"
             for case in self.quality_reviews.values()
         )
 
@@ -755,7 +880,11 @@ class MemoryPipelineRepository:
     def get_public_article(self, article_id: str) -> dict[str, Any] | None:
         with self._lock:
             article = self.articles.get(article_id)
-            if not article or article["processingStatus"] != "ENRICHED" or article["publicationStatus"] != "PUBLISHED":
+            if (
+                not article
+                or article["processingStatus"] != "ENRICHED"
+                or article["publicationStatus"] != "PUBLISHED"
+            ):
                 return None
             return self._project_article(article)
 
@@ -774,7 +903,9 @@ class MemoryPipelineRepository:
             values = [
                 article
                 for article in self.articles.values()
-                if (publication_status is None or article["publicationStatus"] == publication_status)
+                if (
+                    publication_status is None or article["publicationStatus"] == publication_status
+                )
                 and (stage is None or self._article_stage(article) == stage)
                 and (not status_mismatch or self._has_status_mismatch(article))
                 and self._matches_article(article, keyword, (), include_admin_fields=True)
@@ -820,7 +951,9 @@ class MemoryPipelineRepository:
             return sum(
                 1
                 for article in self.articles.values()
-                if (publication_status is None or article["publicationStatus"] == publication_status)
+                if (
+                    publication_status is None or article["publicationStatus"] == publication_status
+                )
                 and (stage is None or self._article_stage(article) == stage)
                 and (not status_mismatch or self._has_status_mismatch(article))
                 and self._matches_article(article, keyword, (), include_admin_fields=True)
@@ -839,8 +972,7 @@ class MemoryPipelineRepository:
                 article
                 for article in self.articles.values()
                 if (
-                    publication_status is None
-                    or article["publicationStatus"] == publication_status
+                    publication_status is None or article["publicationStatus"] == publication_status
                 )
                 and self._matches_article(article, keyword, (), include_admin_fields=True)
             ]
@@ -863,18 +995,14 @@ class MemoryPipelineRepository:
                 seen = self._updated_time(article)
                 if seen and (key not in oldest_sort_key or seen < oldest_sort_key[key]):
                     oldest_sort_key[key] = seen
-                    stage_oldest[key] = article.get("updatedAt") or article.get(
-                        "createdAt"
-                    )
+                    stage_oldest[key] = article.get("updatedAt") or article.get("createdAt")
             return {
                 "totalCount": len(selected),
                 "publication": publication,
                 "processing": processing,
                 "stages": stages,
                 "stageOldest": stage_oldest,
-                "statusMismatch": sum(
-                    1 for item in selected if self._has_status_mismatch(item)
-                ),
+                "statusMismatch": sum(1 for item in selected if self._has_status_mismatch(item)),
                 "reviews": {
                     "duplicates": self.count_review_queue("duplicate"),
                     "quality": self.count_review_queue("quality"),
@@ -902,7 +1030,11 @@ class MemoryPipelineRepository:
                     article_payload = payload.get("article") or {}
                     urls = payload.get("urls") or {}
                     source = payload.get("source") or {}
-                    projected = {key: copy.deepcopy(value) for key, value in item.items() if key != "admissionPayload"}
+                    projected = {
+                        key: copy.deepcopy(value)
+                        for key, value in item.items()
+                        if key != "admissionPayload"
+                    }
                     projected["candidate"] = {
                         "title": article_payload.get("title"),
                         "source": source_projection(
@@ -969,7 +1101,10 @@ class MemoryPipelineRepository:
             if kind == "duplicate" and sort == "SIMILARITY_DESC":
                 values.sort(
                     key=lambda item: max(
-                        (candidate.get("contentJaccard", -1) for candidate in item.get("candidates", [])),
+                        (
+                            candidate.get("contentJaccard", -1)
+                            for candidate in item.get("candidates", [])
+                        ),
                         default=-1,
                     ),
                     reverse=True,
@@ -1024,7 +1159,12 @@ class MemoryPipelineRepository:
                 article["reviewStatus"] = "APPROVED"
                 article["processingStatus"] = "ENRICHMENT_PENDING"
                 submission["state"] = "ENRICHMENT_PENDING"
-                self.enqueue(case["submissionId"], Stage.ENRICHMENT, max_attempts=max_attempts, unique_key=f"{case['submissionId']}:ENRICHMENT")
+                self.enqueue(
+                    case["submissionId"],
+                    Stage.ENRICHMENT,
+                    max_attempts=max_attempts,
+                    unique_key=f"{case['submissionId']}:ENRICHMENT",
+                )
             else:
                 article["reviewStatus"] = "REJECTED"
                 article["processingStatus"] = "QUALITY_REJECTED"
@@ -1051,7 +1191,14 @@ class MemoryPipelineRepository:
             article["reviewStatus"] = "APPROVED" if action == "PUBLISH" else article["reviewStatus"]
             article["publishedAt"] = _now() if action == "PUBLISH" else article.get("publishedAt")
             article["recordVersion"] += 1
-            self.events.append({"articleId": article_id, "action": action, "administratorId": administrator_id, "reason": reason})
+            self.events.append(
+                {
+                    "articleId": article_id,
+                    "action": action,
+                    "administratorId": administrator_id,
+                    "reason": reason,
+                }
+            )
             return copy.deepcopy(article)
 
     def continue_after_duplicate_resolution(
@@ -1059,7 +1206,11 @@ class MemoryPipelineRepository:
     ) -> None:
         with self._lock:
             submission = next(
-                (item for item in self.submissions.values() if item.get("duplicate_review_case_id") == review_case_id),
+                (
+                    item
+                    for item in self.submissions.values()
+                    if item.get("duplicate_review_case_id") == review_case_id
+                ),
                 None,
             )
             if submission is None:
@@ -1076,10 +1227,18 @@ class MemoryPipelineRepository:
                 )
                 review["caseVersion"] += 1
             if resolution["finalDecision"] == "UNIQUE":
-                self.mark_admission_result(submission["submission_id"], {
-                    "outcome": "ARTICLE_INGESTED",
-                    "articleIngested": result["articleIngested"],
-                })
-                self.enqueue(submission["submission_id"], Stage.QUALITY, max_attempts=max_attempts, unique_key=f"{submission['submission_id']}:QUALITY")
+                self.mark_admission_result(
+                    submission["submission_id"],
+                    {
+                        "outcome": "ARTICLE_INGESTED",
+                        "articleIngested": result["articleIngested"],
+                    },
+                )
+                self.enqueue(
+                    submission["submission_id"],
+                    Stage.QUALITY,
+                    max_attempts=max_attempts,
+                    unique_key=f"{submission['submission_id']}:QUALITY",
+                )
             else:
                 submission["state"] = "DUPLICATE"

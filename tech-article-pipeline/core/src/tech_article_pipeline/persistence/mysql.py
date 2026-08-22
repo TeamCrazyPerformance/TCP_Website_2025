@@ -20,6 +20,7 @@ from .base import (
     IdempotencyConflictError,
     NotFoundError,
     VersionConflictError,
+    crawl_error_summary,
 )
 
 # 승인 여부는 review_status 가 아니라 검토 케이스로 판정합니다. 공개 액션이
@@ -41,15 +42,9 @@ STAGE_PREDICATES: dict[str, str] = {
     "QUALITY_REVIEW": "a.processing_status = 'QUALITY_EVALUATED'",
     "ENRICHING": "a.processing_status = 'ENRICHMENT_PENDING'",
     "PUBLICATION_REVIEW": f"({_STAGE_PUBLICATION_REVIEW})",
-    "COMPLETED": (
-        f"a.processing_status = 'ENRICHED' AND NOT ({_STAGE_PUBLICATION_REVIEW})"
-    ),
-    "FAILED_AFTER_APPROVAL": (
-        f"a.processing_status = 'PROCESSING_FAILED' AND {_STAGE_APPROVED}"
-    ),
-    "FAILED": (
-        f"a.processing_status = 'PROCESSING_FAILED' AND NOT {_STAGE_APPROVED}"
-    ),
+    "COMPLETED": (f"a.processing_status = 'ENRICHED' AND NOT ({_STAGE_PUBLICATION_REVIEW})"),
+    "FAILED_AFTER_APPROVAL": (f"a.processing_status = 'PROCESSING_FAILED' AND {_STAGE_APPROVED}"),
+    "FAILED": (f"a.processing_status = 'PROCESSING_FAILED' AND NOT {_STAGE_APPROVED}"),
     "QUALITY_REJECTED": "a.processing_status = 'QUALITY_REJECTED'",
 }
 
@@ -64,10 +59,7 @@ STATUS_MISMATCH_PREDICATE = (
 
 STAGE_CASE = (
     "CASE "
-    + " ".join(
-        f"WHEN {predicate} THEN '{stage}'"
-        for stage, predicate in STAGE_PREDICATES.items()
-    )
+    + " ".join(f"WHEN {predicate} THEN '{stage}'" for stage, predicate in STAGE_PREDICATES.items())
     + " ELSE 'UNKNOWN' END"
 )
 
@@ -89,9 +81,9 @@ def _utc(value: datetime | None) -> datetime | None:
 
 
 def _payload_digest(value: dict[str, Any]) -> bytes:
-    encoded = json.dumps(
-        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-    ).encode("utf-8")
+    encoded = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+        "utf-8"
+    )
     return hashlib.sha256(encoded).digest()
 
 
@@ -118,9 +110,9 @@ class MySQLPipelineRepository:
             try:
                 cursor.execute(
                     "SELECT version FROM pipeline_migration_history "
-                    "WHERE version IN ('001', '002', '003')"
+                    "WHERE version IN ('001', '002', '003', '004')"
                 )
-                if {row["version"] for row in cursor.fetchall()} != {"001", "002", "003"}:
+                if {row["version"] for row in cursor.fetchall()} != {"001", "002", "003", "004"}:
                     raise RuntimeError("required pipeline migrations have not been applied")
                 cursor.execute("SELECT 1 AS ready")
                 cursor.fetchone()
@@ -201,7 +193,10 @@ class MySQLPipelineRepository:
         body_digest: bytes,
         payload: dict[str, Any],
         max_attempts: int,
+        trigger: str = "MANUAL",
     ) -> tuple[dict[str, Any], bool]:
+        if trigger not in {"MANUAL", "SCHEDULED"}:
+            raise ValueError(f"Unsupported crawl trigger: {trigger}")
         crawl_run_id = f"crawl-run-{uuid4().hex}"
         job_id = f"crawl-job-{uuid4().hex}"
         now = datetime.now(UTC)
@@ -214,20 +209,21 @@ class MySQLPipelineRepository:
             try:
                 cursor.execute(
                     "INSERT IGNORE INTO crawl_runs "
-                    "(crawl_run_id, idempotency_key, body_digest, source_id, job_id, status, "
-                    "request_payload) VALUES (%s, %s, %s, %s, %s, 'QUEUED', %s)",
+                    "(crawl_run_id, idempotency_key, body_digest, source_id, trigger_type, job_id, "
+                    "status, request_payload) VALUES (%s, %s, %s, %s, %s, %s, 'QUEUED', %s)",
                     (
                         crawl_run_id,
                         idempotency_key,
                         body_digest,
                         payload["source"]["sourceId"],
+                        trigger,
                         job_id,
                         _json(request_payload),
                     ),
                 )
                 created = cursor.rowcount == 1
                 cursor.execute(
-                    "SELECT crawl_run_id, body_digest, source_id, job_id, status "
+                    "SELECT crawl_run_id, body_digest, source_id, trigger_type, job_id, status "
                     "FROM crawl_runs WHERE idempotency_key = %s FOR UPDATE",
                     (idempotency_key,),
                 )
@@ -246,15 +242,14 @@ class MySQLPipelineRepository:
                     )
                     job_status = "PENDING"
                 else:
-                    cursor.execute(
-                        "SELECT status FROM crawl_jobs WHERE job_id = %s", (job_id,)
-                    )
+                    cursor.execute("SELECT status FROM crawl_jobs WHERE job_id = %s", (job_id,))
                     job_status = cursor.fetchone()["status"]
                 connection.commit()
                 return {
                     "crawlRunId": crawl_run_id,
                     "jobId": job_id,
                     "sourceId": row["source_id"],
+                    "trigger": row["trigger_type"],
                     "status": row["status"],
                     "jobStatus": job_status,
                 }, created
@@ -272,8 +267,10 @@ class MySQLPipelineRepository:
             cursor = connection.cursor(dictionary=True)
             try:
                 cursor.execute(
-                    "SELECT r.*, j.status AS job_status, j.attempt_count, j.max_attempts, "
-                    "j.available_at, j.lease_expires_at, j.result AS job_result, "
+                    "SELECT r.crawl_run_id, r.source_id, r.trigger_type, r.status, "
+                    "r.request_payload, r.statistics, r.error, r.created_at, r.started_at, "
+                    "r.completed_at, r.updated_at, r.job_id, j.status AS job_status, "
+                    "j.attempt_count, j.max_attempts, j.available_at, j.lease_expires_at, "
                     "j.error AS job_error FROM crawl_runs r JOIN crawl_jobs j "
                     "ON j.job_id = r.job_id WHERE r.crawl_run_id = %s",
                     (crawl_run_id,),
@@ -299,55 +296,178 @@ class MySQLPipelineRepository:
                             ),
                         }
                     )
-                return {
-                    "crawlRunId": row["crawl_run_id"],
-                    "sourceId": row["source_id"],
-                    "status": row["status"],
-                    "requestPayload": _decode(row["request_payload"]),
-                    "statistics": _decode(row["statistics"]),
-                    "error": _decode(row["error"]),
-                    "job": {
-                        "jobId": row["job_id"],
-                        "crawlRunId": row["crawl_run_id"],
-                        "status": row["job_status"],
-                        "attemptCount": int(row["attempt_count"]),
-                        "maxAttempts": int(row["max_attempts"]),
-                        "availableAt": _utc(row["available_at"]),
-                        "leaseExpiresAt": _utc(row["lease_expires_at"]),
-                        "result": _decode(row["job_result"]),
-                        "error": _decode(row["job_error"]),
-                    },
-                    "items": items,
-                }
+                return self._external_crawl_run(
+                    row,
+                    item_count=len(items),
+                    items=items,
+                    include_request_payload=True,
+                )
             finally:
                 cursor.close()
         finally:
             connection.close()
+
+    def list_crawl_runs(
+        self,
+        *,
+        limit: int,
+        offset: int = 0,
+        status: str | None = None,
+        source_id: str | None = None,
+        trigger: str | None = None,
+    ) -> list[dict[str, Any]]:
+        clauses: list[str] = []
+        params: list[Any] = []
+        if status is not None:
+            clauses.append("r.status = %s")
+            params.append(status)
+        if source_id is not None:
+            clauses.append("r.source_id = %s")
+            params.append(source_id)
+        if trigger is not None:
+            clauses.append("r.trigger_type = %s")
+            params.append(trigger)
+        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+        connection = self._pool.get_connection()
+        try:
+            cursor = connection.cursor(dictionary=True)
+            try:
+                cursor.execute(
+                    "SELECT r.crawl_run_id, r.source_id, r.trigger_type, r.status, "
+                    "r.request_payload, r.statistics, r.error, r.created_at, r.started_at, "
+                    "r.completed_at, r.updated_at, r.job_id, j.status AS job_status, "
+                    "j.attempt_count, j.max_attempts, j.available_at, j.lease_expires_at, "
+                    "j.error AS job_error, (SELECT COUNT(*) FROM crawl_items i "
+                    "WHERE i.crawl_run_id = r.crawl_run_id) AS item_count "
+                    "FROM crawl_runs r JOIN crawl_jobs j ON j.job_id = r.job_id "
+                    f"{where} "
+                    "ORDER BY r.created_at DESC, r.crawl_run_id DESC LIMIT %s OFFSET %s",
+                    (*params, limit, offset),
+                )
+                return [
+                    self._external_crawl_run(row, item_count=int(row["item_count"]))
+                    for row in cursor.fetchall()
+                ]
+            finally:
+                cursor.close()
+        finally:
+            connection.close()
+
+    def count_crawl_runs(
+        self,
+        *,
+        status: str | None = None,
+        source_id: str | None = None,
+        trigger: str | None = None,
+    ) -> int:
+        clauses: list[str] = []
+        params: list[Any] = []
+        if status is not None:
+            clauses.append("r.status = %s")
+            params.append(status)
+        if source_id is not None:
+            clauses.append("r.source_id = %s")
+            params.append(source_id)
+        if trigger is not None:
+            clauses.append("r.trigger_type = %s")
+            params.append(trigger)
+        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+        connection = self._pool.get_connection()
+        try:
+            cursor = connection.cursor(dictionary=True)
+            try:
+                cursor.execute(
+                    "SELECT COUNT(*) AS count FROM crawl_runs r "
+                    "JOIN crawl_jobs j ON j.job_id = r.job_id" + where,
+                    params,
+                )
+                return int(cursor.fetchone()["count"])
+            finally:
+                cursor.close()
+        finally:
+            connection.close()
+
+    @classmethod
+    def _external_crawl_run(
+        cls,
+        row: dict[str, Any],
+        *,
+        item_count: int,
+        items: list[dict[str, Any]] | None = None,
+        include_request_payload: bool = False,
+    ) -> dict[str, Any]:
+        request_payload = _decode(row["request_payload"]) or {}
+        source = request_payload.get("source", {})
+        run_status = row["status"]
+        result: dict[str, Any] = {
+            "crawlRunId": row["crawl_run_id"],
+            "sourceId": row["source_id"],
+            "sourceType": source.get("sourceType"),
+            "sectionKey": source.get("sectionKey"),
+            "trigger": row["trigger_type"],
+            "status": run_status,
+            "requestedAt": request_payload.get("requestedAt"),
+            "createdAt": _utc(row.get("created_at")),
+            "startedAt": _utc(row.get("started_at")),
+            "completedAt": _utc(row.get("completed_at")),
+            "updatedAt": _utc(row.get("updated_at")),
+            "statistics": _decode(row["statistics"]),
+            "itemCount": item_count,
+            "error": crawl_error_summary(
+                _decode(row["error"]), retryable=False if run_status == "FAILED" else None
+            ),
+            "job": {
+                "jobId": row["job_id"],
+                "crawlRunId": row["crawl_run_id"],
+                "status": row["job_status"],
+                "attemptCount": int(row["attempt_count"]),
+                "maxAttempts": int(row["max_attempts"]),
+                "availableAt": _utc(row["available_at"]),
+                "leaseExpiresAt": _utc(row["lease_expires_at"]),
+                "error": crawl_error_summary(
+                    _decode(row["job_error"]),
+                    retryable=False if row["job_status"] == "DEAD" else None,
+                ),
+            },
+        }
+        if items is not None:
+            result["items"] = items
+        if include_request_payload:
+            result["requestPayload"] = request_payload
+        return result
 
     def claim_crawl_job(self, *, lease_seconds: int) -> CrawlJobRecord | None:
         connection = self._connection()
         try:
             cursor = connection.cursor(dictionary=True)
             try:
-                expired_error = _json(
-                    {
-                        "code": "LEASE_EXPIRED",
-                        "message": "Crawler worker lease expired.",
-                        "retryable": True,
-                    }
-                )
                 cursor.execute(
-                    "UPDATE crawl_jobs SET status = IF(attempt_count < max_attempts, 'RETRY', 'DEAD'), "
-                    "error = %s, lease_token = NULL, lease_expires_at = NULL "
-                    "WHERE status = 'RUNNING' AND lease_expires_at < UTC_TIMESTAMP(6)",
-                    (expired_error,),
+                    "SELECT job_id, crawl_run_id, attempt_count, max_attempts FROM crawl_jobs "
+                    "WHERE status = 'RUNNING' AND lease_expires_at < UTC_TIMESTAMP(6) "
+                    "FOR UPDATE SKIP LOCKED"
                 )
-                cursor.execute(
-                    "UPDATE crawl_runs r JOIN crawl_jobs j ON j.crawl_run_id = r.crawl_run_id "
-                    "SET r.status = IF(j.status = 'DEAD', 'FAILED', 'RETRY'), r.error = j.error "
-                    "WHERE j.error = %s AND j.status IN ('RETRY', 'DEAD')",
-                    (expired_error,),
-                )
+                for expired in cursor.fetchall():
+                    can_retry = int(expired["attempt_count"]) < int(expired["max_attempts"])
+                    job_status = "RETRY" if can_retry else "DEAD"
+                    run_status = "RETRY" if can_retry else "FAILED"
+                    expired_error = _json(
+                        {
+                            "code": "LEASE_EXPIRED",
+                            "message": "Crawler worker lease expired.",
+                            "retryable": can_retry,
+                        }
+                    )
+                    cursor.execute(
+                        "UPDATE crawl_jobs SET status = %s, error = %s, lease_token = NULL, "
+                        "lease_expires_at = NULL WHERE job_id = %s AND status = 'RUNNING'",
+                        (job_status, expired_error, expired["job_id"]),
+                    )
+                    cursor.execute(
+                        "UPDATE crawl_runs SET status = %s, error = %s, "
+                        "completed_at = IF(%s = 'FAILED', UTC_TIMESTAMP(6), NULL) "
+                        "WHERE crawl_run_id = %s",
+                        (run_status, expired_error, run_status, expired["crawl_run_id"]),
+                    )
                 cursor.execute(
                     "SELECT * FROM crawl_jobs WHERE status IN ('PENDING', 'RETRY') "
                     "AND available_at <= UTC_TIMESTAMP(6) "
@@ -470,7 +590,16 @@ class MySQLPipelineRepository:
                     )
                 completion = result["completion"]
                 normalization_error = (
-                    _json({"normalizationFailures": result["normalizationFailures"]})
+                    _json(
+                        {
+                            "code": "NORMALIZATION_PARTIALLY_FAILED",
+                            "message": (
+                                f"{len(result['normalizationFailures'])} collected article(s) "
+                                "failed normalization."
+                            ),
+                            "retryable": False,
+                        }
+                    )
                     if result["normalizationFailures"]
                     else None
                 )
@@ -516,6 +645,8 @@ class MySQLPipelineRepository:
     ) -> None:
         status = "RETRY" if retryable and job.attempt_count < job.max_attempts else "DEAD"
         run_status = "RETRY" if status == "RETRY" else "FAILED"
+        safe_error = crawl_error_summary(error, retryable=status == "RETRY")
+        statistics = error.get("details", {}).get("completion", {}).get("statistics")
         connection = self._connection()
         try:
             cursor = connection.cursor()
@@ -535,7 +666,7 @@ class MySQLPipelineRepository:
                     "WHERE job_id = %s AND lease_token = %s",
                     (
                         status,
-                        _json(error),
+                        _json(safe_error),
                         available_at.astimezone(UTC).replace(tzinfo=None),
                         job.job_id,
                         job.lease_token,
@@ -544,10 +675,16 @@ class MySQLPipelineRepository:
                 if cursor.rowcount != 1:
                     raise VersionConflictError("crawler job lease changed")
                 cursor.execute(
-                    "UPDATE crawl_runs SET status = %s, error = %s, "
+                    "UPDATE crawl_runs SET status = %s, statistics = %s, error = %s, "
                     "completed_at = IF(%s = 'FAILED', UTC_TIMESTAMP(6), NULL) "
                     "WHERE crawl_run_id = %s",
-                    (run_status, _json(error), run_status, job.crawl_run_id),
+                    (
+                        run_status,
+                        _json(statistics) if statistics is not None else None,
+                        _json(safe_error),
+                        run_status,
+                        job.crawl_run_id,
+                    ),
                 )
                 connection.commit()
             finally:
@@ -574,16 +711,14 @@ class MySQLPipelineRepository:
                     return None
                 projection = self._job_projection(row)
                 cursor.execute(
-                    "SELECT * FROM pipeline_jobs WHERE submission_id = %s "
-                    "ORDER BY created_at", (row["submission_id"],)
+                    "SELECT * FROM pipeline_jobs WHERE submission_id = %s ORDER BY created_at",
+                    (row["submission_id"],),
                 )
                 projection.update(
                     {
                         "pipelineState": row["pipeline_state"],
                         "articleId": row["article_id"],
-                        "jobs": [
-                            self._job_projection(item) for item in cursor.fetchall()
-                        ],
+                        "jobs": [self._job_projection(item) for item in cursor.fetchall()],
                     }
                 )
                 return projection
@@ -687,9 +822,7 @@ class MySQLPipelineRepository:
                     raise NotFoundError(submission_id)
                 for name in ("payload", "admission_result", "quality_result", "enrichment_result"):
                     row[name] = _decode(row[name])
-                row["quality_review_approved"] = bool(
-                    row["quality_review_approved"]
-                )
+                row["quality_review_approved"] = bool(row["quality_review_approved"])
                 return row
             finally:
                 cursor.close()
@@ -732,11 +865,23 @@ class MySQLPipelineRepository:
                     raise NotFoundError(submission_id)
                 article_id = submission["article_id"]
                 if decision == "PASS":
-                    state, processing, review = "ENRICHMENT_PENDING", "ENRICHMENT_PENDING", "NOT_REQUIRED"
+                    state, processing, review = (
+                        "ENRICHMENT_PENDING",
+                        "ENRICHMENT_PENDING",
+                        "NOT_REQUIRED",
+                    )
                 elif decision == "REVIEW_REQUIRED":
-                    state, processing, review = "QUALITY_REVIEW_PENDING", "QUALITY_EVALUATED", "PENDING"
+                    state, processing, review = (
+                        "QUALITY_REVIEW_PENDING",
+                        "QUALITY_EVALUATED",
+                        "PENDING",
+                    )
                 else:
-                    state, processing, review = "QUALITY_REJECTED", "QUALITY_REJECTED", "NOT_REQUIRED"
+                    state, processing, review = (
+                        "QUALITY_REJECTED",
+                        "QUALITY_REJECTED",
+                        "NOT_REQUIRED",
+                    )
                 cursor.execute(
                     "UPDATE pipeline_submissions SET state = %s, quality_result = %s "
                     "WHERE submission_id = %s",
@@ -786,7 +931,8 @@ class MySQLPipelineRepository:
             try:
                 cursor.execute(
                     "SELECT article_id FROM pipeline_submissions "
-                    "WHERE submission_id = %s FOR UPDATE", (submission_id,)
+                    "WHERE submission_id = %s FOR UPDATE",
+                    (submission_id,),
                 )
                 submission = cursor.fetchone()
                 if not submission or not submission["article_id"]:
@@ -795,7 +941,8 @@ class MySQLPipelineRepository:
                 state = "PUBLISHED" if published else "PUBLICATION_REVIEW_PENDING"
                 cursor.execute(
                     "UPDATE pipeline_submissions SET state = %s, enrichment_result = %s "
-                    "WHERE submission_id = %s", (state, _json(result), submission_id)
+                    "WHERE submission_id = %s",
+                    (state, _json(result), submission_id),
                 )
                 cursor.execute(
                     "UPDATE articles SET localized_title = %s, tags = %s, "
@@ -828,7 +975,8 @@ class MySQLPipelineRepository:
                         "INSERT INTO publication_events "
                         "(article_id, action, previous_status, new_status, administrator_id, reason) "
                         "VALUES (%s, 'PUBLISH', 'UNPUBLISHED', 'PUBLISHED', 'pipeline-system', "
-                        "'Immediate publication policy')", (article_id,)
+                        "'Immediate publication policy')",
+                        (article_id,),
                     )
                 connection.commit()
             finally:
@@ -858,7 +1006,9 @@ class MySQLPipelineRepository:
                     "VALUES (%s, %s, %s, %s, 'PENDING', %s)",
                     (job_id, submission_id, unique_key, stage.value, max_attempts),
                 )
-                cursor.execute("SELECT job_id FROM pipeline_jobs WHERE unique_key = %s", (unique_key,))
+                cursor.execute(
+                    "SELECT job_id FROM pipeline_jobs WHERE unique_key = %s", (unique_key,)
+                )
                 row = cursor.fetchone()
                 connection.commit()
                 assert row is not None
@@ -891,7 +1041,13 @@ class MySQLPipelineRepository:
                     "UPDATE pipeline_jobs SET status = %s, error = %s, available_at = %s, "
                     "lease_token = NULL, lease_expires_at = NULL "
                     "WHERE job_id = %s AND lease_token = %s",
-                    (status, _json(error), available_at.astimezone(UTC).replace(tzinfo=None), job.job_id, job.lease_token),
+                    (
+                        status,
+                        _json(error),
+                        available_at.astimezone(UTC).replace(tzinfo=None),
+                        job.job_id,
+                        job.lease_token,
+                    ),
                 )
                 if cursor.rowcount != 1:
                     raise VersionConflictError("job lease changed")
@@ -907,13 +1063,15 @@ class MySQLPipelineRepository:
                 if status == "DEAD":
                     cursor.execute(
                         "UPDATE pipeline_submissions SET state = 'PROCESSING_FAILED' "
-                        "WHERE submission_id = %s", (job.submission_id,)
+                        "WHERE submission_id = %s",
+                        (job.submission_id,),
                     )
                     cursor.execute(
                         "UPDATE articles a JOIN pipeline_submissions s ON s.article_id = a.article_id "
                         "SET a.processing_status = 'PROCESSING_FAILED', "
                         "a.record_version = a.record_version + 1 "
-                        "WHERE s.submission_id = %s", (job.submission_id,)
+                        "WHERE s.submission_id = %s",
+                        (job.submission_id,),
                     )
                 connection.commit()
             finally:
@@ -940,7 +1098,13 @@ class MySQLPipelineRepository:
                     "UPDATE pipeline_jobs SET status = %s, result = %s, error = %s, "
                     "lease_token = NULL, lease_expires_at = NULL "
                     "WHERE job_id = %s AND lease_token = %s",
-                    (status, _json(result) if result else None, _json(error) if error else None, job.job_id, job.lease_token),
+                    (
+                        status,
+                        _json(result) if result else None,
+                        _json(error) if error else None,
+                        job.job_id,
+                        job.lease_token,
+                    ),
                 )
                 if cursor.rowcount != 1:
                     raise VersionConflictError("job lease changed")
@@ -992,7 +1156,8 @@ class MySQLPipelineRepository:
                     version += 1
                     cursor.execute(
                         "UPDATE pipeline_settings SET setting_value = %s, record_version = %s "
-                        "WHERE setting_key = 'publication_policy'", (policy.value, version)
+                        "WHERE setting_key = 'publication_policy'",
+                        (policy.value, version),
                     )
                 connection.commit()
                 return policy, version
@@ -1040,10 +1205,11 @@ class MySQLPipelineRepository:
                 params.extend([like, like])
         if tags:
             clauses.append(
-                "(" + " OR ".join(
-                    "JSON_CONTAINS(COALESCE(a.tags, JSON_ARRAY()), JSON_QUOTE(%s))"
-                    for _ in tags
-                ) + ")"
+                "("
+                + " OR ".join(
+                    "JSON_CONTAINS(COALESCE(a.tags, JSON_ARRAY()), JSON_QUOTE(%s))" for _ in tags
+                )
+                + ")"
             )
             params.extend(tags)
         if publication_status:
@@ -1069,19 +1235,13 @@ class MySQLPipelineRepository:
         keyword: str | None = None,
         tags: tuple[str, ...] = (),
     ) -> list[dict[str, Any]]:
-        where, params = self._article_conditions(
-            public_only=True, keyword=keyword, tags=tags
-        )
-        return self._list_articles(
-            where, params, limit=limit, offset=offset, sort="NEWEST"
-        )
+        where, params = self._article_conditions(public_only=True, keyword=keyword, tags=tags)
+        return self._list_articles(where, params, limit=limit, offset=offset, sort="NEWEST")
 
     def count_public_articles(
         self, *, keyword: str | None = None, tags: tuple[str, ...] = ()
     ) -> int:
-        where, params = self._article_conditions(
-            public_only=True, keyword=keyword, tags=tags
-        )
+        where, params = self._article_conditions(public_only=True, keyword=keyword, tags=tags)
         return self._count_articles(where, params)
 
     def last_crawled_at(self) -> datetime | None:
@@ -1367,9 +1527,7 @@ class MySQLPipelineRepository:
                     "JSON_EXTRACT(r.original_candidate_snapshot, '$[0].contentJaccard') IS NOT NULL"
                 )
             elif kind in {"quality", "publication"}:
-                clauses.append(
-                    "JSON_UNQUOTE(JSON_EXTRACT(ps.payload, '$.source.sourceType')) = %s"
-                )
+                clauses.append("JSON_UNQUOTE(JSON_EXTRACT(ps.payload, '$.source.sourceType')) = %s")
                 params.append(filter_value)
         return " AND ".join(clauses), tuple(params)
 
@@ -1528,9 +1686,7 @@ class MySQLPipelineRepository:
                                 incoming_article.get("language")
                             ),
                             "articleUrl": incoming_urls.get("canonicalUrl"),
-                            "originalPublishedAt": incoming_article.get(
-                                "originalPublishedAt"
-                            ),
+                            "originalPublishedAt": incoming_article.get("originalPublishedAt"),
                         }
                     if row.get("candidates"):
                         row["candidates"] = [
@@ -1588,7 +1744,9 @@ class MySQLPipelineRepository:
         try:
             cursor = connection.cursor(dictionary=True)
             try:
-                cursor.execute("SELECT * FROM quality_review_cases WHERE case_id = %s FOR UPDATE", (case_id,))
+                cursor.execute(
+                    "SELECT * FROM quality_review_cases WHERE case_id = %s FOR UPDATE", (case_id,)
+                )
                 case = cursor.fetchone()
                 if case is None:
                     raise NotFoundError(case_id)
@@ -1604,28 +1762,37 @@ class MySQLPipelineRepository:
                     cursor.execute(
                         "UPDATE articles SET review_status = 'APPROVED', "
                         "processing_status = 'ENRICHMENT_PENDING', record_version = record_version + 1 "
-                        "WHERE article_id = %s", (case["article_id"],)
+                        "WHERE article_id = %s",
+                        (case["article_id"],),
                     )
                     cursor.execute(
                         "UPDATE pipeline_submissions SET state = 'ENRICHMENT_PENDING' "
-                        "WHERE submission_id = %s", (case["submission_id"],)
+                        "WHERE submission_id = %s",
+                        (case["submission_id"],),
                     )
                     job_id = f"job-{uuid4().hex}"
                     cursor.execute(
                         "INSERT IGNORE INTO pipeline_jobs "
                         "(job_id, submission_id, unique_key, stage, status, max_attempts) "
                         "VALUES (%s, %s, %s, 'ENRICHMENT', 'PENDING', %s)",
-                        (job_id, case["submission_id"], f"{case['submission_id']}:ENRICHMENT", max_attempts),
+                        (
+                            job_id,
+                            case["submission_id"],
+                            f"{case['submission_id']}:ENRICHMENT",
+                            max_attempts,
+                        ),
                     )
                 else:
                     cursor.execute(
                         "UPDATE articles SET review_status = 'REJECTED', "
                         "processing_status = 'QUALITY_REJECTED', record_version = record_version + 1 "
-                        "WHERE article_id = %s", (case["article_id"],)
+                        "WHERE article_id = %s",
+                        (case["article_id"],),
                     )
                     cursor.execute(
                         "UPDATE pipeline_submissions SET state = 'QUALITY_REJECTED' "
-                        "WHERE submission_id = %s", (case["submission_id"],)
+                        "WHERE submission_id = %s",
+                        (case["submission_id"],),
                     )
                 connection.commit()
                 return {"caseId": case_id, "status": status, "caseVersion": expected_version + 1}
@@ -1653,7 +1820,8 @@ class MySQLPipelineRepository:
             try:
                 cursor.execute(
                     "SELECT publication_status, record_version FROM articles "
-                    "WHERE article_id = %s FOR UPDATE", (article_id,)
+                    "WHERE article_id = %s FOR UPDATE",
+                    (article_id,),
                 )
                 article = cursor.fetchone()
                 if article is None:
@@ -1671,10 +1839,21 @@ class MySQLPipelineRepository:
                     "INSERT INTO publication_events "
                     "(article_id, action, previous_status, new_status, administrator_id, reason) "
                     "VALUES (%s, %s, %s, %s, %s, %s)",
-                    (article_id, action, article["publication_status"], new_status, administrator_id, reason),
+                    (
+                        article_id,
+                        action,
+                        article["publication_status"],
+                        new_status,
+                        administrator_id,
+                        reason,
+                    ),
                 )
                 connection.commit()
-                return {"articleId": article_id, "publicationStatus": new_status, "recordVersion": expected_version + 1}
+                return {
+                    "articleId": article_id,
+                    "publicationStatus": new_status,
+                    "recordVersion": expected_version + 1,
+                }
             finally:
                 cursor.close()
         except Exception:
@@ -1692,14 +1871,18 @@ class MySQLPipelineRepository:
             try:
                 cursor.execute(
                     "SELECT submission_id FROM pipeline_submissions "
-                    "WHERE duplicate_review_case_id = %s FOR UPDATE", (review_case_id,)
+                    "WHERE duplicate_review_case_id = %s FOR UPDATE",
+                    (review_case_id,),
                 )
                 row = cursor.fetchone()
                 if row is None:
                     raise NotFoundError(review_case_id)
                 submission_id = row["submission_id"]
                 resolution = result.get("resolution", {})
-                if result.get("outcome") == "RESOLUTION_COMPLETED" and resolution.get("finalDecision") == "UNIQUE":
+                if (
+                    result.get("outcome") == "RESOLUTION_COMPLETED"
+                    and resolution.get("finalDecision") == "UNIQUE"
+                ):
                     article_id = resolution["newArticleId"]
                     cursor.execute(
                         "UPDATE pipeline_submissions SET state = 'QUALITY_PENDING', article_id = %s, "
@@ -1710,12 +1893,18 @@ class MySQLPipelineRepository:
                         "INSERT IGNORE INTO pipeline_jobs "
                         "(job_id, submission_id, unique_key, stage, status, max_attempts) "
                         "VALUES (%s, %s, %s, 'QUALITY', 'PENDING', %s)",
-                        (f"job-{uuid4().hex}", submission_id, f"{submission_id}:QUALITY", max_attempts),
+                        (
+                            f"job-{uuid4().hex}",
+                            submission_id,
+                            f"{submission_id}:QUALITY",
+                            max_attempts,
+                        ),
                     )
                 elif result.get("outcome") == "RESOLUTION_COMPLETED":
                     cursor.execute(
                         "UPDATE pipeline_submissions SET state = 'DUPLICATE', admission_result = %s "
-                        "WHERE submission_id = %s", (_json(result), submission_id)
+                        "WHERE submission_id = %s",
+                        (_json(result), submission_id),
                     )
                 connection.commit()
             finally:
@@ -1726,7 +1915,9 @@ class MySQLPipelineRepository:
         finally:
             connection.close()
 
-    def _update_submission(self, submission_id: str, assignment: str, values: tuple[Any, ...]) -> None:
+    def _update_submission(
+        self, submission_id: str, assignment: str, values: tuple[Any, ...]
+    ) -> None:
         connection = self._connection()
         try:
             cursor = connection.cursor()

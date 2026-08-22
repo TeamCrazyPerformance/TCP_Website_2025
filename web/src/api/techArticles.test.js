@@ -2,6 +2,7 @@ import { apiGet, apiPost } from "./client";
 import {
   getAdminTechArticleStats,
   getAdminTechArticles,
+  getCrawlRuns,
   getTechArticles,
   startCrawlRun,
   techArticleErrorMessage,
@@ -44,6 +45,22 @@ test("수집 요청에 멱등성 키를 헤더로 보낸다", async () => {
     "/api/v1/admin/tech-articles/crawl-runs",
     payload,
     { headers: { "Idempotency-Key": "crawl-key-1" } },
+  );
+});
+
+test("크롤링 실행 이력 필터를 관리자 API로 보낸다", async () => {
+  apiGet.mockResolvedValue({ items: [] });
+
+  await getCrawlRuns({
+    page: 2,
+    pageSize: 20,
+    status: "RUNNING",
+    sourceId: "infoq",
+    trigger: "SCHEDULED",
+  });
+
+  expect(apiGet).toHaveBeenCalledWith(
+    "/api/v1/admin/tech-articles/crawl-runs?page=2&pageSize=20&status=RUNNING&sourceId=infoq&trigger=SCHEDULED",
   );
 });
 
