@@ -88,10 +88,14 @@
   `statusMismatch=true`, `sort=NEWEST|OLDEST|SCORE_DESC|SCORE_ASC`. `stage` 와
   `statusMismatch` 는 선택이며, 없으면 전체를 돌려줍니다. 둘은 별개 축이라 함께
   쓸 수 있습니다. 각 항목에는 같은 규칙으로 계산된 `stage` 가 함께 옵니다.
-- `GET /api/v1/admin/tech-articles/stats`: 공개·처리 상태별 개수, 단계별 개수(`stages`,
-  0 건인 단계도 키를 유지), 단계별 최장 체류 시각(`stageOldest`), 검수 큐 개수와
-  `reviews.statusMismatch`(검토 상태 표시 오류). `stageOldest` 는 `updated_at` 기준이라
-  "마지막 수정" 시각이며 "단계 진입" 시각의 하한으로만 읽어야 합니다.
+- `GET /api/v1/admin/tech-articles/stats`: `keyword`, `publicationStatus` 를 받습니다.
+  **목록과 같은 조건으로 세야 칩 숫자와 목록 총계가 같은 모집단을 가리킵니다.**
+  단계(`stage`)는 받지 않습니다 — 넣으면 고른 단계만 남고 나머지 칩이 0 이 됩니다.
+  응답은 공개·처리 상태별 개수, 단계별 개수(`stages`, 0 건인 단계도 키를 유지),
+  단계별 최장 체류 시각(`stageOldest`), `statusMismatch`(검토 상태 표시 오류),
+  그리고 `reviews`(검수 큐 개수)입니다. 앞의 넷은 위 필터를 따르고, `reviews` 는
+  다른 테이블이라 항상 전체입니다. `stageOldest` 는 `updated_at` 기준이라 "마지막 수정"
+  시각이며 "단계 진입" 시각의 하한으로만 읽어야 합니다.
 - `GET /api/v1/admin/tech-articles/:articleId`: 원문을 제외한 관리자 상세 projection.
 - `GET /api/v1/admin/tech-articles/reviews/duplicates`: `filter=JACCARD`,
   `sort=NEWEST|SIMILARITY_DESC`.

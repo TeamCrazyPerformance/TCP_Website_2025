@@ -1246,19 +1246,31 @@ class MySQLPipelineRepository:
             "updatedAt": _utc(row.get("updated_at")),
         }
 
-    def article_stats(self) -> dict[str, Any]:
+    def article_stats(
+        self, *, keyword: str | None = None, publication_status: str | None = None
+    ) -> dict[str, Any]:
+        # 목록과 같은 조건으로 셉니다. 검색어를 넣으면 칩 숫자도 함께 좁혀져야
+        # 칩과 목록 총계가 같은 모집단을 가리킵니다. 단계 필터는 여기 넣지
+        # 않습니다 — 넣으면 고른 단계만 남고 나머지가 0 이 됩니다.
+        where, params = self._article_conditions(
+            keyword=keyword,
+            publication_status=publication_status,
+            include_admin_fields=True,
+        )
         connection = self._pool.get_connection()
         try:
             cursor = connection.cursor(dictionary=True)
             try:
                 cursor.execute(
-                    "SELECT publication_status AS value, COUNT(*) AS count "
-                    "FROM articles GROUP BY publication_status"
+                    "SELECT a.publication_status AS value, COUNT(*) AS count "
+                    f"FROM articles a WHERE {where} GROUP BY a.publication_status",
+                    params,
                 )
                 publication = {row["value"]: int(row["count"]) for row in cursor.fetchall()}
                 cursor.execute(
-                    "SELECT processing_status AS value, COUNT(*) AS count "
-                    "FROM articles GROUP BY processing_status"
+                    "SELECT a.processing_status AS value, COUNT(*) AS count "
+                    f"FROM articles a WHERE {where} GROUP BY a.processing_status",
+                    params,
                 )
                 processing = {row["value"]: int(row["count"]) for row in cursor.fetchall()}
                 cursor.execute(
@@ -1276,7 +1288,9 @@ class MySQLPipelineRepository:
                 publication_reviews = int(cursor.fetchone()["count"])
                 cursor.execute(
                     f"SELECT {STAGE_CASE} AS stage, COUNT(*) AS count, "
-                    "MIN(a.updated_at) AS oldest FROM articles a GROUP BY stage"
+                    f"MIN(a.updated_at) AS oldest FROM articles a WHERE {where} "
+                    "GROUP BY stage",
+                    params,
                 )
                 # 0 건인 단계도 키를 남깁니다. 화면이 파이프라인 모양을 항상
                 # 같게 그릴 수 있어야 합니다.
@@ -1289,7 +1303,8 @@ class MySQLPipelineRepository:
                     stage_oldest[row["stage"]] = _utc(row["oldest"])
                 cursor.execute(
                     "SELECT COUNT(*) AS count FROM articles a "
-                    f"WHERE {STATUS_MISMATCH_PREDICATE}"
+                    f"WHERE {where} AND ({STATUS_MISMATCH_PREDICATE})",
+                    params,
                 )
                 status_mismatch = int(cursor.fetchone()["count"])
                 return {
@@ -1298,11 +1313,13 @@ class MySQLPipelineRepository:
                     "processing": processing,
                     "stages": stages,
                     "stageOldest": stage_oldest,
+                    # 아티클에서 나온 축이라 위 필터를 따릅니다.
+                    "statusMismatch": status_mismatch,
+                    # 검수 큐는 다른 테이블이라 목록 필터와 무관하게 전체입니다.
                     "reviews": {
                         "duplicates": duplicates,
                         "quality": quality,
                         "publication": publication_reviews,
-                        "statusMismatch": status_mismatch,
                     },
                 }
             finally:

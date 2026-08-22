@@ -83,10 +83,14 @@ describe("파이프라인 단계 표시", () => {
 
   test("단계 필터가 서버 조회 조건으로 나간다", () => {
     // 불러온 목록에서 거르면 그 페이지에 있던 것만 걸러져 전수를 볼 수 없습니다.
-    expect(SOURCE).toMatch(/stage:[\s\S]{0,120}stageFilter !== MISMATCH_FILTER/);
+    expect(SOURCE).toMatch(
+      /stage:[\s\S]{0,120}stageFilter !== MISMATCH_FILTER/,
+    );
     expect(SOURCE).toMatch(/statusMismatch: stageFilter === MISMATCH_FILTER/);
     // 칩을 누르면 다시 조회되도록 의존성에 들어가 있어야 합니다.
-    expect(SOURCE).toMatch(/\[keyword, page, publicationStatus, sort, stageFilter\]/);
+    expect(SOURCE).toMatch(
+      /\[keyword, page, publicationStatus, sort, stageFilter\]/,
+    );
   });
 
   test("페이지를 넘겨도 단계 필터가 풀리지 않는다", () => {
@@ -108,8 +112,18 @@ describe("표시 오류 표식", () => {
   test("요약에서 단계 칩과 분리되어 집계된다", () => {
     // 단계는 stages, 표시 오류는 reviews.statusMismatch — 축이 다릅니다.
     expect(SOURCE).toMatch(/stats\?\.stages\?\.\[stage\]/);
-    expect(SOURCE).toMatch(/stats\?\.reviews\?\.statusMismatch/);
+    expect(SOURCE).toMatch(/stats\?\.statusMismatch/);
     expect(SOURCE).toMatch(/stage-chip-flag/);
+  });
+
+  test("칩 숫자가 목록과 같은 조건으로 좁혀진다", () => {
+    // 통계만 전체를 세면 "칩 11 / 목록 2 건"이 되어 다시 어긋납니다.
+    expect(SOURCE).toMatch(/getAdminTechArticleStats\(\{[\s\S]{0,140}keyword/);
+    expect(SOURCE).toMatch(
+      /publicationStatus: publicationStatus \|\| undefined,/,
+    );
+    // 조회 조건이 바뀌면 통계도 다시 불러와야 합니다.
+    expect(SOURCE).toMatch(/\}, \[keyword, publicationStatus\]\);/);
   });
 
   test("칩 숫자를 화면에서 다시 세지 않는다", () => {
@@ -139,6 +153,38 @@ describe("단계 툴바 배치", () => {
     expect(toolbar).toBeLessThan(table);
   });
 
+  test("진행 단계와 종료 상태를 시각적으로 나눈다", () => {
+    // 한 줄에 늘어놓으면 "품질 미달"이 "처리 완료" 다음 단계처럼 읽힙니다.
+    expect(SOURCE).toMatch(/className="stage-group is-flow"/);
+    expect(SOURCE).toMatch(/className="stage-group is-exit"/);
+    // 묶음은 어휘 파일의 분류를 따릅니다. 화면에서 다시 나열하지 않습니다.
+    expect(SOURCE).toMatch(/STAGE_FLOW\.map/);
+    expect(SOURCE).toMatch(/STAGE_EXIT\.map/);
+    expect(SOURCE).not.toMatch(/summary\.map\(\(entry\) => \(/);
+  });
+
+  test("종료 묶음이 소계를 보여준다", () => {
+    // 개별 실패 건수만 있으면 "얼마나 빠져나갔나"를 매번 더해야 합니다.
+    expect(SOURCE).toMatch(/const exitTotal = STAGE_EXIT\.reduce/);
+    expect(SOURCE).toMatch(/종료 \{exitTotal\}/);
+  });
+
+  test("목록에는 한 줄 요약을 싣지 않는다", () => {
+    // 행마다 두 줄을 더 차지하면서 정작 먼저 읽혀야 할 단계를 밀어냅니다.
+    // 표 뷰와 모바일 카드 뷰 양쪽에서 빠져야 합니다.
+    expect(SOURCE).not.toMatch(/admin-article-summary/);
+    expect(SOURCE).not.toMatch(/admin-mobile-card-summary/);
+    // 상세 패널에는 남아 있어야 합니다 — 거기서는 읽을 이유가 있습니다.
+    expect(SOURCE).toMatch(/detail\.oneLineSummary/);
+    expect((SOURCE.match(/oneLineSummary/g) || []).length).toBe(1);
+  });
+
+  test("체류 시간을 대기 단계에만 보여준다", () => {
+    // 종착지의 체류 시간은 조치로 이어지지 않습니다.
+    expect(SOURCE).toMatch(/STAGE_WAITING\.includes\(selected\.stage\)/);
+    expect(SOURCE).toMatch(/STAGE_WAITING\.includes\(entry\.stage\)/);
+  });
+
   test("집계 범위를 문구로 밝힌다", () => {
     // 칩과 목록 총계가 같은 모집단을 센다는 것을 문구로도 밝힙니다.
     expect(SOURCE).toMatch(/전체 기준/);
@@ -147,7 +193,9 @@ describe("단계 툴바 배치", () => {
 
   test("목록 총계가 필터를 반영한다", () => {
     // 헤더가 전역 총계를 그대로 찍으면 칩 숫자와 어긋나 보입니다.
-    expect(SOURCE).toMatch(/const totalCount = response\?\.pagination\?\.totalCount/);
+    expect(SOURCE).toMatch(
+      /const totalCount = response\?\.pagination\?\.totalCount/,
+    );
     expect(SOURCE).toMatch(/총 \{totalCount\}건/);
   });
 });
@@ -217,5 +265,38 @@ describe("품질 평가 근거 공유", () => {
   test("검토 큐가 평가 신호를 원본 키 그대로 늘어놓지 않는다", () => {
     expect(REVIEWS).not.toMatch(/JSON\.stringify\(value\)/);
     expect(PANEL).toMatch(/SIGNAL_LABEL/);
+  });
+});
+
+/* Orbitron 은 정사각 기하 디스플레이 서체라 0/8, 1, 6/9 판별이 어렵고 tabular
+ * 자릿수도 없습니다. 라틴 대문자 눈썹과 제목에서는 브랜드 요소로 쓰되,
+ * 읽어야 하는 숫자에는 쓰지 않습니다. */
+const ALIGN_CSS = fs.readFileSync(
+  path.join(__dirname, "..", "..", "styles", "techArticlesAdminAlign.css"),
+  "utf8",
+);
+
+describe("숫자 서체", () => {
+  test("orbitron 은 라틴 눈썹과 제목에만 남는다", () => {
+    for (const source of [SOURCE, REVIEWS]) {
+      const uses = source.match(/className="[^"]*orbitron[^"]*"/g) || [];
+      expect(uses.length).toBeGreaterThan(0);
+      for (const use of uses) {
+        expect(use).toMatch(/section-eyebrow|gradient-text/);
+      }
+    }
+  });
+
+  test("숫자를 표시하는 자리는 본문 서체로 되돌린다", () => {
+    // 새 숫자 자리를 만들면 이 목록에 추가해야 합니다.
+    for (const selector of [
+      "\\.ta-admin \\.total-article-count,",
+      "\\.ta-admin \\.queue-stat-card strong,",
+      "\\.ta-admin \\.stage-chip strong,",
+      "\\.ta-admin \\.admin-score,",
+    ]) {
+      expect(ALIGN_CSS).toMatch(new RegExp(selector));
+    }
+    expect(ALIGN_CSS).toMatch(/font-variant-numeric: tabular-nums;/);
   });
 });

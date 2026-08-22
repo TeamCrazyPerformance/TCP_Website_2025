@@ -1,5 +1,6 @@
 import { apiGet, apiPost } from "./client";
 import {
+  getAdminTechArticleStats,
   getAdminTechArticles,
   getTechArticles,
   startCrawlRun,
@@ -80,4 +81,21 @@ test("단계를 고르지 않으면 쿼리에 실리지 않는다", async () => 
   expect(apiGet).toHaveBeenCalledWith(
     "/api/v1/admin/tech-articles?page=1&pageSize=20&sort=NEWEST",
   );
+});
+
+test("통계도 목록과 같은 조건으로 센다", async () => {
+  // 칩만 전체를 세면 "칩 11 / 목록 2 건"이 됩니다.
+  apiGet.mockResolvedValue({});
+
+  await getAdminTechArticleStats({
+    keyword: "React",
+    publicationStatus: "HIDDEN",
+  });
+
+  expect(apiGet).toHaveBeenCalledWith(
+    "/api/v1/admin/tech-articles/stats?keyword=React&publicationStatus=HIDDEN",
+  );
+
+  await getAdminTechArticleStats();
+  expect(apiGet).toHaveBeenLastCalledWith("/api/v1/admin/tech-articles/stats");
 });

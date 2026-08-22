@@ -265,8 +265,20 @@ def create_app(
         return {"items": items, "limit": limit, "offset": offset, "totalCount": total_count}
 
     @internal.get("/admin/articles/stats")
-    async def admin_article_stats(request: Request) -> dict[str, Any]:
-        return await asyncio.to_thread(request.app.state.runtime.repository.article_stats)
+    async def admin_article_stats(
+        request: Request,
+        keyword: str | None = Query(default=None, min_length=1, max_length=100),
+        publication_status: str | None = Query(
+            default=None,
+            alias="publicationStatus",
+            pattern=r"^(UNPUBLISHED|SCHEDULED|PUBLISHED|HIDDEN|ARCHIVED)$",
+        ),
+    ) -> dict[str, Any]:
+        return await asyncio.to_thread(
+            request.app.state.runtime.repository.article_stats,
+            keyword=keyword,
+            publication_status=publication_status,
+        )
 
     @internal.get("/admin/articles/{article_id}")
     async def admin_article(request: Request, article_id: str) -> dict[str, Any]:

@@ -68,6 +68,20 @@ export const ARTICLE_STAGES: string[] = [
   'QUALITY_REJECTED',
 ];
 
+// 통계는 목록과 같은 조건으로 세야 칩 숫자와 목록 총계가 맞습니다.
+// 단계(stage)는 여기 없습니다 — 넣으면 고른 단계만 남고 나머지가 0 이 됩니다.
+export class AdminArticleStatsQueryDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
+  @IsOptional()
+  keyword?: string;
+
+  @IsIn(['UNPUBLISHED', 'SCHEDULED', 'PUBLISHED', 'HIDDEN', 'ARCHIVED'])
+  @IsOptional()
+  publicationStatus?: string;
+}
+
 export class AdminArticleQueryDto extends PageQueryDto {
   @IsIn(['UNPUBLISHED', 'SCHEDULED', 'PUBLISHED', 'HIDDEN', 'ARCHIVED'])
   @IsOptional()

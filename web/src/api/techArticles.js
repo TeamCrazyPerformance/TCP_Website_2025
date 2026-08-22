@@ -59,8 +59,11 @@ export function getAdminTechArticles({
   );
 }
 
-export function getAdminTechArticleStats() {
-  return apiGet(`${ADMIN_BASE}/stats`);
+export function getAdminTechArticleStats({ keyword, publicationStatus } = {}) {
+  // 목록과 같은 조건으로 세야 칩 숫자와 목록 총계가 맞습니다.
+  return apiGet(
+    withQuery(`${ADMIN_BASE}/stats`, { keyword, publicationStatus }),
+  );
 }
 
 export function getAdminTechArticle(articleId) {

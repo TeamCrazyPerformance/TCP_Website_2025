@@ -497,31 +497,38 @@ function handle(method, pathname, query, body) {
 
   /* ---------- 관리자: 통계 ---------- */
   if (method === "GET" && pathname === `${ADMIN_BASE}/stats`) {
-    const publication = countBy(articles, "publicationStatus");
-    const processing = countBy(articles, "processingStatus");
+    // 목록과 같은 조건으로 셉니다. 단계(stage)는 넣지 않습니다 — 넣으면 고른
+    // 단계만 남고 나머지 칩이 전부 0 이 됩니다.
+    const statsStatus = query.get("publicationStatus");
+    const scope = articles
+      .filter(matches)
+      .filter((a) => !statsStatus || a.publicationStatus === statsStatus);
+    const publication = countBy(scope, "publicationStatus");
+    const processing = countBy(scope, "processingStatus");
     return [200, {
-      totalCount: articles.length,
+      totalCount: scope.length,
       publication: { UNPUBLISHED: 0, SCHEDULED: 0, PUBLISHED: 0, HIDDEN: 0, ARCHIVED: 0, ...publication },
       processing,
       stages: Object.fromEntries(
         STAGE_NAMES.map((stage) => [
           stage,
-          articles.filter((a) => articleStage(a) === stage).length,
+          scope.filter((a) => articleStage(a) === stage).length,
         ]),
       ),
       // 단계별 최장 체류. 서버와 같이 updated_at 기준입니다.
       stageOldest: Object.fromEntries(
         STAGE_NAMES.map((stage) => {
-          const rows = articles.filter((a) => articleStage(a) === stage);
+          const rows = scope.filter((a) => articleStage(a) === stage);
           if (!rows.length) return [stage, null];
           return [stage, rows.map((a) => a.updatedAt).sort()[0]];
         }),
       ),
+      statusMismatch: scope.filter(hasStatusMismatch).length,
+      // 검수 큐는 다른 테이블이라 목록 필터와 무관하게 전체입니다.
       reviews: {
         duplicates: duplicateCases.length,
         quality: qualityCases.length,
         publication: publicationQueue().length,
-        statusMismatch: articles.filter(hasStatusMismatch).length,
         DUPLICATES: duplicateCases.length,
         QUALITY: qualityCases.length,
         PUBLICATION: publicationQueue().length,

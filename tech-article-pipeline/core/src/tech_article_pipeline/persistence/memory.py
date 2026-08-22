@@ -831,11 +831,22 @@ class MemoryPipelineRepository:
             article = self.articles.get(article_id)
             return None if article is None else self._project_article(article)
 
-    def article_stats(self) -> dict[str, Any]:
+    def article_stats(
+        self, *, keyword: str | None = None, publication_status: str | None = None
+    ) -> dict[str, Any]:
         with self._lock:
+            selected = [
+                article
+                for article in self.articles.values()
+                if (
+                    publication_status is None
+                    or article["publicationStatus"] == publication_status
+                )
+                and self._matches_article(article, keyword, (), include_admin_fields=True)
+            ]
             publication: dict[str, int] = {}
             processing: dict[str, int] = {}
-            for article in self.articles.values():
+            for article in selected:
                 publication[article["publicationStatus"]] = (
                     publication.get(article["publicationStatus"], 0) + 1
                 )
@@ -846,7 +857,7 @@ class MemoryPipelineRepository:
             stage_oldest: dict[str, Any] = dict.fromkeys(STAGE_NAMES, None)
             # 비교는 정규화한 문자열로, 응답에는 원본 값을 담습니다.
             oldest_sort_key: dict[str, str] = {}
-            for article in self.articles.values():
+            for article in selected:
                 key = self._article_stage(article)
                 stages[key] = stages.get(key, 0) + 1
                 seen = self._updated_time(article)
@@ -856,20 +867,18 @@ class MemoryPipelineRepository:
                         "createdAt"
                     )
             return {
-                "totalCount": len(self.articles),
+                "totalCount": len(selected),
                 "publication": publication,
                 "processing": processing,
                 "stages": stages,
                 "stageOldest": stage_oldest,
+                "statusMismatch": sum(
+                    1 for item in selected if self._has_status_mismatch(item)
+                ),
                 "reviews": {
                     "duplicates": self.count_review_queue("duplicate"),
                     "quality": self.count_review_queue("quality"),
                     "publication": self.count_review_queue("publication"),
-                    "statusMismatch": sum(
-                        1
-                        for item in self.articles.values()
-                        if self._has_status_mismatch(item)
-                    ),
                 },
             }
 

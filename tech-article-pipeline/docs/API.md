@@ -73,8 +73,10 @@ through less than 92%.
   processing status that cannot produce it; it is a separate axis from `stage`.
   `GET /admin/articles/stats` adds `stages` (a count per stage over every article, zero
   counts included), `stageOldest` (oldest `updated_at` per stage, a lower bound for how
-  long an article has sat there), and `reviews.statusMismatch`. `sort` also accepts
-  `OLDEST`.
+  long an article has sat there), and `statusMismatch`. It accepts `keyword` and
+  `publicationStatus` so the counts match the list the admin is looking at; it does not
+  accept `stage`. The `reviews` queue counts come from other tables and stay unfiltered.
+  `sort` also accepts `OLDEST`.
 - `GET /admin/articles` — supports `keyword`, `publicationStatus`, and
   `NEWEST|SCORE_DESC|SCORE_ASC`; returns `totalCount`.
 - `GET /admin/articles/stats` and `GET /admin/articles/{articleId}`

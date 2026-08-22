@@ -25,7 +25,10 @@ import { QualityEvaluationPanel } from "../../components/tech-articles/ArticleQu
 import { useV9ConfirmDialog } from "../../components/tech-articles/V9ConfirmDialog";
 import {
   MISMATCH_FILTER,
+  STAGE_EXIT,
+  STAGE_FLOW,
   STAGE_ORDER,
+  STAGE_WAITING,
   canPublishArticle,
   formatWaiting,
   hasStateMismatch,
@@ -161,7 +164,41 @@ function PublishControl({ article, isMutating, onToggle }) {
 function StageToolbar({ total, summary, mismatchCount, value, onChange }) {
   const toggle = (next) => onChange(value === next ? "" : next);
   const selected = summary.find((entry) => entry.stage === value);
-  const waiting = selected && formatWaiting(selected.oldest);
+  // 종착지에서는 오래 머무는 게 정상이라 시간을 말하지 않습니다.
+  const waiting =
+    selected && STAGE_WAITING.includes(selected.stage)
+      ? formatWaiting(selected.oldest)
+      : null;
+  const byStage = Object.fromEntries(
+    summary.map((entry) => [entry.stage, entry]),
+  );
+  const exitTotal = STAGE_EXIT.reduce(
+    (sum, stage) => sum + (byStage[stage]?.count ?? 0),
+    0,
+  );
+  const chipTitle = (entry) => {
+    if (!entry.count) return "이 단계에 머문 아티클이 없습니다";
+    if (!STAGE_WAITING.includes(entry.stage)) return entry.hint || undefined;
+    const elapsed = formatWaiting(entry.oldest);
+    return elapsed ? `가장 오래 머문 건 ${elapsed} 경과` : undefined;
+  };
+  const chip = (entry) => (
+    <button
+      type="button"
+      key={entry.stage}
+      className={`stage-chip ${entry.tone} ${
+        value === entry.stage ? "is-active" : ""
+      } ${entry.count ? "" : "is-empty"}`}
+      onClick={() => toggle(entry.stage)}
+      aria-pressed={value === entry.stage}
+      disabled={!entry.count && value !== entry.stage}
+      title={chipTitle(entry)}
+    >
+      <i className={`fas ${entry.icon}`} aria-hidden="true"></i>
+      {entry.label}
+      <strong>{entry.count}</strong>
+    </button>
+  );
   return (
     <div className="stage-toolbar">
       <div className="stage-chips" role="group" aria-label="파이프라인 단계">
@@ -173,27 +210,30 @@ function StageToolbar({ total, summary, mismatchCount, value, onChange }) {
         >
           전체<strong>{total}</strong>
         </button>
-        {summary.map((entry) => (
-          <button
-            type="button"
-            key={entry.stage}
-            className={`stage-chip ${entry.tone} ${
-              value === entry.stage ? "is-active" : ""
-            } ${entry.count ? "" : "is-empty"}`}
-            onClick={() => toggle(entry.stage)}
-            aria-pressed={value === entry.stage}
-            disabled={!entry.count && value !== entry.stage}
-            title={
-              entry.count
-                ? `가장 오래 머문 건 ${formatWaiting(entry.oldest) || "-"} 경과`
-                : "이 단계에 머문 아티클이 없습니다"
-            }
-          >
-            <i className={`fas ${entry.icon}`} aria-hidden="true"></i>
-            {entry.label}
-            <strong>{entry.count}</strong>
-          </button>
-        ))}
+        {/* 진행 단계는 왼쪽에서 오른쪽으로 흐릅니다. 배경 띠가 그 흐름을 묶습니다. */}
+        <div
+          className="stage-group is-flow"
+          role="group"
+          aria-label="진행 중인 단계"
+        >
+          {STAGE_FLOW.map((stage) => byStage[stage])
+            .filter(Boolean)
+            .map(chip)}
+        </div>
+        {/* 종료 상태는 흐름에서 빠져나온 것이라 서로 순서가 없습니다. */}
+        <div
+          className="stage-group is-exit"
+          role="group"
+          aria-label="종료된 상태"
+        >
+          <span className="stage-group-label">
+            <i className="fas fa-arrow-turn-down" aria-hidden="true"></i>
+            종료 {exitTotal}
+          </span>
+          {STAGE_EXIT.map((stage) => byStage[stage])
+            .filter(Boolean)
+            .map(chip)}
+        </div>
         {mismatchCount > 0 && (
           <button
             type="button"
@@ -311,8 +351,12 @@ function AdminTechArticles() {
   }, [keyword, page, publicationStatus, sort, stageFilter]);
 
   const loadOverview = useCallback(async () => {
+    // 칩 숫자를 목록과 같은 조건으로 셉니다. 검색 중에는 칩도 함께 좁혀집니다.
     const [statsResult, policyResult] = await Promise.allSettled([
-      getAdminTechArticleStats(),
+      getAdminTechArticleStats({
+        keyword: keyword || undefined,
+        publicationStatus: publicationStatus || undefined,
+      }),
       getPublicationPolicy(),
     ]);
     if (statsResult.status === "fulfilled") setStats(statsResult.value);
@@ -320,7 +364,7 @@ function AdminTechArticles() {
       setPolicy(policyResult.value);
       setPolicyDraft(policyResult.value?.policy || "REVIEW");
     }
-  }, []);
+  }, [keyword, publicationStatus]);
 
   useEffect(() => {
     loadInventory();
@@ -366,7 +410,7 @@ function AdminTechArticles() {
       })),
     [stats],
   );
-  const mismatchCount = stats?.reviews?.statusMismatch ?? 0;
+  const mismatchCount = stats?.statusMismatch ?? 0;
   // 서버가 stage / statusMismatch 로 걸러 센 값입니다. 칩 숫자와 같은 모집단입니다.
   const totalCount = response?.pagination?.totalCount ?? 0;
   const allPageSelected =
@@ -671,7 +715,7 @@ function AdminTechArticles() {
               <p className="overview-caption">현재 등록된 전체</p>
             </div>
           </div>
-          <p className="total-article-count orbitron">
+          <p className="total-article-count">
             {stats?.totalCount ?? response?.pagination?.totalCount ?? "—"}
           </p>
           <p className="queue-stat-inline">
@@ -971,9 +1015,9 @@ function AdminTechArticles() {
                           <p className="admin-article-title">
                             {article.title || "제목 없음"}
                           </p>
-                          <p className="admin-article-summary">
-                            {article.oneLineSummary || "한 줄 요약 없음"}
-                          </p>
+                          {/* 한 줄 요약은 상세 패널에서만 봅니다. 목록에서는
+                              행마다 두 줄을 더 차지하면서 정작 먼저 읽혀야 할
+                              파이프라인 단계를 밀어냅니다. */}
                           <ArticleTags tags={article.tags} />
                         </td>
                         <td className="admin-source-cell">
@@ -1083,9 +1127,6 @@ function AdminTechArticles() {
                     aria-label={`${article.title} 선택`}
                   />
                 </div>
-                <p className="admin-mobile-card-summary">
-                  {article.oneLineSummary || "한 줄 요약 없음"}
-                </p>
                 <StageBadge article={article} withHint />
                 <div className="admin-mobile-meta">
                   <span>

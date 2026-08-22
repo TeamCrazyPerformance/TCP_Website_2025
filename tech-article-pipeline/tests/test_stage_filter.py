@@ -198,14 +198,14 @@ def test_status_mismatch_is_counted_apart_from_stages():
     stats = repository.article_stats()
 
     # 로그의 33건 중 11건 — QUALITY_REJECTED 9 + QUALITY_EVALUATED 2
-    assert stats["reviews"]["statusMismatch"] == 11
+    assert stats["statusMismatch"] == 11
     # 단계 합계에는 섞이지 않습니다.
     assert sum(stats["stages"].values()) == 33
 
 
 def test_status_mismatch_filter_matches_its_count():
     repository = observed_repository()
-    expected = repository.article_stats()["reviews"]["statusMismatch"]
+    expected = repository.article_stats()["statusMismatch"]
 
     assert repository.count_articles(status_mismatch=True) == expected
     items = repository.list_articles(limit=100, offset=0, status_mismatch=True)
@@ -229,7 +229,7 @@ def test_status_mismatch_ignores_approved_compatible_stages():
         p.lower(): article(p.lower(), p, "APPROVED", "PUBLISHED")
         for p in APPROVED_COMPATIBLE_PROCESSING
     }
-    assert repository.article_stats()["reviews"]["statusMismatch"] == 0
+    assert repository.article_stats()["statusMismatch"] == 0
 
 
 def test_mismatch_filter_combines_with_stage():
@@ -300,3 +300,54 @@ def test_mysql_order_by_supports_oldest():
     source = inspect.getsource(MySQLPipelineRepository._list_articles)
     assert '"OLDEST"' in source
     assert "a.updated_at ASC" in source
+
+
+# ── 칩 숫자가 목록 조건을 따라간다 ───────────────────────────────────
+
+
+def test_stats_follow_the_same_filter_as_the_list():
+    """검색 중에 칩만 전체를 세면 칩 11 인데 목록 2 건인 상황이 됩니다."""
+    repository = observed_repository()
+    # 제목에만 들어가는 검색어로 한 건만 남깁니다.
+    target = repository.articles["a012"]
+    keyword = target["localizedTitle"]
+
+    stats = repository.article_stats(keyword=keyword)
+
+    assert stats["totalCount"] == repository.count_articles(keyword=keyword) == 1
+    assert sum(stats["stages"].values()) == 1
+    # 그 한 건이 속한 단계만 1, 나머지는 0
+    stage = repository._article_stage(target)
+    assert stats["stages"][stage] == 1
+    assert all(v == 0 for k, v in stats["stages"].items() if k != stage)
+
+
+def test_stats_follow_the_publication_filter():
+    repository = observed_repository()
+    stats = repository.article_stats(publication_status="HIDDEN")
+
+    hidden = repository.count_articles(publication_status="HIDDEN")
+    assert stats["totalCount"] == hidden == 11  # 9 + 2
+    assert sum(stats["stages"].values()) == hidden
+    assert stats["stages"]["QUALITY_REVIEW"] == 2
+    assert stats["stages"]["QUALITY_REJECTED"] == 9
+
+
+def test_chip_count_equals_list_total_under_every_filter():
+    """칩을 누르면 목록 총계가 칩 숫자와 같아야 합니다 — 검색 중에도."""
+    repository = observed_repository()
+    for keyword in (None, "제목 a012", None):
+        stats = repository.article_stats(keyword=keyword)
+        for stage, count in stats["stages"].items():
+            assert (
+                repository.count_articles(keyword=keyword, stage=stage) == count
+            ), (keyword, stage)
+
+
+def test_review_queues_ignore_the_article_filter():
+    # 검수 큐는 다른 테이블이라 목록 검색어에 좌우되면 안 됩니다.
+    repository = observed_repository()
+    full = repository.article_stats()["reviews"]
+    narrowed = repository.article_stats(keyword="제목 a012")["reviews"]
+    assert full == narrowed
+    assert "statusMismatch" not in narrowed

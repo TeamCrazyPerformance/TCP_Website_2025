@@ -19,6 +19,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { UserRole } from '../members/entities/enums/user-role.enum';
 import {
   AdminArticleQueryDto,
+  AdminArticleStatsQueryDto,
   ArticleIdParamDto,
   BulkDuplicateResolutionDto,
   BulkPublicationDto,
@@ -51,8 +52,8 @@ export class AdminTechArticlesController {
   }
 
   @Get('stats')
-  stats() {
-    return this.service.stats();
+  stats(@Query() query: AdminArticleStatsQueryDto) {
+    return this.service.stats(query);
   }
 
   @Get('reviews/duplicates')

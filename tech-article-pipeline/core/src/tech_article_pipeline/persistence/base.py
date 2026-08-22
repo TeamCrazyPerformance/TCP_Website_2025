@@ -164,7 +164,9 @@ class PipelineRepository(Protocol):
 
     def get_article(self, article_id: str) -> dict[str, Any] | None: ...
 
-    def article_stats(self) -> dict[str, Any]: ...
+    def article_stats(
+        self, *, keyword: str | None = None, publication_status: str | None = None
+    ) -> dict[str, Any]: ...
 
     def list_review_queue(
         self,
