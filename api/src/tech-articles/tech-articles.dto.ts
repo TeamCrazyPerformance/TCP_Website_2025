@@ -55,12 +55,49 @@ export class PublicArticleQueryDto extends PageQueryDto {
   tags: string[] = [];
 }
 
+// 파이프라인 단계. 값 집합은 tech_article_pipeline.persistence.base.STAGE_NAMES
+// 와 같아야 합니다. 한쪽만 늘리면 화면에서 고른 단계가 422 로 막힙니다.
+export const ARTICLE_STAGES: string[] = [
+  'INGESTED',
+  'QUALITY_REVIEW',
+  'ENRICHING',
+  'PUBLICATION_REVIEW',
+  'COMPLETED',
+  'FAILED_AFTER_APPROVAL',
+  'FAILED',
+  'QUALITY_REJECTED',
+];
+
+// 통계는 목록과 같은 조건으로 세야 칩 숫자와 목록 총계가 맞습니다.
+// 단계(stage)는 여기 없습니다 — 넣으면 고른 단계만 남고 나머지가 0 이 됩니다.
+export class AdminArticleStatsQueryDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
+  @IsOptional()
+  keyword?: string;
+
+  @IsIn(['UNPUBLISHED', 'SCHEDULED', 'PUBLISHED', 'HIDDEN', 'ARCHIVED'])
+  @IsOptional()
+  publicationStatus?: string;
+}
+
 export class AdminArticleQueryDto extends PageQueryDto {
   @IsIn(['UNPUBLISHED', 'SCHEDULED', 'PUBLISHED', 'HIDDEN', 'ARCHIVED'])
   @IsOptional()
   publicationStatus?: string;
 
-  @IsIn(['NEWEST', 'SCORE_DESC', 'SCORE_ASC'])
+  @IsIn(ARTICLE_STAGES)
+  @IsOptional()
+  stage?: string;
+
+  // 검토 상태 표시 오류. 단계 축과 별개라 stage 와 함께 쓸 수 있습니다.
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  @IsOptional()
+  statusMismatch?: boolean;
+
+  @IsIn(['NEWEST', 'OLDEST', 'SCORE_DESC', 'SCORE_ASC'])
   @IsOptional()
   sort = 'NEWEST';
 }

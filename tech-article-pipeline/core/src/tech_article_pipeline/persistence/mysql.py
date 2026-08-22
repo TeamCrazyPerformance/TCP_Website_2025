@@ -14,7 +14,62 @@ from tech_article_pipeline.contracts import (
     Stage,
 )
 
-from .base import IdempotencyConflictError, NotFoundError, VersionConflictError
+from .base import (
+    APPROVED_COMPATIBLE_PROCESSING,
+    STAGE_NAMES,
+    IdempotencyConflictError,
+    NotFoundError,
+    VersionConflictError,
+)
+
+# 승인 여부는 review_status 가 아니라 검토 케이스로 판정합니다. 공개 액션이
+# review_status 를 'APPROVED' 로 덮어쓰는 결함이 있어, 그 값을 믿으면 승인된 적
+# 없는 아티클이 '승인 후 요약 실패'(재처리 대상)로 올라옵니다.
+_STAGE_APPROVED = (
+    "EXISTS (SELECT 1 FROM quality_review_cases q "
+    "WHERE q.article_id = a.article_id AND q.status = 'RESOLVED_APPROVE')"
+)
+_STAGE_PUBLICATION_REVIEW = (
+    "a.processing_status = 'ENRICHED' AND a.review_status = 'PENDING' "
+    "AND a.publication_status = 'UNPUBLISHED'"
+)
+
+# 단계 판정의 유일한 정의. 술어끼리 겹치지 않게 써서 순서에 의존하지 않습니다.
+# 집계용 CASE 와 목록 필터가 모두 이 딕셔너리에서 나옵니다.
+STAGE_PREDICATES: dict[str, str] = {
+    "INGESTED": "a.processing_status = 'INGESTED'",
+    "QUALITY_REVIEW": "a.processing_status = 'QUALITY_EVALUATED'",
+    "ENRICHING": "a.processing_status = 'ENRICHMENT_PENDING'",
+    "PUBLICATION_REVIEW": f"({_STAGE_PUBLICATION_REVIEW})",
+    "COMPLETED": (
+        f"a.processing_status = 'ENRICHED' AND NOT ({_STAGE_PUBLICATION_REVIEW})"
+    ),
+    "FAILED_AFTER_APPROVAL": (
+        f"a.processing_status = 'PROCESSING_FAILED' AND {_STAGE_APPROVED}"
+    ),
+    "FAILED": (
+        f"a.processing_status = 'PROCESSING_FAILED' AND NOT {_STAGE_APPROVED}"
+    ),
+    "QUALITY_REJECTED": "a.processing_status = 'QUALITY_REJECTED'",
+}
+
+assert set(STAGE_PREDICATES) == set(STAGE_NAMES), "stage 목록이 base.STAGE_NAMES 와 다릅니다"
+
+# 검토 상태 표시 오류. 단계 축과 별개라 단계 합계에 들어가지 않습니다.
+STATUS_MISMATCH_PREDICATE = (
+    "a.review_status = 'APPROVED' AND a.processing_status NOT IN ("
+    + ", ".join(f"'{status}'" for status in APPROVED_COMPATIBLE_PROCESSING)
+    + ")"
+)
+
+STAGE_CASE = (
+    "CASE "
+    + " ".join(
+        f"WHEN {predicate} THEN '{stage}'"
+        for stage, predicate in STAGE_PREDICATES.items()
+    )
+    + " ELSE 'UNKNOWN' END"
+)
 
 
 def _json(value: Any) -> str:
@@ -956,6 +1011,8 @@ class MySQLPipelineRepository:
         keyword: str | None = None,
         tags: tuple[str, ...] = (),
         publication_status: str | None = None,
+        stage: str | None = None,
+        status_mismatch: bool = False,
         include_admin_fields: bool = False,
         extra: str | None = None,
     ) -> tuple[str, tuple[Any, ...]]:
@@ -992,6 +1049,14 @@ class MySQLPipelineRepository:
         if publication_status:
             clauses.append("a.publication_status = %s")
             params.append(publication_status)
+        if stage:
+            # 호출자가 보낸 값은 딕셔너리 키로만 쓰입니다. SQL 에 보간되지 않습니다.
+            predicate = STAGE_PREDICATES.get(stage)
+            if predicate is None:
+                raise ValueError(f"unknown stage: {stage}")
+            clauses.append(f"({predicate})")
+        if status_mismatch:
+            clauses.append(f"({STATUS_MISMATCH_PREDICATE})")
         if extra:
             clauses.append(extra)
         return " AND ".join(clauses) if clauses else "1 = 1", tuple(params)
@@ -1049,21 +1114,32 @@ class MySQLPipelineRepository:
         offset: int,
         keyword: str | None = None,
         publication_status: str | None = None,
+        stage: str | None = None,
+        status_mismatch: bool = False,
         sort: str = "NEWEST",
     ) -> list[dict[str, Any]]:
         where, params = self._article_conditions(
             keyword=keyword,
             publication_status=publication_status,
+            stage=stage,
+            status_mismatch=status_mismatch,
             include_admin_fields=True,
         )
         return self._list_articles(where, params, limit=limit, offset=offset, sort=sort)
 
     def count_articles(
-        self, *, keyword: str | None = None, publication_status: str | None = None
+        self,
+        *,
+        keyword: str | None = None,
+        publication_status: str | None = None,
+        stage: str | None = None,
+        status_mismatch: bool = False,
     ) -> int:
         where, params = self._article_conditions(
             keyword=keyword,
             publication_status=publication_status,
+            stage=stage,
+            status_mismatch=status_mismatch,
             include_admin_fields=True,
         )
         return self._count_articles(where, params)
@@ -1099,6 +1175,8 @@ class MySQLPipelineRepository:
             "NEWEST": "COALESCE(a.original_published_at, a.created_at) DESC, a.article_id DESC",
             "SCORE_DESC": "a.quality_score DESC, a.article_id DESC",
             "SCORE_ASC": "a.quality_score ASC, a.article_id ASC",
+            # 단계에 오래 머문 건부터. 막힌 아티클을 찾는 용도입니다.
+            "OLDEST": "a.updated_at ASC, a.article_id ASC",
         }[sort]
         connection = self._pool.get_connection()
         try:
@@ -1111,6 +1189,7 @@ class MySQLPipelineRepository:
                     "a.tags, a.one_line_summary, a.summary, a.localized_content, "
                     "a.processing_status, a.review_status, a.publication_status, "
                     "a.published_at, a.record_version, a.created_at, a.updated_at, "
+                    f"{STAGE_CASE} AS stage, "
                     "ps.payload AS submission_payload, ps.quality_result, "
                     "ci.item_payload AS crawl_item_payload, ci.produced_at AS collected_at "
                     "FROM articles a "
@@ -1157,6 +1236,7 @@ class MySQLPipelineRepository:
             "summaryMarkdown": row["summary"],
             "localizedContent": row["localized_content"],
             "processingStatus": row["processing_status"],
+            "stage": row.get("stage"),
             "duplicateStatus": "UNIQUE",
             "reviewStatus": row["review_status"],
             "publicationStatus": row["publication_status"],
@@ -1166,19 +1246,31 @@ class MySQLPipelineRepository:
             "updatedAt": _utc(row.get("updated_at")),
         }
 
-    def article_stats(self) -> dict[str, Any]:
+    def article_stats(
+        self, *, keyword: str | None = None, publication_status: str | None = None
+    ) -> dict[str, Any]:
+        # 목록과 같은 조건으로 셉니다. 검색어를 넣으면 칩 숫자도 함께 좁혀져야
+        # 칩과 목록 총계가 같은 모집단을 가리킵니다. 단계 필터는 여기 넣지
+        # 않습니다 — 넣으면 고른 단계만 남고 나머지가 0 이 됩니다.
+        where, params = self._article_conditions(
+            keyword=keyword,
+            publication_status=publication_status,
+            include_admin_fields=True,
+        )
         connection = self._pool.get_connection()
         try:
             cursor = connection.cursor(dictionary=True)
             try:
                 cursor.execute(
-                    "SELECT publication_status AS value, COUNT(*) AS count "
-                    "FROM articles GROUP BY publication_status"
+                    "SELECT a.publication_status AS value, COUNT(*) AS count "
+                    f"FROM articles a WHERE {where} GROUP BY a.publication_status",
+                    params,
                 )
                 publication = {row["value"]: int(row["count"]) for row in cursor.fetchall()}
                 cursor.execute(
-                    "SELECT processing_status AS value, COUNT(*) AS count "
-                    "FROM articles GROUP BY processing_status"
+                    "SELECT a.processing_status AS value, COUNT(*) AS count "
+                    f"FROM articles a WHERE {where} GROUP BY a.processing_status",
+                    params,
                 )
                 processing = {row["value"]: int(row["count"]) for row in cursor.fetchall()}
                 cursor.execute(
@@ -1194,10 +1286,36 @@ class MySQLPipelineRepository:
                     "WHERE processing_status = 'ENRICHED' AND review_status = 'PENDING'"
                 )
                 publication_reviews = int(cursor.fetchone()["count"])
+                cursor.execute(
+                    f"SELECT {STAGE_CASE} AS stage, COUNT(*) AS count, "
+                    f"MIN(a.updated_at) AS oldest FROM articles a WHERE {where} "
+                    "GROUP BY stage",
+                    params,
+                )
+                # 0 건인 단계도 키를 남깁니다. 화면이 파이프라인 모양을 항상
+                # 같게 그릴 수 있어야 합니다.
+                stages = dict.fromkeys(STAGE_NAMES, 0)
+                # 그 단계에 가장 오래 머문 건의 시각. updated_at 은 "마지막 수정"
+                # 이지 "단계 진입"이 아니므로 하한으로만 읽어야 합니다.
+                stage_oldest: dict[str, Any] = dict.fromkeys(STAGE_NAMES, None)
+                for row in cursor.fetchall():
+                    stages[row["stage"]] = int(row["count"])
+                    stage_oldest[row["stage"]] = _utc(row["oldest"])
+                cursor.execute(
+                    "SELECT COUNT(*) AS count FROM articles a "
+                    f"WHERE {where} AND ({STATUS_MISMATCH_PREDICATE})",
+                    params,
+                )
+                status_mismatch = int(cursor.fetchone()["count"])
                 return {
                     "totalCount": sum(publication.values()),
                     "publication": publication,
                     "processing": processing,
+                    "stages": stages,
+                    "stageOldest": stage_oldest,
+                    # 아티클에서 나온 축이라 위 필터를 따릅니다.
+                    "statusMismatch": status_mismatch,
+                    # 검수 큐는 다른 테이블이라 목록 필터와 무관하게 전체입니다.
                     "reviews": {
                         "duplicates": duplicates,
                         "quality": quality,

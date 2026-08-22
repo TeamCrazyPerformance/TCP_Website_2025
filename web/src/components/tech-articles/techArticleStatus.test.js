@@ -10,6 +10,11 @@ import {
   STAGE,
   articleStage,
   canPublishArticle,
+  STAGE_EXIT,
+  STAGE_FLOW,
+  STAGE_ORDER,
+  STAGE_WAITING,
+  formatWaiting,
   hasStateMismatch,
   partitionPublishable,
   publishBlockReason,
@@ -514,5 +519,88 @@ describe("가치 점수 배색", () => {
       "AI 요약 생성 제외",
     );
     expect(scoreToneLabel({})).toBe("품질 평가 전");
+  });
+});
+
+describe("체류 시간 표기", () => {
+  const NOW = new Date("2026-08-21T12:00:00Z").getTime();
+  const ago = (ms) => new Date(NOW - ms).toISOString();
+
+  test.each([
+    [0, "0분"],
+    [45 * 60 * 1000, "45분"],
+    [5 * 3600 * 1000, "5시간"],
+    [26 * 3600 * 1000, "1일 2시간"],
+    [48 * 3600 * 1000, "2일"],
+  ])("%s ms 전 -> %s", (elapsed, expected) => {
+    expect(formatWaiting(ago(elapsed), NOW)).toBe(expected);
+  });
+
+  test("값이 없거나 이상하면 아무것도 그리지 않는다", () => {
+    // 0 건인 단계는 stageOldest 가 null 입니다.
+    expect(formatWaiting(null)).toBeNull();
+    expect(formatWaiting(undefined)).toBeNull();
+    expect(formatWaiting("어제쯤")).toBeNull();
+  });
+
+  test("시계가 어긋나도 음수로 내려가지 않는다", () => {
+    expect(formatWaiting(new Date(NOW + 60000).toISOString(), NOW)).toBe("0분");
+  });
+});
+
+describe("진행 단계와 종료 상태 구분", () => {
+  test("두 묶음이 전체 단계를 빠짐없이 한 번씩 덮는다", () => {
+    expect([...STAGE_FLOW, ...STAGE_EXIT].sort()).toEqual(
+      [...STAGE_ORDER].sort(),
+    );
+    expect(STAGE_FLOW.filter((s) => STAGE_EXIT.includes(s))).toEqual([]);
+  });
+
+  test("흐름에서 빠져나온 상태만 종료로 분류된다", () => {
+    expect(STAGE_EXIT).toEqual([
+      STAGE.FAILED_AFTER_APPROVAL,
+      STAGE.FAILED,
+      STAGE.QUALITY_REJECTED,
+    ]);
+  });
+
+  test("진행 단계는 파이프라인 순서를 지킨다", () => {
+    // 이 순서가 곧 화면에서 왼쪽부터 오른쪽으로 놓이는 순서입니다.
+    expect(STAGE_FLOW).toEqual([
+      STAGE.INGESTED,
+      STAGE.QUALITY_REVIEW,
+      STAGE.ENRICHING,
+      STAGE.PUBLICATION_REVIEW,
+      STAGE.COMPLETED,
+    ]);
+  });
+});
+
+describe("체류 시간을 붙이는 단계", () => {
+  test("아직 갈 곳이 남은 단계에만 붙는다", () => {
+    expect(STAGE_WAITING).toEqual([
+      STAGE.INGESTED,
+      STAGE.QUALITY_REVIEW,
+      STAGE.ENRICHING,
+      STAGE.PUBLICATION_REVIEW,
+    ]);
+  });
+
+  test("종착지에는 붙지 않는다", () => {
+    // 완료된 지 30일이어도, 품질 미달된 지 45일이어도 정상입니다.
+    // 조치할 수 없는 숫자를 보여주면 관리자가 경고를 무시하게 됩니다.
+    for (const stage of [
+      STAGE.COMPLETED,
+      STAGE.QUALITY_REJECTED,
+      STAGE.FAILED,
+      STAGE.FAILED_AFTER_APPROVAL,
+    ]) {
+      expect(STAGE_WAITING).not.toContain(stage);
+    }
+  });
+
+  test("대기 단계는 모두 진행 묶음에 속한다", () => {
+    // 흐름에서 빠져나온 상태가 대기로 분류되면 기준이 어긋난 것입니다.
+    for (const stage of STAGE_WAITING) expect(STAGE_FLOW).toContain(stage);
   });
 });

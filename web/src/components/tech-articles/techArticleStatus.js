@@ -193,13 +193,18 @@ export const STAGE = {
 // order 는 목록 정렬과 요약 바 표기 순서. 정상 파이프라인 진행 단계를 먼저
 // 시간순으로 보여주고, 실패·종료 상태는 그 뒤에 둡니다.
 const STAGE_META = {
+  // waiting: 아티클이 아직 갈 곳이 남아 기다리는 단계. 여기 오래 머물면
+  // 잘못된 것이므로 체류 시간이 조치로 이어집니다. 종착지(처리 완료·품질 미달
+  // 등)에서는 오래 머무는 게 정상이라 시간을 보여주지 않습니다.
   [STAGE.INGESTED]: {
+    waiting: true,
     order: 0,
     label: "자동 품질 평가 중",
     tone: "status-processing",
     icon: "fa-inbox",
   },
   [STAGE.QUALITY_REVIEW]: {
+    waiting: true,
     order: 1,
     label: "관리자 품질 검토 필요",
     tone: "status-pending",
@@ -207,12 +212,14 @@ const STAGE_META = {
     hint: "관리자 판단을 기다립니다.",
   },
   [STAGE.ENRICHING]: {
+    waiting: true,
     order: 2,
     label: "AI 요약 중",
     tone: "status-processing",
     icon: "fa-wand-magic-sparkles",
   },
   [STAGE.PUBLICATION_REVIEW]: {
+    waiting: true,
     order: 3,
     label: "공개 검토 필요",
     tone: "status-pending",
@@ -229,7 +236,10 @@ const STAGE_META = {
   },
   // 관리자 승인까지 끝난 뒤 요약만 실패한 건. 승인 판단이 이미 있어
   // 재처리 대상이므로 일반 실패와 구분합니다.
+  // terminal: 정상 파이프라인에서 빠져나와 더 진행하지 않는 상태.
+  // 진행 단계끼리는 순서가 의미를 갖지만 종료 상태끼리는 순서가 없습니다.
   [STAGE.FAILED_AFTER_APPROVAL]: {
+    terminal: true,
     order: 5,
     label: "승인 후 요약 실패",
     tone: "status-failed",
@@ -237,6 +247,7 @@ const STAGE_META = {
     hint: "관리자 승인은 정상입니다. AI 요약 작업만 실패해 재처리가 필요합니다.",
   },
   [STAGE.FAILED]: {
+    terminal: true,
     order: 6,
     label: "처리 실패",
     tone: "status-failed",
@@ -244,6 +255,7 @@ const STAGE_META = {
     hint: "파이프라인이 중단되었습니다.",
   },
   [STAGE.QUALITY_REJECTED]: {
+    terminal: true,
     order: 7,
     label: "품질 미달",
     tone: "status-failed",
@@ -286,6 +298,50 @@ export function articleStage(article) {
 
 export function stageMeta(stage) {
   return STAGE_META[stage] || STAGE_META[STAGE.UNKNOWN];
+}
+
+// 칩을 그리는 순서. 서버가 단계별 건수를 주므로 화면은 이 순서로 늘어놓기만
+// 합니다. UNKNOWN 은 도달 경로가 없어 칩으로 만들지 않습니다.
+export const STAGE_ORDER = Object.entries(STAGE_META)
+  .filter(([stage]) => stage !== STAGE.UNKNOWN)
+  .sort(([, a], [, b]) => a.order - b.order)
+  .map(([stage]) => stage);
+
+// 단계에 머문 시간. 서버의 stageOldest 는 updated_at 기준이라 "마지막 수정"
+// 시각입니다. 실제 대기 시간의 하한으로만 읽어야 하므로 문구에서도 그렇게 밝힙니다.
+export function formatWaiting(value, now = Date.now()) {
+  if (!value) return null;
+  const started = new Date(value).getTime();
+  if (Number.isNaN(started)) return null;
+  const minutes = Math.max(0, Math.floor((now - started) / 60000));
+  if (minutes < 60) return `${minutes}분`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}시간`;
+  const days = Math.floor(hours / 24);
+  const restHours = hours % 24;
+  return restHours ? `${days}일 ${restHours}시간` : `${days}일`;
+}
+
+// 진행 중인 단계와 빠져나온 상태. 한 줄에 늘어놓으면 "품질 미달"이 "처리 완료"
+// 다음 단계처럼 읽히므로 화면에서 두 묶음으로 나눕니다.
+// 체류 시간이 조치로 이어지는 단계. 서버는 모든 단계의 stageOldest 를 주지만
+// (같은 GROUP BY 의 컬럼 하나라 비용이 없습니다) 화면은 이 목록만 씁니다.
+// 어디에 시간을 보여줄지는 표시 판단이라 데이터 계층에 섞지 않습니다.
+export const STAGE_WAITING = STAGE_ORDER.filter(
+  (stage) => STAGE_META[stage].waiting,
+);
+
+export const STAGE_FLOW = STAGE_ORDER.filter(
+  (stage) => !STAGE_META[stage].terminal,
+);
+export const STAGE_EXIT = STAGE_ORDER.filter(
+  (stage) => STAGE_META[stage].terminal,
+);
+
+// 서버가 준 단계를 쓰고, 아직 안 오는 동안에는 기존 규칙으로 떨어집니다.
+// 서버 배포가 안정되면 이 함수와 articleStage 를 함께 지웁니다.
+export function resolveStage(article) {
+  return article?.stage || articleStage(article);
 }
 
 // 요약 바용 집계. 단계는 order 순으로, 표시 오류는 별도로 셉니다.

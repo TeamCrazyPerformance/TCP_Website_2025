@@ -19,6 +19,7 @@ from tech_article_pipeline.contracts.models import (
     QualityResolution,
 )
 from tech_article_pipeline.persistence.base import (
+    STAGE_NAMES,
     IdempotencyConflictError,
     NotFoundError,
     VersionConflictError,
@@ -234,7 +235,13 @@ def create_app(
             alias="publicationStatus",
             pattern=r"^(UNPUBLISHED|SCHEDULED|PUBLISHED|HIDDEN|ARCHIVED)$",
         ),
-        sort: str = Query(default="NEWEST", pattern=r"^(NEWEST|SCORE_DESC|SCORE_ASC)$"),
+        stage: str | None = Query(
+            default=None, pattern=r"^(" + "|".join(STAGE_NAMES) + r")$"
+        ),
+        status_mismatch: bool = Query(default=False, alias="statusMismatch"),
+        sort: str = Query(
+            default="NEWEST", pattern=r"^(NEWEST|OLDEST|SCORE_DESC|SCORE_ASC)$"
+        ),
     ) -> dict[str, Any]:
         items, total_count = await asyncio.gather(
             asyncio.to_thread(
@@ -243,19 +250,35 @@ def create_app(
                 offset=offset,
                 keyword=keyword,
                 publication_status=publication_status,
+                stage=stage,
+                status_mismatch=status_mismatch,
                 sort=sort,
             ),
             asyncio.to_thread(
                 request.app.state.runtime.repository.count_articles,
                 keyword=keyword,
                 publication_status=publication_status,
+                stage=stage,
+                status_mismatch=status_mismatch,
             ),
         )
         return {"items": items, "limit": limit, "offset": offset, "totalCount": total_count}
 
     @internal.get("/admin/articles/stats")
-    async def admin_article_stats(request: Request) -> dict[str, Any]:
-        return await asyncio.to_thread(request.app.state.runtime.repository.article_stats)
+    async def admin_article_stats(
+        request: Request,
+        keyword: str | None = Query(default=None, min_length=1, max_length=100),
+        publication_status: str | None = Query(
+            default=None,
+            alias="publicationStatus",
+            pattern=r"^(UNPUBLISHED|SCHEDULED|PUBLISHED|HIDDEN|ARCHIVED)$",
+        ),
+    ) -> dict[str, Any]:
+        return await asyncio.to_thread(
+            request.app.state.runtime.repository.article_stats,
+            keyword=keyword,
+            publication_status=publication_status,
+        )
 
     @internal.get("/admin/articles/{article_id}")
     async def admin_article(request: Request, article_id: str) -> dict[str, Any]:

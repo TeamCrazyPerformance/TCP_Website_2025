@@ -506,6 +506,15 @@
  * processing / review / publication 세 축을 접은 단일 배지와
  * 그 집계 칩입니다. 목록은 이 배지만 쓰고 원본 세 축은 상세에서 봅니다. */
 
+/* ── 배지 글자 ────────────────────────────────────────────
+ * 생성 파일은 .status-badge 를 10px / weight 800 으로 둡니다. 표 머리글과 같은
+ * 문제로, 10px 한글에 800 은 속공간이 메워져 자획이 뭉갭니다. 크기를 올리고
+ * 굵기를 낮춥니다. */
+.ta-admin .status-badge {
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .ta-admin .stage-cell {
   display: flex;
   min-width: 132px;
@@ -514,7 +523,13 @@
   gap: 5px;
 }
 
+/* 목록에서 가장 먼저 읽혀야 하는 값이라 다른 배지보다 한 단계 큽니다.
+   한 줄 요약을 뺀 자리를 이 배지가 대신합니다. */
 .ta-admin .stage-badge {
+  min-height: 30px;
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -526,6 +541,50 @@
   color: var(--gray-400);
   font-size: 10px;
   line-height: 1.4;
+}
+
+/* ── 검수 큐 상단 카운터 ──────────────────────────────────
+ * 관리자가 이 화면에서 가장 먼저 읽는 값입니다. "할 일이 있나"를 한눈에
+ * 답해야 하는데, 생성 파일은 27px 에 라벨 11px / 보조설명 10px --gray-500
+ * (대비 3:1 대)이라 숫자가 카드 안에서 묻힙니다.
+ *
+ * 서체는 아래 "숫자 표시" 절에서 본문 서체와 tabular-nums 로 되돌립니다.
+ * 여기서는 크기만 다룹니다. */
+.ta-admin .queue-stat-card p {
+  color: var(--gray-300);
+  font-size: 12px;
+}
+
+.ta-admin .queue-stat-card strong {
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.ta-admin .queue-stat-card small {
+  color: var(--gray-400);
+  font-size: 11px;
+}
+
+/* ── 목록 표 머리글 ───────────────────────────────────────
+ * 생성 파일은 10px / weight 800 / --gray-400 입니다. 본문 셀이 12px /
+ * --gray-300 이라 머리글이 본문보다 작고 어두웠습니다. 어느 열인지 알려주는
+ * 글자가 정작 데이터보다 읽기 어려우면 스캔이 안 됩니다.
+ *
+ * 크기를 본문과 같게 올리고, 굵기는 오히려 낮춥니다. 10px 한글에 weight 800 은
+ * 속공간이 메워져 자획이 뭉갭니다. 한글은 같은 크기에서 라틴 문자보다 획이
+ * 촘촘해 작고 굵을수록 불리합니다.
+ *
+ * 머리글이라는 신호는 thead 배경 띠와 굵기가 이미 충분히 줍니다. 색까지
+ * 낮출 필요가 없습니다. 너무 도드라져 보이면 color 만 --gray-400 으로
+ * 되돌리세요 — 크기가 12px 이면 그 색으로도 지금보다 훨씬 잘 읽힙니다.
+ *
+ * 특정도는 생성 파일과 같은 (0,2,1). 나중에 로드되므로 이깁니다. */
+.ta-admin .article-table th {
+  color: var(--gray-300);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 /* ── 파이프라인 단계 툴바 ─────────────────────────────────
@@ -552,6 +611,50 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+/* 진행 단계와 종료 상태를 두 묶음으로 나눕니다.
+   한 줄에 늘어놓으면 "품질 미달"이 "처리 완료" 다음 단계처럼 읽힙니다. */
+.ta-admin .stage-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 진행 묶음: 옅은 배경 띠가 다섯 단계를 하나의 흐름으로 묶습니다.
+   왼→오른쪽으로 짙어지는 그라디언트가 방향을 암시합니다. 칩 사이에 화살표를
+   넣으면 줄바꿈될 때 허공을 가리키므로 배경으로 처리합니다. */
+.ta-admin .stage-group.is-flow {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(148, 163, 184, 0.05),
+    rgba(148, 163, 184, 0.16)
+  );
+}
+
+/* 종료 묶음: 배경 없이 구분선 뒤에 두어 흐름에서 떨어져 나온 것으로 읽히게 합니다. */
+.ta-admin .stage-group.is-exit {
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
+}
+
+.ta-admin .stage-group.is-exit .stage-chip {
+  border-style: dashed;
+  background: transparent;
+}
+
+.ta-admin .stage-group-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding-right: 2px;
+  color: var(--gray-500);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
 }
 
 .ta-admin .stage-chip {
@@ -585,6 +688,17 @@
 .ta-admin .stage-chip.is-active {
   border-color: currentColor;
   box-shadow: inset 0 0 0 1px currentColor;
+}
+
+/* 0 건인 단계. 칩을 감추면 0 건인지 이 페이지에 없는 건지 구분되지 않으므로
+   자리를 지키되 눌리지 않게 둡니다. */
+.ta-admin .stage-chip.is-empty {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.ta-admin .stage-chip.is-empty:hover {
+  transform: none;
 }
 
 .ta-admin .stage-chip:focus-visible {
@@ -783,10 +897,14 @@
 /* ── 숫자 표시 ────────────────────────────────────────────
  * v9 는 숫자에도 Orbitron 을 씁니다. 정사각 기하 디스플레이 서체라
  * 0/8, 1, 6/9 판별이 어렵고 tabular 자릿수도 없습니다.
- * 제목의 Orbitron 은 브랜드 요소라 두고, 숫자만 본문 서체로 되돌립니다. */
+ * 제목과 섹션 눈썹(라틴 대문자)의 Orbitron 은 브랜드 요소라 두고,
+ * 숫자는 예외 없이 본문 서체로 되돌립니다.
+ *
+ * 새로 숫자를 표시하는 자리를 만들면 이 목록에 추가해 주세요. */
 .ta-admin .admin-score,
 .ta-admin .jaccard-score,
 .ta-admin .total-article-count,
+.ta-admin .queue-stat-card strong,
 .ta-admin .stage-chip strong,
 .ta-admin .quality-dimension-value,
 .ta-admin .quality-signal-list strong,

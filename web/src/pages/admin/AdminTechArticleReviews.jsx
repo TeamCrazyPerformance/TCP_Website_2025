@@ -549,7 +549,7 @@ function AdminTechArticleReviews({ kind }) {
             </span>
             <div>
               <p>판정 대기</p>
-              <strong className="orbitron">{currentCount}</strong>
+              <strong>{currentCount}</strong>
               <small>POSSIBLE_DUPLICATE</small>
             </div>
           </article>
@@ -566,7 +566,7 @@ function AdminTechArticleReviews({ kind }) {
               </span>
               <div>
                 <p>품질 검토</p>
-                <strong className="orbitron">
+                <strong>
                   {qualityCount ?? (kind === "quality" ? currentCount : "—")}
                 </strong>
                 <small>REVIEW_REQUIRED</small>
@@ -578,7 +578,7 @@ function AdminTechArticleReviews({ kind }) {
               </span>
               <div>
                 <p>공개 검토</p>
-                <strong className="orbitron">
+                <strong>
                   {publicationCount ??
                     (kind === "publication" ? currentCount : "—")}
                 </strong>

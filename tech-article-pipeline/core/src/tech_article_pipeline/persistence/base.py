@@ -6,6 +6,31 @@ from typing import Any, Protocol
 from tech_article_pipeline.contracts import CrawlJobRecord, JobRecord, PublicationPolicy, Stage
 
 
+# 관리자 화면의 파이프라인 단계. 표시 순서대로 둡니다.
+# 판정 규칙은 mysql.STAGE_PREDICATES(SQL) 와 memory._article_stage(파이썬)에
+# 각각 있고, 이름 목록만 여기서 공유합니다.
+STAGE_NAMES: tuple[str, ...] = (
+    "INGESTED",
+    "QUALITY_REVIEW",
+    "ENRICHING",
+    "PUBLICATION_REVIEW",
+    "COMPLETED",
+    "FAILED_AFTER_APPROVAL",
+    "FAILED",
+    "QUALITY_REJECTED",
+)
+
+
+# 검토 승인(APPROVED)과 공존할 수 있는 처리 단계. 정상 승인은 처리 단계를
+# ENRICHMENT_PENDING 으로 함께 올리므로, 이 셋 밖에서 APPROVED 가 보이면
+# 공개 액션이 덮어쓴 값입니다.
+APPROVED_COMPATIBLE_PROCESSING: tuple[str, ...] = (
+    "ENRICHMENT_PENDING",
+    "ENRICHED",
+    "PROCESSING_FAILED",
+)
+
+
 class IdempotencyConflictError(RuntimeError):
     pass
 
@@ -123,16 +148,25 @@ class PipelineRepository(Protocol):
         offset: int,
         keyword: str | None = None,
         publication_status: str | None = None,
+        stage: str | None = None,
+        status_mismatch: bool = False,
         sort: str = "NEWEST",
     ) -> list[dict[str, Any]]: ...
 
     def count_articles(
-        self, *, keyword: str | None = None, publication_status: str | None = None
+        self,
+        *,
+        keyword: str | None = None,
+        publication_status: str | None = None,
+        stage: str | None = None,
+        status_mismatch: bool = False,
     ) -> int: ...
 
     def get_article(self, article_id: str) -> dict[str, Any] | None: ...
 
-    def article_stats(self) -> dict[str, Any]: ...
+    def article_stats(
+        self, *, keyword: str | None = None, publication_status: str | None = None
+    ) -> dict[str, Any]: ...
 
     def list_review_queue(
         self,

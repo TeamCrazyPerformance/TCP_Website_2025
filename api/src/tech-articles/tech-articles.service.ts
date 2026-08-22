@@ -2,6 +2,7 @@ import { BadRequestException, HttpException, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import {
   AdminArticleQueryDto,
+  AdminArticleStatsQueryDto,
   BulkDuplicateResolutionDto,
   BulkPublicationDto,
   BulkQualityResolutionDto,
@@ -181,6 +182,8 @@ export class TechArticlesService {
         offset: (query.page - 1) * query.pageSize,
         keyword: query.keyword,
         publicationStatus: query.publicationStatus,
+        stage: query.stage,
+        statusMismatch: query.statusMismatch || undefined,
         sort: query.sort,
       },
     );
@@ -194,8 +197,11 @@ export class TechArticlesService {
     };
   }
 
-  stats() {
-    return this.pipeline.get('/internal/v1/admin/articles/stats');
+  stats(query: AdminArticleStatsQueryDto = {}) {
+    return this.pipeline.get('/internal/v1/admin/articles/stats', {
+      keyword: query.keyword,
+      publicationStatus: query.publicationStatus,
+    });
   }
 
   async adminDetail(articleId: string) {
