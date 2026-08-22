@@ -10,7 +10,12 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 
-from tech_article_pipeline.catalog import crawl_source_catalog, tag_catalog
+from tech_article_pipeline.catalog import (
+    crawl_source_catalog,
+    known_source_ids,
+    public_source_catalog,
+    tag_catalog,
+)
 from tech_article_pipeline.contracts.models import (
     CrawlRequested,
     NormalizedArticleCandidate,
@@ -293,10 +298,14 @@ def create_app(
         offset: int = Query(default=0, ge=0),
         keyword: str | None = Query(default=None, min_length=1, max_length=100),
         tags: Annotated[list[str] | None, Query()] = None,
+        sources: Annotated[list[str] | None, Query()] = None,
     ) -> dict[str, Any]:
         tag_values = tuple(dict.fromkeys(tags or []))
         if set(tag_values) - set(tag_catalog()):
             raise HTTPException(status_code=422, detail={"code": "INVALID_ARTICLE_TAG"})
+        source_values = tuple(dict.fromkeys(sources or []))
+        if set(source_values) - known_source_ids():
+            raise HTTPException(status_code=422, detail={"code": "INVALID_ARTICLE_SOURCE"})
         items, total_count, last_crawled_at = await asyncio.gather(
             asyncio.to_thread(
                 request.app.state.runtime.repository.list_public_articles,
@@ -304,11 +313,13 @@ def create_app(
                 offset=offset,
                 keyword=keyword,
                 tags=tag_values,
+                sources=source_values,
             ),
             asyncio.to_thread(
                 request.app.state.runtime.repository.count_public_articles,
                 keyword=keyword,
                 tags=tag_values,
+                sources=source_values,
             ),
             asyncio.to_thread(request.app.state.runtime.repository.last_crawled_at),
         )
@@ -323,6 +334,20 @@ def create_app(
     @internal.get("/public/tags")
     async def public_tags() -> dict[str, Any]:
         return {"items": tag_catalog()}
+
+    @internal.get("/public/sources")
+    async def public_sources(request: Request) -> dict[str, Any]:
+        """소스 선택기용. 태그와 달리 소스는 계속 늘어나므로 목록 응답에
+        얹지 않고 별도로 둡니다 (/public/tags 와 같은 방식)."""
+        counts = await asyncio.to_thread(
+            request.app.state.runtime.repository.public_source_counts
+        )
+        return {
+            "items": [
+                {**source, "count": counts.get(source["id"], 0)}
+                for source in public_source_catalog()
+            ]
+        }
 
     @internal.get("/public/articles/{article_id}")
     async def public_article(request: Request, article_id: str) -> dict[str, Any]:

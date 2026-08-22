@@ -16,6 +16,7 @@ from tech_article_pipeline.contracts import (
 
 from .base import (
     APPROVED_COMPATIBLE_PROCESSING,
+    NEW_ARTICLE_WINDOW_HOURS,
     STAGE_NAMES,
     IdempotencyConflictError,
     NotFoundError,
@@ -78,6 +79,14 @@ def _utc(value: datetime | None) -> datetime | None:
     if value is None:
         return None
     return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
+def _is_new(collected_at: datetime | None) -> bool:
+    """수집 직후인지. 공개 목록은 원문 게시일 순으로 정렬되므로 새로 들어온
+    글이 위쪽에 오지 않습니다. 배지가 없으면 사용자가 찾을 방법이 없습니다."""
+    if collected_at is None:
+        return False
+    return datetime.now(UTC) - collected_at < timedelta(hours=NEW_ARTICLE_WINDOW_HOURS)
 
 
 def _payload_digest(value: dict[str, Any]) -> bytes:
@@ -1175,6 +1184,7 @@ class MySQLPipelineRepository:
         public_only: bool = False,
         keyword: str | None = None,
         tags: tuple[str, ...] = (),
+        sources: tuple[str, ...] = (),
         publication_status: str | None = None,
         stage: str | None = None,
         status_mismatch: bool = False,
@@ -1212,6 +1222,10 @@ class MySQLPipelineRepository:
                 + ")"
             )
             params.extend(tags)
+        if sources:
+            placeholders = ", ".join("%s" for _ in sources)
+            clauses.append(f"a.source_id IN ({placeholders})")
+            params.extend(sources)
         if publication_status:
             clauses.append("a.publication_status = %s")
             params.append(publication_status)
@@ -1234,15 +1248,45 @@ class MySQLPipelineRepository:
         offset: int,
         keyword: str | None = None,
         tags: tuple[str, ...] = (),
+        sources: tuple[str, ...] = (),
     ) -> list[dict[str, Any]]:
-        where, params = self._article_conditions(public_only=True, keyword=keyword, tags=tags)
+        where, params = self._article_conditions(
+            public_only=True, keyword=keyword, tags=tags, sources=sources
+        )
         return self._list_articles(where, params, limit=limit, offset=offset, sort="NEWEST")
 
     def count_public_articles(
-        self, *, keyword: str | None = None, tags: tuple[str, ...] = ()
+        self,
+        *,
+        keyword: str | None = None,
+        tags: tuple[str, ...] = (),
+        sources: tuple[str, ...] = (),
     ) -> int:
-        where, params = self._article_conditions(public_only=True, keyword=keyword, tags=tags)
+        where, params = self._article_conditions(
+            public_only=True, keyword=keyword, tags=tags, sources=sources
+        )
         return self._count_articles(where, params)
+
+    def public_source_counts(self) -> dict[str, int]:
+        """공개 중인 아티클의 소스별 건수. 선택기 옆 숫자에 씁니다.
+
+        소스가 늘면 목록 응답에 얹기엔 무거워지므로 별도 조회로 둡니다.
+        """
+        where, params = self._article_conditions(public_only=True)
+        connection = self._pool.get_connection()
+        try:
+            cursor = connection.cursor()
+            try:
+                cursor.execute(
+                    "SELECT a.source_id, COUNT(*) FROM articles a "
+                    f"WHERE {where} GROUP BY a.source_id",
+                    params,
+                )
+                return {row[0]: int(row[1]) for row in cursor.fetchall()}
+            finally:
+                cursor.close()
+        finally:
+            connection.close()
 
     def last_crawled_at(self) -> datetime | None:
         connection = self._pool.get_connection()
@@ -1384,6 +1428,7 @@ class MySQLPipelineRepository:
                 row.get("source_id"), source.get("sourceType"), row.get("canonical_url")
             ),
             "collectedAt": _utc(row.get("collected_at")),
+            "isNew": _is_new(_utc(row.get("collected_at"))),
             "normalizedAt": (submission.get("normalization") or {}).get("normalizedAt"),
             "qualityScore": row["quality_score"],
             "valueScore": row["quality_score"],

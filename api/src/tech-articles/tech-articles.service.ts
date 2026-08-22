@@ -61,6 +61,7 @@ interface PipelineArticle {
   originalLanguage?: LanguageProjection | null;
   originalPublishedAt?: string | null;
   collectedAt?: string | null;
+  isNew?: boolean;
   normalizedAt?: string | null;
   qualityScore?: number | null;
   valueScore?: number | null;
@@ -135,6 +136,14 @@ export interface BulkResult {
   error?: unknown;
 }
 
+interface PublicSource {
+  id: string;
+  name: string;
+  domain: string;
+  category: string;
+  count: number;
+}
+
 type ReviewKind = 'duplicate' | 'quality' | 'publication';
 type CrawlTrigger = 'MANUAL' | 'SCHEDULED';
 
@@ -152,6 +161,7 @@ export class TechArticlesService {
         offset: (query.page - 1) * query.pageSize,
         keyword: query.keyword,
         tags: query.tags,
+        sources: query.sources,
       },
     );
     return {
@@ -167,6 +177,12 @@ export class TechArticlesService {
 
   async tags() {
     return this.pipeline.get<{ items: string[] }>('/internal/v1/public/tags');
+  }
+
+  async sources() {
+    return this.pipeline.get<{ items: PublicSource[] }>(
+      '/internal/v1/public/sources',
+    );
   }
 
   async publicDetail(articleId: string) {
@@ -562,6 +578,8 @@ export class TechArticlesService {
       originalLanguage: article.originalLanguage,
       originalPublishedAt: article.originalPublishedAt,
       collectedAt: article.collectedAt,
+      // 수집 직후인지. 목록이 원문 게시일 순이라 새 글이 위로 오지 않습니다.
+      isNew: article.isNew ?? false,
       score: article.qualityScore,
     };
   }

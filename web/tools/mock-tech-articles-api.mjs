@@ -286,6 +286,15 @@ articles.slice(36, 48).forEach((a) => {
   a.publishedAt = a.normalizedAt;
 });
 
+// NEW 배지가 로컬에서 보이도록 공개된 아티클 몇 건의 수집 시각을 최근으로
+// 맞춘다. 목 데이터의 기준 시각은 고정이라 그냥 두면 전부 12시간을 넘긴다.
+articles
+  .filter((a) => a.processingStatus === "ENRICHED" && a.publicationStatus === "PUBLISHED")
+  .slice(0, 3)
+  .forEach((a, index) => {
+    a.collectedAt = new Date(Date.now() - (index + 1) * 3600 * 1000).toISOString();
+  });
+
 // 실제 파이프라인은 품질 평가 결과를 저장할 때 처음으로 점수를 기록한다.
 // INGESTED 는 자동 품질 평가 전 단계이므로 점수와 판정값이 없다.
 articles
@@ -348,8 +357,27 @@ const publicItem = (a) => ({
   originalLanguage: a.originalLanguage,
   originalPublishedAt: a.originalPublishedAt,
   collectedAt: a.collectedAt,
+  // 서버와 같은 기준(수집 후 12시간). base.NEW_ARTICLE_WINDOW_HOURS 와 맞춰야
+  // 로컬에서 본 화면이 운영과 같아집니다.
+  isNew: isNewArticle(a.collectedAt),
   score: a.valueScore,
 });
+
+const NEW_ARTICLE_WINDOW_HOURS = 12;
+const isNewArticle = (collectedAt) => {
+  if (!collectedAt) return false;
+  const t = new Date(collectedAt).getTime();
+  if (Number.isNaN(t)) return false;
+  return Date.now() - t < NEW_ARTICLE_WINDOW_HOURS * 3600 * 1000;
+};
+
+// 공개 화면 소스 선택기. 파이프라인 catalog.PUBLIC_SOURCE_CATALOG 와 같은 모양.
+const PUBLIC_SOURCES = [
+  { id: "cloudflare-blog", name: "Cloudflare Blog", domain: "blog.cloudflare.com", category: "기술 블로그" },
+  { id: "infoq", name: "InfoQ", domain: "infoq.com", category: "업계 뉴스" },
+  { id: "sdtimes", name: "SD Times", domain: "sdtimes.com", category: "업계 뉴스" },
+  { id: "github-trending", name: "GitHub Trending", domain: "github.com", category: "저장소" },
+];
 
 // 관리자 승인이 실제로 있었던 아티클. 서버는 quality_review_cases 를 보지만
 // 목 서버에는 그 테이블이 없어 여기에 기록합니다. review_status 를 보면 공개
@@ -987,13 +1015,28 @@ function handle(method, pathname, query, body) {
     return [200, { items: TAGS }];
   }
 
+  // 소스는 계속 늘어나므로 목록 응답이 아니라 별도 경로로 줍니다.
+  if (method === "GET" && pathname === `${PUBLIC_BASE}/sources`) {
+    const published = articles.filter(isPublic);
+    return [200, {
+      items: PUBLIC_SOURCES.map((source) => ({
+        ...source,
+        count: published.filter((a) => a.source?.id === source.id).length,
+      })),
+    }];
+  }
+
   if (method === "GET" && pathname === PUBLIC_BASE) {
     const selected = query.getAll("tags").filter(Boolean);
+    const selectedSources = query.getAll("sources").filter(Boolean);
     const rows = articles
       .filter(isPublic)
       .filter(matches)
       .filter(
         (a) => !selected.length || a.tags.some((t) => selected.includes(t)),
+      )
+      .filter(
+        (a) => !selectedSources.length || selectedSources.includes(a.source?.id),
       )
       .sort(byNewest)
       .map(publicItem);

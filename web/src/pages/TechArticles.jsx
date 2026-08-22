@@ -8,10 +8,12 @@ import React, {
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   getTechArticles,
+  getTechArticleSources,
   getTechArticleTags,
   techArticleErrorMessage,
 } from "../api/techArticles";
 import {
+  formatRelativeFromNow,
   formatTechArticleDate,
   shouldOpenFromCardClick,
 } from "../components/tech-articles/TechArticleCommon";
@@ -52,6 +54,155 @@ function readTags(searchParams) {
         .filter(Boolean),
     ),
   ];
+}
+
+function readSources(searchParams) {
+  return (searchParams.get("sources") || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+// 소스는 남의 브랜드라 아이콘과 도메인을 함께 보여줍니다. 분야 태그와 모양이
+// 같으면 사용자가 같은 축으로 착각하는데, 이 둘은 서로 다른 질문에 답합니다.
+// (분야: 무엇에 관한 글인가 / 소스: 누가 쓴 글인가)
+//
+// 아이콘은 우리 서버에서만 가져옵니다. 외부 파비콘 서비스를 쓰면 방문자
+// 브라우저가 그 서비스에 직접 요청하게 되어, IP 와 "지금 보는 소스"가 제3자로
+// 전송됩니다. 개인정보처리방침이 "외부 전송을 하지 않는다"고 밝히고 있으므로
+// 그 약속과 어긋납니다.
+//
+// public/images/sources/{id}.png 를 두면 그 이미지를 쓰고, 없으면 이름 첫 글자로
+// 만든 표식으로 떨어집니다. 새 소스를 추가할 때 이미지를 안 넣어도 화면은
+// 깨지지 않습니다.
+const MONOGRAM_TONES = 6;
+
+// 글자 코드 합으로 색을 고릅니다. 이름 길이로 고르면 글자 수가 같은 소스끼리
+// 색이 겹칩니다 ("Cloudflare Blog" 와 "GitHub Trending" 이 둘 다 15자).
+function monogramTone(label) {
+  let sum = 0;
+  for (let i = 0; i < label.length; i += 1) sum += label.charCodeAt(i);
+  return sum % MONOGRAM_TONES;
+}
+
+function SourceIcon({ id, name, domain }) {
+  const [failed, setFailed] = useState(false);
+  const label = (name || domain || "?").trim();
+  if (!id || failed) {
+    // 같은 소스는 언제나 같은 색이 됩니다.
+    const tone = monogramTone(label);
+    return (
+      <span
+        className={`source-icon source-icon-monogram tone-${tone}`}
+        aria-hidden="true"
+      >
+        {label.slice(0, 1).toUpperCase()}
+      </span>
+    );
+  }
+  return (
+    <img
+      className="source-icon"
+      src={`/images/sources/${id}.png`}
+      alt=""
+      loading="lazy"
+      width="20"
+      height="20"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+// 소스가 늘어나도 견디도록 검색을 답니다. 목록을 눈으로 훑어 찾는 방식은
+// 스무 개를 넘어가면 무너집니다.
+function SourcePickerDialog({
+  dialogRef,
+  sources,
+  draft,
+  onToggle,
+  onApply,
+  onReset,
+  onClose,
+}) {
+  const [query, setQuery] = useState("");
+  const normalized = query.trim().toLowerCase();
+  const visible = normalized
+    ? sources.filter(
+        (source) =>
+          source.name.toLowerCase().includes(normalized) ||
+          source.domain.toLowerCase().includes(normalized) ||
+          (source.category || "").toLowerCase().includes(normalized),
+      )
+    : sources;
+  return (
+    <dialog className="source-dialog" ref={dialogRef} onClose={onClose}>
+      <form method="dialog" className="source-dialog-inner">
+        <header className="source-dialog-header">
+          <h2>소스 고르기</h2>
+          <button
+            className="source-dialog-close"
+            type="button"
+            onClick={onClose}
+            aria-label="닫기"
+          >
+            <i className="fas fa-xmark" aria-hidden="true"></i>
+          </button>
+        </header>
+
+        <div className="source-search">
+          <i className="fas fa-magnifying-glass" aria-hidden="true"></i>
+          <input
+            type="search"
+            value={query}
+            placeholder="소스 이름이나 주소로 찾기"
+            aria-label="소스 검색"
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </div>
+
+        <ul className="source-option-list">
+          {visible.length === 0 && (
+            <li className="source-empty">검색 결과가 없습니다.</li>
+          )}
+          {visible.map((source) => {
+            const checked = draft.includes(source.id);
+            return (
+              <li key={source.id}>
+                <label
+                  className={`source-option ${checked ? "is-checked" : ""}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => onToggle(source.id)}
+                  />
+                  <SourceIcon
+                    id={source.id}
+                    name={source.name}
+                    domain={source.domain}
+                  />
+                  <span className="source-option-text">
+                    <strong>{source.name}</strong>
+                    <small>{source.domain}</small>
+                  </span>
+                  <span className="source-option-count">{source.count}</span>
+                </label>
+              </li>
+            );
+          })}
+        </ul>
+
+        <footer className="source-dialog-actions">
+          <button type="button" className="source-reset" onClick={onReset}>
+            전체 해제
+          </button>
+          <button type="button" className="source-apply" onClick={onApply}>
+            적용
+          </button>
+        </footer>
+      </form>
+    </dialog>
+  );
 }
 
 function sameValues(left, right) {
@@ -126,8 +277,13 @@ function TechArticles() {
   ).trim();
   const selectedTags = readTags(searchParams);
   const selectedTagKey = selectedTags.join("\u0000");
+  const selectedSources = readSources(searchParams);
+  const selectedSourceKey = selectedSources.join("\u0000");
 
   const [tags, setTags] = useState([]);
+  const [sources, setSources] = useState([]);
+  const [draftSources, setDraftSources] = useState(selectedSources);
+  const [sourceOpen, setSourceOpen] = useState(false);
   const [draftTags, setDraftTags] = useState(selectedTags);
   const [searchInput, setSearchInput] = useState(keyword);
   const [response, setResponse] = useState(null);
@@ -138,9 +294,11 @@ function TechArticles() {
   const [toast, setToast] = useState("");
   const requestId = useRef(0);
   const filterDialogRef = useRef(null);
+  const sourceDialogRef = useRef(null);
 
   useEffect(() => {
     setDraftTags(readTags(searchParams));
+    setDraftSources(readSources(searchParams));
     setSearchInput(
       (searchParams.get("q") || searchParams.get("keyword") || "").trim(),
     );
@@ -168,11 +326,33 @@ function TechArticles() {
   }, []);
 
   useEffect(() => {
+    let active = true;
+    getTechArticleSources()
+      .then((data) => {
+        if (active) setSources(Array.isArray(data?.items) ? data.items : []);
+      })
+      .catch(() => {
+        // 소스 목록을 못 받아도 아티클 목록은 그대로 보여야 합니다.
+        if (active) setSources([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
     const dialog = filterDialogRef.current;
     if (!dialog) return;
     if (filterOpen && !dialog.open) dialog.showModal();
     if (!filterOpen && dialog.open) dialog.close();
   }, [filterOpen]);
+
+  useEffect(() => {
+    const dialog = sourceDialogRef.current;
+    if (!dialog) return;
+    if (sourceOpen && !dialog.open) dialog.showModal();
+    if (!sourceOpen && dialog.open) dialog.close();
+  }, [sourceOpen]);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -190,6 +370,7 @@ function TechArticles() {
         pageSize: PAGE_SIZE,
         keyword: keyword || undefined,
         tags: selectedTags,
+        sources: selectedSources,
       });
       if (requestId.current !== currentRequest) return;
       setResponse(data);
@@ -210,21 +391,51 @@ function TechArticles() {
     } finally {
       if (requestId.current === currentRequest) setIsLoading(false);
     }
-  }, [keyword, page, searchParams, selectedTagKey, setSearchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+    // selectedTags / selectedSources 는 매 렌더 새 배열이라 그대로 넣으면
+    // 무한 조회가 됩니다. 문자열로 접은 ...Key 를 대신 씁니다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    keyword,
+    page,
+    searchParams,
+    selectedTagKey,
+    selectedSourceKey,
+    setSearchParams,
+  ]);
 
   useEffect(() => {
     loadArticles();
   }, [loadArticles]);
 
+  // "14:32 KST" 는 지금 시각과 빼기를 시켜야 읽힙니다. 상대 시각은 그냥 읽힙니다.
+  const lastCheckedRelative = useMemo(
+    () => formatRelativeFromNow(response?.lastCrawledAt),
+    [response],
+  );
+  const lastCheckedAbsolute = response?.lastCrawledAt
+    ? `${formatTechArticleDate(response.lastCrawledAt, true)} KST`
+    : undefined;
+  // 배지가 붙은 개수와 같은 값이라, 두 표시가 서로를 설명해 줍니다.
+  const newCount = useMemo(
+    () => (response?.items || []).filter((item) => item.isNew).length,
+    [response],
+  );
+  const sourceById = useMemo(
+    () => Object.fromEntries(sources.map((source) => [source.id, source])),
+    [sources],
+  );
+
   const applyConditions = ({
     nextKeyword = keyword,
     nextTags = selectedTags,
+    nextSources = selectedSources,
     nextPage = 1,
     scroll = true,
   } = {}) => {
     const next = new URLSearchParams();
     if (nextKeyword.trim()) next.set("q", nextKeyword.trim());
     if (nextTags.length) next.set("tags", nextTags.join(","));
+    if (nextSources.length) next.set("sources", nextSources.join(","));
     if (nextPage > 1) next.set("page", String(nextPage));
     setSearchParams(next);
     if (scroll) {
@@ -309,19 +520,24 @@ function TechArticles() {
               <i className="fas fa-newspaper"></i>
             </div>
             <h1 className="orbitron gradient-text">Tech Articles</h1>
-            <p className="hero-lead orbitron">
-              개발과 기술 분야의 읽을 만한 정보를 한곳에서 만나보세요
+            {/* 한글에는 Orbitron 을 쓰지 않습니다. 라틴 제목에만 남깁니다. */}
+            <p className="hero-lead">
+              여러 개발·기술 뉴스를 한 곳에서 만나보세요
             </p>
             <p className="hero-description">
-              AI가 정리한 한 줄 요약과 분야, 원출처를 확인해 보세요.
+              TCP가 한데 모은 여러 소식을 이곳에서 확인할 수 있어요.
             </p>
             <p className="last-collected">
               <i className="fas fa-clock" aria-hidden="true"></i>
-              마지막 원문 수집:{" "}
-              <span>
-                {response?.lastCrawledAt
-                  ? `${formatTechArticleDate(response.lastCrawledAt, true)} KST`
-                  : "확인 중"}
+              {/* 새 글이 없을 때 "업데이트"라고 하면 사실이 아니게 됩니다. */}
+              <span title={lastCheckedAbsolute}>
+                {lastCheckedRelative
+                  ? newCount > 0
+                    ? `${lastCheckedRelative}에 업데이트 · 새 글 ${newCount}개`
+                    : `${lastCheckedRelative}에 확인`
+                  : lastCheckedAbsolute
+                    ? `마지막 확인 ${lastCheckedAbsolute}`
+                    : "확인 중"}
               </span>
             </p>
           </div>
@@ -357,6 +573,65 @@ function TechArticles() {
                   </span>
                 )}
               </div>
+            </div>
+
+            {/* 소스는 분야 태그와 다른 축이라 필터 패널 밖, 목록 바로 위에
+                따로 둡니다. 한 줄에 섞으면 같은 종류로 읽힙니다. */}
+            <div className="source-bar">
+              <button
+                type="button"
+                className={`source-trigger ${selectedSources.length ? "is-active" : ""}`}
+                onClick={() => setSourceOpen(true)}
+                aria-haspopup="dialog"
+                aria-expanded={sourceOpen}
+              >
+                <i className="fas fa-rss" aria-hidden="true"></i>
+                {selectedSources.length
+                  ? `소스 ${selectedSources.length}곳`
+                  : "모든 소스"}
+                <i className="fas fa-chevron-down" aria-hidden="true"></i>
+              </button>
+
+              {selectedSources.length > 0 && (
+                <ul className="source-chip-list" aria-label="선택한 소스">
+                  {selectedSources.map((id) => {
+                    const source = sourceById[id];
+                    return (
+                      <li key={id}>
+                        <button
+                          type="button"
+                          className="source-chip"
+                          onClick={() =>
+                            applyConditions({
+                              nextSources: selectedSources.filter(
+                                (value) => value !== id,
+                              ),
+                            })
+                          }
+                          aria-label={`${source?.name || id} 해제`}
+                        >
+                          <SourceIcon
+                            id={source?.id}
+                            name={source?.name || id}
+                            domain={source?.domain}
+                          />
+                          {source?.name || id}
+                          <i className="fas fa-xmark" aria-hidden="true"></i>
+                        </button>
+                      </li>
+                    );
+                  })}
+                  <li>
+                    <button
+                      type="button"
+                      className="text-button source-clear"
+                      onClick={() => applyConditions({ nextSources: [] })}
+                    >
+                      모두 해제
+                    </button>
+                  </li>
+                </ul>
+              )}
             </div>
 
             <fieldset
@@ -510,6 +785,14 @@ function TechArticles() {
                         className="article-title"
                         to={`/tech-articles/${encodeURIComponent(article.id)}`}
                       >
+                        {/* 목록이 원문 게시일 순이라 새로 들어온 글이 위로
+                            오지 않습니다. 배지가 없으면 찾을 방법이 없습니다.
+                            제목 링크 안에 두어야 글자 흐름을 타고 첫 줄과
+                            정렬이 맞습니다. 바깥에 두면 카드 헤딩이 flex 라
+                            제목 첫 줄과 어긋납니다. */}
+                        {article.isNew && (
+                          <span className="article-new-badge">NEW</span>
+                        )}
                         {article.title || "제목 없음"}
                       </Link>
                     </div>
@@ -776,6 +1059,29 @@ function TechArticles() {
           </div>
         </section>
       </main>
+
+      <SourcePickerDialog
+        dialogRef={sourceDialogRef}
+        sources={sources}
+        draft={draftSources}
+        onToggle={(id) =>
+          setDraftSources((current) =>
+            current.includes(id)
+              ? current.filter((value) => value !== id)
+              : [...current, id],
+          )
+        }
+        onApply={() => {
+          setSourceOpen(false);
+          applyConditions({ nextSources: draftSources });
+        }}
+        onReset={() => setDraftSources([])}
+        onClose={() => {
+          setSourceOpen(false);
+          // 적용하지 않고 닫으면 선택을 되돌립니다.
+          setDraftSources(selectedSources);
+        }}
+      />
 
       <dialog
         id="filterDialog"

@@ -9,11 +9,13 @@ SOURCE_CATALOG: dict[str, dict[str, Any]] = {
     "cloudflare-blog": {
         "name": "Cloudflare Blog",
         "domain": "blog.cloudflare.com",
+        "category": "기술 블로그",
         "capabilities": [{"sourceType": "RSS", "sectionKey": "BLOG"}],
     },
     "infoq": {
         "name": "InfoQ",
         "domain": "infoq.com",
+        "category": "업계 뉴스",
         "capabilities": [
             {"sourceType": "RSS", "sectionKey": "NEWS"},
             {"sourceType": "RSS", "sectionKey": "ENGINEERING"},
@@ -24,6 +26,7 @@ SOURCE_CATALOG: dict[str, dict[str, Any]] = {
     "sdtimes": {
         "name": "SD Times",
         "domain": "sdtimes.com",
+        "category": "업계 뉴스",
         "capabilities": [
             {"sourceType": "RSS", "sectionKey": "NEWS"},
             {"sourceType": "WEB_CRAWL", "sectionKey": "NEWS"},
@@ -33,6 +36,7 @@ SOURCE_CATALOG: dict[str, dict[str, Any]] = {
     "github-trending": {
         "name": "GitHub Trending",
         "domain": "github.com",
+        "category": "저장소",
         "capabilities": [
             {"sourceType": "WEB_CRAWL", "sectionKey": "REPOSITORIES"},
         ],
@@ -76,6 +80,29 @@ def crawl_source_catalog() -> list[dict[str, Any]]:
             }
         )
     return catalog
+
+
+# 소스가 늘어나면 공개 화면이 목록을 다 펼칠 수 없게 됩니다. category 는 그때
+# 상위 분류로 묶기 위한 것이고, 지금은 응답에 담아만 둡니다. 뒤늦게 붙이면
+# 이미 쌓인 소스 전부에 소급해야 하므로 처음부터 채워 둡니다.
+PUBLIC_SOURCE_FALLBACK_CATEGORY = "기타"
+
+
+def public_source_catalog() -> list[dict[str, Any]]:
+    """공개 화면의 소스 선택기에 쓰는 최소 정보. 크롤 옵션은 담지 않습니다."""
+    return [
+        {
+            "id": source_id,
+            "name": metadata["name"],
+            "domain": metadata["domain"],
+            "category": metadata.get("category", PUBLIC_SOURCE_FALLBACK_CATEGORY),
+        }
+        for source_id, metadata in SOURCE_CATALOG.items()
+    ]
+
+
+def known_source_ids() -> set[str]:
+    return set(SOURCE_CATALOG)
 
 
 def source_projection(

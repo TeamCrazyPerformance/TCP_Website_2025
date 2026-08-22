@@ -5,6 +5,11 @@ from typing import Any, Protocol
 
 from tech_article_pipeline.contracts import CrawlJobRecord, JobRecord, PublicationPolicy, Stage
 
+# 수집 후 이 시간 안에 있는 아티클에 공개 화면이 NEW 배지를 붙입니다.
+# 정책 값이라 서버가 판정합니다 — 프런트에 박아 두면 바꿀 때마다 재배포해야 합니다.
+NEW_ARTICLE_WINDOW_HOURS = 12
+
+
 # 관리자 화면의 파이프라인 단계. 표시 순서대로 둡니다.
 # 판정 규칙은 mysql.STAGE_PREDICATES(SQL) 와 memory._article_stage(파이썬)에
 # 각각 있고, 이름 목록만 여기서 공유합니다.
@@ -169,11 +174,18 @@ class PipelineRepository(Protocol):
         offset: int,
         keyword: str | None = None,
         tags: tuple[str, ...] = (),
+        sources: tuple[str, ...] = (),
     ) -> list[dict[str, Any]]: ...
 
     def count_public_articles(
-        self, *, keyword: str | None = None, tags: tuple[str, ...] = ()
+        self,
+        *,
+        keyword: str | None = None,
+        tags: tuple[str, ...] = (),
+        sources: tuple[str, ...] = (),
     ) -> int: ...
+
+    def public_source_counts(self) -> dict[str, int]: ...
 
     def last_crawled_at(self) -> datetime | None: ...
 

@@ -80,6 +80,14 @@ through less than 92%.
 - `GET /public/articles` — keeps `limit|offset` and adds `keyword`, repeated
   canonical `tags`, `totalCount`, and `lastCrawledAt`.
 - `GET /public/tags` and `GET /public/articles/{articleId}`
+- `GET /public/articles` — also supports `sources` (repeatable). Unknown ids return
+  422 `INVALID_ARTICLE_SOURCE`. Every item carries `isNew`, true when the article was
+  collected within `NEW_ARTICLE_WINDOW_HOURS` (12). The public list is ordered by the
+  original publication date, so freshly collected articles do not surface at the top —
+  the flag is the only way a reader can find them.
+- `GET /public/sources` — id, name, domain, category and published `count` per source.
+  Sources keep growing, so this is a separate call rather than a field on the list
+  response, mirroring `GET /public/tags`.
 - `GET /admin/articles` — also supports `stage`, one of `INGESTED`, `QUALITY_REVIEW`,
   `ENRICHING`, `PUBLICATION_REVIEW`, `COMPLETED`, `FAILED_AFTER_APPROVAL`, `FAILED`,
   `QUALITY_REJECTED`. The stage rule lives in `persistence.mysql.STAGE_PREDICATES`;
