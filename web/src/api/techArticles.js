@@ -25,12 +25,20 @@ export function getTechArticles({
   pageSize = 20,
   keyword,
   tags = [],
+  sources = [],
 } = {}) {
-  return apiGet(withQuery(PUBLIC_BASE, { page, pageSize, keyword }, { tags }));
+  return apiGet(
+    withQuery(PUBLIC_BASE, { page, pageSize, keyword }, { tags, sources }),
+  );
 }
 
 export function getTechArticleTags() {
   return apiGet(`${PUBLIC_BASE}/tags`);
+}
+
+// 소스는 계속 늘어나므로 목록 응답에 얹지 않고 따로 받습니다.
+export function getTechArticleSources() {
+  return apiGet(`${PUBLIC_BASE}/sources`);
 }
 
 export function getTechArticle(articleId) {

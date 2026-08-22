@@ -2,6 +2,22 @@ import React, { useMemo } from "react";
 import DOMPurify from "dompurify";
 import MarkdownIt from "markdown-it";
 
+// "2026-08-22 14:32 KST" 는 지금 시각과 빼기를 시켜야 읽힙니다.
+// "12분 전" 은 그냥 읽힙니다. 정확한 시각은 title 로 함께 보여 주세요.
+export function formatRelativeFromNow(value, now = Date.now()) {
+  if (!value) return null;
+  const target = new Date(value).getTime();
+  if (Number.isNaN(target)) return null;
+  const minutes = Math.max(0, Math.floor((now - target) / 60000));
+  if (minutes < 1) return "방금";
+  if (minutes < 60) return `${minutes}분 전`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}시간 전`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}일 전`;
+  return null; // 일주일이 넘으면 상대 표현이 오히려 모호합니다.
+}
+
 export function formatTechArticleDate(value, withTime = false) {
   if (!value) return "확인되지 않음";
   const date = new Date(value);

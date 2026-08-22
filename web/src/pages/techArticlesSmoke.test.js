@@ -47,6 +47,17 @@ beforeEach(() => {
 
   api.getTechArticles.mockResolvedValue({ items: [], pagination: PAGINATION });
   api.getTechArticleTags.mockResolvedValue({ items: ["AI", "데이터"] });
+  api.getTechArticleSources.mockResolvedValue({
+    items: [
+      {
+        id: "infoq",
+        name: "InfoQ",
+        domain: "infoq.com",
+        category: "업계 뉴스",
+        count: 3,
+      },
+    ],
+  });
   api.getTechArticle.mockResolvedValue(null);
 
   api.getAdminTechArticles.mockResolvedValue({

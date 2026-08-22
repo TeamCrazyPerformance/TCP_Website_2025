@@ -1,6 +1,7 @@
 import { apiGet, apiPost } from "./client";
 import {
   getAdminTechArticleStats,
+  getTechArticleSources,
   getAdminTechArticles,
   getCrawlRuns,
   getTechArticles,
@@ -115,4 +116,39 @@ test("통계도 목록과 같은 조건으로 센다", async () => {
 
   await getAdminTechArticleStats();
   expect(apiGet).toHaveBeenLastCalledWith("/api/v1/admin/tech-articles/stats");
+});
+
+test("공개 목록이 소스를 반복 쿼리로 전달한다", async () => {
+  // 태그와 같은 반복 쿼리 형식이라야 서버가 둘을 같은 방식으로 읽습니다.
+  apiGet.mockResolvedValue({ items: [] });
+
+  await getTechArticles({
+    page: 1,
+    pageSize: 20,
+    tags: ["AI"],
+    sources: ["infoq", "cloudflare-blog"],
+  });
+
+  expect(apiGet).toHaveBeenCalledWith(
+    "/api/v1/tech-articles?page=1&pageSize=20&tags=AI&sources=infoq&sources=cloudflare-blog",
+  );
+});
+
+test("소스를 고르지 않으면 쿼리에 실리지 않는다", async () => {
+  apiGet.mockResolvedValue({ items: [] });
+
+  await getTechArticles({ page: 1, pageSize: 20 });
+
+  expect(apiGet).toHaveBeenCalledWith(
+    "/api/v1/tech-articles?page=1&pageSize=20",
+  );
+});
+
+test("소스 목록은 별도 엔드포인트에서 받는다", async () => {
+  // 소스는 계속 늘어나므로 목록 응답에 얹지 않습니다.
+  apiGet.mockResolvedValue({ items: [] });
+
+  await getTechArticleSources();
+
+  expect(apiGet).toHaveBeenCalledWith("/api/v1/tech-articles/sources");
 });
