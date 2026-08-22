@@ -86,8 +86,10 @@ bash private_qa.sh config http-port
 
 선택한 값 이외의 환경 파일 바이트는 보존합니다. readiness 점검이 실패하면 이전 환경 파일과 컨테이너 설정을 자동 복구합니다.
 `auto-crawl`은 API 컨테이너만 재생성하며 `true`로 설정하면 Cloudflare Blog,
-InfoQ News/Articles, SD Times RSS 작업을 KST 00시·06시·12시·18시 구간마다
-한 번씩 등록합니다. 기본값은 `false`입니다.
+InfoQ News/Articles, SD Times RSS와 GitHub Trending 작업을 매일 KST 00시에
+한 번씩 등록합니다. 00시에 API가 중단되어 있으면 같은 날 복구 후 다음 10분
+점검에서 보충 실행하며, 성공한 프로필은 그날 다시 등록하지 않습니다. 기본값은
+`false`입니다.
 
 ## DB를 다시 완전히 비우기
 

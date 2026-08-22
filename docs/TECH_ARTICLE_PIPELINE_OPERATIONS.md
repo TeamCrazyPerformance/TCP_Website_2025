@@ -56,18 +56,21 @@ The command preserves all unrelated environment bytes and rolls back both the
 file and affected service configuration if readiness fails.
 
 Automatic crawling is disabled by default. When enabled, the NestJS scheduler
-checks the current six-hour KST window every ten minutes and idempotently queues
+checks the current KST calendar day every ten minutes and idempotently queues
 five profiles: Cloudflare Blog RSS, InfoQ News RSS, InfoQ Articles RSS, SD Times
 RSS, and GitHub Trending Daily web crawl.
-The windows begin at 00:00, 06:00, 12:00, and 18:00 KST. Each profile checks at
-most 10 articles from the previous 48 hours unless the corresponding root
-environment tuning values are changed. GitHub is the exception: it always
-selects exactly the daily Top 3, sends only count and timeout options, and uses
-`auto-crawl:v1:{window}:github-trending-web-repositories-daily` as its key.
-Repeated checks, API restarts, and
-multiple API replicas reuse the same window key instead of creating another
-crawl run. Enabling the setting can create new articles and, under the
-`IMMEDIATE` publication policy, expose eligible articles publicly.
+The normal run starts at 00:00 KST. Each profile checks at most 10 articles from
+the previous 48 hours unless the corresponding root environment tuning values
+are changed. GitHub is the exception: it always selects exactly the daily Top
+3, sends only count and timeout options, and uses
+`auto-crawl:v1:{YYYYMMDD}T0000KST:github-trending-web-repositories-daily` as its
+key. Repeated checks, API restarts, and multiple API replicas reuse the same
+daily key instead of creating another crawl run. If the API is unavailable at
+midnight, the next ten-minute check after recovery catches up for that KST day.
+A profile that fails to enqueue is retried on a later check without repeating
+profiles that already succeeded. Enabling the setting can create new articles
+and, under the `IMMEDIATE` publication policy, expose eligible articles
+publicly.
 
 GitHub README requests are deliberately unauthenticated, so no token or new
 secret is configured. Before enabling unattended crawling, operators must

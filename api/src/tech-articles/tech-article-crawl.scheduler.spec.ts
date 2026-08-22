@@ -36,7 +36,7 @@ describe('TechArticleCrawlScheduler', () => {
     expect(techArticles.startCrawl).not.toHaveBeenCalled();
   });
 
-  it('enqueues every profile for the current Seoul six-hour window', async () => {
+  it('enqueues every profile for the current Seoul calendar day', async () => {
     settings.TECH_ARTICLE_AUTO_CRAWL_ENABLED = 'true';
 
     await scheduler.runScheduledCrawls(new Date('2026-08-21T04:25:00Z'));
@@ -58,7 +58,7 @@ describe('TechArticleCrawlScheduler', () => {
           requestTimeoutMs: 15000,
         },
       },
-      'auto-crawl:v1:20260821T1200KST:cloudflare-blog-rss-blog',
+      'auto-crawl:v1:20260821T0000KST:cloudflare-blog-rss-blog',
     );
     const [infoQNews, infoQNewsKey] = techArticles.startCrawl.mock.calls[1];
     expect(infoQNews.source).toEqual({
@@ -66,7 +66,7 @@ describe('TechArticleCrawlScheduler', () => {
       sourceType: 'RSS',
       sectionKey: 'NEWS',
     });
-    expect(infoQNewsKey).toBe('auto-crawl:v1:20260821T1200KST:infoq-rss-news');
+    expect(infoQNewsKey).toBe('auto-crawl:v1:20260821T0000KST:infoq-rss-news');
     const [infoQEngineering, infoQEngineeringKey] =
       techArticles.startCrawl.mock.calls[2];
     expect(infoQEngineering.source).toEqual({
@@ -75,7 +75,7 @@ describe('TechArticleCrawlScheduler', () => {
       sectionKey: 'ENGINEERING',
     });
     expect(infoQEngineeringKey).toBe(
-      'auto-crawl:v1:20260821T1200KST:infoq-rss-engineering',
+      'auto-crawl:v1:20260821T0000KST:infoq-rss-engineering',
     );
     const [sdTimes, sdTimesKey] = techArticles.startCrawl.mock.calls[3];
     expect(sdTimes.source).toEqual({
@@ -83,7 +83,7 @@ describe('TechArticleCrawlScheduler', () => {
       sourceType: 'RSS',
       sectionKey: 'NEWS',
     });
-    expect(sdTimesKey).toBe('auto-crawl:v1:20260821T1200KST:sdtimes-rss-news');
+    expect(sdTimesKey).toBe('auto-crawl:v1:20260821T0000KST:sdtimes-rss-news');
     expect(techArticles.startCrawl).toHaveBeenNthCalledWith(
       5,
       {
@@ -97,11 +97,11 @@ describe('TechArticleCrawlScheduler', () => {
           requestTimeoutMs: 15000,
         },
       },
-      'auto-crawl:v1:20260821T1200KST:github-trending-web-repositories-daily',
+      'auto-crawl:v1:20260821T0000KST:github-trending-web-repositories-daily',
     );
   });
 
-  it('does not enqueue a completed profile twice in the same window', async () => {
+  it('does not enqueue a completed profile twice on the same Seoul day', async () => {
     settings.TECH_ARTICLE_AUTO_CRAWL_ENABLED = 'true';
     const now = new Date('2026-08-21T06:00:00Z');
 
@@ -111,17 +111,17 @@ describe('TechArticleCrawlScheduler', () => {
     expect(techArticles.startCrawl).toHaveBeenCalledTimes(5);
   });
 
-  it('enqueues profiles again when the next window begins', async () => {
+  it('enqueues profiles again when the next Seoul day begins', async () => {
     settings.TECH_ARTICLE_AUTO_CRAWL_ENABLED = 'true';
 
-    await scheduler.runScheduledCrawls(new Date('2026-08-21T08:59:59Z'));
-    await scheduler.runScheduledCrawls(new Date('2026-08-21T09:00:00Z'));
+    await scheduler.runScheduledCrawls(new Date('2026-08-21T14:59:59Z'));
+    await scheduler.runScheduledCrawls(new Date('2026-08-21T15:00:00Z'));
 
     expect(techArticles.startCrawl).toHaveBeenCalledTimes(10);
     expect(techArticles.startCrawl).toHaveBeenNthCalledWith(
       6,
       expect.any(Object),
-      'auto-crawl:v1:20260821T1800KST:cloudflare-blog-rss-blog',
+      'auto-crawl:v1:20260822T0000KST:cloudflare-blog-rss-blog',
     );
   });
 
@@ -135,7 +135,10 @@ describe('TechArticleCrawlScheduler', () => {
       ) {
         return Promise.reject(new Error('pipeline unavailable'));
       }
-      return Promise.resolve({ operation: 'CREATED', crawlRunId: 'crawl-run-2' });
+      return Promise.resolve({
+        operation: 'CREATED',
+        crawlRunId: 'crawl-run-2',
+      });
     });
     const now = new Date('2026-08-21T12:00:00Z');
 
@@ -146,7 +149,7 @@ describe('TechArticleCrawlScheduler', () => {
     const [retriedCrawl, retriedKey] = techArticles.startCrawl.mock.calls[5];
     expect(retriedCrawl.source.sourceId).toBe('github-trending');
     expect(retriedKey).toBe(
-      'auto-crawl:v1:20260821T1800KST:github-trending-web-repositories-daily',
+      'auto-crawl:v1:20260821T0000KST:github-trending-web-repositories-daily',
     );
   });
 

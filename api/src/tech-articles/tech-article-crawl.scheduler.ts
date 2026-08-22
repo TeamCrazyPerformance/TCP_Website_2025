@@ -5,7 +5,6 @@ import { CrawlRunDto } from './tech-articles.dto';
 import { TechArticlesService } from './tech-articles.service';
 
 const SEOUL_UTC_OFFSET_MS = 9 * 60 * 60 * 1000;
-const CRAWL_WINDOW_HOURS = 6;
 const DEFAULT_MAXIMUM_ARTICLE_COUNT = 10;
 const DEFAULT_MAXIMUM_AGE_HOURS = 48;
 const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
@@ -66,7 +65,7 @@ const SCHEDULED_CRAWL_PROFILES: readonly ScheduledCrawlProfile[] = [
 @Injectable()
 export class TechArticleCrawlScheduler {
   private readonly logger = new Logger(TechArticleCrawlScheduler.name);
-  private readonly completedWindowByProfile = new Map<string, string>();
+  private readonly completedDayByProfile = new Map<string, string>();
   private readonly inFlightKeys = new Set<string>();
 
   constructor(
@@ -81,7 +80,7 @@ export class TechArticleCrawlScheduler {
   async runScheduledCrawls(now: Date = new Date()): Promise<void> {
     if (!this.enabled()) return;
 
-    const windowKey = this.windowKey(now);
+    const dayKey = this.dayKey(now);
     const crawlOptions = {
       maximumArticleCount: this.integerSetting(
         'TECH_ARTICLE_AUTO_CRAWL_MAX_ARTICLES',
@@ -98,11 +97,11 @@ export class TechArticleCrawlScheduler {
     };
 
     for (const profile of SCHEDULED_CRAWL_PROFILES) {
-      if (this.completedWindowByProfile.get(profile.id) === windowKey) {
+      if (this.completedDayByProfile.get(profile.id) === dayKey) {
         continue;
       }
 
-      const idempotencyKey = `auto-crawl:v1:${windowKey}:${profile.id}`;
+      const idempotencyKey = `auto-crawl:v1:${dayKey}:${profile.id}`;
       if (this.inFlightKeys.has(idempotencyKey)) continue;
 
       this.inFlightKeys.add(idempotencyKey);
@@ -121,16 +120,16 @@ export class TechArticleCrawlScheduler {
           },
           idempotencyKey,
         )) as CrawlRunAccepted;
-        this.completedWindowByProfile.set(profile.id, windowKey);
+        this.completedDayByProfile.set(profile.id, dayKey);
         this.logger.log(
           `Scheduled crawl ${accepted.operation ?? 'ACCEPTED'}: ${profile.id} ` +
-            `window=${windowKey} crawlRunId=${accepted.crawlRunId ?? 'unknown'}`,
+            `day=${dayKey} crawlRunId=${accepted.crawlRunId ?? 'unknown'}`,
         );
       } catch (error) {
         const message =
           error instanceof Error ? error.message : 'unknown error';
         this.logger.error(
-          `Scheduled crawl enqueue failed: ${profile.id} window=${windowKey} ${message}`,
+          `Scheduled crawl enqueue failed: ${profile.id} day=${dayKey} ${message}`,
         );
       } finally {
         this.inFlightKeys.delete(idempotencyKey);
@@ -158,13 +157,11 @@ export class TechArticleCrawlScheduler {
     return parsed;
   }
 
-  private windowKey(now: Date): string {
+  private dayKey(now: Date): string {
     const seoul = new Date(now.getTime() + SEOUL_UTC_OFFSET_MS);
-    const hour =
-      Math.floor(seoul.getUTCHours() / CRAWL_WINDOW_HOURS) * CRAWL_WINDOW_HOURS;
     const year = seoul.getUTCFullYear();
     const month = String(seoul.getUTCMonth() + 1).padStart(2, '0');
     const day = String(seoul.getUTCDate()).padStart(2, '0');
-    return `${year}${month}${day}T${String(hour).padStart(2, '0')}00KST`;
+    return `${year}${month}${day}T0000KST`;
   }
 }
