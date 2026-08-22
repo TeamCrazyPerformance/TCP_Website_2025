@@ -136,7 +136,7 @@ export interface BulkResult {
   error?: unknown;
 }
 
-interface PublicSource {
+export interface PublicSource {
   id: string;
   name: string;
   domain: string;

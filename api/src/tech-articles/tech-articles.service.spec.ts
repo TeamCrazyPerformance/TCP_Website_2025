@@ -40,6 +40,7 @@ describe('TechArticlesService', () => {
       page: 1,
       pageSize: 20,
       tags: [],
+      sources: [],
     });
 
     expect(result.items[0]).toEqual(
