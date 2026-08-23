@@ -36,7 +36,7 @@ if ! cicd_confirm_dangerous_action "DESTROY" \
   log_warn "🚫 Removal cancelled. Nothing was deleted. / 제거를 취소했습니다."
   exit 0
 fi
-read -r -p "❓ [4/4] Type the exact repository name '$(basename "$project_dir")' / 저장소 이름 입력: " repository_name
+cicd_read_prompt repository_name "❓ [4/4] Type the exact repository name '$(basename "$project_dir")' / 저장소 이름 입력:"
 [[ "$repository_name" == "$(basename "$project_dir")" ]] || { log_error "Repository name did not match."; exit 1; }
 
 cicd_print_step 1 2 "🐳" "Remove containers, images, and named volumes / Docker 리소스 제거"

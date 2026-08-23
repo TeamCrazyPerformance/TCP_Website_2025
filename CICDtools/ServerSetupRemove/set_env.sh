@@ -60,15 +60,14 @@ ensure_value() {
 
 prompt_plain_required() {
   local prompt="$1" value=""
-  while [[ -z "$value" ]]; do read -r -p "✍️  $prompt: " value; done
+  while [[ -z "$value" ]]; do cicd_read_prompt value "✍️  $prompt:"; done
   printf '%s' "$value"
 }
 
 prompt_secret_required() {
   local prompt="$1" value=""
   while [[ -z "$value" ]]; do
-    read -r -s -p "🔐 $prompt: " value
-    printf '\n' >&2
+    cicd_read_secret_prompt value "🔐 $prompt:"
   done
   printf '%s' "$value"
 }
@@ -100,8 +99,7 @@ if { [[ "$mode" == "prod" ]] && ! cicd_env_has_nonempty "$ROOT_ENV" GEMINI_API_K
     gemini_key="$(prompt_secret_required 'Gemini API key / Gemini API 키 (required in production / 운영 필수)')"
     cicd_env_set "$ROOT_ENV" GEMINI_API_KEY "$gemini_key"
   else
-    read -r -s -p "🤖 Gemini API key / Gemini API 키 (optional in development, Enter to skip / 개발 선택): " gemini_key
-    printf '\n'
+    cicd_read_secret_prompt gemini_key "🤖 Gemini API key / Gemini API 키 (optional in development, Enter to skip / 개발 선택):"
     if [[ -n "$gemini_key" ]]; then
       cicd_env_set "$ROOT_ENV" GEMINI_API_KEY "$gemini_key"
     else
@@ -112,13 +110,13 @@ if { [[ "$mode" == "prod" ]] && ! cicd_env_has_nonempty "$ROOT_ENV" GEMINI_API_K
 fi
 
 if ! cicd_env_has_nonempty "$ROOT_ENV" CRAWLER_PUBLIC_URL; then
-  read -r -p "🌐 Crawler public URL / 크롤러 공개 URL [https://teamcrazyperformance.com/]: " crawler_url
+  cicd_read_prompt crawler_url "🌐 Crawler public URL / 크롤러 공개 URL [https://teamcrazyperformance.com/]:"
   crawler_url="${crawler_url:-https://teamcrazyperformance.com/}"
   [[ "$crawler_url" =~ ^https?://[^[:space:]]+$ ]] || { log_error "Crawler URL must be an HTTP(S) URL."; exit 2; }
   cicd_env_set "$ROOT_ENV" CRAWLER_PUBLIC_URL "$crawler_url"
 fi
 if ! cicd_env_has_nonempty "$ROOT_ENV" CRAWLER_CONTACT; then
-  read -r -p "📧 Crawler contact email / 크롤러 연락 이메일 [seoultech.tcp@gmail.com]: " crawler_contact
+  cicd_read_prompt crawler_contact "📧 Crawler contact email / 크롤러 연락 이메일 [seoultech.tcp@gmail.com]:"
   crawler_contact="${crawler_contact:-seoultech.tcp@gmail.com}"
   [[ "$crawler_contact" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] || { log_error "Crawler contact must be an email address."; exit 2; }
   cicd_env_set "$ROOT_ENV" CRAWLER_CONTACT "$crawler_contact"

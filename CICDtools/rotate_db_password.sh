@@ -31,7 +31,7 @@ cicd_print_banner "🔐" "Database Credential Rotation / DB 비밀번호 교체"
   "⚠️  운영 DB 자격 증명을 변경하므로 정확히 ROTATE를 입력해야 실행됩니다."
 
 if [[ "${CICD_ASSUME_YES:-0}" != "1" ]]; then
-  read -r -p "❓ Type ROTATE to rotate $target credentials / 실행하려면 ROTATE 입력: " confirmation
+  cicd_read_prompt confirmation "❓ Type ROTATE to rotate $target credentials / 실행하려면 ROTATE 입력:"
   [[ "$confirmation" == "ROTATE" ]] || { log_warn "🚫 Rotation cancelled. / 비밀번호 교체를 취소했습니다."; exit 0; }
 fi
 

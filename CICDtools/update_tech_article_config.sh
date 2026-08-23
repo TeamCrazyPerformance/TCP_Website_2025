@@ -38,22 +38,21 @@ trap cleanup EXIT
 
 case "$setting" in
   gemini-key)
-    read -r -s -p "🔑 New Gemini API key / 새 Gemini API 키: " value
-    printf '\n'
+    cicd_read_secret_prompt value "🔑 New Gemini API key / 새 Gemini API 키:"
     [[ -n "$value" ]] || { log_error "Gemini API key cannot be empty."; exit 2; }
     cicd_env_set "$root_env" GEMINI_API_KEY "$value"
     services=(tech-article-pipeline)
     ;;
   gemini-model)
-    read -r -p "🤖 New Gemini model / 새 Gemini 모델: " value
+    cicd_read_prompt value "🤖 New Gemini model / 새 Gemini 모델:"
     [[ "$value" =~ ^[A-Za-z0-9._-]+$ ]] || { log_error "Gemini model contains unsupported characters."; exit 2; }
     cicd_env_set "$root_env" GEMINI_MODEL "$value"
     services=(tech-article-pipeline)
     ;;
   crawler-identity)
-    read -r -p "🌐 Crawler public URL / 공개 URL [https://teamcrazyperformance.com/]: " crawler_url
+    cicd_read_prompt crawler_url "🌐 Crawler public URL / 공개 URL [https://teamcrazyperformance.com/]:"
     crawler_url="${crawler_url:-https://teamcrazyperformance.com/}"
-    read -r -p "📧 Crawler contact / 연락 이메일 [seoultech.tcp@gmail.com]: " crawler_contact
+    cicd_read_prompt crawler_contact "📧 Crawler contact / 연락 이메일 [seoultech.tcp@gmail.com]:"
     crawler_contact="${crawler_contact:-seoultech.tcp@gmail.com}"
     [[ "$crawler_url" =~ ^https?://[^[:space:]]+$ ]] || { log_error "Crawler URL must be HTTP(S)."; exit 2; }
     [[ "$crawler_contact" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] || { log_error "Crawler contact must be an email address."; exit 2; }
@@ -62,14 +61,13 @@ case "$setting" in
     services=(tech-article-pipeline)
     ;;
   auto-crawl)
-    read -r -p "🕒 Enable automatic article crawling? [true/false] / 자동 수집 활성화 여부: " value
+    cicd_read_prompt value "🕒 Enable automatic article crawling? [true/false] / 자동 수집 활성화 여부:"
     [[ "$value" == "true" || "$value" == "false" ]] || { log_error "Automatic crawling must be true or false."; exit 2; }
     cicd_env_set "$root_env" TECH_ARTICLE_AUTO_CRAWL_ENABLED "$value"
     services=(api)
     ;;
   service-token)
-    read -r -s -p "🔐 New service token / 새 토큰 (Enter: secure auto-generate / 안전한 자동 생성): " value
-    printf '\n'
+    cicd_read_secret_prompt value "🔐 New service token / 새 토큰 (Enter: secure auto-generate / 안전한 자동 생성):"
     value="${value:-$(cicd_generate_hex 32)}"
     cicd_env_set "$root_env" PIPELINE_SERVICE_TOKEN "$value"
     services=(api tech-article-pipeline)

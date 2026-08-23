@@ -15,6 +15,25 @@ cleanup() { rm -rf -- "$test_root"; }
 trap cleanup EXIT
 mkdir -p "$test_root/envs" "$test_root/reverse-proxy/certs"
 
+prompt_fixture="$test_root/prompt-fixture"
+mkdir -p "$prompt_fixture/CICDtools/utils"
+cp "$PROJECT_ROOT/CICDtools/utils/common_logging.sh" "$prompt_fixture/CICDtools/utils/common_logging.sh"
+cp "$PROJECT_ROOT/CICDtools/utils/runtime.sh" "$prompt_fixture/CICDtools/utils/runtime.sh"
+prompt_output="$test_root/prompt-output.log"
+printf 'visible-answer\nnever-log-this-secret\n' \
+  | CICD_PROJECT_ROOT_OVERRIDE="$prompt_fixture" bash -c '
+      source "$1/CICDtools/utils/runtime.sh"
+      setup_logging prompt-regression-test
+      cicd_read_prompt plain "PROMPT_PLAIN"
+      cicd_read_secret_prompt secret "PROMPT_SECRET"
+      printf "PLAIN=%s SECRET_LENGTH=%s\n" "$plain" "${#secret}"
+    ' _ "$prompt_fixture" >"$prompt_output" 2>&1
+grep -Eq '^[[:space:]]*PROMPT_PLAIN$' "$prompt_output" || fail "plain prompt was delayed by logging"
+grep -Eq '^[[:space:]]*PROMPT_SECRET$' "$prompt_output" || fail "secret prompt was delayed by logging"
+grep -Eq '^[[:space:]]*PLAIN=visible-answer SECRET_LENGTH=21$' "$prompt_output" || fail "prompt input was not preserved"
+! grep -R -Fq -- 'never-log-this-secret' "$prompt_output" "$prompt_fixture/CICDtools/logs" \
+  || fail "secret prompt value leaked to output or logs"
+
 first_output="$test_root/first-output.log"
 printf '\n\n\nadmin-user\nadmin@example.com\nhidden-admin-password\n' \
   | CICD_PROJECT_ROOT_OVERRIDE="$test_root" CICD_NO_SUDO=1 bash "$SET_ENV_SCRIPT" dev \

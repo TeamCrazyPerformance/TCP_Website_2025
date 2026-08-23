@@ -52,13 +52,31 @@ cicd_compose() {
   )
 }
 
+# Prompts must end with a newline because setup_logging routes stderr through
+# sed/tee. Bash's `read -p` emits no newline, so sed waits for more input and
+# the operator sees the prompt only after already typing an answer.
+cicd_read_prompt() {
+  local variable_name="$1" prompt="$2" input
+  printf '%s\n' "$prompt" >&2
+  IFS= read -r input || return 1
+  printf -v "$variable_name" '%s' "$input"
+}
+
+cicd_read_secret_prompt() {
+  local variable_name="$1" prompt="$2" input
+  printf '%s\n' "$prompt" >&2
+  IFS= read -r -s input || return 1
+  printf '\n' >&2
+  printf -v "$variable_name" '%s' "$input"
+}
+
 cicd_confirm() {
   local prompt="${1:-Continue?}"
   if [[ "${CICD_ASSUME_YES:-0}" == "1" ]]; then
     return 0
   fi
   local answer
-  read -r -p "❓ $prompt [y/N] / 계속하시겠습니까? [y/N]: " answer
+  cicd_read_prompt answer "❓ $prompt [y/N] / 계속하시겠습니까? [y/N]:"
   [[ "$answer" =~ ^[Yy]$ ]]
 }
 
@@ -69,19 +87,19 @@ cicd_confirm_dangerous_action() {
   fi
 
   local answer phrase final_answer
-  read -r -p "❓ [1/3] Do you want to proceed? / 진행하시겠습니까? [y/N]: " answer
+  cicd_read_prompt answer "❓ [1/3] Do you want to proceed? / 진행하시겠습니까? [y/N]:"
   [[ "$answer" =~ ^[Yy]$ ]] || return 1
 
   printf '\n'
   log_warn "$warning_en"
   log_warn "$warning_ko"
-  read -r -p "❓ [2/3] Type '$action_word' to continue / 계속하려면 '$action_word' 입력: " phrase
+  cicd_read_prompt phrase "❓ [2/3] Type '$action_word' to continue / 계속하려면 '$action_word' 입력:"
   [[ "$phrase" == "$action_word" ]] || return 1
 
   printf '\n'
   log_warn "Final confirmation: this operation may be difficult to undo."
   log_warn "마지막 확인: 이 작업은 되돌리기 어렵거나 불가능할 수 있습니다."
-  read -r -p "❓ [3/3] Type 'YES' to execute / 실행하려면 'YES' 입력: " final_answer
+  cicd_read_prompt final_answer "❓ [3/3] Type 'YES' to execute / 실행하려면 'YES' 입력:"
   [[ "$final_answer" == "YES" ]]
 }
 
