@@ -10,7 +10,9 @@ v9 목업을 기준으로 한 프론트엔드와 API 연동이 완료됐다. 이
 - 공개 목록은 비로그인, 상세는 JWT 인증 요청으로 분리됐다.
 - 상세에는 원문 대신 `summaryMarkdown`을 렌더링한다.
 - 목업의 가상 점수 대신 `relevance`, `timeliness`, `sourceReliability`를 표시한다.
-- 목록은 서버 pagination, keyword, tags와 원문 게시일 최신순 계약을 사용한다.
+- 목록은 서버 pagination, keyword, tags와 `originalPublishedAt` 최신순 계약을 사용한다.
+  GitHub Trending은 원문 게시일을 제공하지 않으므로 신규 수집부터 UTC 수집 관측 시각을
+  이 필드에 사용한다. 기존 데이터는 backfill하지 않는다.
 
 ## 완료된 관리자 화면
 
@@ -25,3 +27,19 @@ v9 목업을 기준으로 한 프론트엔드와 API 연동이 완료됐다. 이
 `CICDtools/update_all.sh`가 파이프라인과 NestJS API를 먼저 검증한 뒤 새 프론트 번들을
 활성화한다. `check_health.sh`가 reverse proxy 경유 태그 API와 `/tech-articles` SPA를
 모두 확인하므로, 서버에서는 이 스크립트가 성공해야 기능 배포 완료로 판단한다.
+
+## QA에서 확인된 후속 이슈
+
+아래 항목은 2026-08-23 Private QA에서 확인했으며 이번 변경에서는 문서화만 한다.
+
+- 품질 검수 승인 뒤 enrichment가 `review_status`를 `NOT_REQUIRED`로 덮어쓸 수 있고,
+  게시 액션의 `PUBLISH`도 처리 단계와 무관하게 `APPROVED`로 덮어쓸 수 있다. 현재
+  관리자 통계의 `statusMismatch`는 11건이다. 단계 필터는 검수 케이스를 기준으로
+  계산하여 목록·통계에 이 문제를 표시하지만 상태 전이 자체는 후속 수정 대상이다.
+- 목록 쿼리의 `page`는 1 이상만 검증하고 상한이 없다. JavaScript 안전 정수 범위를
+  넘는 값은 NestJS 변환 과정에서 정밀도를 잃을 수 있으므로 서버 상한 추가가 후속
+  수정 대상이다. `pageSize`의 1~100 제한은 정상 적용된다.
+
+같은 날 QA 서버의 저장소 HEAD와 원격 브랜치가 `c3391b6`으로 일치하고, 최신 관리자
+단계 필터·단계별 통계·`statusMismatch`, 공개 소스 목록과 소스 필터가 실제 응답하는
+것을 확인했다.

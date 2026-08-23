@@ -39,8 +39,10 @@ FastAPI, or Gemini. Rank and star/fork discovery metadata remain outside the
 normalized article body so recurring appearances do not change its content hash.
 The core stores `discovery` with the admitted article, but the enrichment request
 contains only title, content, and language, and public/admin article projections
-currently omit `discovery`. Trending rank and observation time are therefore
-internal crawl evidence rather than user-visible article fields.
+currently omit `discovery`. Trending rank remains internal crawl evidence. The
+UTC crawl observation time is additionally projected to `originalPublishedAt`
+because GitHub Trending does not provide an original publication timestamp; the
+normalization warning preserves that distinction.
 
 An exact canonical URL is used to load an existing article as a duplicate
 candidate. Under `duplicate-policy-v1`, however, canonical equality is evidence,

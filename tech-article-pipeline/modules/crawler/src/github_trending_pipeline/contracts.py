@@ -6,6 +6,12 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
+def _require_utc(value: datetime, field_name: str) -> datetime:
+    if value.tzinfo is None or value.utcoffset() != timedelta(0):
+        raise ValueError(f"{field_name} must be an explicit UTC timestamp")
+    return value.astimezone(UTC)
+
+
 class ContractModel(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
@@ -51,9 +57,7 @@ class CrawlRequest(ContractModel):
     @field_validator("requested_at")
     @classmethod
     def require_utc_requested_at(cls, value: datetime) -> datetime:
-        if value.tzinfo is None or value.utcoffset() != timedelta(0):
-            raise ValueError("requestedAt must be an explicit UTC timestamp")
-        return value.astimezone(UTC)
+        return _require_utc(value, "requestedAt")
 
 
 class TrendingRepository(ContractModel):
@@ -111,6 +115,11 @@ class CrawlStatus(ContractModel):
     attempt: int = Field(default=1, ge=1)
     error: ErrorInfo | None = None
 
+    @field_validator("crawled_at")
+    @classmethod
+    def require_utc_crawled_at(cls, value: datetime) -> datetime:
+        return _require_utc(value, "crawledAt")
+
 
 class RawArticle(ContractModel):
     title: str
@@ -163,9 +172,14 @@ class CrawlRunCompleted(ContractModel):
 class ArticlePayload(ContractModel):
     title: str = Field(min_length=1, max_length=1_000)
     authors: list[str] = Field(default_factory=list)
-    original_published_at: None = Field(alias="originalPublishedAt", default=None)
+    original_published_at: datetime = Field(alias="originalPublishedAt")
     content: str = Field(min_length=1, max_length=5 * 1024 * 1024)
     language: str = Field(min_length=2, max_length=16)
+
+    @field_validator("original_published_at")
+    @classmethod
+    def require_utc_original_published_at(cls, value: datetime) -> datetime:
+        return _require_utc(value, "originalPublishedAt")
 
 
 class NormalizationResult(ContractModel):

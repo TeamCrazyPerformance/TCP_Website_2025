@@ -6,6 +6,9 @@
 ## 공통 규칙
 
 - 모든 날짜는 UTC ISO 8601 문자열이다.
+- `originalPublishedAt`은 소스가 제공한 원문 게시 시각을 사용한다. 원문 게시 시각을
+  제공하지 않는 GitHub Trending만 예외로 해당 항목의 `crawl.crawledAt` 관측 시각을
+  사용하며, 파이프라인 내부 경고에 근사값임을 기록한다.
 - 페이지 응답은 `pagination: { totalCount, currentPage, totalPages, pageSize }`를 사용한다.
 - 회원 API는 `Authorization: Bearer <access-token>`, 관리자 API는 ADMIN 권한까지 필요하다.
 - 버전이 바뀐 검수·게시 요청은 `409 VERSION_CONFLICT`를 반환한다.
@@ -179,6 +182,7 @@ Bulk 본문은 `{"items": [...]}`이며 최대 50개, ID 중복 금지다. 유�
 GitHub Trending은 `github-trending / WEB_CRAWL / REPOSITORIES` 조합만 허용한다.
 `maximumArticleCount`는 1~3, `maximumPageCount`는 1, `followPagination`은 false다.
 카탈로그는 이 소스에 `maximumArticleCount`와 `requestTimeoutMs`만 노출한다.
-Trending 순위·기간·star/fork와 수집 시각은 내부 crawl/discovery 기록에만
-보존한다. 현재 관리자·공개 아티클 응답에는 이를 투영하지 않으므로 사용자
-화면에 노출되지 않으며, README 기반 콘텐츠에도 접두 정보로 삽입하지 않는다.
+Trending 순위·기간·star/fork는 내부 crawl/discovery 기록에만 보존하며 현재
+관리자·공개 아티클 응답에는 투영하지 않는다. 수집 관측 시각은 원문 게시일이 없는
+이 소스의 `originalPublishedAt`으로 투영한다. 이 메타데이터들은 README 기반
+콘텐츠에 접두 정보로 삽입하지 않는다.

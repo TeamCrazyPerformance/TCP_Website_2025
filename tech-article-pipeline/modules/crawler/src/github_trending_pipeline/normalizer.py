@@ -30,7 +30,7 @@ class GitHubTrendingNormalizer:
         self.version = version
 
     def normalize(self, item: CrawlItemProduced) -> ArticleNormalized:
-        warnings: list[str] = ["PUBLICATION_TIME_NOT_AVAILABLE"]
+        warnings: list[str] = []
         raw = item.raw_article
         if item.crawl.status != "SUCCESS" or raw is None:
             return self._failure(
@@ -40,6 +40,7 @@ class GitHubTrendingNormalizer:
                 warnings,
             )
 
+        warnings.append("PUBLICATION_TIME_APPROXIMATED_FROM_CRAWL")
         readme_text = self._html_to_text(raw.content_html or "")
         description = self._normalize_text(raw.description or "")
         if not description:
@@ -78,7 +79,7 @@ class GitHubTrendingNormalizer:
             article=ArticlePayload(
                 title=raw.title,
                 authors=raw.authors,
-                originalPublishedAt=None,
+                originalPublishedAt=item.crawl.crawled_at,
                 content=content,
                 language=language,
             ),

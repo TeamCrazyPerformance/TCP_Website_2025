@@ -30,4 +30,8 @@ def test_pipeline_emits_source_contracts(
         "sourceId": "github-trending",
         "sourceType": "WEB_CRAWL",
     }
+    assert all(
+        article["article"]["originalPublishedAt"] == "2026-08-22T03:00:00Z"
+        for article in payload["normalizedArticles"]
+    )
     assert payload["normalizedArticles"][0]["normalization"]["status"] == "SUCCESS"

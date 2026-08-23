@@ -61,14 +61,18 @@ README text; ranking and repository counters remain in discovery/raw events.
 The crawl timestamp is the observation time. Date, rank, and counters are
 deliberately not prepended to normalized content because doing so would change
 the exact content hash on every observation and weaken duplicate detection.
+Because the source has no original publication timestamp, the UTC observation
+time is projected to `originalPublishedAt` and marked with
+`PUBLICATION_TIME_APPROXIMATED_FROM_CRAWL` in normalization warnings.
 
 `discovery` is persisted as internal evidence but is not sent to Gemini or
 included in the current public/admin article projection. Consequently, the
-website does not display Trending rank or observation date. Repeated repository
-URLs enter admission's candidate set through canonical URL lookup, but canonical
-equality alone is not terminal under the current policy; unchanged content is an
-exact duplicate and heavily changed README content may still be admitted as a
-new article.
+website does not display Trending rank, but it does use the observation time as
+the service's publication-sort timestamp. Repeated repository URLs enter
+admission's candidate set through canonical URL lookup, but canonical equality
+alone is not terminal under the current policy; unchanged content is an exact
+duplicate and heavily changed README content may still be admitted as a new
+article.
 
 ## Shared operational decision
 

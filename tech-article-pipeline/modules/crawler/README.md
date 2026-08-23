@@ -41,10 +41,13 @@ a lower-ranked repository. The package has no core, database, queue, or Gemini
 dependency.
 
 Trending rank, period, star/fork counters, contributors, and the crawl timestamp
-are observation metadata. They remain in `discovery`/`CrawlItemProduced` and are
-not prefixed to normalized `content`. This keeps the article fingerprint stable
-when only a daily rank or counter changes. The current Gemini request and public
-article projection do not expose this metadata to end users.
+are observation metadata. Rank and counters remain in
+`discovery`/`CrawlItemProduced`; because GitHub does not expose an original
+publication time for a Trending entry, the UTC crawl timestamp is also projected
+to `originalPublishedAt` with the
+`PUBLICATION_TIME_APPROXIMATED_FROM_CRAWL` normalization warning. None of this
+metadata is prefixed to normalized `content`, so rank or counter changes do not
+change the article fingerprint.
 
 Live network tests remain opt-in. Fixture-backed source regression tests run in
 the default suite.

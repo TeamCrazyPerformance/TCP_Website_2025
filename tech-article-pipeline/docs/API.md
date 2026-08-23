@@ -83,8 +83,10 @@ through less than 92%.
 - `GET /public/articles` — also supports `sources` (repeatable). Unknown ids return
   422 `INVALID_ARTICLE_SOURCE`. Every item carries `isNew`, true when the article was
   collected within `NEW_ARTICLE_WINDOW_HOURS` (12). The public list is ordered by the
-  original publication date, so freshly collected articles do not surface at the top —
-  the flag is the only way a reader can find them.
+  `originalPublishedAt` service timestamp. Source-provided publication time is used
+  normally; GitHub Trending uses its UTC crawl observation time because that source
+  has no original publication timestamp. The `isNew` flag remains based on collection
+  time rather than this source-specific fallback.
 - `GET /public/sources` — id, name, domain, category and published `count` per source.
   Sources keep growing, so this is a separate call rather than a field on the list
   response, mirroring `GET /public/tags`.

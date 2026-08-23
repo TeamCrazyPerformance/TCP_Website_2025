@@ -41,6 +41,19 @@ def _crawl_command() -> dict:
     ).model_dump(by_alias=True, mode="json")
 
 
+def _github_crawl_command() -> dict:
+    return CrawlRequested.model_validate(
+        {
+            "source": {
+                "sourceId": "github-trending",
+                "sourceType": "WEB_CRAWL",
+                "sectionKey": "REPOSITORIES",
+            },
+            "crawlOptions": {"maximumArticleCount": 1},
+        }
+    ).model_dump(by_alias=True, mode="json")
+
+
 class FakeRegistry:
     def __init__(self, native: dict) -> None:
         self.native = native
@@ -165,6 +178,69 @@ def test_crawl_job_submits_normalized_articles_idempotently(normalized_payload):
     for _ in range(3):
         assert runtime.worker.process_once() is True
     assert len(runtime.repository.list_public_articles(limit=10, offset=0)) == 1
+
+
+def test_github_observation_time_is_stored_and_drives_public_newest_order(
+    normalized_payload,
+):
+    observed_at = datetime(2026, 8, 22, 3, 0, tzinfo=UTC)
+    native = deepcopy(normalized_payload)
+    native["source"] = {
+        "sourceId": "github-trending",
+        "sourceType": "WEB_CRAWL",
+    }
+    native["discovery"] = {
+        "sectionKey": "REPOSITORIES",
+        "trendingPeriod": "daily",
+        "rank": 1,
+    }
+    native["urls"] = {
+        "discoveredUrl": "https://github.com/alpha/first",
+        "finalUrl": "https://github.com/alpha/first",
+        "canonicalUrl": "https://github.com/alpha/first",
+    }
+    native["article"]["title"] = "alpha/first"
+    native["article"]["originalPublishedAt"] = observed_at.isoformat()
+    native["normalization"]["normalizedAt"] = (
+        observed_at + timedelta(hours=2)
+    ).isoformat()
+    native["normalization"]["warnings"] = [
+        "PUBLICATION_TIME_APPROXIMATED_FROM_CRAWL"
+    ]
+
+    runtime, _ = _runtime(native)
+    command = _github_crawl_command()
+    response, _ = runtime.repository.submit_crawl(
+        idempotency_key="github-observation-time",
+        body_digest=_digest(command),
+        payload=command,
+        max_attempts=3,
+    )
+
+    for _ in range(4):
+        assert runtime.worker.process_once() is True
+
+    article_id = f"article-{response['crawlRunId']}-001"
+    stored = runtime.repository.articles[article_id]
+    assert stored["originalPublishedAt"] == "2026-08-22T03:00:00Z"
+
+    older = deepcopy(stored)
+    older.update(
+        {
+            "articleId": "article-older",
+            "crawlRunId": "crawl-older",
+            "crawlItemId": "crawl-older-001",
+            "canonicalUrl": "https://github.com/alpha/older",
+            "originalPublishedAt": (observed_at - timedelta(days=1)).isoformat(),
+        }
+    )
+    runtime.repository.articles["article-older"] = older
+
+    public_items = runtime.repository.list_public_articles(limit=10, offset=0)
+    assert [item["articleId"] for item in public_items] == [
+        article_id,
+        "article-older",
+    ]
 
 
 def test_crawl_idempotency_conflict(normalized_payload):
