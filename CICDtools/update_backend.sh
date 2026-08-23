@@ -1,80 +1,51 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
-# ==============================================================================
-# Backend Update Script
-# ==============================================================================
-# Description:
-#   Pulls the latest code, rebuilds the 'api' container, and restarts it.
-#   This minimizes downtime to just the API container restart time.
-# ==============================================================================
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+# shellcheck source=utils/runtime.sh
+source "$SCRIPT_DIR/utils/runtime.sh"
+# shellcheck source=utils/deployment_steps.sh
+source "$SCRIPT_DIR/utils/deployment_steps.sh"
+# shellcheck source=utils/git_utils.sh
+source "$SCRIPT_DIR/utils/git_utils.sh"
 
-PROJECT_ROOT="$(dirname "$0")/.."
-REPO_URL="https://github.com/TeamCrazyPerformance/TCP_Website_2025"
-
-
-# Import Common Logging
-source "$(dirname "$0")/utils/common_logging.sh"
-
-# ==============================================================================
-# ⚠️  User Confirmation
-# ==============================================================================
-echo "=============================================================================="
-echo "                           ⚙️  Backend Update Tool                            "
-echo "=============================================================================="
-echo "📘 What is this? / 📘 이건 무엇인가요?"
-echo "   - Pulls the latest code from the 'main' branch."
-echo "   - 'main' 브랜치에서 최신 코드를 가져옵니다."
-echo "   - Rebuilds the 'api' Docker image and recrates the container."
-echo "   - 'api' Docker 이미지를 다시 빌드하고 컨테이너를 재생성합니다."
-echo ""
-echo "🕒 When to use? / 🕒 언제 사용하나요?"
-echo "   - When you have updated backend code (NestJS, API logic, DTOs)."
-echo "   - 백엔드 코드(NestJS, API 로직, DTO 등)를 업데이트했을 때 사용합니다."
-echo ""
-echo "💥 What happens next? / 💥 실행하면 무슨 일이 일어나나요?"
-echo "   - The 'api' container will be restarted."
-echo "   - 'api' 컨테이너가 재시작됩니다."
-echo "   - ⚠️  SHORT DOWNTIME (1~5 seconds) during restart."
-echo "   - ⚠️  재시작하는 동안 짧은 중단(1~5초)이 발생할 수 있습니다."
-echo "   - Existing DB connections might be dropped temporarily."
-echo "   - 기존 DB 연결이 일시적으로 끊길 수 있습니다."
-echo "=============================================================================="
-read -p "❓ Do you want to proceed? (y/n): " CONFIRM
-if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
-    echo "🚫 Operation cancelled."
-    exit 0
+setup_logging "update_backend"
+if [[ "${CICD_DEPLOY_RESUMED:-0}" != "1" ]]; then
+  cicd_print_banner "⚙️" "NestJS API Update / API 단독 업데이트" \
+    "📘 What is this? / 이건 무엇인가요?" \
+    "   - 최신 코드를 fast-forward로 가져와 NestJS API 이미지와 PostgreSQL 스키마를 갱신합니다." \
+    "   - 프론트엔드와 기술 아티클 파이프라인은 직접 교체하지 않습니다." \
+    "" \
+    "🕒 When to use? / 언제 사용하나요?" \
+    "   - NestJS, API 로직, DTO, PostgreSQL migration 변경만 반영할 때 사용하세요." \
+    "" \
+    "💥 What happens next? / 실행하면 무슨 일이 일어나나요?" \
+    "   - 통합 백업 → 이미지 빌드 → DB 마이그레이션 → API 교체 → 연동·전체 점검 순서입니다." \
+    "   - API 재생성 중 기존 DB 연결이 잠시 끊기고 짧은 중단이 발생할 수 있습니다." \
+    "🛡️  마이그레이션이 성공하기 전에는 실행 중인 API를 교체하지 않습니다."
+else
+  cicd_print_section "🚀" "NestJS API deployment / API 배포 시작"
 fi
-echo ""
+cicd_require_commands docker git curl openssl
+cicd_validate_env_files
 
-# Import Git Utils
-source "$(dirname "$0")/utils/git_utils.sh"
-
-# 🔒 Pre-flight Safety Check
-check_git_status
-
-# Setup Logging (Redirects output to log file & handles errors)
-setup_logging "backend_update"
-
-# 0. Backup DB (Safety First)
-log_info "💾 Creating Pre-Update Backup..."
-bash "$PROJECT_ROOT/CICDtools/backup_db.sh" "pre_backend_update"
-
-# 1. Pull latest code
-log_info "📥 Pulling latest code from main..."
-cd "$PROJECT_ROOT"
-git_as_user pull origin main
-
-# 2. Rebuild API Container
-log_info "🐳 Rebuilding API container..."
-sudo docker compose build api
-
-# 3. Restart API Container (No Deps)
-log_info "🔄 Restarting API container..."
-sudo docker compose up -d --no-deps api
-
-# 4. Cleanup Unused Images (Optional)
-log_info "🧹 Cleaning up old images..."
-sudo docker image prune -f
-
-log_success "backend update completed!"
+cd "$CICD_PROJECT_ROOT"
+if [[ "${CICD_DEPLOY_RESUMED:-0}" != "1" ]]; then
+  if ! cicd_confirm "Update only the NestJS API from the latest upstream revision?"; then
+    log_warn "🚫 API update cancelled. / API 업데이트를 취소했습니다."
+    exit 0
+  fi
+  check_git_status
+  pull_latest_changes
+  exec env CICD_DEPLOY_RESUMED=1 CICD_ASSUME_YES=1 bash "$SCRIPT_DIR/update_backend.sh"
+fi
+cicd_print_step 1 4 "💾" "Create an integrated backup / 통합 백업"
+CICD_ASSUME_YES=1 bash "$SCRIPT_DIR/backup_db.sh" "pre-update-api"
+cicd_print_step 2 4 "⚙️" "Build, migrate, and recreate API / API 빌드·마이그레이션·교체"
+cicd_deploy_api
+cicd_print_step 3 4 "🔗" "Verify API-to-pipeline integration / 파이프라인 연동 확인"
+cicd_verify_api_pipeline_integration
+cicd_print_step 4 4 "🩺" "Run full health checks / 전체 서비스 점검"
+CICD_ASSUME_YES=1 bash "$SCRIPT_DIR/check_health.sh"
+log_success "🎉 API update completed. / API 업데이트를 완료했습니다."

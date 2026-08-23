@@ -1,0 +1,1 @@
+"""Bundled SQL migrations."""

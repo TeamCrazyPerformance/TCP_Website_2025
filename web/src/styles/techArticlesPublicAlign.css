@@ -1,0 +1,377 @@
+/* Tech Articles 공개 화면의 정렬 레이어입니다.
+ *
+ * 자동 생성 파일인 techArticlesPublic.css 다음에 로드되며,
+ * 생성 파일을 직접 고치지 않고 모든 조정을 이 파일에 모아 둡니다. */
+
+/* ── Tailwind preflight 상쇄 ──────────────────────────────
+ * 관리자(techArticlesAdminAlign.css)와 같은 이유·같은 특정도 설계.
+ * (0,1,1) — preflight(0,0,1)는 이기고 v9의 `.클래스 요소`(0,2,1)에는 짐. */
+
+.ta-public h1 {
+  margin: 0.67em 0;
+  font-size: 2em;
+  font-weight: 700;
+}
+
+.ta-public h2 {
+  margin: 0.83em 0;
+  font-size: 1.5em;
+  font-weight: 700;
+}
+
+.ta-public h3 {
+  margin: 1em 0;
+  font-size: 1.17em;
+  font-weight: 700;
+}
+
+.ta-public h4 {
+  margin: 1.33em 0;
+  font-size: 1em;
+  font-weight: 700;
+}
+
+.ta-public h5 {
+  margin: 1.67em 0;
+  font-size: 0.83em;
+  font-weight: 700;
+}
+
+.ta-public h6 {
+  margin: 2.33em 0;
+  font-size: 0.67em;
+  font-weight: 700;
+}
+
+.ta-public p,
+.ta-public pre {
+  margin: 1em 0;
+}
+
+.ta-public blockquote {
+  margin: 1em 40px;
+}
+
+/* 상세 화면 요약 본문의 마크다운 불릿 복원 */
+.ta-public ul,
+.ta-public ol {
+  margin: 1em 0;
+  padding-left: 40px;
+}
+
+.ta-public ul {
+  list-style: disc outside;
+}
+
+.ta-public ol {
+  list-style: decimal outside;
+}
+
+.ta-public hr {
+  margin: 1em 0;
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* ── 공용 Header/Footer 전환에 따른 정렬 ──────────────────
+ * 공용 Header 는 fixed + h-16(64px). 기존 공개 페이지는 첫 섹션에 pt-24(96px).
+ * 목록 화면은 .page-hero 가 이미 96px 이라 그대로 맞음.
+ * 상세 화면은 .detail-main 이 목업 sticky 헤더 높이 64px 만 가져 헤더에 붙음.
+ * 같은 특정도이므로 나중에 로드되는 이 규칙이 적용됨. */
+.ta-public .detail-main {
+  padding-top: 6rem;
+}
+
+/* 목업 셸이 body 에 주던 배경을 스코프 루트가 대신 담당 */
+.ta-public {
+  background: var(--primary-black);
+}
+
+/* ── 소스 선택 ────────────────────────────────────────────
+ * 분야 태그와 다른 축입니다. 태그는 "무엇에 관한 글인가", 소스는 "누가 쓴
+ * 글인가" — 같은 모양으로 나열하면 사용자가 하나의 축으로 읽습니다.
+ * 그래서 필터 패널 밖, 목록 바로 위에 두고 아이콘과 도메인을 함께 씁니다.
+ * 모서리도 다르게 둡니다(태그 pill 999px / 소스 8px). 모양 차이는 넷일 때만
+ * 통하지만, 아이콘과 도메인은 소스가 수십 개가 되어도 유효한 구분 수단입니다.
+ * 아이콘은 우리 서버에서만 가져옵니다 — images/sources/README.md 참고. */
+.ta-public .source-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.ta-public .source-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--gray-700, #374151);
+  border-radius: 8px; /* 태그 pill(999px)과 다른 모서리 */
+  background: transparent;
+  color: var(--gray-200, #e5e7eb);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ta-public .source-trigger:hover {
+  border-color: var(--gray-500, #6b7280);
+}
+
+.ta-public .source-trigger.is-active {
+  border-color: var(--accent-blue, #3b82f6);
+  color: #fff;
+}
+
+.ta-public .source-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ta-public .source-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--gray-700, #374151);
+  border-radius: 8px;
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--gray-200, #e5e7eb);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.ta-public .source-chip:hover {
+  border-color: var(--danger, #ef4444);
+}
+
+.ta-public .source-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+/* 소스 이미지가 없을 때의 표식. 외부 파비콘 서비스를 부르지 않으므로
+   새 소스를 추가하면서 이미지를 안 넣어도 화면이 비지 않습니다. */
+.ta-public .source-icon-monogram {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #0b1220;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.ta-public .source-icon-monogram.tone-0 {
+  background: #a8c5e6;
+}
+.ta-public .source-icon-monogram.tone-1 {
+  background: #c5a8e6;
+}
+.ta-public .source-icon-monogram.tone-2 {
+  background: #86efac;
+}
+.ta-public .source-icon-monogram.tone-3 {
+  background: #fde68a;
+}
+.ta-public .source-icon-monogram.tone-4 {
+  background: #fca5a5;
+}
+.ta-public .source-icon-monogram.tone-5 {
+  background: #a5d8e6;
+}
+
+/* ── 소스 선택 대화상자 ───────────────────────────────────
+ * 검색을 답니다. 목록을 눈으로 훑어 찾는 방식은 스무 개를 넘으면 무너집니다.
+ *
+ * v9 는 `.ta-public dialog` 를 width/height 100% 로 두고, 다이얼로그 자체를
+ * 화면을 덮는 정렬 컨테이너로 씁니다. 실제 패널은 그 안쪽 요소입니다
+ * (.filter-dialog / .filter-sheet 가 같은 구조). 이 패턴을 따르지 않으면
+ * 패널이 위아래로 꽉 차고 가운데로도 오지 않습니다. */
+.ta-public .source-dialog {
+  /* 기본 규칙(.ta-public dialog)이 준 100% 위에 여백을 얹으므로
+     border-box 가 아니면 넘칩니다. */
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.ta-public .source-dialog[open] {
+  display: flex;
+}
+
+.ta-public .source-dialog-inner {
+  display: flex;
+  width: min(420px, 100%);
+  /* 화면이 짧아도 목록이 잘리지 않도록 뷰포트를 따라갑니다. */
+  max-height: min(560px, calc(100vh - 32px));
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--gray-700, #374151);
+  border-radius: 12px;
+  background: var(--gray-900, #111827);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+  color: var(--gray-200, #e5e7eb);
+}
+
+.ta-public .source-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 12px;
+}
+
+.ta-public .source-dialog-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.ta-public .source-dialog-close {
+  border: none;
+  background: none;
+  color: var(--gray-400, #9ca3af);
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.ta-public .source-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 18px 12px;
+  color: var(--gray-400, #9ca3af);
+}
+
+.ta-public .source-search input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--gray-700, #374151);
+  border-radius: 8px;
+  background: rgba(148, 163, 184, 0.08);
+  color: inherit;
+  font-size: 13px;
+}
+
+.ta-public .source-option-list {
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 0 10px 8px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.ta-public .source-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.ta-public .source-option:hover {
+  background: rgba(148, 163, 184, 0.1);
+}
+
+.ta-public .source-option.is-checked {
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.ta-public .source-option-text {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.ta-public .source-option-text strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* 도메인은 소스가 늘어나도 이름이 비슷할 때 구분해 주는 단서입니다. */
+.ta-public .source-option-text small {
+  color: var(--gray-500, #6b7280);
+  font-size: 11px;
+}
+
+.ta-public .source-option-count {
+  color: var(--gray-400, #9ca3af);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ta-public .source-empty {
+  padding: 24px 12px;
+  color: var(--gray-500, #6b7280);
+  font-size: 13px;
+  text-align: center;
+}
+
+.ta-public .source-dialog-actions {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 18px 16px;
+  border-top: 1px solid var(--gray-800, #1f2937);
+  gap: 10px;
+}
+
+.ta-public .source-apply {
+  padding: 9px 18px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent-blue, #3b82f6);
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ta-public .source-reset {
+  border: none;
+  background: none;
+  color: var(--gray-400, #9ca3af);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+/* ── NEW 배지 ─────────────────────────────────────────────
+ * 목록이 원문 게시일 순이라 새로 수집된 글이 위로 오지 않습니다.
+ * 색만으로 구분하면 색약 사용자에게 정보가 가지 않으므로 글자를 씁니다.
+ *
+ * 배색 — 노란 계열을 채우고 글자를 어둡게 합니다. 테두리만 두른 파란 배지는
+ * 제목(#93c5fd)과 같은 계열이라 묻혔습니다.
+ *
+ * 위아래 정렬 — line-height 를 1 로 두고 위아래 padding 을 같게 주어 배지
+ * 상자가 제 중심을 갖게 한 뒤, vertical-align: middle 로 제목 글자의 중심선에
+ * 맞춥니다. 여기까지 하면 기하학적으로는 0.7px 안쪽으로 맞지만, 한글은 받침
+ * 없는 글자가 많아 잉크가 위로 쏠려 배지가 1px 아래로 보입니다. 실제 렌더를
+ * 픽셀로 재어 나온 값이 1px 이라 그만큼 올립니다. position 은 배치를 바꾸지
+ * 않고 그리기만 옮기므로 간격 계산에 영향을 주지 않습니다. */
+.ta-public .article-new-badge {
+  position: relative;
+  top: -1px;
+  display: inline-block;
+  margin-right: 18px;
+  padding: 4px 7px;
+  border-radius: 4px;
+  background: var(--warning, #fde68a);
+  color: #1f2937;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  vertical-align: middle;
+}

@@ -26,6 +26,7 @@ import { RecruitmentModule } from './recruitment/recruitment.module';
 import { HealthModule } from './health/health.module';
 import { AdminStatisticsModule } from './admin/statistics/admin-statistics.module';
 import { MainPageModule } from './main-page/main-page.module';
+import { TechArticlesModule } from './tech-articles/tech-articles.module';
 
 @Module({
   imports: [
@@ -73,6 +74,7 @@ import { MainPageModule } from './main-page/main-page.module';
     HealthModule,
     AdminStatisticsModule,
     MainPageModule,
+    TechArticlesModule,
   ],
 })
 export class AppModule implements NestModule {

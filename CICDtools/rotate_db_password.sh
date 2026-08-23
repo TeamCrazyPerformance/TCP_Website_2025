@@ -1,122 +1,102 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
-# ==============================================================================
-# Database Password Rotation Script (Live System)
-# ==============================================================================
-# Description:
-#   Safely rotates the PostgreSQL database password on a RUNNING production system.
-#   1. Generates a new secure password.
-#   2. Updates the User in the LIVE database (ALTER USER).
-#   3. Updates the 'envs/db_prod.env' file.
-#   4. Restarts the Backend to apply the change.
-# ==============================================================================
-
-# Ensure we are in the script's directory for relative path loading
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")/.." # Go up from CICDtools to Project Root
-BACKUP_SCRIPT="$SCRIPT_DIR/backup_db.sh"
-UPDATE_BACKEND_SCRIPT="$SCRIPT_DIR/update_backend.sh"
+readonly SCRIPT_DIR
+# shellcheck source=utils/runtime.sh
+source "$SCRIPT_DIR/utils/runtime.sh"
 
-# Import Common Logging
-source "$SCRIPT_DIR/utils/common_logging.sh"
+setup_logging "rotate_db_password"
+cicd_require_commands docker openssl
+cicd_validate_env_files
 
-# Setup Logging
-setup_logging "db_rotation"
+target="${1:-postgres}"
+[[ "$target" == "postgres" || "$target" == "pipeline" ]] || {
+  log_error "Usage: $0 [postgres|pipeline]"
+  exit 2
+}
 
-echo "=============================================================================="
-echo "                   🔐 Live Database Password Rotation"
-echo "=============================================================================="
-echo "⚠️  WARNING: This script will change the database password on a LIVE system."
-echo "   - It will RESTART the API container."
-echo "   - It will cause a brief service interruption (1-5 seconds)."
-echo "=============================================================================="
-echo ""
-
-# 1. Verification & Confirmation
-read -p "Type 'ROTATE' to confirm you want to change the DB password: " CONFIRM
-if [[ "$CONFIRM" != "ROTATE" ]]; then
-    log_warn "Confirmation failed. Exiting."
-    exit 0
-fi
-
-# 2. Check if DB Container is running
-if ! sudo docker ps | grep -q "db"; then
-    log_error "Database container 'db' is NOT running. Cannot execute SQL."
-    exit 1
-fi
-
-# 3. Create a Backup (Safety First)
-log_info "📦 Creating safety backup before rotation..."
-if [ -f "$BACKUP_SCRIPT" ]; then
-    bash "$BACKUP_SCRIPT" "pre_rotation"
+if [[ "$target" == "postgres" ]]; then
+  target_description="NestJS API PostgreSQL 사용자 비밀번호"
+  affected_services="API 컨테이너"
 else
-    log_warn "Backup script found. Proceeding without backup (RISKY)."
+  target_description="pipeline MySQL 애플리케이션·root 비밀번호"
+  affected_services="pipeline-mysql, pipeline-migrate, tech-article-pipeline"
+fi
+cicd_print_banner "🔐" "Database Credential Rotation / DB 비밀번호 교체" \
+  "📘 Target / 교체 대상: $target_description" \
+  "🔄 Affected services / 재생성 서비스: $affected_services" \
+  "💾 변경 전에 PostgreSQL·MySQL·파일 통합 백업을 생성합니다." \
+  "🙈 새 비밀번호는 안전하게 자동 생성하며 화면과 로그에 출력하지 않습니다." \
+  "⚠️  운영 DB 자격 증명을 변경하므로 정확히 ROTATE를 입력해야 실행됩니다."
+
+if [[ "${CICD_ASSUME_YES:-0}" != "1" ]]; then
+  read -r -p "❓ Type ROTATE to rotate $target credentials / 실행하려면 ROTATE 입력: " confirmation
+  [[ "$confirmation" == "ROTATE" ]] || { log_warn "🚫 Rotation cancelled. / 비밀번호 교체를 취소했습니다."; exit 0; }
 fi
 
-# 4. Generate New Password
-log_info "🎲 Generating new secure password..."
-NEW_PASSWORD=$(openssl rand -hex 32)
-# Escape potential special characters for sed (though hex doesn't have many)
-SAFE_NEW_PASSWORD=$(echo "$NEW_PASSWORD" | sed 's/[\/&]/\\&/g')
+cicd_print_step 1 3 "💾" "Create a verified pre-rotation backup / 교체 전 통합 백업"
+CICD_ASSUME_YES=1 bash "$SCRIPT_DIR/backup_db.sh" "pre-rotate-$target"
 
-# 5. Get Current DB User from Env File
-ENV_FILE="$PROJECT_ROOT/envs/db_prod.env"
-if [ ! -f "$ENV_FILE" ]; then
-    log_error "Environment file not found: $ENV_FILE"
+if [[ "$target" == "postgres" ]]; then
+  db_env="$CICD_PROJECT_ROOT/envs/db_prod.env"
+  [[ "${CICD_ENVIRONMENT:-prod}" == "dev" ]] && db_env="$CICD_PROJECT_ROOT/envs/db_dev.env"
+  db_user="$(cicd_env_get "$db_env" POSTGRES_USER)"
+  db_name="$(cicd_env_get "$db_env" POSTGRES_DB)"
+  old_password="$(cicd_env_get "$db_env" POSTGRES_PASSWORD)"
+  [[ "$db_user" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || { log_error "Unsafe PostgreSQL role name."; exit 1; }
+  new_password="$(cicd_generate_hex 32)"
+
+  cicd_print_step 2 3 "🐘" "Rotate PostgreSQL credentials atomically / PostgreSQL 자격 증명 교체"
+  printf 'ALTER ROLE "%s" WITH PASSWORD '\''%s'\'';\n' "$db_user" "$new_password" \
+    | cicd_compose exec -T db psql --set ON_ERROR_STOP=on -U "$db_user" -d "$db_name" >/dev/null
+
+  cicd_env_set "$db_env" POSTGRES_PASSWORD "$new_password"
+  cicd_env_set "$db_env" DB_PASSWORD "$new_password"
+  if ! cicd_compose up -d --no-deps --force-recreate api \
+    || ! cicd_wait_service api healthy 180 \
+    || ! cicd_compose exec -T api node -e \
+      "fetch('http://127.0.0.1:3000/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"; then
+    escaped_old="${old_password//\'/\'\'}"
+    printf 'ALTER ROLE "%s" WITH PASSWORD '\''%s'\'';\n' "$db_user" "$escaped_old" \
+      | cicd_compose exec -T db psql --set ON_ERROR_STOP=on -U "$db_user" -d "$db_name" >/dev/null || true
+    cicd_env_set "$db_env" POSTGRES_PASSWORD "$old_password"
+    cicd_env_set "$db_env" DB_PASSWORD "$old_password"
+    cicd_compose up -d --no-deps --force-recreate api || true
+    log_error "PostgreSQL rotation failed; previous environment values were restored. / 이전 설정으로 자동 복구했습니다."
     exit 1
+  fi
+  cicd_print_step 3 3 "🩺" "API readiness confirmed / API 준비 상태 확인 완료"
+  log_success "🎉 PostgreSQL credentials rotated; the value was not printed or logged. / PostgreSQL 비밀번호 교체를 완료했습니다."
+  exit 0
 fi
 
-DB_USER=$(grep "^POSTGRES_USER=" "$ENV_FILE" | cut -d '=' -f2)
-DB_NAME=$(grep "^POSTGRES_DB=" "$ENV_FILE" | cut -d '=' -f2)
+root_env="$CICD_PROJECT_ROOT/.env"
+mysql_user="$(cicd_env_get "$root_env" TECH_ARTICLE_MYSQL_USER)"
+[[ "$mysql_user" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || { log_error "Unsafe MySQL user name."; exit 1; }
+new_app_password="$(cicd_generate_hex 32)"
+new_root_password="$(cicd_generate_hex 32)"
 
-if [ -z "$DB_USER" ]; then
-    # Fallback to default if not found
-    DB_USER="tcp_user"
-    log_warn "Could not read POSTGRES_USER from env. Using default: $DB_USER"
+cicd_print_step 2 3 "🐬" "Rotate pipeline MySQL application and root credentials / MySQL 자격 증명 교체"
+printf "ALTER USER '%s'@'%%' IDENTIFIED BY '%s'; ALTER USER 'root'@'localhost' IDENTIFIED BY '%s'; FLUSH PRIVILEGES;\n" \
+  "$mysql_user" "$new_app_password" "$new_root_password" \
+  | cicd_compose exec -T pipeline-mysql sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -uroot' >/dev/null
+
+cicd_env_set "$root_env" TECH_ARTICLE_MYSQL_PASSWORD "$new_app_password"
+cicd_env_set "$root_env" TECH_ARTICLE_MYSQL_ROOT_PASSWORD "$new_root_password"
+if ! {
+  cicd_compose up -d --force-recreate pipeline-mysql \
+    && cicd_wait_service pipeline-mysql healthy 180 \
+    && cicd_compose exec -T pipeline-mysql sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -uroot -e "SELECT 1"' >/dev/null \
+    && cicd_compose up --no-deps --force-recreate pipeline-migrate \
+    && cicd_wait_service pipeline-migrate exited 180 \
+    && cicd_compose up -d --no-deps --force-recreate tech-article-pipeline \
+    && cicd_wait_service tech-article-pipeline healthy 180
+}; then
+  log_error "Pipeline rotation did not complete after the live credentials changed."
+  log_error "The root .env intentionally retains the new live credentials. / 실제 DB와 일치하도록 .env에는 새 값을 유지했습니다."
+  log_error "Retry the recreate steps or restore the pre-rotate-pipeline backup set; do not replace .env with old credentials alone. / 재생성을 재시도하거나 사전 백업으로 복구하세요. .env만 예전 값으로 되돌리면 안 됩니다."
+  exit 1
 fi
-if [ -z "$DB_NAME" ]; then
-    DB_NAME="tcp_db"
-fi
-
-# 6. Rotate Password in LIVE Database
-log_info "🔄 Updating password in running Database container..."
-# Use docker exec to run psql. We use the root postgres user or the specific user? 
-# Usually POSTGRES_USER is a superuser or owner.
-# We need to execute: ALTER USER <user> WITH PASSWORD '<new_pass>';
-
-if sudo docker compose exec db psql -U "$DB_USER" -d "$DB_NAME" -c "ALTER USER $DB_USER WITH PASSWORD '$NEW_PASSWORD';"; then
-    log_success "Database User '$DB_USER' password updated successfully in DB."
-else
-    log_error "Failed to update password via SQL. Aborting."
-    exit 1
-fi
-
-# 7. Update Environment File
-log_info "📝 Updating 'envs/db_prod.env' file..."
-
-# Use sed to replace the password lines. 
-# We update both POSTGRES_PASSWORD and DB_PASSWORD if they exist.
-# Detect OS for sed -i compatibility (Linux vs Mac). Assuming Linux/Bash here given user context.
-sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$SAFE_NEW_PASSWORD/" "$ENV_FILE"
-sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=$SAFE_NEW_PASSWORD/" "$ENV_FILE"
-
-# Also check api.env just in case it duplicates DB_PASSWORD (unlikely but safe to check)
-API_ENV_FILE="$PROJECT_ROOT/envs/api.env"
-if grep -q "^DB_PASSWORD=" "$API_ENV_FILE"; then
-    log_info "Updating 'envs/api.env' as well..."
-    sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=$SAFE_NEW_PASSWORD/" "$API_ENV_FILE"
-fi
-
-log_success "Environment files updated."
-
-# 8. Restart Backend to apply changes
-log_info "🚀 Restarting Backend to apply new credentials..."
-if [ -f "$UPDATE_BACKEND_SCRIPT" ]; then
-    bash "$UPDATE_BACKEND_SCRIPT"
-else
-    log_warn "Update Backend script not found. You must restart the 'api' container manually."
-    log_info "Run: sudo docker compose restart api"
-fi
-
-log_success "✅ Password Rotation Completed Successfully!"
+cicd_print_step 3 3 "🩺" "MySQL migration and pipeline readiness confirmed / 마이그레이션·파이프라인 상태 확인 완료"
+log_success "🎉 Pipeline MySQL application and root credentials rotated; values were not printed or logged. / MySQL 비밀번호 교체를 완료했습니다."

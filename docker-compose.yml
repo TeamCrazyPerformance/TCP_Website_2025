@@ -51,6 +51,13 @@
       LOGSTASH_PORT: 5000
       NODE_ENV: production
       PORT: 3000
+      TECH_ARTICLE_PIPELINE_BASE_URL: http://tech-article-pipeline:8080
+      PIPELINE_SERVICE_TOKEN: ${PIPELINE_SERVICE_TOKEN:?run CICDtools/ServerSetupRemove/set_env.sh first}
+      TECH_ARTICLE_PIPELINE_READ_TIMEOUT_MS: ${TECH_ARTICLE_PIPELINE_READ_TIMEOUT_MS:-2000}
+      TECH_ARTICLE_PIPELINE_WRITE_TIMEOUT_MS: ${TECH_ARTICLE_PIPELINE_WRITE_TIMEOUT_MS:-5000}
+      TECH_ARTICLE_AUTO_CRAWL_ENABLED: ${TECH_ARTICLE_AUTO_CRAWL_ENABLED:-false}
+      TECH_ARTICLE_AUTO_CRAWL_MAX_ARTICLES: ${TECH_ARTICLE_AUTO_CRAWL_MAX_ARTICLES:-10}
+      TECH_ARTICLE_AUTO_CRAWL_MAX_AGE_HOURS: ${TECH_ARTICLE_AUTO_CRAWL_MAX_AGE_HOURS:-48}
     volumes:
       - ./api/uploads:/var/app/uploads
       - ./logs/app:/var/app/logs
@@ -87,6 +94,91 @@
       interval: 5s
       timeout: 5s
       retries: 20
+    networks: [internal]
+    restart: unless-stopped
+
+  # Technical article pipeline database (isolated from the website PostgreSQL DB)
+  pipeline-mysql:
+    image: mysql:8.4
+    container_name: pipeline-mysql
+    profiles: ["tech-articles"]
+    environment:
+      MYSQL_DATABASE: ${TECH_ARTICLE_MYSQL_DATABASE:-tech_articles}
+      MYSQL_USER: ${TECH_ARTICLE_MYSQL_USER:-pipeline}
+      MYSQL_PASSWORD: ${TECH_ARTICLE_MYSQL_PASSWORD:?run CICDtools/ServerSetupRemove/set_env.sh first}
+      MYSQL_ROOT_PASSWORD: ${TECH_ARTICLE_MYSQL_ROOT_PASSWORD:?run CICDtools/ServerSetupRemove/set_env.sh first}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    expose:
+      - "3306"
+    volumes:
+      - pipeline-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
+    networks: [internal]
+    restart: unless-stopped
+
+  # One-shot, checksum-verified pipeline schema migration
+  pipeline-migrate:
+    build:
+      context: ./tech-article-pipeline
+    container_name: pipeline-migrate
+    profiles: ["tech-articles"]
+    command: ["python", "-m", "tech_article_pipeline.persistence.migrate"]
+    environment:
+      TECH_ARTICLE_MYSQL_HOST: pipeline-mysql
+      TECH_ARTICLE_MYSQL_PORT: "3306"
+      TECH_ARTICLE_MYSQL_DATABASE: ${TECH_ARTICLE_MYSQL_DATABASE:-tech_articles}
+      TECH_ARTICLE_MYSQL_USER: ${TECH_ARTICLE_MYSQL_USER:-pipeline}
+      TECH_ARTICLE_MYSQL_PASSWORD: ${TECH_ARTICLE_MYSQL_PASSWORD:?run CICDtools/ServerSetupRemove/set_env.sh first}
+    depends_on:
+      pipeline-mysql:
+        condition: service_healthy
+    networks: [internal]
+    restart: "no"
+
+  # Independent FastAPI service with its durable worker in the same process
+  tech-article-pipeline:
+    build:
+      context: ./tech-article-pipeline
+    container_name: tech-article-pipeline
+    profiles: ["tech-articles"]
+    expose:
+      - "8080"
+    environment:
+      PIPELINE_SERVICE_TOKEN: ${PIPELINE_SERVICE_TOKEN:?run CICDtools/ServerSetupRemove/set_env.sh first}
+      PIPELINE_BACKEND: mysql
+      PIPELINE_RUN_WORKER: "true"
+      PIPELINE_WORKER_CONCURRENCY: ${PIPELINE_WORKER_CONCURRENCY:-1}
+      PIPELINE_WORKER_POLL_SECONDS: ${PIPELINE_WORKER_POLL_SECONDS:-1}
+      PIPELINE_WORKER_LEASE_SECONDS: ${PIPELINE_WORKER_LEASE_SECONDS:-60}
+      PIPELINE_JOB_MAX_ATTEMPTS: ${PIPELINE_JOB_MAX_ATTEMPTS:-3}
+      TECH_ARTICLE_MYSQL_HOST: pipeline-mysql
+      TECH_ARTICLE_MYSQL_PORT: "3306"
+      TECH_ARTICLE_MYSQL_DATABASE: ${TECH_ARTICLE_MYSQL_DATABASE:-tech_articles}
+      TECH_ARTICLE_MYSQL_USER: ${TECH_ARTICLE_MYSQL_USER:-pipeline}
+      TECH_ARTICLE_MYSQL_PASSWORD: ${TECH_ARTICLE_MYSQL_PASSWORD:?run CICDtools/ServerSetupRemove/set_env.sh first}
+      TECH_ARTICLE_MYSQL_POOL_SIZE: ${TECH_ARTICLE_MYSQL_POOL_SIZE:-5}
+      CRAWLER_PUBLIC_URL: ${CRAWLER_PUBLIC_URL:-}
+      CRAWLER_CONTACT: ${CRAWLER_CONTACT:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
+    depends_on:
+      pipeline-mysql:
+        condition: service_healthy
+      pipeline-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/ready', timeout=2)"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
     networks: [internal]
     restart: unless-stopped
 
@@ -183,3 +275,4 @@ networks:
 volumes:
   db-data:
   es-data:
+  pipeline-mysql-data:

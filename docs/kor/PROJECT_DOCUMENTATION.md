@@ -59,6 +59,13 @@
 
 **메인 인덱스**: [project-docs/README.md](./project-docs/README.md)
 
-**문서 버전**: 2.0 (분할 버전)  
-**최종 수정일**: 2026-02-16  
+## 2026-08 기술 아티클 통합
+
+공개/회원/관리자 프론트엔드, NestJS facade, FastAPI 파이프라인, 전용 MySQL이 현재
+서비스 구성에 포함됐다. 운영 전체 배포와 개발 구축은 `tech-articles` profile을 항상
+활성화하며, 정식 절차는 `CICDtools/README.md`와
+`docs/TECH_ARTICLE_PIPELINE_OPERATIONS.md`를 따른다.
+
+**문서 버전**: 2.1 (분할 버전)
+**최종 수정일**: 2026-08-17
 **관리자**: 개발팀

@@ -158,22 +158,23 @@ TCP_Wetsite_2025/
 ├── CICDtools/                   # CI/CD & Operations automation
 │   ├── update_frontend.sh       # Zero-downtime frontend deployment
 │   ├── update_backend.sh        # Backend rebuild & restart
-│   ├── update_all.sh            # Full system update (FE→DB→BE)
-│   ├── migrate_db.sh            # Database migration tool
-│   ├── backup_db.sh             # Database & file backup
-│   ├── restore_db.sh            # System restore from backup
+│   ├── update_all.sh            # Pipeline → API → frontend release
+│   ├── update_pipeline.sh       # Pipeline-only deployment
+│   ├── update_tech_article_config.sh # One-key pipeline config rotation
+│   ├── migrate_db.sh            # PostgreSQL + MySQL migrations
+│   ├── backup_db.sh             # Manifested dual-DB + file backup
+│   ├── restore_db.sh            # Verified matching-set restore
 │   ├── check_health.sh          # Container health check
 │   ├── inspect_backup.sh        # Backup file inspection
-│   ├── rotate_db_password.sh    # DB password rotation
-│   ├── utils/                   # Common utilities (logging, git)
+│   ├── rotate_db_password.sh    # PostgreSQL/pipeline password rotation
+│   ├── utils/                   # Runtime, deploy, backup, logging, git
 │   └── ServerSetupRemove/       # Server bootstrap & teardown
 │       ├── set_env.sh           # Secure env variable generation
 │       ├── prodserver_quicksetup.sh  # Production setup
 │       ├── devserver_quicksetup.sh   # Development setup
 │       └── server_quickremove.sh     # Server teardown
 │
-├── db/                          # Database-related files
-│   └── backups/                 # Database backups directory
+├── ../backups/                  # Atomic backup-set directories (outside repo)
 │
 ├── elk/                         # ELK Stack configuration
 │   ├── elasticsearch/           # Elasticsearch config
@@ -1021,7 +1022,7 @@ docker-compose -f docker-compose.dev.yml up -d db
 cd api
 
 # Install dependencies
-npm install
+npm ci
 
 # Seed database (create admin user)
 npm run seed
@@ -1038,7 +1039,7 @@ Backend runs on: http://localhost:3000
 cd web
 
 # Install dependencies
-npm install
+npm ci
 
 # Start development server
 npm start
@@ -1189,7 +1190,7 @@ See [DEPLOYMENT_CHECKLIST.md](file:///c:/Users/junsu/Desktop/TCP_Wetsite_2025/DE
 
 > [!TIP]
 > For production deployments, use the automated CICDtools scripts instead of manual commands. See [CI/CD & Operations Tools](#cicd--operations-tools).
-> The most common command is: `sudo ./CICDtools/update_all.sh`
+> The most common command is: `bash CICDtools/update_all.sh`
 
 ```bash
 # Validate configuration
@@ -1313,15 +1314,15 @@ Each module has its own API documentation:
 |--------|---------|----------|
 | `update_frontend.sh` | Pull code, build React app, swap dist (atomic) | **Zero** |
 | `update_backend.sh` | Pull code, rebuild API container | ~1–5 sec |
-| `update_all.sh` | Frontend → DB migration → Backend (sequential) | ~1–5 sec |
+| `update_all.sh` | Stage frontend → pipeline/MySQL → API/PostgreSQL → activate frontend → health | deployment dependent |
 | `migrate_db.sh` | Run TypeORM migrations with safety checks | None |
 
 ### Backup & Recovery
 
 | Script | Purpose |
 |--------|---------|
-| `backup_db.sh` | Dump DB + backup uploads/logs to `backups/` |
-| `restore_db.sh` | Restore from latest backup (overwrites data) |
+| `backup_db.sh` | Atomic PostgreSQL + pipeline MySQL + files backup set with SHA-256 |
+| `restore_db.sh` | Restore one verified matching set, migrate both DBs, restart and health-check |
 | `inspect_backup.sh` | Preview backup file contents and tables |
 
 ### Monitoring & Security
@@ -1344,9 +1345,9 @@ Each module has its own API documentation:
 
 | Scenario | Recommended Script |
 |----------|-------------------|
-| Routine code update | `sudo ./CICDtools/update_all.sh` |
-| Environment variable change | Edit `envs/` files, then `sudo ./CICDtools/update_all.sh` |
-| DB password rotation | `sudo ./CICDtools/rotate_db_password.sh` |
+| Routine code update | `bash CICDtools/update_all.sh` |
+| Technical-article config change | `update_tech_article_config.sh` with one supported key |
+| DB password rotation | `bash CICDtools/rotate_db_password.sh postgres|pipeline` |
 | New server setup | `./CICDtools/ServerSetupRemove/prodserver_quicksetup.sh` |
 
 > [!WARNING]
@@ -1426,7 +1427,20 @@ This documentation provides a comprehensive overview of the TCP Website 2025 pro
 
 ---
 
-**Document Version**: 2.0  
-**Last Updated**: 2026-02-15  
+## Technical-article service integration (2026-08)
+
+The React frontend, NestJS facade, FastAPI pipeline, and isolated MySQL store are
+deployed as one release unit by CICDtools while retaining the `tech-articles`
+Compose profile. The API never connects to pipeline MySQL directly. Public traffic
+continues through Nginx; FastAPI and MySQL have no published host ports. Root
+`.env` owns pipeline interpolation secrets, and NestJS receives only its internal
+base URL, service token, and timeouts.
+
+Operational backup sets contain both databases plus persistent files and a
+SHA-256 manifest. See `CICDtools/README.md` and
+`docs/TECH_ARTICLE_PIPELINE_OPERATIONS.md` for canonical procedures.
+
+**Document Version**: 2.1
+**Last Updated**: 2026-08-17
 **Maintained By**: Development Team
 

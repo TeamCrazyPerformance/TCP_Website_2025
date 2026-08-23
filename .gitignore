@@ -40,6 +40,14 @@ node_modules/
 # Explicitly ignore nested node_modules just in case
 **/node_modules/
 
+# Python pipeline environments and caches
+__pycache__/
+*.py[cod]
+.venv*/
+.uv-cache*/
+.pytest_cache/
+.ruff_cache/
+
 # -----------------------------------------------------------------------------
 # Environment Variables & Secrets
 # -----------------------------------------------------------------------------
@@ -63,6 +71,8 @@ reverse-proxy/certs/
 # Build Artifacts & Output
 # -----------------------------------------------------------------------------
 dist/
+web/dist.next/
+web/dist.previous/
 build/
 out/
 coverage/
@@ -82,6 +92,9 @@ mysql-data/
 # -----------------------------------------------------------------------------
 # Miscellaneous
 # -----------------------------------------------------------------------------
+# Task handoff/reference inputs are not deployable website source.
+/work_source/
+
 .turbolint-history
 .vercel
 build-warnings.txt

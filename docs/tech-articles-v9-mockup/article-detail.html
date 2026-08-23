@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="TCP Tech Articles 아티클 상세 및 핵심 요약 목업"
+    />
+    <meta name="theme-color" content="#0a0a0a" />
+    <title>아티클 상세 | TCP Tech Articles</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&amp;display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://spoqa.github.io/spoqa-han-sans/css/SpoqaHanSansNeo.css"
+    />
+    <link rel="stylesheet" href="./styles.css?v=20260807-v7" />
+    <link rel="stylesheet" href="./public-v9.css?v=20260813-v9" />
+    <script src="./vendor/markdown-it/markdown-it.min.js?v=14.1.0" defer></script>
+    <script src="./vendor/dompurify/purify.min.js?v=3.3.1" defer></script>
+    <script src="./public-data.js?v=20260813-v9" defer></script>
+    <script src="./detail.js?v=20260813-v9" defer></script>
+  </head>
+  <body data-page="detail">
+    <a class="skip-link" href="#article-detail">아티클 본문으로 이동</a>
+
+    <header class="site-header">
+      <div class="container header-container">
+        <div class="header-inner">
+          <div class="header-brand-slot">
+            <a class="brand" href="#top" aria-label="TCP 홈">
+              <div class="brand-logo-box">
+                <img src="../../web/src/logo.svg" alt="TCP 로고" />
+              </div>
+              <div class="brand-copy">
+                <h1 class="orbitron gradient-text">TCP</h1>
+                <p class="orbitron">Team Crazy Performance</p>
+              </div>
+            </a>
+          </div>
+
+          <nav class="desktop-nav" aria-label="주요 메뉴">
+            <a class="nav-link demo-link" href="#about">About</a>
+            <a class="nav-link demo-link" href="#members">Members</a>
+            <a class="nav-link demo-link" href="#recruitment">Recruitment</a>
+            <a class="nav-link demo-link" href="#announcement">Announcement</a>
+            <a
+              class="nav-link active"
+              href="./index.html#tech-articles-list"
+              aria-current="page"
+            >
+              Tech Articles
+            </a>
+            <a class="nav-link demo-link" href="#study">Study</a>
+            <a class="nav-link demo-link" href="#team">Find Your Team</a>
+          </nav>
+
+          <div class="header-actions">
+            <div class="auth-links">
+              <button class="login-button demo-action" type="button">
+                <span>
+                  <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
+                  로그인
+                </span>
+              </button>
+              <button class="register-button demo-action" type="button">
+                <span>
+                  <i class="fas fa-user-plus" aria-hidden="true"></i>
+                  회원가입
+                </span>
+              </button>
+            </div>
+            <button
+              id="menuButton"
+              class="menu-button"
+              type="button"
+              aria-label="모바일 메뉴 열기"
+              aria-expanded="false"
+              aria-controls="mobileNav"
+            >
+              <i class="fas fa-bars" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="mobileNav" class="mobile-nav" hidden>
+          <nav aria-label="모바일 메뉴">
+            <a class="demo-link" href="#about">About</a>
+            <a class="demo-link" href="#members">Members</a>
+            <a class="demo-link" href="#recruitment">Recruitment</a>
+            <a class="demo-link" href="#announcement">Announcement</a>
+            <a
+              class="active"
+              href="./index.html#tech-articles-list"
+              aria-current="page"
+            >
+              Tech Articles
+            </a>
+            <a class="demo-link" href="#study">Study</a>
+            <a class="demo-link" href="#team">Find Your Team</a>
+          </nav>
+        </div>
+      </div>
+    </header>
+
+    <main id="top" class="detail-main">
+      <section id="article-detail" class="detail-hero" aria-labelledby="articleTitle">
+        <div class="container">
+          <nav class="detail-breadcrumb" aria-label="현재 위치">
+            <a
+              class="back-to-list-link"
+              href="./index.html#tech-articles-list"
+            >
+              <i class="fas fa-arrow-left" aria-hidden="true"></i>
+              아티클 목록으로 돌아가기
+            </a>
+          </nav>
+
+          <div class="detail-hero-content">
+            <h1 id="articleTitle" class="detail-title">아티클을 불러오는 중입니다.</h1>
+            <div
+              class="detail-info-row"
+              aria-label="아티클 출처, 게시 시각, 태그와 원문 링크"
+            >
+              <div class="detail-info-items">
+                <span class="detail-info-item detail-source-item">
+                  <span class="detail-info-label">
+                    <i class="fas fa-building" aria-hidden="true"></i>
+                    원출처 <strong id="heroSourceName">확인 중</strong>
+                  </span>
+                  <a
+                    class="detail-original-link"
+                    id="heroOriginalLink"
+                    href="#"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    원문 보기
+                    <i
+                      class="fas fa-arrow-up-right-from-square"
+                      aria-hidden="true"
+                    ></i>
+                  </a>
+                </span>
+                <span class="detail-info-item">
+                  <i class="fas fa-calendar-day" aria-hidden="true"></i>
+                  원문 게시
+                  <time id="heroPublishedAt">확인 중</time>
+                </span>
+                <div id="detailTags" class="detail-tags" aria-label="아티클 분야 태그"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="detail-content-section" aria-label="아티클 상세 정보">
+        <div class="container">
+          <div class="detail-layout">
+            <div class="detail-primary">
+              <article class="summary-card" aria-labelledby="summaryHeading">
+                <header class="summary-heading">
+                  <h2 id="summaryHeading">핵심 요약</h2>
+                </header>
+
+                <p id="oneLineSummary" class="detail-one-line-summary" hidden></p>
+                <div
+                  id="summaryBody"
+                  class="summary-body summary-body-v9 markdown-content"
+                  data-summary-format="markdown"
+                ></div>
+              </article>
+            </div>
+
+            <aside class="detail-sidebar" aria-label="아티클 부가 정보">
+              <section class="score-card" aria-labelledby="scoreHeading">
+                <p class="orbitron scenario-eyebrow">VALUE SCORE</p>
+                <h2 id="scoreHeading">가치 점수</h2>
+                <div class="score-summary">
+                  <strong id="scoreValue">—</strong>
+                  <span>/ 100점</span>
+                </div>
+                <meter
+                  id="scoreMeter"
+                  class="score-meter"
+                  min="0"
+                  max="100"
+                  value="0"
+                  aria-label="가치 점수를 불러오는 중"
+                >
+                  0점
+                </meter>
+                <dl class="score-breakdown">
+                  <div>
+                    <dt>관련성</dt>
+                    <dd id="scoreRelevance">— / 100</dd>
+                  </div>
+                  <div>
+                    <dt>기술적 깊이</dt>
+                    <dd id="scoreDepth">— / 100</dd>
+                  </div>
+                  <div>
+                    <dt>최신성</dt>
+                    <dd id="scoreFreshness">— / 100</dd>
+                  </div>
+                  <div>
+                    <dt>출처 신뢰도</dt>
+                    <dd id="scoreSourceTrust">— / 100</dd>
+                  </div>
+                </dl>
+              </section>
+
+              <section class="source-card" aria-labelledby="sourceHeading">
+                <p class="orbitron scenario-eyebrow">SOURCE</p>
+                <h2 id="sourceHeading">원문 및 출처 정보</h2>
+                <dl class="source-details">
+                  <div>
+                    <dt>출처</dt>
+                    <dd>
+                      <strong id="sourceName">확인 중</strong>
+                      <span id="sourceDomain"></span>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>원문 언어</dt>
+                    <dd id="sourceLanguage" class="source-language-value">확인 중</dd>
+                  </div>
+                  <div>
+                    <dt>원문 URL</dt>
+                    <dd>
+                      <a
+                        id="sourceOriginalLink"
+                        href="#"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <span id="sourceOriginalUrlText">원문 주소 확인 중</span>
+                        <i
+                          class="fas fa-arrow-up-right-from-square"
+                          aria-hidden="true"
+                        ></i>
+                      </a>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>원문 게시</dt>
+                    <dd>
+                      <time id="sourcePublishedAt">확인 중</time>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>TCP 수집</dt>
+                    <dd>
+                      <time id="sourceCollectedAt">확인 중</time>
+                    </dd>
+                  </div>
+                </dl>
+              </section>
+            </aside>
+          </div>
+
+          <aside
+            class="source-notice detail-source-notice"
+            aria-labelledby="sourceNoticeHeading"
+          >
+            <i class="fas fa-circle-info" aria-hidden="true"></i>
+            <div>
+              <h2 id="sourceNoticeHeading" class="orbitron">
+                데이터 출처 및 AI 요약 안내
+              </h2>
+              <p>
+                TCP는 공식 기술 블로그와 개발자 커뮤니티 등에서 수집한 원문의
+                제목, 출처, 게시 시각을 정규화해 제공합니다. 콘텐츠의 권리와
+                최종 내용은 원문 발행처에 있습니다.
+              </p>
+              <p>
+                AI 요약과 가치 점수는 탐색을 돕기 위한 참고 정보이며 원문의
+                전체 맥락이나 작성자의 의도를 대체하지 않습니다. 이 화면의 링크와
+                수치는 팀 검토용 더미 데이터입니다.
+              </p>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div>
+            <div class="footer-brand">
+              <img src="../../web/src/logo.svg" alt="TCP 로고" />
+              <h3 class="orbitron gradient-text">TCP</h3>
+            </div>
+            <p>
+              Team Crazy Performance<br />
+              컴퓨터공학과 학술 동아리
+            </p>
+          </div>
+
+          <div>
+            <h4 class="orbitron">임원진</h4>
+            <p>
+              <span class="text-blue">회장:</span> 컴퓨터공학과 24학번 박연오
+            </p>
+            <p>
+              <span class="text-purple">부회장:</span> 컴퓨터공학과 23학번
+              김영진
+            </p>
+          </div>
+
+          <div>
+            <h4 class="orbitron">연락처</h4>
+            <p><i class="fas fa-phone text-blue"></i> 010-5096-3236</p>
+            <p>
+              <i class="fas fa-envelope text-purple"></i>
+              seoultechcstcp@gmail.com
+            </p>
+            <p>
+              <i class="fab fa-instagram text-pink"></i>
+              <a
+                href="https://www.instagram.com/seoultech.tcp"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                @seoultech.tcp
+              </a>
+            </p>
+          </div>
+
+          <div>
+            <h4 class="orbitron">법적 정보</h4>
+            <p><a class="demo-link" href="#terms">이용약관</a></p>
+            <p><a class="demo-link" href="#privacy">개인정보처리방침</a></p>
+            <p><a class="demo-link" href="#opensource">오픈소스 고지</a></p>
+          </div>
+        </div>
+
+        <div class="copyright">
+          © 2024 TCP (Team Crazy Performance). All rights reserved.
+        </div>
+      </div>
+    </footer>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden>
+      <i class="fas fa-circle-info" aria-hidden="true"></i>
+      <p></p>
+    </div>
+
+    <noscript>
+      <div class="noscript-notice">
+        아티클 상세 목업을 보려면 브라우저에서 JavaScript를 활성화해 주세요.
+      </div>
+    </noscript>
+  </body>
+</html>

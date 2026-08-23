@@ -138,3 +138,12 @@ apt update && apt install systemd-timesyncd
 sudo service systemd-timesyncd start
 sudo timedatectl set-ntp true
 ```
+
+## 2026 기술 아티클 서비스 경로
+
+외부에 추가로 공개되는 컨테이너 포트는 없다. 브라우저의 `/tech-articles` 요청은 기존
+Nginx가 `web` SPA로, `/api/v1/tech-articles` 요청은 기존 `api`로 전달한다. API는
+`internal` 네트워크의 `tech-article-pipeline:8080`만 호출하며, 파이프라인은 같은
+네트워크의 `pipeline-mysql:3306`만 사용한다. FastAPI와 MySQL은 `expose`만 사용하고
+호스트 `ports`를 열지 않는다. 기술 아티클 서비스는 `tech-articles` Compose profile에
+속하지만 운영/개발 CICDtools는 항상 이 profile을 활성화한다.

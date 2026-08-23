@@ -1,112 +1,111 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
-# ==============================================================================
-# Database Backup Script
-# ==============================================================================
-# Description:
-#   Creates a dump of the PostgreSQL database and saves it to a local 'backups' folder.
-#   - Retains at least 10 backups.
-#   - Deletes backups older than 31 days ONLY if there are more than 10 files.
-# Usage:
-#   ./backup_db.sh [suffix_label]
-# ==============================================================================
-
-# Resolve absolute path to the project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-# 백업 디렉토리를 프로젝트 루트의 상위 폴더로 변경
-BACKUP_DIR="$PROJECT_ROOT/../backups"
+readonly SCRIPT_DIR
+# shellcheck source=utils/runtime.sh
+source "$SCRIPT_DIR/utils/runtime.sh"
+# shellcheck source=utils/backup_utils.sh
+source "$SCRIPT_DIR/utils/backup_utils.sh"
 
-# Import Common Logging
-source "$(dirname "$0")/utils/common_logging.sh"
+setup_logging "backup_db"
+cicd_require_commands docker gzip tar sha256sum mktemp openssl
 
-# Setup Logging (Redirects output to log file & handles errors)
-setup_logging "db_backup"
-
-# Argument handling for custom label (default: manual)
-LABEL=${1:-manual}
-TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-DB_FILENAME="db_backup_${TIMESTAMP}_${LABEL}.sql.gz"
-FILES_FILENAME="files_backup_${TIMESTAMP}_${LABEL}.tar.gz"
-
-# Create backup directory if it doesn't exist
-if [ ! -d "$BACKUP_DIR" ]; then
-    log_info "Creating backup directory: $BACKUP_DIR"
-    sudo mkdir -p "$BACKUP_DIR"
-    # Set permissions so that the current user (and sudo) can write to it
-    # We give full control to owner (root if sudo mkdir) and group/others read/execute?
-    # Actually, we should make it owned by the user if possible, or just open permissions
-    sudo chown "$CURRENT_USER:$CURRENT_USER" "$BACKUP_DIR"
-    sudo chmod 755 "$BACKUP_DIR"
+label="${1:-manual}"
+if [[ ! "$label" =~ ^[A-Za-z0-9._-]+$ ]]; then
+  log_error "Backup label may contain only letters, numbers, dot, underscore, and dash."
+  exit 2
 fi
 
-# Ensure 'teams' upload directory exists to prevent tar errors
-mkdir -p "$PROJECT_ROOT/api/uploads/teams"
-mkdir -p "$PROJECT_ROOT/api/json"
-mkdir -p "$PROJECT_ROOT/logs"
+cicd_print_banner "💾" "Integrated Backup / 통합 백업" \
+  "📘 PostgreSQL, pipeline MySQL, 업로드·JSON·로그 파일을 같은 시점의 한 세트로 저장합니다." \
+  "🏷️  Backup label / 백업 라벨: $label" \
+  "🛡️  임시 디렉터리에서 압축과 SHA-256 검증이 끝난 뒤에만 최종 백업으로 활성화합니다." \
+  "ℹ️  최초 도입으로 pipeline MySQL이 아직 없을 때만 NOT_PRESENT로 기록합니다." \
+  "🔐 데이터 본문과 시크릿 값은 화면이나 로그에 출력하지 않습니다."
 
-echo "========================================"
-log_info "💾 Starting System Backup"
-log_info "   Label: $LABEL"
-log_info "   Dest : $BACKUP_DIR"
-echo "========================================"
+mkdir -p "$CICD_BACKUP_ROOT"
+chmod 700 "$CICD_BACKUP_ROOT"
+timestamp="$(date -u +'%Y%m%d_%H%M%S')"
+set_name="${timestamp}_${label}"
+final_dir="$CICD_BACKUP_ROOT/$set_name"
+[[ ! -e "$final_dir" ]] || { log_error "Backup set already exists: $set_name"; exit 1; }
+temp_dir="$(mktemp -d "$CICD_BACKUP_ROOT/.tmp.${set_name}.XXXXXX")"
+cleanup() { [[ -d "$temp_dir" ]] && rm -rf -- "$temp_dir"; }
+trap cleanup EXIT
 
-# Check if DB container is running
-if [ -z "$(sudo docker compose ps -q db)" ]; then
-    log_error "❌ Error: DB container is not running!"
+db_env="$CICD_PROJECT_ROOT/envs/db_prod.env"
+[[ "${CICD_ENVIRONMENT:-prod}" == "dev" ]] && db_env="$CICD_PROJECT_ROOT/envs/db_dev.env"
+db_user="$(cicd_env_get "$db_env" POSTGRES_USER)"
+db_name="$(cicd_env_get "$db_env" POSTGRES_DB)"
+
+db_container="$(cicd_service_container_id db)"
+[[ -n "$db_container" ]] || { log_error "PostgreSQL container is not present."; exit 1; }
+db_state="$(cicd_docker inspect --format '{{.State.Status}}' "$db_container")"
+[[ "$db_state" == "running" ]] || { log_error "PostgreSQL container is not running."; exit 1; }
+
+cicd_print_step 1 5 "🐘" "Dump and validate PostgreSQL / PostgreSQL 덤프·검증"
+cicd_compose exec -T db pg_dump -U "$db_user" -d "$db_name" --clean --if-exists --no-owner --no-privileges \
+  | gzip -9 >"$temp_dir/postgres.sql.gz"
+gzip -t "$temp_dir/postgres.sql.gz"
+
+pipeline_state="NOT_PRESENT"
+pipeline_container="$(cicd_service_container_id pipeline-mysql)"
+if [[ -n "$pipeline_container" ]]; then
+  mysql_state="$(cicd_docker inspect --format '{{.State.Status}}' "$pipeline_container")"
+  [[ "$mysql_state" == "running" ]] || {
+    log_error "pipeline-mysql exists but is not running; refusing a partial backup."
     exit 1
-fi
-
-# 1. Database Backup
-# Load DB credentials from env file if available
-if [ -f "$PROJECT_ROOT/envs/db_prod.env" ]; then
-    DB_USER=$(grep "^DB_USER=" "$PROJECT_ROOT/envs/db_prod.env" | cut -d '=' -f2)
-    DB_NAME=$(grep "^DB_NAME=" "$PROJECT_ROOT/envs/db_prod.env" | cut -d '=' -f2)
+  }
+  cicd_print_step 2 5 "🐬" "Dump and validate pipeline MySQL / pipeline MySQL 덤프·검증"
+  cicd_compose exec -T pipeline-mysql sh -c \
+    'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysqldump -uroot --single-transaction --routines --events --add-drop-table --set-gtid-purged=OFF "$MYSQL_DATABASE"' \
+    | gzip -9 >"$temp_dir/pipeline-mysql.sql.gz"
+  gzip -t "$temp_dir/pipeline-mysql.sql.gz"
+  pipeline_state="OK"
 else
-    DB_USER="tcp_user"
-    DB_NAME="tcp_db"
-fi
-DB_USER=${DB_USER:-tcp_user}
-DB_NAME=${DB_NAME:-tcp_db}
-
-log_info "📦 [1/2] Dumping database '$DB_NAME' as user '$DB_USER'..."
-sudo docker compose exec -T db pg_dump -U "$DB_USER" -d "$DB_NAME" --clean --if-exists | gzip | sudo tee "$BACKUP_DIR/$DB_FILENAME" > /dev/null
-log_success "DB Backup created: $DB_FILENAME"
-
-# 2. Local Files Backup (Uploads, JSON, Logs)
-log_info "📦 [2/2] Archiving local files (uploads, json, logs)..."
-# -C "$PROJECT_ROOT" : Change to project root before archiving
-# Use sudo to ensure we can read files owned by root (from Docker)
-sudo tar -czf "$BACKUP_DIR/$FILES_FILENAME" -C "$PROJECT_ROOT" api/uploads api/json logs
-
-# Change ownership of the backup files to the current user (if defined)
-if [ -n "$CURRENT_USER" ]; then
-    sudo chown "$CURRENT_USER" "$BACKUP_DIR/$DB_FILENAME"
-    sudo chown "$CURRENT_USER" "$BACKUP_DIR/$FILES_FILENAME"
+  cicd_print_step 2 5 "🐬" "Record the first-bootstrap MySQL state / 최초 MySQL 미존재 기록"
+  log_warn "pipeline-mysql is not present; recording first-bootstrap NOT_PRESENT state. / 최초 구축 상태로 기록합니다."
 fi
 
-log_success "Files Backup created: $FILES_FILENAME"
+mkdir -p "$CICD_PROJECT_ROOT/api/uploads" "$CICD_PROJECT_ROOT/api/json" "$CICD_PROJECT_ROOT/logs"
+cicd_print_step 3 5 "📦" "Archive uploads, JSON assets, and logs / 파일 묶음 생성"
+cicd_as_root tar -czf "$temp_dir/files.tar.gz" -C "$CICD_PROJECT_ROOT" api/uploads api/json logs
+cicd_as_root chown "${SUDO_USER:-$(id -un)}" "$temp_dir/files.tar.gz" 2>/dev/null || true
+tar -tzf "$temp_dir/files.tar.gz" >/dev/null
 
-log_success "Backup process completed!"
+cicd_print_step 4 5 "🔏" "Create metadata and SHA-256 manifest / 메타데이터·체크섬 생성"
+cat >"$temp_dir/metadata" <<EOF
+format_version=2
+created_at=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+label=$label
+postgres=OK
+pipeline_mysql=$pipeline_state
+files=OK
+EOF
 
-# Cleanup old backups
-# Rule 1: Keep at least 10 backups (regardless of age).
-# Rule 2: If more than 10 backups exist, delete those older than 31 days.
-log_info "🧹 Checking for old backups to cleanup..."
+(
+  cd "$temp_dir"
+  checksum_files=(metadata postgres.sql.gz files.tar.gz)
+  [[ "$pipeline_state" == "OK" ]] && checksum_files+=(pipeline-mysql.sql.gz)
+  sha256sum "${checksum_files[@]}" >SHA256SUMS
+  sha256sum --check --strict SHA256SUMS >/dev/null
+)
+chmod 600 "$temp_dir"/*
+mv "$temp_dir" "$final_dir"
+trap - EXIT
 
-cleanup_files() {
-    local pattern=$1
-    local count=$(find "$BACKUP_DIR" -name "$pattern" | wc -l)
-
-    if [ "$count" -le 10 ]; then
-        log_info "   - $pattern: $count files found (<= 10). Skipping cleanup."
-    else
-        log_info "   - $pattern: $count files found (> 10). Cleaning up files older than 31 days..."
-        sudo find "$BACKUP_DIR" -name "$pattern" -mtime +31 -delete
+# Keep at least ten sets; only remove sets older than 31 days when there are more.
+cicd_print_step 5 5 "🧹" "Apply safe retention policy / 안전한 보존 정책 적용"
+mapfile -t backup_sets < <(find "$CICD_BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d ! -name '.tmp.*' -printf '%p\n' | sort)
+if (( ${#backup_sets[@]} > 10 )); then
+  removable_count=$(( ${#backup_sets[@]} - 10 ))
+  for (( index=0; index<removable_count; index++ )); do
+    old_set="${backup_sets[$index]}"
+    if [[ -n "$(find "$old_set" -maxdepth 0 -mtime +31 -print -quit)" ]]; then
+      rm -rf -- "$old_set"
     fi
-}
+  done
+fi
 
-cleanup_files "db_backup_*.sql.gz"
-cleanup_files "files_backup_*.tar.gz"
-
+log_success "🎉 Backup set created and verified: $set_name / 통합 백업 생성과 검증을 완료했습니다."
