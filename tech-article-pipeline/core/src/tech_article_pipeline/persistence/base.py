@@ -7,7 +7,7 @@ from tech_article_pipeline.contracts import CrawlJobRecord, JobRecord, Publicati
 
 # 수집 후 이 시간 안에 있는 아티클에 공개 화면이 NEW 배지를 붙입니다.
 # 정책 값이라 서버가 판정합니다 — 프런트에 박아 두면 바꿀 때마다 재배포해야 합니다.
-NEW_ARTICLE_WINDOW_HOURS = 12
+NEW_ARTICLE_WINDOW_HOURS = 24
 
 
 # 관리자 화면의 파이프라인 단계. 표시 순서대로 둡니다.

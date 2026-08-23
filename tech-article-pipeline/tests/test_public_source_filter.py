@@ -161,4 +161,4 @@ def test_new_flag_marks_recently_collected_articles():
 
 def test_new_window_is_a_server_side_policy():
     # 프런트에 숫자를 박으면 바꿀 때마다 프런트를 배포해야 합니다.
-    assert NEW_ARTICLE_WINDOW_HOURS == 12
+    assert NEW_ARTICLE_WINDOW_HOURS == 24

@@ -88,7 +88,7 @@
 
 - `GET /api/v1/tech-articles`: `page`, `pageSize`, `keyword`, `tags`(반복),
   `sources`(반복). 소스는 파이프라인 카탈로그로 검증하며, 모르는 값이면 422 입니다.
-  각 항목의 `isNew` 는 수집 후 12시간 이내인지를 서버가 판정한 값입니다 —
+  각 항목의 `isNew` 는 수집 후 24시간 이내인지를 서버가 판정한 값입니다 —
   기준을 프런트에 두면 바꿀 때마다 재배포해야 합니다.
 - `GET /api/v1/tech-articles/sources`: 소스 선택기용 목록(`id`, `name`, `domain`,
   `category`, 공개 건수 `count`). 소스는 계속 늘어나므로 목록 응답에 얹지 않고
