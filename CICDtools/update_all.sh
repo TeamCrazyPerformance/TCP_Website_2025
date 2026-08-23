@@ -1,68 +1,67 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
-# ==============================================================================
-# Update All Services Script
-# ==============================================================================
-# Description:
-#   Sequentially updates Frontend, runs Migrations, and updates Backend.
-# ==============================================================================
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+# shellcheck source=utils/runtime.sh
+source "$SCRIPT_DIR/utils/runtime.sh"
+# shellcheck source=utils/deployment_steps.sh
+source "$SCRIPT_DIR/utils/deployment_steps.sh"
+# shellcheck source=utils/git_utils.sh
+source "$SCRIPT_DIR/utils/git_utils.sh"
 
-SCRIPT_DIR="$(dirname "$0")"
-
-# ==============================================================================
-# ⚠️  User Confirmation
-# ==============================================================================
-echo "=============================================================================="
-echo "                        🌍 Full Stack Update Tool                             "
-echo "=============================================================================="
-echo "📘 What is this? / 📘 이건 무엇인가요?"
-echo "   - Sequentially runs: Frontend Update -> DB Migration -> Backend Update."
-echo "   - 순차적으로 실행합니다: 프론트엔드 업데이트 -> DB 마이그레이션 -> 백엔드 업데이트."
-echo ""
-echo "🕒 When to use? / 🕒 언제 사용하나요?"
-echo "   - When you want to sync the entire server with the latest 'main' branch."
-echo "   - 서버 전체를 최신 'main' 브랜치와 동기화하고 싶을 때 사용합니다."
-echo "   - Useful for major releases or full system updates."
-echo "   - 메이저 배포나 전체 시스템 업데이트 시 유용합니다."
-echo ""
-echo "💥 What happens next? / 💥 실행하면 무슨 일이 일어나나요?"
-echo "   - 1. Frontend updated (No downtime)"
-echo "   - 1. 프론트엔드 업데이트 (중단 없음)"
-echo "   - 2. DB Schema updated (No downtime)"
-echo "   - 2. DB 스키마 업데이트 (중단 없음)"
-echo "   - 3. Backend restarted (⚠️ SHORT DOWNTIME ~5s)"
-echo "   - 3. 백엔드 재시작 (⚠️ 약 5초간 짧은 중단)"
-echo "   - Note: You will be asked to confirm each step individually as well."
-echo "   - 참고: 각 단계별로도 실행 여부를 다시 한 번 물어볼 것입니다."
-echo "=============================================================================="
-read -p "❓ Do you want to proceed? (y/n): " CONFIRM
-if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
-    echo "🚫 Operation cancelled."
-    exit 0
-fi
-echo ""
-
-# Import Common Logging
-source "$(dirname "$0")/utils/common_logging.sh"
-
-# Setup Logging (Redirects output to log file & handles errors)
-setup_logging "full_stack_update"
-
-# 1. Update Frontend
-log_info ">>> [1/3] Updating Frontend..."
-if [ -n "$SUDO_USER" ]; then
-    sudo -u "$SUDO_USER" bash "$SCRIPT_DIR/update_frontend.sh"
+setup_logging "update_all"
+if [[ "${CICD_DEPLOY_RESUMED:-0}" != "1" ]]; then
+  cicd_print_banner "🌍" "Full Stack Update / 전체 서비스 업데이트" \
+    "📘 What is this? / 이건 무엇인가요?" \
+    "   - 기술 아티클 파이프라인, NestJS API, 프론트엔드를 한 번에 배포합니다." \
+    "   - 현재 서비스와 화면은 새 버전의 준비·검증이 끝날 때까지 유지됩니다." \
+    "" \
+    "🕒 When to use? / 언제 사용하나요?" \
+    "   - 일반 운영 배포나 전체 릴리스에는 이 스크립트를 사용하세요." \
+    "" \
+    "💥 What happens next? / 실행하면 무슨 일이 일어나나요?" \
+    "   1. 🔍 Git fast-forward 확인 및 통합 백업 1회" \
+    "   2. 🎨 비활성 디렉터리에 프론트엔드 선행 빌드" \
+    "   3. 📰 Pipeline/MySQL 마이그레이션 및 readiness 확인" \
+    "   4. ⚙️  API/PostgreSQL 마이그레이션 및 readiness 확인" \
+    "   5. 🔗 연동 확인 후 프론트엔드 활성화와 전체 헬스체크" \
+    "   - 마지막 점검이 실패하면 이전 프론트엔드 화면을 자동 복구합니다."
 else
-    bash "$SCRIPT_DIR/update_frontend.sh"
+  cicd_print_section "🚀" "Verified revision deployment / 확인된 소스 배포 시작"
+fi
+cicd_require_commands docker git curl npm openssl
+cicd_validate_env_files
+cicd_require_production_ssl
+
+cd "$CICD_PROJECT_ROOT"
+if [[ "${CICD_DEPLOY_RESUMED:-0}" != "1" ]]; then
+  if ! cicd_confirm "Deploy pipeline, API, and frontend from the latest upstream revision?"; then
+    log_warn "🚫 Deployment cancelled. No service was changed. / 배포를 취소했습니다. 서비스는 변경되지 않았습니다."
+    exit 0
+  fi
+  check_git_status
+  pull_latest_changes
+  exec env CICD_DEPLOY_RESUMED=1 CICD_ASSUME_YES=1 bash "$SCRIPT_DIR/update_all.sh"
 fi
 
-# 2. Update Backend (Get new code & migrations into container)
-log_info ">>> [2/3] Updating Backend..."
-bash "$SCRIPT_DIR/update_backend.sh"
+cicd_print_step 1 6 "💾" "Create one consistent backup set / 전체 서비스 백업"
+CICD_ASSUME_YES=1 bash "$SCRIPT_DIR/backup_db.sh" "pre-update-all"
 
-# 3. Run Migrations (Now that container has new code)
-log_info ">>> [3/3] Running Database Migrations..."
-bash "$SCRIPT_DIR/migrate_db.sh"
-
-log_success "Full Stack update completed!"
+# Keep the active frontend untouched until both backend services are ready.
+cicd_print_step 2 6 "🎨" "Build the inactive frontend bundle / 프론트엔드 선행 빌드"
+cicd_stage_frontend
+cicd_print_step 3 6 "📰" "Deploy pipeline and MySQL migrations / 파이프라인 배포"
+cicd_deploy_pipeline
+cicd_print_step 4 6 "⚙️" "Deploy API and PostgreSQL migrations / API 배포"
+cicd_deploy_api
+cicd_verify_api_pipeline_integration
+cicd_print_step 5 6 "🌐" "Activate the verified frontend / 프론트엔드 활성화"
+cicd_activate_frontend
+cicd_print_step 6 6 "🩺" "Run end-to-end health checks / 전체 서비스 점검"
+if ! CICD_ASSUME_YES=1 bash "$SCRIPT_DIR/check_health.sh"; then
+  cicd_rollback_frontend || true
+  exit 1
+fi
+cicd_commit_frontend
+log_success "🎉 Pipeline, API, and frontend deployment completed. / 전체 서비스 배포를 완료했습니다."

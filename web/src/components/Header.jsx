@@ -1,7 +1,7 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
-import logo from '../logo.svg';
-import { useAuth } from '../context/AuthContext';
+import React, { useMemo, useState, useEffect } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import logo from "../logo.svg";
+import { useAuth } from "../context/AuthContext";
 
 function Header({ isScrolled }) {
   const navigate = useNavigate();
@@ -18,32 +18,37 @@ function Header({ isScrolled }) {
   }, [isAuthenticated, user?.profile_image]);
 
   const displayName = useMemo(
-    () => user?.name || user?.username || '사용자',
-    [user]
+    () => user?.name || user?.username || "사용자",
+    [user],
   );
-  const avatarInitial = displayName ? displayName[0].toUpperCase() : 'U';
+  const avatarInitial = displayName ? displayName[0].toUpperCase() : "U";
 
   const getNavLinkClass = ({ isActive }) =>
-    `nav-link orbitron text-sm font-medium whitespace-nowrap ${isActive ? 'active' : 'text-gray-300'
+    `nav-link orbitron text-sm font-medium whitespace-nowrap ${
+      isActive ? "active" : "text-gray-300"
     } hover:text-white`;
 
   const getLoginLinkClass = ({ isActive }) =>
-    `px-1.5 max-[420px]:px-1 sm:px-4 py-1.5 sm:py-2 text-[11px] max-[420px]:text-[10px] sm:text-sm border whitespace-nowrap inline-flex items-center justify-center ${isActive ? 'border-gray-500 text-white bg-white/5' : 'border-gray-700 text-gray-200 bg-transparent'
+    `px-1.5 max-[420px]:px-1 sm:px-4 py-1.5 sm:py-2 text-[11px] max-[420px]:text-[10px] sm:text-sm border whitespace-nowrap inline-flex items-center justify-center ${
+      isActive
+        ? "border-gray-500 text-white bg-white/5"
+        : "border-gray-700 text-gray-200 bg-transparent"
     } rounded-xl hover:border-gray-500 hover:bg-white/5 transition-colors`;
 
   const getRegisterLinkClass = ({ isActive }) =>
-    `px-1.5 max-[420px]:px-1 sm:px-5 py-1.5 sm:py-2 text-[11px] max-[420px]:text-[10px] sm:text-sm whitespace-nowrap inline-flex items-center justify-center rounded-xl transition-colors ${isActive
-      ? 'bg-gradient-to-r from-indigo-500 to-violet-500'
-      : 'bg-gradient-to-r from-blue-500 to-indigo-500'
+    `px-1.5 max-[420px]:px-1 sm:px-5 py-1.5 sm:py-2 text-[11px] max-[420px]:text-[10px] sm:text-sm whitespace-nowrap inline-flex items-center justify-center rounded-xl transition-colors ${
+      isActive
+        ? "bg-gradient-to-r from-indigo-500 to-violet-500"
+        : "bg-gradient-to-r from-blue-500 to-indigo-500"
     } hover:from-indigo-500 hover:to-violet-500 text-white shadow-lg shadow-indigo-500/20`;
 
   const logoutButtonClass =
-    'px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-600 text-gray-300 rounded-lg hover:border-gray-400 transition-colors';
+    "px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-600 text-gray-300 rounded-lg hover:border-gray-400 transition-colors";
 
   const handleLogout = async () => {
     await logout();
     setIsMobileMenuOpen(false);
-    navigate('/');
+    navigate("/");
   };
 
   const closeMobileMenu = () => {
@@ -52,14 +57,18 @@ function Header({ isScrolled }) {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 ${isScrolled ? 'bg-black' : 'bg-black'
-        } backdrop-blur-md border-b border-gray-800 transition-colors duration-300`}
+      className={`fixed top-0 left-0 right-0 z-50 ${
+        isScrolled ? "bg-black" : "bg-black"
+      } backdrop-blur-md border-b border-gray-800 transition-colors duration-300`}
     >
       <div className="container mx-auto px-2.5 sm:px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo and Title */}
-          <div className="flex-1 min-w-0">
-            <NavLink to="/" className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
+          <div className="flex-1 lg:flex-none min-w-0">
+            <NavLink
+              to="/"
+              className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0"
+            >
               <div className="w-9 h-9 sm:w-10 sm:h-10">
                 <img
                   src={logo}
@@ -79,7 +88,7 @@ function Header({ isScrolled }) {
           </div>
 
           {/* Navigation */}
-          <nav className="hidden md:flex flex-1 items-center justify-center space-x-6 px-4">
+          <nav className="hidden lg:flex flex-1 items-center justify-center space-x-3 xl:space-x-6 px-3">
             <NavLink to="/about" className={getNavLinkClass}>
               About
             </NavLink>
@@ -92,6 +101,9 @@ function Header({ isScrolled }) {
             <NavLink to="/announcement" className={getNavLinkClass}>
               Announcement
             </NavLink>
+            <NavLink to="/tech-articles" className={getNavLinkClass}>
+              Tech Articles
+            </NavLink>
             <NavLink to="/study" className={getNavLinkClass}>
               Study
             </NavLink>
@@ -100,12 +112,15 @@ function Header({ isScrolled }) {
             </NavLink>
           </nav>
 
-          <div className="flex flex-1 items-center justify-end gap-1 sm:gap-2">
+          <div className="flex flex-1 lg:flex-none items-center justify-end gap-1 sm:gap-2">
             {/* Login/Sign Up Links */}
             <div className="flex items-center gap-1 sm:gap-3">
               {isAuthenticated ? (
                 <>
-                  <NavLink to="/mypage" className="flex items-center space-x-2 px-1.5 sm:px-2 py-1 rounded-lg hover:bg-white/10 transition-colors group">
+                  <NavLink
+                    to="/mypage"
+                    className="flex items-center space-x-2 px-1.5 sm:px-2 py-1 rounded-lg hover:bg-white/10 transition-colors group"
+                  >
                     {!imgError ? (
                       <img
                         src={user?.profile_image || logo}
@@ -151,35 +166,68 @@ function Header({ isScrolled }) {
             {/* Mobile Menu Button */}
             <button
               type="button"
-              className="md:hidden w-9 h-9 sm:w-10 sm:h-10 rounded-lg border border-gray-700 text-white hover:border-gray-500 transition-colors flex items-center justify-center shrink-0 relative z-20 ml-0.5"
+              className="lg:hidden w-9 h-9 sm:w-10 sm:h-10 rounded-lg border border-gray-700 text-white hover:border-gray-500 transition-colors flex items-center justify-center shrink-0 relative z-20 ml-0.5"
               onClick={() => setIsMobileMenuOpen((prev) => !prev)}
               aria-label="모바일 메뉴 열기"
               aria-expanded={isMobileMenuOpen}
             >
-              <i className={`fas ${isMobileMenuOpen ? 'fa-times' : 'fa-bars'} text-white`}></i>
+              <i
+                className={`fas ${isMobileMenuOpen ? "fa-times" : "fa-bars"} text-white`}
+              ></i>
             </button>
           </div>
         </div>
 
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-800 py-3">
+          <div className="lg:hidden border-t border-gray-800 py-3">
             <nav className="flex flex-col gap-1 mb-3">
-              <NavLink to="/about" className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10 orbitron" onClick={closeMobileMenu}>
+              <NavLink
+                to="/about"
+                className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10 orbitron"
+                onClick={closeMobileMenu}
+              >
                 About
               </NavLink>
-              <NavLink to="/members" className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10 orbitron" onClick={closeMobileMenu}>
+              <NavLink
+                to="/members"
+                className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10 orbitron"
+                onClick={closeMobileMenu}
+              >
                 Members
               </NavLink>
-              <NavLink to="/recruitment" className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10 orbitron" onClick={closeMobileMenu}>
+              <NavLink
+                to="/recruitment"
+                className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10 orbitron"
+                onClick={closeMobileMenu}
+              >
                 Recruitment
               </NavLink>
-              <NavLink to="/announcement" className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10 orbitron" onClick={closeMobileMenu}>
+              <NavLink
+                to="/announcement"
+                className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10 orbitron"
+                onClick={closeMobileMenu}
+              >
                 Announcement
               </NavLink>
-              <NavLink to="/study" className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10 orbitron" onClick={closeMobileMenu}>
+              <NavLink
+                to="/tech-articles"
+                className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10 orbitron"
+                onClick={closeMobileMenu}
+              >
+                Tech Articles
+              </NavLink>
+              <NavLink
+                to="/study"
+                className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10 orbitron"
+                onClick={closeMobileMenu}
+              >
                 Study
               </NavLink>
-              <NavLink to="/team" className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10 orbitron" onClick={closeMobileMenu}>
+              <NavLink
+                to="/team"
+                className="px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10 orbitron"
+                onClick={closeMobileMenu}
+              >
                 Find Your Team
               </NavLink>
             </nav>

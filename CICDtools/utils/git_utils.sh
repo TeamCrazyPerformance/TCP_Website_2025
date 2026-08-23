@@ -1,86 +1,40 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
-# ==============================================================================
-# Git Utility Module
-# ==============================================================================
-# Usage:
-#   source "$(dirname "$0")/git_utils.sh"
-#   check_git_status
-# ==============================================================================
-
-# Ensure common logging is loaded
-# Use BASH_SOURCE to locate the script directory reliably (even when sourced)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-
-# Wrapper to run git as the original user if sudo is used
 git_as_user() {
-    if [ -n "$SUDO_USER" ]; then
-        sudo -u "$SUDO_USER" git "$@"
-    else
-        git "$@"
-    fi
+  if [[ -n "${SUDO_USER:-}" ]]; then
+    sudo -u "$SUDO_USER" git "$@"
+  else
+    git "$@"
+  fi
 }
 
 check_git_status() {
-    log_info "🔍 Checking git status and remote updates..."
+  log_info "🔍 Fetching the configured upstream branch... / 원격 브랜치 상태를 확인합니다."
+  git_as_user fetch --prune origin
 
-    # 1. Fetch latest changes from remote (without merging)
-    log_info "📡 Fetching origin..."
-    git_as_user fetch origin main
+  if [[ -n "$(git_as_user status --porcelain)" && "${CICD_ALLOW_DIRTY:-0}" != "1" ]]; then
+    log_error "The deployment worktree has uncommitted changes. Commit/stash them or set CICD_ALLOW_DIRTY=1 deliberately."
+    git_as_user status --short
+    return 1
+  fi
 
-    # 2. Check for uncommitted local changes
-    if [ -n "$(git_as_user status --porcelain)" ]; then
-        log_warn "⚠️  Uncommitted local changes detected:"
-        git_as_user status --short
-        echo ""
-        log_warn "These changes might cause conflicts during pull."
-        read -r -p "❓ Do you want to proceed anyway? (y/n): " CONFIRM
-        if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
-            log_error "🚫 Operation cancelled by user due to local changes."
-            exit 1
-        fi
-    else
-        log_success "✅ Working directory is clean."
-    fi
+  local upstream counts behind ahead
+  upstream="$(git_as_user rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)"
+  [[ -n "$upstream" ]] || upstream="origin/main"
+  counts="$(git_as_user rev-list --left-right --count "$upstream...HEAD")"
+  behind="$(awk '{print $1}' <<<"$counts")"
+  ahead="$(awk '{print $2}' <<<"$counts")"
 
-    # 3. Check for divergence (commits on both local and remote)
-    # Get the count of commits: local_ahead...remote_ahead
-    # HEAD...@{u} checks the current branch against its upstream
-    local UPSTREAM="origin/main"
-    local LOCAL="HEAD"
-    
-    # Check if upstream is set, if not fallback to origin/main explicit
-    if ! git_as_user rev-parse --abbrev-ref --symbolic-full-name @{u} > /dev/null 2>&1; then
-       # If no upstream configured, assume tracking origin/main for safety check
-       UPSTREAM="origin/main"
-    else
-       UPSTREAM="@{u}"
-    fi
+  if (( ahead > 0 && behind > 0 )); then
+    log_error "Local and upstream branches have diverged; automatic deployment requires a fast-forward."
+    return 1
+  fi
+  log_success "🌿 Git status is safe for deployment: local ahead=$ahead, behind=$behind. / 배포 가능한 Git 상태입니다."
+}
 
-    # Left: Local, Right: Remote
-    local COUNTS=$(git_as_user rev-list --left-right --count $UPSTREAM...$LOCAL)
-    local BEHIND=$(echo $COUNTS | awk '{print $1}')
-    local AHEAD=$(echo $COUNTS | awk '{print $2}')
-
-    if [ "$AHEAD" -gt 0 ] && [ "$BEHIND" -gt 0 ]; then
-        log_error "🚨 DIVERGED BRANCH DETECTED!"
-        log_warn "   - You have $AHEAD local commit(s)."
-        log_warn "   - Origin has $BEHIND new commit(s)."
-        log_warn "⚠️  'git pull' will likely produce a MERGE COMMIT or CONFLICT."
-        
-        read -r -p "❓ Do you want to proceed? (y/n): " CONFIRM
-        if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
-            log_error "🚫 Operation cancelled to avoid conflict."
-            exit 1
-        fi
-    elif [ "$AHEAD" -gt 0 ]; then
-        log_warn "⚠️  You are ahead of origin by $AHEAD commit(s)."
-        log_info "   - 'git pull' is safe, but you should push your changes later."
-    elif [ "$BEHIND" -gt 0 ]; then
-        log_info "⬇️  You are behind origin by $BEHIND commit(s)."
-        log_success "✅ 'git pull' will be a fast-forward update."
-    else
-        log_success "✅ Your branch is up to date with origin."
-    fi
+pull_latest_changes() {
+  log_info "⬇️  Fast-forwarding the current branch... / 최신 코드를 안전하게 가져옵니다."
+  git_as_user pull --ff-only
+  log_success "📦 Latest upstream revision is ready. / 최신 소스 코드를 준비했습니다."
 }

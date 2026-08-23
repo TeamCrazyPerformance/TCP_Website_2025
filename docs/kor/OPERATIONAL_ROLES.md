@@ -32,11 +32,11 @@
 
 ### 🔧 기술적 업무
 *   **서비스 배포 및 업데이트**:
-    *   백엔드(NestJS) API 변경 사항 배포 (`./CICDtools/update_backend.sh`)
+    *   백엔드(NestJS) API 변경 사항 배포 (`bash CICDtools/update_backend.sh`)
     *   `api.env` 등 환경변수 관리 및 시크릿 키 관리
 *   **데이터베이스 관리**:
     *   DB 스키마 마이그레이션 (`migration:run`) 관리
-    *   정기 데이터 백업 점검 (`./CICDtools/backup_db.sh`) 및 데이터 정합성 확인
+    *   정기 데이터 백업 점검 (`bash CICDtools/backup_db.sh`) 및 데이터 정합성 확인
     *   DB 성능 최적화 (Slow Query 튜닝 등)
 *   **로그 및 모니터링**:
     *   ELK Stack(Kabana)을 통한 에러 로그 분석 및 이슈 트래킹
@@ -55,7 +55,7 @@
 
 ### 🔧 기술적 업무
 *   **웹 서비스 배포**:
-    *   React 빌드 및 배포 (`./CICDtools/update_frontend.sh`)
+    *   React 빌드 및 배포 (`bash CICDtools/update_frontend.sh`)
     *   Nginx 웹 서버 설정 관리 (`nginx.conf`)
 *   **사용자 경험(UX) 최적화**:
     *   페이지 로딩 속도 모니터링 및 이미지 최적화
@@ -102,3 +102,16 @@
 | **"비밀번호를 분실했어요 / 권한 주세요!"** | 👩‍💼 서비스 관리자 (Admin 패널 처리) |
 
 *참고: 소규모 팀에서는 [인프라+백엔드], [프론트엔드], [서비스관리자] 3명 체제 또는 [개발전체+인프라], [서비스관리자] 2명 체제로 운영하는 것이 효율적입니다.*
+
+## 기술 아티클 운영 책임
+
+| 업무 | 주 담당 | 표준 도구 |
+|---|---|---|
+| 전체 릴리스와 health 승인 | 인프라 관리자 | `update_all.sh`, `check_health.sh` |
+| PostgreSQL/MySQL 백업·복구·회전 | 인프라 관리자 | `backup_db.sh`, `inspect_backup.sh`, `restore_db.sh`, `rotate_db_password.sh` |
+| Gemini/크롤러/서비스 토큰 변경 | 백엔드 운영자 | `update_tech_article_config.sh` |
+| 수집 실행, 중복·품질·게시 검수 | 서비스 관리자 | 기술 아티클 관리자 화면 |
+| 공개 목록·상세·관리자 UI 회귀 | 프론트엔드 운영자 | `/tech-articles`, 관리자 라우트 |
+
+비밀값은 채팅·티켓·실행 로그에 붙이지 않는다. SSL은 서버 인증서 담당자가 저장소 밖에서
+주입하고, 애플리케이션 운영자는 존재 여부만 확인한다.

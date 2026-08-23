@@ -1,143 +1,110 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
-# ==============================================================================
-# Database Restore Script
-# ==============================================================================
-# Description:
-#   Finds the latest backup file in 'backups/' and restores it to the database.
-#   WARNING: This will OVERWRITE the current database!
-# ==============================================================================
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+# shellcheck source=utils/runtime.sh
+source "$SCRIPT_DIR/utils/runtime.sh"
+# shellcheck source=utils/backup_utils.sh
+source "$SCRIPT_DIR/utils/backup_utils.sh"
 
-PROJECT_ROOT="$(dirname "$0")/.."
-# 백업 디렉토리를 프로젝트 루트의 상위 폴더로 변경
-BACKUP_DIR="$PROJECT_ROOT/../backups"
+setup_logging "restore_db"
+cicd_require_commands docker gzip tar sha256sum openssl
+cicd_validate_env_files
 
-# ==============================================================================
-# ⚠️  User Confirmation
-# ==============================================================================
-echo "=============================================================================="
-echo "                        ♻️  System Restore Tool                               "
-echo "=============================================================================="
-echo "📘 What is this? / 📘 이건 무엇인가요?"
-echo "   - Finds the LATEST backup files in system backups."
-echo "   - 가장 최신 DB 및 파일 백업을 찾습니다."
-echo "   - Wipes current DB and OVERWRITES local files (uploads, json)."
-echo "   - 현재 DB를 초기화하고 로컬 파일(업로드, 설정)을 덮어씁니다."
-echo ""
-echo "🕒 When to use? / 🕒 언제 사용하나요?"
-echo "   - 🚨 EMERGENCY ONLY: When data is corrupted or lost."
-echo "   - 🚨 비상 상황: 데이터가 손상되거나 유실되었을 때만 사용하세요."
-echo ""
-echo "💥 What happens next? / 💥 실행하면 무슨 일이 일어나나요?"
-echo "   - ⚠️  ALL CURRENT DATA WILL BE LOST (Overwritten)."
-echo "   - ⚠️  현재의 모든 데이터가 사라집니다 (덮어씌워짐)."
-echo "   - The system will revert to the state of the latest backup."
-echo "   - 시스템이 최신 백업 시점의 상태로 되돌아갑니다."
-echo "=============================================================================="
-# ------------------------------------------------------------------------------
-# 🔒 Step 1: Basic Confirmation (y/n)
-# ------------------------------------------------------------------------------
-read -p "❓ [1/3] Do you want to proceed? (y/n) / 진행하시겠습니까? : " CONFIRM
-if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
-    echo "🚫 Operation cancelled."
-    exit 0
+legacy_mode=0
+requested="${1:-}"
+if [[ "$requested" == "--legacy" ]]; then
+  legacy_mode=1
+  requested="${2:-}"
 fi
 
-# ------------------------------------------------------------------------------
-# 🔒 Step 2: Intent Verification (Type 'RESTORE')
-# ------------------------------------------------------------------------------
-echo ""
-echo "⚠️  This operation will DELETE ALL DATA and restore from backup."
-echo "⚠️  모든 데이터가 삭제되고 백업본으로 복구됩니다."
-read -p "❓ [2/3] Please type 'RESTORE' to continue / 'RESTORE'를 입력하세요 : " CONFIRM_TEXT
-if [[ "$CONFIRM_TEXT" != "RESTORE" ]]; then
-    echo "🚫 Operation cancelled (Text mismatch)."
-    exit 0
-fi
-
-# ------------------------------------------------------------------------------
-# 🔒 Step 3: Final Safety Check (Type 'YES')
-# ------------------------------------------------------------------------------
-echo ""
-echo "⚠️  Final Warning: This is destructive. Are you absolutely sure?"
-echo "⚠️  마지막 경고: 파괴적인 작업입니다. 정말 확실합니까?"
-read -p "❓ [3/3] Type 'YES' to execute / 'YES'를 입력하여 실행하세요 : " FINAL_CONFIRM
-if [[ "$FINAL_CONFIRM" != "YES" ]]; then
-    echo "🚫 Operation cancelled."
-    exit 0
-fi
-echo ""
-
-# Import Common Logging
-source "$(dirname "$0")/utils/common_logging.sh"
-
-# Setup Logging (Redirects output to log file & handles errors)
-setup_logging "db_restore"
-
-# Find the latest backup file
-LATEST_DB_BACKUP=$(find "$BACKUP_DIR" -name "db_backup_*.sql.gz" | sort | tail -n 1)
-LATEST_FILES_BACKUP=$(find "$BACKUP_DIR" -name "files_backup_*.tar.gz" | sort | tail -n 1)
-
-if [ -z "$LATEST_DB_BACKUP" ]; then
-    echo "❌ Error: No DB backup files found in $BACKUP_DIR"
+if (( legacy_mode )); then
+  backup_target="$(cicd_resolve_legacy_postgres_backup "$requested")" || {
+    log_error "No matching legacy PostgreSQL backup was found."
     exit 1
-fi
-
-log_info "🔍 Found latest DB backup   : $(basename "$LATEST_DB_BACKUP")"
-if [ -n "$LATEST_FILES_BACKUP" ]; then
-    log_info "🔍 Found latest Files backup: $(basename "$LATEST_FILES_BACKUP")"
+  }
+  gzip -t "$backup_target"
+  target_label="legacy PostgreSQL backup $(basename "$backup_target")"
 else
-    log_warn "⚠️  Warning: No local files backup found. Only DB will be restored."
-fi
-
-log_warn "⚠️  WARNING: This will OVERWRITE the current database and files."
-echo "   Are you sure you want to proceed? (y/n)"
-read -r CONFIRM
-
-if [ "$CONFIRM" != "y" ]; then
-    log_warn "🚫 Restore cancelled."
-    exit 0
-fi
-
-# Check if DB container is running
-if [ -z "$(sudo docker compose ps -q db)" ]; then
-    log_error "❌ Error: DB container is not running!"
+  backup_target="$(cicd_resolve_backup_set "$requested")" || {
+    log_error "No matching backup set was found."
     exit 1
+  }
+  cicd_verify_backup_set "$backup_target"
+  target_label="backup set $(basename "$backup_target")"
 fi
 
-# 1. Restore Database
-# Load DB credentials from env file if available
-if [ -f "$PROJECT_ROOT/envs/db_prod.env" ]; then
-    # Read DB_USER from env file
-    DB_USER=$(grep "^DB_USER=" "$PROJECT_ROOT/envs/db_prod.env" | cut -d '=' -f2)
-    DB_NAME=$(grep "^DB_NAME=" "$PROJECT_ROOT/envs/db_prod.env" | cut -d '=' -f2)
+cicd_print_banner "🚨" "Database Restore / 데이터 복구" \
+  "📘 What is this? / 이건 무엇인가요?" \
+  "   - 선택한 백업 시점으로 서비스 데이터를 되돌리는 비상 복구 도구입니다." \
+  "🎯 Restore target / 복구 대상: $target_label" \
+  "💥 Current data impact / 현재 데이터 영향" \
+  "   - 통합 백업: PostgreSQL, pipeline MySQL(포함된 경우), 업로드·생성 파일을 덮어씁니다." \
+  "   - legacy 모드: PostgreSQL만 복구하며 pipeline 데이터와 파일은 변경하지 않습니다." \
+  "🛡️  checksum과 압축 무결성을 먼저 검증하고, writer를 중지한 뒤 복구합니다." \
+  "⚠️  현재 데이터를 덮어쓰므로 입력을 세 번 확인합니다."
+if ! cicd_confirm_dangerous_action "RESTORE" \
+  "This operation overwrites current service data with $target_label." \
+  "현재 서비스 데이터를 $target_label 시점으로 덮어씁니다."; then
+  log_warn "🚫 Restore cancelled. Current data was not changed. / 복구를 취소했습니다."
+  exit 0
+fi
+
+db_env="$CICD_PROJECT_ROOT/envs/db_prod.env"
+[[ "${CICD_ENVIRONMENT:-prod}" == "dev" ]] && db_env="$CICD_PROJECT_ROOT/envs/db_dev.env"
+db_user="$(cicd_env_get "$db_env" POSTGRES_USER)"
+db_name="$(cicd_env_get "$db_env" POSTGRES_DB)"
+[[ "$db_user" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || { log_error "Unsafe PostgreSQL role name."; exit 1; }
+[[ "$db_name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || { log_error "Unsafe PostgreSQL database name."; exit 1; }
+
+cicd_print_step 1 6 "⏸️" "Stop API and pipeline writers / 데이터 쓰기 서비스 중지"
+cicd_compose stop api tech-article-pipeline || true
+cicd_compose up -d db
+cicd_wait_service db healthy 180
+
+postgres_dump="$backup_target"
+(( legacy_mode == 0 )) && postgres_dump="$backup_target/postgres.sql.gz"
+cicd_print_step 2 6 "🐘" "Restore PostgreSQL / PostgreSQL 복구"
+printf 'DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public AUTHORIZATION "%s"; GRANT ALL ON SCHEMA public TO public;\n' "$db_user" \
+  | cicd_compose exec -T db psql --set ON_ERROR_STOP=on -U "$db_user" -d "$db_name" >/dev/null
+gzip -cd "$postgres_dump" | cicd_compose exec -T db psql --set ON_ERROR_STOP=on -U "$db_user" -d "$db_name"
+
+if (( legacy_mode == 0 )); then
+  cicd_compose up -d pipeline-mysql
+  cicd_wait_service pipeline-mysql healthy 180
+  if grep -q '^pipeline_mysql=OK$' "$backup_target/metadata"; then
+    cicd_print_step 3 6 "🐬" "Restore pipeline MySQL / pipeline MySQL 복구"
+    mysql_database="$(cicd_env_get "$CICD_PROJECT_ROOT/.env" TECH_ARTICLE_MYSQL_DATABASE)"
+    [[ "$mysql_database" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || { log_error "Unsafe MySQL database name."; exit 1; }
+    printf 'DROP DATABASE IF EXISTS `%s`; CREATE DATABASE `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;\n' "$mysql_database" "$mysql_database" \
+      | cicd_compose exec -T pipeline-mysql sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -uroot' >/dev/null
+    gzip -cd "$backup_target/pipeline-mysql.sql.gz" | cicd_compose exec -T pipeline-mysql sh -c \
+      'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -uroot "$MYSQL_DATABASE"'
+  else
+    cicd_print_step 3 6 "🐬" "Keep current MySQL data (backup recorded NOT_PRESENT) / 기존 MySQL 유지"
+    log_warn "This first-bootstrap backup has no MySQL component; current pipeline data is unchanged. / 백업에 MySQL이 없어 기존 데이터를 유지합니다."
+  fi
+
+  cicd_print_step 4 6 "📦" "Restore uploaded and generated files / 업로드·생성 파일 복구"
+  cicd_as_root tar -xzf "$backup_target/files.tar.gz" -C "$CICD_PROJECT_ROOT"
 else
-    # Fallback defaults (should match docker-compose defaults if env file missing)
-    DB_USER="tcp_user"
-    DB_NAME="tcp_db"
+  cicd_print_step 3 6 "🐬" "Skip pipeline MySQL in legacy mode / legacy 모드 MySQL 유지"
+  cicd_print_step 4 6 "📦" "Skip files in legacy mode / legacy 모드 파일 유지"
 fi
 
-# Ensure variables are set
-DB_USER=${DB_USER:-tcp_user}
-DB_NAME=${DB_NAME:-tcp_db}
-
-log_info "⏳ [1/2] Restoring database to '$DB_NAME' as user '$DB_USER'..."
-# Unzip and pipe to psql
-# Since the dump was created with --clean, it will drop existing tables first.
-gunzip -c "$LATEST_DB_BACKUP" | sudo docker compose exec -T db psql -U "$DB_USER" -d "$DB_NAME"
-log_success "Database restored successfully!"
-
-# 2. Restore Local Files
-if [ -n "$LATEST_FILES_BACKUP" ]; then
-    log_info "⏳ [2/2] Restoring local files..."
-    # -C "$PROJECT_ROOT" : Extract relative to project root
-    # This will overwrite api/uploads, api/json, logs
-    # Use sudo to verify we can overwrite files regardless of ownership
-    sudo tar -xzf "$LATEST_FILES_BACKUP" -C "$PROJECT_ROOT"
-    log_success "Local files restored successfully!"
+cicd_print_step 5 6 "🧬" "Run migrations after restore / 복구 후 마이그레이션"
+if [[ "${CICD_ENVIRONMENT:-prod}" == "dev" ]]; then
+  cicd_compose run --rm --no-deps api npm run migration:run
 else
-    log_info "⏩ Skipping file restore (no backup found)"
+  cicd_compose run --rm --no-deps api npx typeorm migration:run -d dist/data-source.js
+fi
+if (( legacy_mode == 0 )); then
+  cicd_compose up --no-deps --force-recreate pipeline-migrate
+  cicd_wait_service pipeline-migrate exited 180
 fi
 
-log_success "System restore process completed!"
+cicd_print_step 6 6 "🩺" "Restart services and run full health checks / 서비스 재기동·전체 점검"
+cicd_compose up -d api tech-article-pipeline web reverse-proxy
+CICD_ASSUME_YES=1 bash "$SCRIPT_DIR/check_health.sh"
+log_success "🎉 Restore completed from one verified backup target. / 검증된 단일 백업으로 복구를 완료했습니다."

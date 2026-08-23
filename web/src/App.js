@@ -1,63 +1,98 @@
-import React, { useEffect, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   useLocation,
-} from 'react-router-dom';
-import './App.css';
-import './index.css';
+} from "react-router-dom";
+import "./App.css";
+import "./index.css";
 
 // 공통 컴포넌트 임포트
-import Header from './components/Header';
-import Footer from './components/Footer';
-import { AuthProvider } from './context/AuthContext';
+import Header from "./components/Header";
+import Footer from "./components/Footer";
+import { AuthProvider } from "./context/AuthContext";
 
 // 페이지 컴포넌트 임포트
-import Home from './pages/Home';
-import About from './pages/About';
-import Members from './pages/Members';
-import Recruitment from './pages/Recruitment';
-import Announcement from './pages/Announcement';
-import AnnouncementWrite from './pages/AnnouncementWrite';
-import AnnouncementArticle from './pages/AnnouncementArticle';
-import Study from './pages/Study';
-import StudyWrite from './pages/StudyWrite';
-import StudyDetail from './pages/StudyDetail';
-import StudyManagement from './pages/StudyManagement';
-import StudyProgressWrite from './pages/StudyProgressWrite';
-import Team from './pages/Team';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Privacy from './pages/Privacy';
-import PrivacyConsent from './pages/PrivacyConsent';
-import Terms from './pages/Terms';
-import OpenSourceCredits from './pages/OpenSourceCredits';
-import EasterEgg from './pages/EasterEgg';
+import Home from "./pages/Home";
+import About from "./pages/About";
+import Members from "./pages/Members";
+import Recruitment from "./pages/Recruitment";
+import Announcement from "./pages/Announcement";
+import AnnouncementWrite from "./pages/AnnouncementWrite";
+import AnnouncementArticle from "./pages/AnnouncementArticle";
+import Study from "./pages/Study";
+import StudyWrite from "./pages/StudyWrite";
+import StudyDetail from "./pages/StudyDetail";
+import StudyManagement from "./pages/StudyManagement";
+import StudyProgressWrite from "./pages/StudyProgressWrite";
+import Team from "./pages/Team";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Privacy from "./pages/Privacy";
+import PrivacyConsent from "./pages/PrivacyConsent";
+import Terms from "./pages/Terms";
+import OpenSourceCredits from "./pages/OpenSourceCredits";
+import EasterEgg from "./pages/EasterEgg";
 
 // 마이페이지 관련 컴포넌트 임포트
-import MyPageLayout from './components/MyPageLayout';
-import Profile from './pages/mypage/Profile';
-import MyPageSettings from './pages/mypage/MyPageSettings';
-import MyPageAccountSettings from './pages/mypage/MyPageAccountSettings';
-import MyStudies from './pages/mypage/MyStudies';
-import MyTeams from './pages/mypage/MyTeams';
-import Withdraw from './pages/mypage/Withdraw';
+import MyPageLayout from "./components/MyPageLayout";
+import Profile from "./pages/mypage/Profile";
+import MyPageSettings from "./pages/mypage/MyPageSettings";
+import MyPageAccountSettings from "./pages/mypage/MyPageAccountSettings";
+import MyStudies from "./pages/mypage/MyStudies";
+import MyTeams from "./pages/mypage/MyTeams";
+import Withdraw from "./pages/mypage/Withdraw";
 
 // 관리자 페이지 관련 컴포넌트 임포트
-import AdminLayout from './components/AdminLayout';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminMainContent from './pages/admin/AdminMainContent';
-import AdminRecruitment from './pages/admin/AdminRecruitment';
-import AdminAnnouncement from './pages/admin/AdminAnnouncement';
-import AdminApplicationManagement from './pages/admin/AdminApplicationManagement';
-import AdminDeleteAccount from './pages/admin/AdminDeleteAccount';
-import AdminModifyUserInfo from './pages/admin/AdminModifyUserInfo';
-import AdminPermission from './pages/admin/AdminPermission';
-import AdminStudy from './pages/admin/AdminStudy';
-import AdminTeam from './pages/admin/AdminTeam';
-import AdminServer from './pages/admin/AdminServer';
+import AdminLayout from "./components/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminMainContent from "./pages/admin/AdminMainContent";
+import AdminRecruitment from "./pages/admin/AdminRecruitment";
+import AdminAnnouncement from "./pages/admin/AdminAnnouncement";
+import AdminApplicationManagement from "./pages/admin/AdminApplicationManagement";
+import AdminDeleteAccount from "./pages/admin/AdminDeleteAccount";
+import AdminModifyUserInfo from "./pages/admin/AdminModifyUserInfo";
+import AdminPermission from "./pages/admin/AdminPermission";
+import AdminStudy from "./pages/admin/AdminStudy";
+import AdminTeam from "./pages/admin/AdminTeam";
+import AdminServer from "./pages/admin/AdminServer";
+// TA 공개 화면 지연 로딩. 정적 import 로 두면 v9 스코프 CSS 가 main.css 에 합쳐진다.
+const TechArticles = lazy(() => import("./pages/TechArticles"));
+const TechArticleDetail = lazy(() => import("./pages/TechArticleDetail"));
 
+// TA 관리 화면 지연 로딩. 같은 이유(v9 스코프 CSS 약 100KB 분리).
+const AdminTechArticles = lazy(() => import("./pages/admin/AdminTechArticles"));
+const AdminTechArticleReviews = lazy(
+  () => import("./pages/admin/AdminTechArticleReviews"),
+);
+const AdminCrawlOperations = lazy(
+  () => import("./pages/admin/AdminCrawlOperations"),
+);
+
+// 공개 화면 청크 로딩 표시. 공용 Header 가 fixed 이므로 pt-24 확보.
+function PublicChunkFallback() {
+  return (
+    <section className="pt-24 pb-16 min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
+        <p className="text-gray-400">화면을 불러오는 중...</p>
+      </div>
+    </section>
+  );
+}
+
+// 관리자 청크 로딩 표시. AdminLayout 로딩 표시와 같은 형태.
+function AdminChunkFallback() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
+        <p className="text-gray-400">화면을 불러오는 중...</p>
+      </div>
+    </div>
+  );
+}
 
 // 모든 로직을 AppContent 컴포넌트로 이동
 function AppContent() {
@@ -69,9 +104,10 @@ function AppContent() {
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
+  // TA 공개 화면도 다른 공개 페이지와 같이 공용 Header/Footer 사용
   const isNonCommonLayout =
-    location.pathname.startsWith('/mypage') ||
-    location.pathname.startsWith('/admin');
+    location.pathname.startsWith("/mypage") ||
+    location.pathname.startsWith("/admin");
 
   useEffect(() => {
     if (isNonCommonLayout) return;
@@ -80,8 +116,8 @@ function AppContent() {
       setIsScrolled(window.scrollY > 50);
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, [isNonCommonLayout]);
 
   return (
@@ -100,9 +136,31 @@ function AppContent() {
         <Route path="/study/write" element={<StudyWrite />} />
         <Route path="/study/:id" element={<StudyDetail />} />
         <Route path="/study/:id/manage" element={<StudyManagement />} />
-        <Route path="/study/:id/progress/write" element={<StudyProgressWrite />} />
-        <Route path="/study/:id/progress/:progressId/edit" element={<StudyProgressWrite />} />
+        <Route
+          path="/study/:id/progress/write"
+          element={<StudyProgressWrite />}
+        />
+        <Route
+          path="/study/:id/progress/:progressId/edit"
+          element={<StudyProgressWrite />}
+        />
         <Route path="/team" element={<Team />} />
+        <Route
+          path="/tech-articles"
+          element={
+            <Suspense fallback={<PublicChunkFallback />}>
+              <TechArticles />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/tech-articles/:articleId"
+          element={
+            <Suspense fallback={<PublicChunkFallback />}>
+              <TechArticleDetail />
+            </Suspense>
+          }
+        />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/privacy" element={<Privacy />} />
@@ -134,6 +192,46 @@ function AppContent() {
           <Route path="study" element={<AdminStudy />} />
           <Route path="team" element={<AdminTeam />} />
           <Route path="server" element={<AdminServer />} />
+          <Route
+            path="tech-articles"
+            element={
+              <Suspense fallback={<AdminChunkFallback />}>
+                <AdminTechArticles />
+              </Suspense>
+            }
+          />
+          <Route
+            path="tech-articles/reviews/duplicates"
+            element={
+              <Suspense fallback={<AdminChunkFallback />}>
+                <AdminTechArticleReviews kind="duplicates" />
+              </Suspense>
+            }
+          />
+          <Route
+            path="tech-articles/reviews/quality"
+            element={
+              <Suspense fallback={<AdminChunkFallback />}>
+                <AdminTechArticleReviews kind="quality" />
+              </Suspense>
+            }
+          />
+          <Route
+            path="tech-articles/reviews/publication"
+            element={
+              <Suspense fallback={<AdminChunkFallback />}>
+                <AdminTechArticleReviews kind="publication" />
+              </Suspense>
+            }
+          />
+          <Route
+            path="tech-articles/crawls"
+            element={
+              <Suspense fallback={<AdminChunkFallback />}>
+                <AdminCrawlOperations />
+              </Suspense>
+            }
+          />
         </Route>
       </Routes>
       {!isNonCommonLayout && <Footer />}

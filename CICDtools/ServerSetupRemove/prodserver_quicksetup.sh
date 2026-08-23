@@ -1,186 +1,63 @@
 #!/usr/bin/env bash
-set -e  # 에러 발생 시 즉시 중단
+set -Eeuo pipefail
 
-### =========================
-### 기본 설정
-### =========================
-# Resolve absolute path to the project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# SCRIPT_DIR is .../CICDtools/ServerSetupRemove
-# PROJECT_DIR is two levels up: .../TCP_Website_2025
-PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
-TARGET_USER="${SUDO_USER:-$USER}"
+readonly SCRIPT_DIR
+# shellcheck source=../utils/runtime.sh
+source "$SCRIPT_DIR/../utils/runtime.sh"
+# shellcheck source=../utils/deployment_steps.sh
+source "$SCRIPT_DIR/../utils/deployment_steps.sh"
 
-# ==============================================================================
-# 📝 Execution Logging
-# ==============================================================================
-LOG_DIR="$(dirname "$0")/logs"
-LOG_DIR="$(dirname "$0")/logs"
-if [ ! -d "$LOG_DIR" ]; then
-    mkdir -p "$LOG_DIR" 2>/dev/null || sudo mkdir -p "$LOG_DIR"
-    sudo chown -R "${SUDO_USER:-$(whoami)}" "$LOG_DIR" 2>/dev/null || true
-fi
-LOG_FILE="$LOG_DIR/execution_$(date +%Y-%m-%d).log"
-CURRENT_USER=$(whoami)
-SCRIPT_NAME=$(basename "$0")
-TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
-echo "[$TIMESTAMP] User: $CURRENT_USER | Script: $SCRIPT_NAME | Action: STARTED" >> "$LOG_FILE"
+setup_logging "prodserver_quicksetup"
+export CICD_ENVIRONMENT=prod
+cicd_print_banner "🏗️" "Production Server Quick Setup / 운영 서버 빠른 구축" \
+  "📘 What is this? / 이건 무엇인가요?" \
+  "   - 빈 운영 서버에 TCP 웹사이트의 전체 서비스를 처음부터 구성합니다." \
+  "" \
+  "🕒 When to use? / 언제 사용하나요?" \
+  "   - 새 운영 서버를 처음 설정하거나 완전히 비어 있는 환경을 구축할 때 사용하세요." \
+  "" \
+  "💥 What happens next? / 실행하면 무슨 일이 일어나나요?" \
+  "   - 환경값·권한 → frontend 선행 빌드 → 두 DB migration → 관리자 seed → 서비스·연동 점검 순서입니다." \
+  "   - PostgreSQL, ELK, pipeline MySQL, 기술 아티클 파이프라인, NestJS API, React frontend를 포함합니다." \
+  "🔐 내부 시크릿은 자동 생성하고, 관리자·Gemini·크롤러 정보는 필요한 경우 입력받습니다." \
+  "🔒 SSL origin.crt/origin.key는 외부 서버 설정이 먼저 주입해야 하며 여기서는 존재만 확인합니다." \
+  "💥 Docker 볼륨·DB 스키마·관리자 계정을 생성하므로 입력을 세 번 확인합니다."
+cicd_require_commands docker curl npm openssl git
 
-# Delete logs older than 30 days
-find "$LOG_DIR" -name "execution_*.log" -mtime +30 -delete
-
-echo "🚀 Server quick setup starting..."
-echo "📂 Project dir : $PROJECT_DIR"
-echo "👤 Target user : $TARGET_USER"
-echo
-
-# ==============================================================================
-# ⚠️  User Confirmation / 사용자 확인
-# ==============================================================================
-echo "=============================================================================="
-echo "                        🚀 Production Server Setup Tool                       "
-echo "=============================================================================="
-echo "📘 What is this? / 📘 이건 무엇인가요?"
-echo "   - Initializes the production server environment from scratch."
-echo "   - 운영(Production) 서버 환경을 처음부터 초기화합니다."
-echo ""
-echo "🕒 When to use? / 🕒 언제 사용하나요?"
-echo "   - When setting up a new server for the first time."
-echo "   - 새로운 서버를 처음 세팅할 때 사용합니다."
-echo ""
-echo "💥 What happens next? / 💥 실행하면 무슨 일이 일어나나요?"
-echo "   - 1. Fix permissions and setup environment variables."
-echo "   - 1. 권한을 수정하고 환경변수를 설정합니다."
-echo "   - 2. Build Frontend and Backend."
-echo "   - 2. 프론트엔드와 백엔드를 빌드합니다."
-echo "   - 3. Start services and initialize DB (Migration, Seed)."
-echo "   - 3. 서비스를 시작하고 DB를 초기화합니다 (마이그레이션, 시드)."
-echo "=============================================================================="
-
-# ------------------------------------------------------------------------------
-# 🔒 Step 1: Basic Confirmation (y/n)
-# ------------------------------------------------------------------------------
-read -p "❓ [1/3] Do you want to proceed? (y/n) / 진행하시겠습니까? : " CONFIRM
-if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
-    echo "🚫 Operation cancelled."
-    exit 0
+if ! cicd_confirm_dangerous_action "SETUP" \
+  "This initializes every production service and both database volumes." \
+  "전체 운영 서비스와 PostgreSQL·pipeline MySQL 볼륨을 초기화합니다."; then
+  log_warn "🚫 Setup cancelled. / 운영 서버 구축을 취소했습니다."
+  exit 0
 fi
 
-# ------------------------------------------------------------------------------
-# 🔒 Step 2: Intent Verification (Type 'SETUP')
-# ------------------------------------------------------------------------------
-echo ""
-echo "⚠️  This operation will INITIALIZE the server environment."
-echo "⚠️  서버 환경을 초기화합니다. 기존 데이터가 있다면 주의하세요."
-read -p "❓ [2/3] Please type 'SETUP' to continue / 'SETUP'을 입력하세요 : " CONFIRM_TEXT
-if [[ "$CONFIRM_TEXT" != "SETUP" ]]; then
-    echo "🚫 Operation cancelled (Text mismatch)."
-    exit 0
+cicd_print_step 1 8 "🔐" "Configure environment and secrets / 환경값·시크릿 설정"
+bash "$SCRIPT_DIR/set_env.sh" prod
+cicd_require_production_ssl
+cicd_print_step 2 8 "🎨" "Build inactive frontend bundle / 프론트엔드 선행 빌드"
+cicd_stage_frontend
+
+cicd_print_step 3 8 "🖥️" "Apply Elasticsearch and Filebeat host settings / 호스트 설정 적용"
+cicd_as_root sysctl -w vm.max_map_count=262144 >/dev/null
+cicd_as_root chown root:root "$CICD_PROJECT_ROOT/elk/filebeat/filebeat.yml"
+cicd_as_root chmod 600 "$CICD_PROJECT_ROOT/elk/filebeat/filebeat.yml"
+
+cicd_print_step 4 8 "🗄️" "Start PostgreSQL and observability services / DB·ELK 기동"
+cicd_compose up -d db elasticsearch logstash kibana filebeat
+cicd_print_step 5 8 "📰" "Deploy pipeline and MySQL migrations / 파이프라인 구축"
+cicd_deploy_pipeline
+cicd_print_step 6 8 "⚙️" "Deploy API and PostgreSQL migrations / API 구축"
+cicd_deploy_api
+cicd_seed_admin
+cicd_verify_api_pipeline_integration
+cicd_print_step 7 8 "🌐" "Activate frontend and start remaining services / 프론트엔드·나머지 서비스 기동"
+cicd_activate_frontend
+cicd_compose up -d
+cicd_print_step 8 8 "🩺" "Run end-to-end health checks / 전체 서비스 점검"
+if ! CICD_ASSUME_YES=1 bash "$CICD_PROJECT_ROOT/CICDtools/check_health.sh"; then
+  cicd_rollback_frontend || true
+  exit 1
 fi
-
-# ------------------------------------------------------------------------------
-# 🔒 Step 3: Final Safety Check (Type 'YES')
-# ------------------------------------------------------------------------------
-echo ""
-echo "⚠️  Final Warning: Changes might be irreversible."
-echo "⚠️  마지막 경고: 되돌릴 수 없는 변경사항이 발생할 수 있습니다."
-read -p "❓ [3/3] Type 'YES' to execute / 'YES'를 입력하여 실행하세요 : " FINAL_CONFIRM
-if [[ "$FINAL_CONFIRM" != "YES" ]]; then
-    echo "🚫 Operation cancelled."
-    exit 0
-fi
-echo ""
-
-### =========================
-### 1. 디렉토리 소유권 변경
-### =========================
-echo "🔧 Fixing directory ownership..."
-sudo chown -R "$TARGET_USER:$TARGET_USER" "$PROJECT_DIR"
-echo "✅ Ownership updated"
-echo
-
-### =========================
-### 2. 환경변수 설정 (Interactive)
-### =========================
-echo "🔧 Setting up environment variables..."
-chmod +x "$SCRIPT_DIR/set_env.sh"
-bash "$SCRIPT_DIR/set_env.sh" "prod"
-echo "✅ Environment variables configured"
-echo
-
-### =========================
-### 3. Frontend build
-### =========================
-echo "🌐 Building frontend..."
-cd "$PROJECT_DIR/web"
-
-npm install
-npm run build
-
-echo "✅ Frontend build completed"
-cd ..
-echo
-
-### =========================
-### 3.5. Set vm.max_map_count=262144 for Elasticsearch
-### =========================
-echo "⚙️  Setting vm.max_map_count for Elasticsearch..."
-sudo sysctl -w vm.max_map_count=262144
-echo "✅ vm.max_map_count set to 262144"
-echo
-
-### 3.7. Set filebeat owner and permission
-sudo chown root:root elk/filebeat/filebeat.yml
-sudo chmod 600 elk/filebeat/filebeat.yml
-echo "✅ Filebeat owner and permission set"
-echo
-
-### =========================
-### 4. Docker Compose 실행
-### =========================
-echo "🐳 Starting docker compose..."
-cd "$PROJECT_DIR"
-
-sudo docker compose \
-  up -d --build
-
-echo "✅ Docker services are up"
-echo
-
-
-### =========================
-### 5. 초기화 작업
-### =========================
-# docker-compose.yml의 api command에서도 migration을 실행하지만,
-# 컨테이너 최초 시작 시 DB가 준비되기 전에 실패할 수 있으므로 여기서도 실행합니다.
-
-# API 컨테이너가 healthy 상태가 될 때까지 대기
-echo "⏳ Waiting for API container to be healthy..."
-RETRIES=0
-MAX_RETRIES=30
-until sudo docker compose exec api wget -qO- http://127.0.0.1:3000/health/live > /dev/null 2>&1; do
-    RETRIES=$((RETRIES + 1))
-    if [ "$RETRIES" -ge "$MAX_RETRIES" ]; then
-        echo "⚠️  API container not healthy after ${MAX_RETRIES} attempts, proceeding anyway..."
-        break
-    fi
-    echo "   Attempt $RETRIES/$MAX_RETRIES - waiting 5s..."
-    sleep 5
-done
-echo "✅ API container is ready"
-
-# 1. 테이블 생성 (마이그레이션)
-echo "📦 Running database migrations..."
-sudo docker compose exec api npx typeorm migration:run -d dist/data-source.js
-echo "✅ Migrations completed"
-
-# 2. 관리자 계정 생성 (시드)
-echo "🌱 Running database seed..."
-sudo docker compose exec api node dist/seed.js
-echo "✅ Seed completed"
-
-
-### =========================
-### 완료
-### =========================
-echo "🎉 Setup completed successfully!"
+cicd_commit_frontend
+log_success "🎉 Fresh production setup completed with both databases and the technical-article service. / 운영 서버 구축을 완료했습니다."

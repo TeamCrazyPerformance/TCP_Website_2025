@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom'; // React Router Link 임포트
-import logo from '../logo.svg'; // src 폴더에 있는 logo.svg를 상대 경로로 임포트
-import { apiPost } from '../api/client';
-import { useAuth } from '../context/AuthContext';
+import React, { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom"; // React Router Link 임포트
+import logo from "../logo.svg"; // src 폴더에 있는 logo.svg를 상대 경로로 임포트
+import { apiPost } from "../api/client";
+import { useAuth } from "../context/AuthContext";
 
 function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
   // 아이디, 비밀번호 상태 관리
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 폼 제출 핸들러
@@ -17,18 +18,24 @@ function Login() {
     e.preventDefault(); // 기본 폼 제출 동작 방지
 
     if (!username || !password) {
-      alert('아이디와 비밀번호를 모두 입력해주세요.');
+      alert("아이디와 비밀번호를 모두 입력해주세요.");
       return;
     }
 
     try {
       setIsSubmitting(true);
-      const data = await apiPost('/api/v1/auth/login', { username, password });
+      const data = await apiPost("/api/v1/auth/login", { username, password });
       login(data.user, data.access_token);
-      alert('로그인 되었습니다.');
-      navigate('/');
+      alert("로그인 되었습니다.");
+      const nextPath =
+        typeof location.state?.from === "string" &&
+        location.state.from.startsWith("/") &&
+        !location.state.from.startsWith("//")
+          ? location.state.from
+          : "/";
+      navigate(nextPath, { replace: true });
     } catch (error) {
-      alert(error.message || '로그인에 실패했습니다.');
+      alert(error.message || "로그인에 실패했습니다.");
     } finally {
       setIsSubmitting(false);
     }
@@ -37,25 +44,25 @@ function Login() {
   // 인풋 필드 포커스 효과 (선택 사항: CSS로만 처리하는 경우 불필요)
   // 여기서는 기존 HTML의 JS 효과를 재현하기 위해 useEffect를 사용합니다.
   useEffect(() => {
-    const inputFields = document.querySelectorAll('.input-field');
+    const inputFields = document.querySelectorAll(".input-field");
 
     const handleFocus = (event) => {
-      event.target.parentElement.style.transform = 'scale(1.02)';
+      event.target.parentElement.style.transform = "scale(1.02)";
     };
 
     const handleBlur = (event) => {
-      event.target.parentElement.style.transform = 'scale(1)';
+      event.target.parentElement.style.transform = "scale(1)";
     };
 
     inputFields.forEach((input) => {
-      input.addEventListener('focus', handleFocus);
-      input.addEventListener('blur', handleBlur);
+      input.addEventListener("focus", handleFocus);
+      input.addEventListener("blur", handleBlur);
     });
 
     return () => {
       inputFields.forEach((input) => {
-        input.removeEventListener('focus', handleFocus);
-        input.removeEventListener('blur', handleBlur);
+        input.removeEventListener("focus", handleFocus);
+        input.removeEventListener("blur", handleBlur);
       });
     };
   }, []); // 컴포넌트 마운트 시 한 번만 실행
@@ -132,8 +139,6 @@ function Login() {
                   </div>
                 </div>
 
-
-
                 {/* Login Button */}
                 <button
                   type="submit"
@@ -141,14 +146,18 @@ function Login() {
                   disabled={isSubmitting}
                 >
                   <i className="fas fa-sign-in-alt mr-2"></i>
-                  {isSubmitting ? '로그인 중...' : '로그인'}
+                  {isSubmitting ? "로그인 중..." : "로그인"}
                 </button>
 
                 {/* Secondary Actions */}
                 <div className="flex justify-center space-x-6 text-sm pt-4">
                   <button
                     type="button"
-                    onClick={() => alert('아직 구현되지 않은 기능입니다. TCP 운영진에게 문의 부탁드립니다.')}
+                    onClick={() =>
+                      alert(
+                        "아직 구현되지 않은 기능입니다. TCP 운영진에게 문의 부탁드립니다.",
+                      )
+                    }
                     className="secondary-link hover:underline"
                   >
                     <i className="fas fa-search mr-1"></i>
@@ -157,7 +166,11 @@ function Login() {
                   <span className="text-gray-600">|</span>
                   <button
                     type="button"
-                    onClick={() => alert('아직 구현되지 않은 기능입니다. TCP 운영진에게 문의 부탁드립니다.')}
+                    onClick={() =>
+                      alert(
+                        "아직 구현되지 않은 기능입니다. TCP 운영진에게 문의 부탁드립니다.",
+                      )
+                    }
                     className="secondary-link hover:underline"
                   >
                     <i className="fas fa-key mr-1"></i>
@@ -168,7 +181,7 @@ function Login() {
                     to="/register"
                     className="secondary-link hover:underline"
                   >
-                    {' '}
+                    {" "}
                     {/* 회원가입 링크 */}
                     <i className="fas fa-user-plus mr-1"></i>
                     회원가입
@@ -180,17 +193,17 @@ function Login() {
             {/* Additional Info */}
             <div className="text-center mt-8 text-sm text-gray-400">
               <p>
-                TCP 부원이 되고싶으신가요?{' '}
+                TCP 부원이 되고싶으신가요?{" "}
                 <Link
                   to="/recruitment"
                   className="text-blue-400 hover:text-blue-300 underline"
                 >
                   지금 지원하세요
                 </Link>
-              </p>{' '}
+              </p>{" "}
               {/* 가입 링크 */}
               <p className="mt-2">
-                문의사항:{' '}
+                문의사항:{" "}
                 <span className="text-blue-400">seoultech.tcp@gmail.com</span>
               </p>
             </div>

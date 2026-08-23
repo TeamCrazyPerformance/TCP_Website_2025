@@ -27,6 +27,8 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+기술 아티클 외부 API 계약은 [src/tech-articles/API.md](src/tech-articles/API.md)를 참고하세요.
+
 ## Project setup
 
 ```bash

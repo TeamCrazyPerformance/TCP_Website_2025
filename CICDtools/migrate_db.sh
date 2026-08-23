@@ -1,95 +1,47 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
-# ==============================================================================
-# Database Migration Script
-# ==============================================================================
-# Description:
-#   Pulls the latest code and runs TypeORM migrations via the running API container.
-#   Zero downtime deployment if migrations are non-breaking.
-# ==============================================================================
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+# shellcheck source=utils/runtime.sh
+source "$SCRIPT_DIR/utils/runtime.sh"
 
-PROJECT_ROOT="$(dirname "$0")/.."
+setup_logging "migrate_db"
+cicd_print_banner "🧬" "Database Migration Tool / 데이터베이스 마이그레이션" \
+  "📘 What is this? / 이건 무엇인가요?" \
+  "   - NestJS PostgreSQL과 기술 아티클 pipeline MySQL 스키마를 모두 최신 상태로 만듭니다." \
+  "🕒 When to use? / 언제 사용하나요?" \
+  "   - DB 구조 변경만 별도로 적용하거나 복구 후 스키마를 맞출 때 사용하세요." \
+  "💥 What happens next? / 실행하면 무슨 일이 일어나나요?" \
+  "   1. 💾 두 DB와 파일을 하나의 세트로 먼저 백업합니다." \
+  "   2. 🐘 PostgreSQL TypeORM 마이그레이션을 실행합니다." \
+  "   3. 🐬 checksum 검증된 pipeline MySQL 마이그레이션을 실행합니다." \
+  "⚠️  스키마를 변경하는 작업이므로 입력을 세 번 확인합니다."
+cicd_require_commands docker openssl
+cicd_validate_env_files
 
-# Import Common Logging
-source "$(dirname "$0")/utils/common_logging.sh"
-
-# ==============================================================================
-# ⚠️  User Confirmation
-# ==============================================================================
-echo "=============================================================================="
-echo "                           🐘 Database Migration Tool                         "
-echo "=============================================================================="
-echo "📘 What is this? / 📘 이건 무엇인가요?"
-echo "   - Pulls the latest code from 'main' (to get latest migration files)."
-echo "   - 'main'에서 최신 코드를 가져옵니다 (최신 마이그레이션 파일 확보)."
-echo "   - Runs 'npm run migration:run' inside the running API container."
-echo "   - 실행 중인 API 컨테이너 내부에서 'npm run migration:run'을 실행합니다."
-echo ""
-echo "🕒 When to use? / 🕒 언제 사용하나요?"
-echo "   - When you have made changes to DB Entities or schema."
-echo "   - DB 엔티티나 스키마(구조)를 변경했을 때 사용합니다."
-echo ""
-echo "💥 What happens next? / 💥 실행하면 무슨 일이 일어나나요?"
-echo "   - Database schema will be altered (CREATE TABLE, ALTER COLUMN, etc.)."
-echo "   - 데이터베이스 스키마가 변경됩니다 (테이블 생성, 컬럼 변경 등)."
-echo "   - 🟢 NO DOWNTIME expected (unless migration involves heavy table locking)."
-echo "   - 🟢 서버 중단은 없습니다 (테이블 락이 걸리는 무거운 작업 제외)."
-echo "=============================================================================="
-# ------------------------------------------------------------------------------
-# 🔒 Step 1: Basic Confirmation (y/n)
-# ------------------------------------------------------------------------------
-read -p "❓ [1/3] Do you want to proceed? (y/n) / 진행하시겠습니까? : " CONFIRM
-if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
-    echo "🚫 Operation cancelled."
-    exit 0
+if ! cicd_confirm_dangerous_action "MIGRATE" \
+  "This operation modifies both database schemas after creating a backup." \
+  "백업을 만든 뒤 PostgreSQL과 pipeline MySQL 스키마를 변경합니다."; then
+  log_warn "🚫 Migration cancelled. No schema was changed. / 마이그레이션을 취소했습니다."
+  exit 0
 fi
 
-# ------------------------------------------------------------------------------
-# 🔒 Step 2: Intent Verification (Type 'MIGRATE')
-# ------------------------------------------------------------------------------
-echo ""
-echo "⚠️  This operation will modify the database schema."
-echo "⚠️  db 구조가 변경되는 작업입니다."
-read -p "❓ [2/3] Please type 'MIGRATE' to continue / 'MIGRATE'를 입력하세요 : " CONFIRM_TEXT
-if [[ "$CONFIRM_TEXT" != "MIGRATE" ]]; then
-    echo "🚫 Operation cancelled (Text mismatch)."
-    exit 0
+cicd_print_step 1 4 "💾" "Create and verify the integrated backup / 통합 백업 생성·검증"
+CICD_ASSUME_YES=1 bash "$SCRIPT_DIR/backup_db.sh" "pre-migrate"
+cicd_print_step 2 4 "🗄️" "Start and verify both databases / 두 데이터베이스 준비"
+cicd_compose up -d db pipeline-mysql
+cicd_wait_service db healthy 180
+cicd_wait_service pipeline-mysql healthy 180
+
+cicd_print_step 3 4 "🐘" "Run PostgreSQL TypeORM migrations / PostgreSQL 마이그레이션"
+if [[ "${CICD_ENVIRONMENT:-prod}" == "dev" ]]; then
+  cicd_compose run --rm --no-deps api npm run migration:run
+else
+  cicd_compose run --rm --no-deps api npx typeorm migration:run -d dist/data-source.js
 fi
 
-# ------------------------------------------------------------------------------
-# 🔒 Step 3: Final Safety Check (Type 'YES')
-# ------------------------------------------------------------------------------
-echo ""
-echo "⚠️  Final Warning: Changes cannot be easily undone without feedback."
-echo "⚠️  마지막 경고: 이 작업은 되돌리기 어려울 수 있습니다."
-read -p "❓ [3/3] Type 'YES' to execute / 'YES'를 입력하여 실행하세요 : " FINAL_CONFIRM
-if [[ "$FINAL_CONFIRM" != "YES" ]]; then
-    echo "🚫 Operation cancelled."
-    exit 0
-fi
-echo ""
-
-# Import Git Utils
-source "$(dirname "$0")/utils/git_utils.sh"
-
-# 🔒 Pre-flight Safety Check
-check_git_status
-
-# Setup Logging (Redirects output to log file & handles errors)
-setup_logging "db_migration"
-
-# 0. Backup DB (Safety First)
-log_info "💾 Creating Pre-Update Backup..."
-bash "$PROJECT_ROOT/CICDtools/backup_db.sh" "pre_db_migration"
-
-# 1. Pull latest code
-log_info "📥 Pulling latest code from main..."
-cd "$PROJECT_ROOT"
-git pull origin main
-
-# 2. Run Migration
-log_info "🐘 Running TypeORM Migrations..."
-sudo docker compose exec api npm run migration:run
-
-log_success "Database migration completed!"
+cicd_print_step 4 4 "🐬" "Run checksum-verified pipeline MySQL migrations / MySQL 마이그레이션"
+cicd_compose up --no-deps --force-recreate pipeline-migrate
+cicd_wait_service pipeline-migrate exited 180
+log_success "🎉 Both database migration sets completed. / 두 데이터베이스 마이그레이션을 완료했습니다."

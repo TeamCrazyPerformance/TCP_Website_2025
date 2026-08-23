@@ -1,0 +1,45 @@
+# 기술 아티클 v9 통합 완료 현황
+
+v9 목업을 기준으로 한 프론트엔드와 API 연동이 완료됐다. 이 문서는 더 이상 후속 변경
+목록이 아니라 현재 구현 계약과 운영 확인 항목을 기록한다. 최종 HTTP 계약은
+`api/src/tech-articles/API.md`가 기준이다.
+
+## 완료된 공개 화면
+
+- API가 반환하는 15개 표준 태그와 반복 `tags` OR 필터를 사용한다.
+- 공개 목록은 비로그인, 상세는 JWT 인증 요청으로 분리됐다.
+- 상세에는 원문 대신 `summaryMarkdown`을 렌더링한다.
+- 목업의 가상 점수 대신 `relevance`, `timeliness`, `sourceReliability`를 표시한다.
+- 목록은 서버 pagination, keyword, tags와 `originalPublishedAt` 최신순 계약을 사용한다.
+  GitHub Trending은 원문 게시일을 제공하지 않으므로 신규 수집부터 UTC 수집 관측 시각을
+  이 필드에 사용한다. 기존 데이터는 backfill하지 않는다.
+
+## 완료된 관리자 화면
+
+- 영구 삭제 대신 `HIDE`와 `ARCHIVE`를 사용하고, 실행 경로가 없던 “수정 요청”을 제거했다.
+- 인벤토리와 세 검수 큐가 서버 검색·필터·pagination을 사용한다.
+- `recordVersion`/`caseVersion`을 변경 요청에 보내며 409 충돌 시 재조회한다.
+- 게시·중복·품질 bulk 응답의 입력 순서별 성공/실패를 처리한다.
+- 등록된 수집 소스 조합만 사용하는 crawl 실행/상태 조회와 보관 흐름이 연결됐다.
+
+## 배포 완료 조건
+
+`CICDtools/update_all.sh`가 파이프라인과 NestJS API를 먼저 검증한 뒤 새 프론트 번들을
+활성화한다. `check_health.sh`가 reverse proxy 경유 태그 API와 `/tech-articles` SPA를
+모두 확인하므로, 서버에서는 이 스크립트가 성공해야 기능 배포 완료로 판단한다.
+
+## QA에서 확인된 후속 이슈
+
+아래 항목은 2026-08-23 Private QA에서 확인했으며 이번 변경에서는 문서화만 한다.
+
+- 품질 검수 승인 뒤 enrichment가 `review_status`를 `NOT_REQUIRED`로 덮어쓸 수 있고,
+  게시 액션의 `PUBLISH`도 처리 단계와 무관하게 `APPROVED`로 덮어쓸 수 있다. 현재
+  관리자 통계의 `statusMismatch`는 11건이다. 단계 필터는 검수 케이스를 기준으로
+  계산하여 목록·통계에 이 문제를 표시하지만 상태 전이 자체는 후속 수정 대상이다.
+- 목록 쿼리의 `page`는 1 이상만 검증하고 상한이 없다. JavaScript 안전 정수 범위를
+  넘는 값은 NestJS 변환 과정에서 정밀도를 잃을 수 있으므로 서버 상한 추가가 후속
+  수정 대상이다. `pageSize`의 1~100 제한은 정상 적용된다.
+
+같은 날 QA 서버의 저장소 HEAD와 원격 브랜치가 `c3391b6`으로 일치하고, 최신 관리자
+단계 필터·단계별 통계·`statusMismatch`, 공개 소스 목록과 소스 필터가 실제 응답하는
+것을 확인했다.
