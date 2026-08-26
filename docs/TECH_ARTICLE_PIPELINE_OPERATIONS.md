@@ -96,6 +96,20 @@ unchanged content is rejected as an exact duplicate, while a substantially
 changed README may be admitted as a new article. Inspect the crawl run and
 admission result when investigating repeat repositories.
 
+## Article view-count boundary
+
+Guest detail access changed the meaning of `viewCounts.guest`. Before this
+release it counted unauthenticated requests stopped with 401, including requests
+for nonexistent IDs. It now counts successful guest reads that finish with 200
+or 304. A guest 404, an invalid-token 401, and every 5xx are excluded. Historical
+guest counts are not rewritten, so charts must not compare the values on both
+sides of the deployment as one continuous definition.
+
+The optional JWT guard writes `MEMBER` or `GUEST` to `res.locals` only after
+authentication succeeds. The view middleware reads that value in the response
+`finish` callback. If either component changes, deploy the guard and middleware
+together or the counters can be mixed.
+
 ## Data protection and recovery
 
 Pipeline MySQL is part of the same immutable backup set as website PostgreSQL

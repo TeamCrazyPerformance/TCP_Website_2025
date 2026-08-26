@@ -47,7 +47,7 @@
       "originalLanguage": { "code": "en", "label": "영어" },
       "originalPublishedAt": "2026-08-15T00:00:00Z",
       "collectedAt": "2026-08-15T01:00:00Z",
-      "score": 88
+      "isNew": true
     }
   ],
   "pagination": { "totalCount": 1, "currentPage": 1, "totalPages": 1, "pageSize": 20 },
@@ -61,8 +61,24 @@
 
 ### `GET /api/v1/tech-articles/:articleId`
 
-로그인 회원만 사용할 수 있다. 목록 필드와 `authors`, `summaryMarkdown`, 실제 품질 평가를
+인증 없이도 목록 필드와 `authors`, `summaryMarkdown`, 출처·원문 링크를 조회할 수 있다.
+정상 회원 토큰이 있으면 같은 응답에 `evaluation`이 추가된다. `Authorization` 헤더를
+보냈지만 토큰이 만료·위조됐거나 로그아웃된 사용자라면 게스트로 강등하지 않고 401을
 반환한다. 공개 상태가 아니거나 처리 완료 전인 아티클은 404이다.
+
+비회원 응답에는 `evaluation` 키 자체가 없다.
+
+```json
+{
+  "id": "article-20260816-000001",
+  "title": "한국어 표시 제목",
+  "authors": ["Example Author"],
+  "summaryMarkdown": "## AI 상세 요약"
+}
+```
+
+회원 응답의 점수는 평가 당시의 축·표시명·가중치·기여도를 함께 기록한다. 프런트는
+`axes`의 순서를 그대로 사용하며 기여도를 다시 계산하지 않는다.
 
 ```json
 {
@@ -71,18 +87,31 @@
   "authors": ["Example Author"],
   "summaryMarkdown": "## AI 상세 요약",
   "evaluation": {
+    "schemaVersion": "2.0",
+    "evaluatorVersion": "1.0.0",
+    "policyVersion": "quality-policy-v1",
     "decision": "PASS",
     "reason": "품질 기준점 이상입니다.",
     "signals": {},
     "score": {
       "overall": 88,
-      "relevance": 91,
-      "timeliness": 87,
-      "sourceReliability": 84
+      "scale": { "min": 0, "max": 100 },
+      "axes": [
+        {
+          "key": "relevance",
+          "label": "개발 관련성",
+          "value": 91,
+          "weight": 0.45,
+          "contribution": 40.95
+        }
+      ]
     }
   }
 }
 ```
+
+상세 응답은 `Vary: Authorization`과 `Cache-Control: private, no-cache`를 사용한다.
+브라우저 ETag 재검증은 허용하지만 공유 캐시에 회원별 응답을 저장하지 않는다.
 
 ## 관리자 조회 API
 
@@ -94,19 +123,17 @@
   `category`, 공개 건수 `count`). 소스는 계속 늘어나므로 목록 응답에 얹지 않고
   `tags` 와 같은 방식으로 따로 둡니다.
 - 아티클 상세(`GET /api/v1/tech-articles/{articleId}`)는 조회수를 집계합니다.
-  미들웨어가 **응답이 끝난 뒤 상태 코드를 보고** 셉니다.
+  미들웨어가 **응답이 끝난 뒤 상태와 가드의 회원 판정을 함께 보고** 셉니다.
 
   | 응답 | 판정 | 이유 |
   |---|---|---|
-  | `200`·`304` | 회원 열람 | `304`는 브라우저 캐시 재검증. 본문만 생략됐을 뿐 열람입니다 |
-  | `401` (토큰 없음) | 비회원 열람 시도 | 로그인하지 않은 요청 |
-  | `401` (토큰 있음) | 세지 않음 | 만료된 회원. 프런트가 갱신 후 재시도해 `200`으로 잡힙니다 |
+  | `200`·`304` + `MEMBER` | 회원 열람 | 정상 회원 토큰으로 상세를 읽었습니다 |
+  | `200`·`304` + `GUEST` | 비회원 열람 | 로그인 없이 실제 요약 본문을 읽었습니다 |
+  | `401` | 세지 않음 | 만료·위조·로그아웃 토큰. 갱신 후 재시도와 중복 집계하지 않습니다 |
   | `404`·`5xx` | 세지 않음 | 비공개·보관·없는 아티클이거나 우리 쪽 실패 |
 
-  상태 코드는 가드와 컨트롤러의 최종 판정이라, 서명만 맞고 실제로는 거부되는
-  토큰(로그아웃·refresh 토큰 등)이 회원으로 잘못 잡히지 않습니다. 사용자별
-  이력은 남기지 않으며, 집계는 관리자 응답(`viewCounts`)에만 실리고 공개
-  응답에는 없습니다.
+  가드는 성공한 요청에만 `MEMBER|GUEST` 판정을 남깁니다. 사용자별 이력은 남기지
+  않으며, 집계는 관리자 응답(`viewCounts`)에만 실리고 공개 응답에는 없습니다.
 - `GET /api/v1/admin/tech-articles`: `page`, `pageSize`, `keyword`, `publicationStatus`,
   `stage=INGESTED|QUALITY_REVIEW|ENRICHING|PUBLICATION_REVIEW|COMPLETED|FAILED_AFTER_APPROVAL|FAILED|QUALITY_REJECTED`,
   `statusMismatch=true`, `sort=NEWEST|OLDEST|SCORE_DESC|SCORE_ASC`. `stage` 와

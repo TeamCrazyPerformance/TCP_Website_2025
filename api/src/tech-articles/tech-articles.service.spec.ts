@@ -44,10 +44,69 @@ describe('TechArticlesService', () => {
     });
 
     expect(result.items[0]).toEqual(
-      expect.objectContaining({ id: 'article-1', title: '제목', score: 90 }),
+      expect.objectContaining({ id: 'article-1', title: '제목' }),
     );
+    expect(result.items[0]).not.toHaveProperty('score');
     expect(result.items[0]).not.toHaveProperty('content');
     expect(result.items[0]).not.toHaveProperty('localizedContent');
+  });
+
+  it('returns article content without evaluation to a guest', async () => {
+    pipeline.get.mockResolvedValue({
+      articleId: 'article-1',
+      localizedTitle: '공개 제목',
+      summaryMarkdown: '## 공개 요약',
+      qualityScore: 88,
+      evaluation: {
+        decision: 'PASS',
+        score: { overall: 88 },
+      },
+    });
+
+    const result = await service.publicDetail('article-1', false);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        title: '공개 제목',
+        summaryMarkdown: '## 공개 요약',
+      }),
+    );
+    expect(result).not.toHaveProperty('evaluation');
+  });
+
+  it('returns server supplied score axes to a member', async () => {
+    pipeline.get.mockResolvedValue({
+      articleId: 'article-1',
+      title: 'title',
+      qualityScore: 88,
+      evaluation: {
+        schemaVersion: '2.0',
+        decision: 'PASS',
+        score: {
+          overall: 88,
+          axes: [
+            {
+              key: 'usefulness',
+              label: '실무 활용성',
+              value: 92,
+              weight: 0.4,
+              contribution: 36.8,
+            },
+          ],
+        },
+      },
+    });
+
+    const result = await service.publicDetail('article-1', true);
+
+    expect(
+      (result as { evaluation?: { score?: unknown } }).evaluation?.score,
+    ).toEqual(
+      expect.objectContaining({
+        overall: 88,
+        axes: [expect.objectContaining({ key: 'usefulness' })],
+      }),
+    );
   });
 
   it('keeps bulk output ordered and reports item failures', async () => {

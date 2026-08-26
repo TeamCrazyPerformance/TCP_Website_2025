@@ -48,6 +48,8 @@ DB 없이 화면을 확인할 때 씁니다. 로컬 로그인 화면에서는 �
 | `publicationQueue()` | `persistence/mysql.py` 의 `_review_conditions("publication")` |
 | `applyPublication()` | `persistence/mysql.py` 의 `apply_publication_action` |
 | `demoCrawlRuns` | crawl run/job 상태와 종료 시점의 공식 `CrawlRunCompleted.statistics` |
+| `evaluationOf()` | 품질 모듈의 자기설명형 `score.axes`와 레거시 점수 호환 형태 |
+| 공개 상세의 헤더 분기 | NestJS Optional JWT 응답(`evaluation`은 회원 요청에만 포함) |
 
 `applyPublication()` 의 `reviewStatus = "APPROVED"` 승격은 **알려진 서버 결함을 그대로 재현한
 것**입니다. 서버에서 이 승격에 처리 단계 조건이 붙으면 이 줄도 함께 고쳐야 합니다.

@@ -124,6 +124,79 @@ describe("공개 화면", () => {
     expect(container.querySelector(".detail-main")).not.toBeNull();
     expect(container.querySelector(".site-footer")).toBeNull();
   });
+
+  test("비로그인 상세는 요약과 출처를 보여주고 점수만 잠근다", async () => {
+    api.getTechArticle.mockResolvedValueOnce({
+      id: "article-1",
+      title: "공개 아티클",
+      oneLineSummary: "로그인 없이 읽는 한 줄 요약",
+      summaryMarkdown: "로그인 없이 읽는 상세 요약",
+      tags: ["AI"],
+      source: {
+        name: "InfoQ",
+        domain: "infoq.com",
+        path: "/article-1",
+        articleUrl: "https://infoq.com/article-1",
+      },
+      originalLanguage: { code: "ko", label: "한국어" },
+      originalPublishedAt: "2026-08-25T00:00:00Z",
+      collectedAt: "2026-08-25T01:00:00Z",
+    });
+    const TechArticleDetail = require("./TechArticleDetail").default;
+    renderWithAuth(<TechArticleDetail />);
+
+    await waitFor(() => expect(api.getTechArticle).toHaveBeenCalled());
+    expect(screen.getByText("로그인 없이 읽는 상세 요약")).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: "원문 및 출처 정보" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("로그인하면 가치 점수도 확인할 수 있어요."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/가중치를 확인/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("meter")).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /로그인하고 점수 보기/ }),
+    ).toBeInTheDocument();
+  });
+
+  test("로그인 상세는 서버가 보낸 평가 축과 기여도를 보여준다", async () => {
+    localStorage.setItem("access_token", "member-token");
+    api.getTechArticle.mockResolvedValueOnce({
+      id: "article-1",
+      title: "회원 아티클",
+      summaryMarkdown: "회원 상세 요약",
+      tags: [],
+      evaluation: {
+        score: {
+          overall: 88,
+          scale: { min: 0, max: 100 },
+          axes: [
+            {
+              key: "usefulness",
+              label: "실무 활용성",
+              value: 92,
+              weight: 0.4,
+              contribution: 36.8,
+            },
+          ],
+        },
+      },
+    });
+    const TechArticleDetail = require("./TechArticleDetail").default;
+    renderWithAuth(<TechArticleDetail />);
+
+    expect(await screen.findByText("실무 활용성")).toBeInTheDocument();
+    expect(screen.getByText("36.8")).toBeInTheDocument();
+    expect(screen.queryByText("92 / 100")).not.toBeInTheDocument();
+    expect(screen.queryByText("최종 기여 점수")).not.toBeInTheDocument();
+    expect(screen.queryByText(/가중치/)).not.toBeInTheDocument();
+    expect(screen.getByRole("meter")).toBeInTheDocument();
+    expect(
+      screen.queryByText("로그인하면 가치 점수도 확인할 수 있어요."),
+    ).not.toBeInTheDocument();
+  });
 });
 
 describe("관리자 화면", () => {

@@ -309,17 +309,14 @@ const REVIEWS = fs.readFileSync(
 );
 
 describe("품질 평가 근거 공유", () => {
-  test("가중치가 파이프라인 정책과 일치한다", () => {
-    // evaluator.py: relevance*0.45 + timeliness*0.30 + sourceReliability*0.25
-    expect(PANEL).toMatch(/\["relevance", "[^"]+", 0\.45\]/);
-    expect(PANEL).toMatch(/\["timeliness", "[^"]+", 0\.3\]/);
-    expect(PANEL).toMatch(/\["sourceReliability", "[^"]+", 0\.25\]/);
-  });
-
-  test("가중치 정의가 한 곳에만 있다", () => {
-    for (const source of [SOURCE, REVIEWS]) {
-      expect(source).not.toMatch(/"sourceReliability", "[^"]+", 0\.25/);
-    }
+  test("평가 축과 가중치를 서버 응답에서 읽는다", () => {
+    expect(PANEL).toMatch(/score\?\.axes/);
+    expect(PANEL).toMatch(/axis\.label/);
+    expect(PANEL).toMatch(/axis\.weight/);
+    expect(PANEL).toMatch(/axis\.contribution/);
+    expect(PANEL).not.toMatch(/QUALITY_DIMENSIONS/);
+    expect(PANEL).not.toMatch(/\["relevance", "[^"]+", 0\.45\]/);
+    expect(PANEL).not.toMatch(/\["sourceReliability", "[^"]+", 0\.25\]/);
   });
 
   test("두 화면 모두 공유 패널을 쓴다", () => {

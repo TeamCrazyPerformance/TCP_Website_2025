@@ -16,6 +16,10 @@ import {
   QualityResolutionDto,
 } from './tech-articles.dto';
 import { TechArticlePipelineClient } from './tech-article-pipeline.client';
+import {
+  projectQualityEvaluation,
+  QualityEvaluation,
+} from './quality-evaluation.projection';
 
 export interface SourceProjection {
   id?: string;
@@ -29,20 +33,6 @@ export interface SourceProjection {
 export interface LanguageProjection {
   code: string;
   label: string;
-}
-
-export interface QualityEvaluation {
-  decision?: string | null;
-  reason?: string | null;
-  signals?: Record<string, unknown> | null;
-  score?: {
-    overall?: number | null;
-    dimensions?: {
-      relevance?: number | null;
-      timeliness?: number | null;
-      sourceReliability?: number | null;
-    };
-  } | null;
 }
 
 interface PipelineArticle {
@@ -190,11 +180,11 @@ export class TechArticlesService {
     );
   }
 
-  async publicDetail(articleId: string) {
+  async publicDetail(articleId: string, isMember: boolean) {
     const article = await this.pipeline.get<PipelineArticle>(
       `/internal/v1/public/articles/${encodeURIComponent(articleId)}`,
     );
-    return this.publicDetailItem(article);
+    return this.publicDetailItem(article, isMember);
   }
 
   async listAdmin(query: AdminArticleQueryDto) {
@@ -585,29 +575,26 @@ export class TechArticlesService {
       collectedAt: article.collectedAt,
       // 수집 직후인지. 목록이 원문 게시일 순이라 새 글이 위로 오지 않습니다.
       isNew: article.isNew ?? false,
-      score: article.qualityScore,
     };
   }
 
-  private publicDetailItem(article: PipelineArticle) {
-    const evaluation = article.evaluation ?? {};
-    const score = evaluation.score ?? {};
-    const dimensions = score.dimensions ?? {};
-    return {
+  private publicDetailItem(article: PipelineArticle, isMember: boolean) {
+    const base = {
       ...this.publicItem(article),
       authors: article.authors ?? [],
       summaryMarkdown: article.summaryMarkdown ?? article.summary,
-      evaluation: {
-        decision: evaluation.decision ?? article.qualityDecision,
-        reason: evaluation.reason ?? null,
-        signals: evaluation.signals ?? null,
-        score: {
-          overall: score.overall ?? article.qualityScore,
-          relevance: dimensions.relevance ?? null,
-          timeliness: dimensions.timeliness ?? null,
-          sourceReliability: dimensions.sourceReliability ?? null,
+    };
+    if (!isMember) return base;
+    return {
+      ...base,
+      evaluation: projectQualityEvaluation(
+        article.evaluation ?? {
+          decision: article.qualityDecision,
         },
-      },
+        article.qualityScore,
+        // 전환기용 옛 형태. 제거 조건은 quality-evaluation.projection.ts 참고.
+        { legacyShape: 'flat' },
+      ),
     };
   }
 
@@ -633,7 +620,11 @@ export class TechArticlesService {
       valueScore: article.valueScore ?? article.qualityScore,
       qualityDecision:
         article.qualityDecision ?? article.evaluation?.decision ?? null,
-      evaluation: article.evaluation ?? null,
+      evaluation: projectQualityEvaluation(
+        article.evaluation,
+        article.valueScore ?? article.qualityScore,
+        { includeOperational: true, legacyShape: 'dimensions' },
+      ),
       originalPublishedAt: article.originalPublishedAt,
       crawledAt: article.collectedAt,
       normalizedAt: article.normalizedAt,
@@ -684,6 +675,11 @@ export class TechArticlesService {
     }
     if (kind === 'quality') {
       const quality = item as QualityReviewItem;
+      const evaluation = projectQualityEvaluation(
+        quality.evaluation,
+        quality.evaluation?.score?.overall as number | null | undefined,
+        { includeOperational: true, legacyShape: 'dimensions' },
+      );
       return {
         caseId: quality.caseId,
         caseVersion: quality.caseVersion,
@@ -692,7 +688,7 @@ export class TechArticlesService {
         source: quality.source,
         originalLanguage: quality.originalLanguage,
         originalPublishedAt: quality.originalPublishedAt,
-        evaluation: quality.evaluation,
+        evaluation,
         valueScore: quality.evaluation?.score?.overall ?? null,
         reason: quality.evaluation?.reason ?? null,
         signals: quality.evaluation?.signals ?? null,

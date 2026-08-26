@@ -21,8 +21,8 @@ import { TechArticlesService } from './tech-articles.service';
   ],
 })
 export class TechArticlesModule implements NestModule {
-  // 조회수 집계는 가드가 401 로 끊는 요청에도 걸려야 하므로 미들웨어입니다.
-  // 실제 집계는 응답이 끝난 뒤 상태 코드를 보고 합니다 (미들웨어 주석 참고).
+  // 응답이 끝난 뒤에 세야 가드와 컨트롤러의 최종 판정을 볼 수 있어 미들웨어입니다.
+  // 집계는 상태 코드와 가드가 res.locals 에 기록한 회원 여부를 함께 보고 합니다.
   configure(consumer: MiddlewareConsumer): void {
     consumer
       .apply(TechArticleViewMiddleware)

@@ -6,29 +6,20 @@ import {
   formatTechArticleDate,
 } from "../components/tech-articles/TechArticleCommon";
 import TechArticlePublicContent from "../components/tech-articles/TechArticlePublicContent";
+import { QualityScoreAxes } from "../components/tech-articles/ArticleQualityPanel";
 import { V9ArticleTags } from "./TechArticles";
 import { useAuth } from "../context/AuthContext";
-
-function scoreLabel(value) {
-  return Number.isFinite(value) ? `${value} / 100` : "— / 100";
-}
 
 function TechArticleDetail() {
   const { articleId } = useParams();
   const location = useLocation();
   const { isAuthenticated } = useAuth();
   const [article, setArticle] = useState(null);
-  const [isLoading, setIsLoading] = useState(isAuthenticated);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      setIsLoading(false);
-      setArticle(null);
-      return undefined;
-    }
-
     let active = true;
     setIsLoading(true);
     setError("");
@@ -68,8 +59,17 @@ function TechArticleDetail() {
   const sourceName =
     article?.source?.name || article?.source?.domain || "확인 중";
   const sourceUrl = article?.source?.articleUrl;
-  const overall = article?.evaluation?.score?.overall;
-  const score = Number.isFinite(overall) ? overall : article?.score;
+  const scoreData = article?.evaluation?.score;
+  const score = scoreData?.overall;
+  const scoreMinimum = Number.isFinite(scoreData?.scale?.min)
+    ? scoreData.scale.min
+    : 0;
+  const scoreMaximum = Number.isFinite(scoreData?.scale?.max)
+    ? scoreData.scale.max
+    : 100;
+  // 로그인 상태가 아니라 서버 응답을 신뢰합니다. 토큰 경계에서 화면과
+  // 실제 공개 데이터가 어긋나지 않게 하는 기준입니다.
+  const isScoreLocked = Boolean(article && !article.evaluation);
 
   return (
     <TechArticlePublicContent>
@@ -92,9 +92,7 @@ function TechArticleDetail() {
                 {article?.title ||
                   (isLoading
                     ? "아티클을 불러오는 중입니다."
-                    : !isAuthenticated
-                      ? "로그인이 필요한 아티클입니다."
-                      : "아티클을 표시할 수 없습니다.")}
+                    : "아티클을 표시할 수 없습니다.")}
               </h1>
               {article && (
                 <div
@@ -155,14 +153,6 @@ function TechArticleDetail() {
           aria-label="아티클 상세 정보"
         >
           <div className="container">
-            {!isAuthenticated && (
-              <p className="detail-data-error" role="status">
-                상세 요약은 로그인 회원에게 제공됩니다.{" "}
-                <Link to="/login" state={{ from: location.pathname }}>
-                  로그인하기
-                </Link>
-              </p>
-            )}
             {error && (
               <p className="detail-data-error" role="alert">
                 {error}{" "}
@@ -203,11 +193,7 @@ function TechArticleDetail() {
                     />
                   ) : (
                     <div className="summary-body summary-body-v9">
-                      <p>
-                        {isAuthenticated
-                          ? "표시할 상세 요약이 없습니다."
-                          : "로그인 후 AI 상세 요약을 확인할 수 있습니다."}
-                      </p>
+                      <p>표시할 상세 요약이 없습니다.</p>
                     </div>
                   )}
                 </article>
@@ -217,48 +203,62 @@ function TechArticleDetail() {
                 <section className="score-card" aria-labelledby="scoreHeading">
                   <p className="orbitron scenario-eyebrow">VALUE SCORE</p>
                   <h2 id="scoreHeading">가치 점수</h2>
-                  <div className="score-summary">
-                    <strong id="scoreValue">
-                      {Number.isFinite(score) ? score : "—"}
-                    </strong>
-                    <span>/ 100점</span>
-                  </div>
-                  <meter
-                    id="scoreMeter"
-                    className="score-meter"
-                    min="0"
-                    max="100"
-                    value={Number.isFinite(score) ? score : 0}
-                    aria-label={
-                      Number.isFinite(score)
-                        ? `가치 점수 100점 만점에 ${score}점`
-                        : "가치 점수를 확인할 수 없음"
-                    }
-                  >
-                    {Number.isFinite(score) ? `${score}점` : "0점"}
-                  </meter>
-                  <dl className="score-breakdown">
-                    <div>
-                      <dt>관련성</dt>
-                      <dd id="scoreRelevance">
-                        {scoreLabel(article?.evaluation?.score?.relevance)}
-                      </dd>
+                  {isScoreLocked ? (
+                    <div
+                      className="score-gate-card"
+                      role="note"
+                    >
+                      <div className="score-gate-heading">
+                        <span className="member-gate-icon" aria-hidden="true">
+                          <i className="fas fa-lock"></i>
+                        </span>
+                        <h3>로그인하면 가치 점수도 확인할 수 있어요.</h3>
+                      </div>
+                      <div className="member-gate-actions">
+                        <Link
+                          className="member-gate-primary"
+                          to="/login"
+                          state={{ from: location.pathname }}
+                        >
+                          <i
+                            className="fas fa-right-to-bracket"
+                            aria-hidden="true"
+                          ></i>
+                          로그인하고 점수 보기
+                        </Link>
+                      </div>
+                      <p className="member-gate-footnote">
+                        아직 회원이 아니라면{" "}
+                        <Link to="/register">회원가입</Link>할 수 있습니다.
+                      </p>
                     </div>
-                    <div>
-                      <dt>최신성</dt>
-                      <dd id="scoreFreshness">
-                        {scoreLabel(article?.evaluation?.score?.timeliness)}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>출처 신뢰도</dt>
-                      <dd id="scoreSourceTrust">
-                        {scoreLabel(
-                          article?.evaluation?.score?.sourceReliability,
-                        )}
-                      </dd>
-                    </div>
-                  </dl>
+                  ) : (
+                    <>
+                      <div className="score-summary">
+                        <strong id="scoreValue">
+                          {Number.isFinite(score) ? score : "—"}
+                        </strong>
+                        <span>/ {scoreMaximum}점</span>
+                      </div>
+                      <meter
+                        id="scoreMeter"
+                        className="score-meter"
+                        min={scoreMinimum}
+                        max={scoreMaximum}
+                        value={Number.isFinite(score) ? score : scoreMinimum}
+                        aria-label={
+                          Number.isFinite(score)
+                            ? `가치 점수 ${scoreMaximum}점 만점에 ${score}점`
+                            : "가치 점수를 확인할 수 없음"
+                        }
+                      >
+                        {Number.isFinite(score)
+                          ? `${score}점`
+                          : `${scoreMinimum}점`}
+                      </meter>
+                      <QualityScoreAxes score={scoreData} variant="public" />
+                    </>
+                  )}
                 </section>
 
                 <section

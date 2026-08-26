@@ -1296,9 +1296,8 @@ function AdminTechArticles() {
                   </section>
                   <section className="admin-detail-section">
                     <h4>조회수</h4>
-                    {/* 목록에서는 합쳐 보여주지만 여기서는 나눕니다. 공개 상세에
-                        인증이 걸려 있어 비회원 시도에는 봇도 섞여 들어옵니다.
-                        나눠 두어야 운영자가 그 왜곡을 알아볼 수 있습니다. */}
+                    {/* 목록에서는 합쳐 보여주지만 여기서는 실제 회원·비회원
+                        열람을 나눠 운영자가 공개 전환 효과를 볼 수 있게 합니다. */}
                     <div className="admin-detail-grid">
                       <DetailFact
                         label="전체 조회"
@@ -1312,8 +1311,8 @@ function AdminTechArticles() {
                         value={`${detail.viewCounts?.member ?? 0}회`}
                       />
                       <DetailFact
-                        label="비회원 조회 시도"
-                        value={`${detail.viewCounts?.guest ?? 0}회 · 로그인 전에 막힘(봇 포함)`}
+                        label="비회원 조회"
+                        value={`${detail.viewCounts?.guest ?? 0}회 · 로그인 없이 상세 열람`}
                       />
                       <DetailFact
                         label="마지막 조회"

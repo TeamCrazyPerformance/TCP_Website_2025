@@ -375,3 +375,118 @@
   line-height: 1;
   vertical-align: middle;
 }
+
+/* 비회원도 요약과 출처는 읽고, 가치 점수 카드 안에서만 로그인 안내를 봅니다. */
+.ta-public .score-gate-card {
+  margin-top: 18px;
+  padding: 20px;
+  background: rgba(17, 24, 39, 0.72);
+  border: 1px solid rgba(147, 197, 253, 0.2);
+  border-radius: 10px;
+}
+
+.ta-public .score-gate-heading {
+  display: flex;
+  margin-bottom: 18px;
+  align-items: center;
+  gap: 12px;
+}
+
+.ta-public .score-gate-card .member-gate-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  place-content: center;
+  color: var(--accent-blue);
+  background: rgba(30, 58, 138, 0.34);
+  border: 1px solid rgba(147, 197, 253, 0.18);
+  border-radius: 11px;
+  font-size: 17px;
+}
+
+.ta-public .score-gate-card h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.ta-public .member-gate-actions {
+  display: flex;
+}
+
+.ta-public .member-gate-primary {
+  display: inline-flex;
+  width: 100%;
+  padding: 10px 14px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #0b1220;
+  background: var(--accent-blue);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ta-public .member-gate-primary:hover {
+  filter: brightness(1.08);
+}
+
+.ta-public .member-gate-footnote {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  color: var(--gray-500);
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.ta-public .score-gate-card a {
+  color: var(--accent-blue);
+  text-decoration: underline;
+}
+
+.ta-public .score-gate-card .member-gate-primary {
+  color: #0b1220;
+  text-decoration: none;
+}
+
+.ta-public .score-breakdown {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.ta-public .score-breakdown > div {
+  display: flex;
+  padding: 11px 2px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 0;
+}
+
+.ta-public .score-breakdown > div:last-child {
+  border-bottom: 0;
+}
+
+.ta-public .score-breakdown dt {
+  color: var(--gray-300);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.ta-public .score-breakdown dd {
+  margin: 0;
+  color: var(--accent-green);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.45;
+}
