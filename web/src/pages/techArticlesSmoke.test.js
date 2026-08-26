@@ -6,7 +6,7 @@
  *
  * API 는 모킹하며, 엔드포인트 정합성은 백엔드 라우트 대조로 따로 확인합니다. */
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 
 jest.mock(
   "react-router-dom",
@@ -158,7 +158,7 @@ describe("관리자 화면", () => {
     expect(api.getCrawlSources).not.toHaveBeenCalled();
   });
 
-  test("크롤링 관리 화면은 이력을 우선 표시하고 실행 폼을 토글로 연다", async () => {
+  test("크롤링 관리 화면은 이력을 먼저 보여 주고 실행 폼을 아래에 항상 둔다", async () => {
     asAdmin();
     const AdminCrawlOperations =
       require("./admin/AdminCrawlOperations").default;
@@ -171,32 +171,24 @@ describe("관리자 화면", () => {
       screen.queryByRole("link", { name: /전체 아티클 보기/ }),
     ).not.toBeInTheDocument();
     expect(screen.getByText("크롤링 실행 이력")).toBeInTheDocument();
-    expect(container.querySelector("#asyncCrawlRunner")).toBeNull();
-    expect(
-      container.querySelector(".admin-intro .crawl-runner-toggle-v9"),
-    ).toBeNull();
-    expect(
-      container.querySelector(
-        ".crawl-operations-panel-v9 > .crawl-runner-toggle-v9",
-      ),
-    ).not.toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: /비동기 수집 실행/ }));
-
-    expect(container.querySelector("#asyncCrawlRunner")).not.toBeNull();
+    // 토글 없이 바로 떠 있어야 합니다.
+    const runner = container.querySelector("#asyncCrawlRunner");
+    expect(runner).not.toBeNull();
     expect(
       screen.getByRole("heading", { name: "비동기 수집 실행" }),
     ).toBeInTheDocument();
+    expect(container.querySelector(".crawl-runner-toggle-v9")).toBeNull();
     expect(
-      screen.getByRole("button", { name: /실행 설정 닫기/ }),
-    ).toHaveAttribute("aria-expanded", "true");
+      screen.queryByRole("button", { name: /실행 설정 닫기/ }),
+    ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /실행 설정 닫기/ }));
-
-    expect(container.querySelector("#asyncCrawlRunner")).toBeNull();
+    // 순서는 이력 -> 실행 폼입니다.
+    const history = screen.getByText("크롤링 실행 이력").closest("section");
     expect(
-      screen.getByRole("button", { name: /비동기 수집 실행/ }),
-    ).toHaveAttribute("aria-expanded", "false");
+      history.compareDocumentPosition(runner) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   test("중복 의심 아티클이 중복 큐만 요청한다", async () => {

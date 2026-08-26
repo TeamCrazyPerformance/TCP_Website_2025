@@ -139,21 +139,9 @@
   margin-top: 0;
 }
 
-.ta-admin .crawl-operations-panel-v9 > .crawl-layout-v9,
+.ta-admin .crawl-operations-panel-v9 > .crawl-runner-v9,
 .ta-admin .crawl-operations-panel-v9 > .crawl-loading-v9 {
   margin-top: 16px;
-}
-
-.ta-admin .crawl-runner-toggle-v9 {
-  display: flex;
-  margin-top: 16px;
-  padding-top: 16px;
-  justify-content: flex-end;
-  border-top: 1px solid var(--gray-800);
-}
-
-.ta-admin .crawl-runner-toggle-v9 .btn-secondary {
-  gap: 8px;
 }
 
 .ta-admin .crawl-panel-heading-v9 h3 {
@@ -213,17 +201,10 @@
 /* ── v9 목업에 없던 수집 화면 스타일 ──────────────────────
  * 목업에는 수집 실행 화면이 없어 이 프로젝트에서 새로 작성했습니다.
  * 목업 원본(docs/tech-articles-v9-mockup/)은 수정하지 않고 이곳에 둡니다. */
-.ta-admin .crawl-layout-v9 {
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
-  align-items: start;
-  gap: 16px;
-}
-.ta-admin .crawl-layout-v9.is-detail-only {
-  grid-template-columns: 1fr;
-}
-.ta-admin .crawl-layout-v9.is-detail-only .crawl-status-v9 {
-  position: static;
+/* 실행 폼은 이력 아래에 항상 펼쳐져 있습니다. 상세는 팝업으로 빠졌으므로
+ * 예전의 2단(폼 + 사이드) 그리드는 더 이상 쓰지 않습니다. */
+.ta-admin .crawl-runner-v9 {
+  width: 100%;
 }
 .ta-admin .crawl-card-v9 {
   padding: 22px;
@@ -291,7 +272,7 @@
 .ta-admin .crawl-options-v9 {
   display: grid;
   margin-top: 20px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 12px;
 }
 .ta-admin .crawl-follow-v9 {
@@ -342,20 +323,11 @@
 .ta-admin .crawl-idempotency-v9 code {
   color: var(--gray-300);
 }
+/* 폼이 화면 전체 폭이 되면서 버튼까지 늘리면 과합니다. 폭만 제한합니다. */
 .ta-admin .crawl-submit-v9 {
-  width: 100%;
+  min-width: 220px;
   margin-top: 18px;
-}
-.ta-admin .crawl-status-v9 {
-  position: sticky;
-  top: 80px;
-}
-.ta-admin .crawl-empty-v9 {
-  display: grid;
-  min-height: 250px;
-  place-content: center;
-  color: var(--gray-500);
-  text-align: center;
+  justify-content: center;
 }
 .ta-admin .crawl-loading-v9 {
   display: grid;
@@ -364,7 +336,7 @@
   color: var(--gray-500);
   text-align: center;
 }
-.ta-admin .crawl-empty-v9 i {
+.ta-admin .crawl-loading-v9 i {
   margin: 0 auto 12px;
   color: var(--accent-purple);
   font-size: 27px;
@@ -373,12 +345,6 @@
   margin: 0 auto 12px;
   color: var(--accent-purple);
   font-size: 27px;
-}
-.ta-admin .crawl-empty-v9 p {
-  max-width: 250px;
-  margin: 0;
-  font-size: 11px;
-  line-height: 1.6;
 }
 .ta-admin .crawl-loading-v9 p {
   max-width: 250px;
@@ -566,23 +532,13 @@
   vertical-align: middle;
 }
 .ta-admin .crawl-history-table-v9 tbody tr {
-  cursor: pointer;
   transition: background 0.16s ease;
 }
 .ta-admin .crawl-history-table-v9 tbody tr:hover {
   background: rgba(59, 130, 246, 0.07);
 }
-.ta-admin .crawl-history-table-v9 tbody tr.is-selected {
-  background: rgba(59, 130, 246, 0.12);
-  box-shadow: inset 3px 0 var(--accent-blue);
-}
-.ta-admin .crawl-history-table-v9 td button {
+.ta-admin .crawl-history-source-v9 {
   display: grid;
-  padding: 0;
-  color: inherit;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
   gap: 3px;
   text-align: left;
 }
@@ -632,15 +588,6 @@
   color: var(--gray-500);
   font-size: 9px;
 }
-@media (max-width: 900px) {
-  .ta-admin .crawl-layout-v9 {
-    grid-template-columns: 1fr;
-  }
-  .ta-admin .crawl-status-v9 {
-    position: static;
-  }
-}
-
 @media (max-width: 600px) {
   .ta-admin .crawl-options-v9 {
     grid-template-columns: 1fr;
@@ -656,6 +603,10 @@
   }
   .ta-admin .crawl-history-pagination-v9 {
     flex-wrap: wrap;
+  }
+  .ta-admin .crawl-submit-v9 {
+    width: 100%;
+    min-width: 0;
   }
 }
 
@@ -1108,7 +1059,8 @@
 .ta-admin .quality-dimension-value,
 .ta-admin .quality-signal-list strong,
 .ta-admin .comparison-score strong,
-.ta-admin .queue-metric strong {
+.ta-admin .queue-metric strong,
+.ta-admin .review-tab span {
   font-family:
     "Spoqa Han Sans Neo",
     system-ui,
@@ -1185,6 +1137,195 @@
   font-size: 15px;
   font-weight: 700;
 }
+
+/* ── 타이포 스케일 정렬 ────────────────────────────────
+ * v9 목업은 9~13px 중심의 조밀한 관리자 타이포를 쓰지만, 나머지 관리자
+ * 화면은 Tailwind 기준(text-xs 12px / text-sm 14px)이라 같은 레이아웃 안에서
+ * 본문만 작아 보입니다. 사이드바와 상단바는 AdminLayout 을 공유해 14px 이라
+ * 대비가 더 두드러집니다.
+ *
+ * 아래 규칙은 12px 을 바닥선으로 잡고 한 단계씩 올려 두 체계의 수준을 맞춥니다.
+ *   9·10·11px -> 12px | 12px -> 13px | 13px -> 14px | 17px -> 20px(섹션 제목)
+ * 14px 과 페이지 제목 clamp() 는 이미 기존 화면과 같아 건드리지 않습니다.
+ *
+ * 생성 파일(techArticlesAdmin.css)은 tools/scope_v9.py 가 목업에서 다시 만들므로
+ * 상향은 반드시 이 파일에만 둡니다. 셀렉터는 생성 파일과 같고 이 파일이 뒤에
+ * 로드되므로 특정도 동률에서 순서로 이깁니다.
+ *
+ * 되돌리려면 이 블록만 지우면 됩니다. */
+
+/* 9 · 10 · 11px -> 12px  (배지 · 캡션 · 테이블 헤더 · 폼 라벨) */
+.ta-admin .policy-option-content small,
+.ta-admin .admin-article-id,
+.ta-admin .admin-article-summary,
+.ta-admin .admin-article-tags .article-tag,
+.ta-admin .admin-source-cell a,
+.ta-admin .admin-date-cell strong,
+.ta-admin .status-badge,
+.ta-admin .publish-control > span,
+.ta-admin .row-action,
+.ta-admin .admin-page-button,
+.ta-admin .section-eyebrow,
+.ta-admin .overview-card-heading .overview-caption,
+.ta-admin .policy-scope-badge,
+.ta-admin .btn-small,
+.ta-admin .form-field label,
+.ta-admin .admin-detail-fact span,
+.ta-admin .queue-stat-inline,
+.ta-admin .queue-stat-card small,
+.ta-admin .review-tab span,
+.ta-admin .review-tab-help,
+.ta-admin .selection-action-bar > div:first-child span,
+.ta-admin .bulk-action-button, .ta-admin .bulk-clear-button,
+.ta-admin .source-language,
+.ta-admin .duplicate-match-cell small,
+.ta-admin .duplicate-method-badge,
+.ta-admin .review-reason-cell p,
+.ta-admin .canonical-url-block span,
+.ta-admin .canonical-url-block a,
+.ta-admin .case-id-row,
+.ta-admin .comparison-label,
+.ta-admin .comparison-card dt, .ta-admin .comparison-card dd,
+.ta-admin .comparison-card a,
+.ta-admin .comparison-score span,
+.ta-admin .comparison-score small,
+.ta-admin .decision-guidance,
+.ta-admin .crawl-capabilities-v9 legend,
+.ta-admin .crawl-capabilities-v9 strong,
+.ta-admin .crawl-capabilities-v9 small,
+.ta-admin .crawl-follow-v9 strong,
+.ta-admin .crawl-follow-v9 small,
+.ta-admin .crawl-idempotency-v9,
+.ta-admin .crawl-loading-v9 p,
+.ta-admin .crawl-run-heading-v9 small,
+.ta-admin .crawl-run-facts-v9 dt,
+.ta-admin .crawl-statistics-v9 span,
+.ta-admin .crawl-run-facts-v9 dd,
+.ta-admin .crawl-statistics-v9 strong,
+.ta-admin .crawl-statistics-v9 h4,
+.ta-admin .crawl-error-v9,
+.ta-admin .crawl-error-v9 > strong,
+.ta-admin .crawl-refresh-v9,
+.ta-admin .crawl-history-total-v9,
+.ta-admin .crawl-history-heading-v9 p:last-child,
+.ta-admin .crawl-history-table-v9 th,
+.ta-admin .crawl-history-table-v9 td,
+.ta-admin .crawl-history-table-v9 td strong,
+.ta-admin .crawl-history-table-v9 td small,
+.ta-admin .crawl-history-empty-v9,
+.ta-admin .crawl-history-pagination-v9,
+.ta-admin .crawl-history-page-v9 small,
+.ta-admin .publish-blocked-reason,
+.ta-admin .stage-hint,
+.ta-admin .stage-toolbar-scope,
+.ta-admin .stage-group-label,
+.ta-admin .stage-chip,
+.ta-admin .stage-flag,
+.ta-admin .admin-detail-axes span,
+.ta-admin .quality-dimension-label,
+.ta-admin .quality-dimension-value small,
+.ta-admin .quality-signal-list h5,
+.ta-admin .quality-signal-list span,
+.ta-admin .admin-view-cell {
+  font-size: 12px;
+}
+
+/* 12px -> 13px  (테이블 본문 · 보조 문단) */
+.ta-admin .tag-button, .ta-admin .article-tag,
+.ta-admin .policy-description,
+.ta-admin .admin-source-cell strong,
+.ta-admin .admin-empty-state p,
+.ta-admin .public-page-link,
+.ta-admin .result-count,
+.ta-admin .article-table,
+.ta-admin .article-table th,
+.ta-admin .admin-detail-fact strong,
+.ta-admin .queue-stat-card p,
+.ta-admin .review-tab,
+.ta-admin .duplicate-match-cell strong,
+.ta-admin .jaccard-score,
+.ta-admin .quality-review-reason h4,
+.ta-admin .crawl-history-page-v9 strong,
+.ta-admin .admin-detail-mismatch,
+.ta-admin .stage-badge,
+.ta-admin .stage-chip strong,
+.ta-admin .stage-summary-note,
+.ta-admin .quality-dimension-value,
+.ta-admin .quality-reason,
+.ta-admin .quality-signal-list strong,
+.ta-admin .admin-view-cell strong {
+  font-size: 13px;
+}
+
+/* 13px -> 14px  (버튼 · 본문) */
+.ta-admin .policy-option-content strong,
+.ta-admin .admin-score,
+.ta-admin .overview-card-heading p,
+.ta-admin .btn-primary, .ta-admin .btn-secondary, .ta-admin .btn-success, .ta-admin .btn-danger,
+.ta-admin .confirm-dialog p,
+.ta-admin .admin-detail-section h3,
+.ta-admin .admin-detail-section p,
+.ta-admin .selection-action-bar > div:first-child strong,
+.ta-admin .admin-markdown-body,
+.ta-admin .detail-score-tags h4, .ta-admin .admin-detail-section h4,
+.ta-admin .quality-review-reason p,
+.ta-admin .crawl-panel-heading-v9 > p:last-child,
+.ta-admin .crawl-panel-notice-v9 {
+  font-size: 14px;
+}
+
+/* 17px -> 20px  (섹션 제목) */
+.ta-admin .admin-empty-state h3,
+.ta-admin .section-heading-row h3, .ta-admin .list-heading-row h3 {
+  font-size: 20px;
+}
+
+/* 좁은 폭 축소값도 같은 비율로 올립니다. 이 파일이 뒤에 로드되므로
+ * 같은 미디어쿼리로 다시 선언하지 않으면 위 평문 규칙이 덮어씁니다. */
+@media (max-width: 767px) {
+  /* 9 · 10 · 11px -> 12px  (배지 · 캡션 · 테이블 헤더 · 폼 라벨) */
+  .ta-admin .admin-mobile-card-summary,
+  .ta-admin .admin-mobile-meta span,
+  .ta-admin .admin-mobile-meta strong {
+    font-size: 12px;
+  }
+  /* 13px -> 14px  (버튼 · 본문) */
+  .ta-admin .admin-intro > div > p:last-child {
+    font-size: 14px;
+  }
+}
+
+/* ── 실행 상세 팝업 ───────────────────────────────────────
+ * 사이드 카드로 붙어 있던 "선택 실행 상세"를 이력 행의 "상세" 버튼으로
+ * 여는 팝업으로 옮겼습니다. 네이티브 dialog 라 ESC·포커스 트랩·백드롭은
+ * 브라우저가 처리하고, 껍데기는 아티클 상세 팝업과 같은 클래스를 씁니다. */
+.ta-admin .crawl-detail-button-v9 {
+  gap: 6px;
+  white-space: nowrap;
+}
+.ta-admin .crawl-detail-actions-v9 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ta-admin .crawl-detail-dialog-v9 .detail-dialog-content {
+  padding: 20px 22px;
+}
+/* 팝업은 사이드 카드보다 넓으므로 사실 목록을 2열로 폅니다. */
+.ta-admin .crawl-detail-dialog-v9 .crawl-run-facts-v9 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  column-gap: 20px;
+}
+.ta-admin .crawl-detail-dialog-v9 .crawl-statistics-v9 {
+  margin-top: 18px;
+}
+@media (max-width: 600px) {
+  .ta-admin .crawl-detail-dialog-v9 .crawl-run-facts-v9 {
+    grid-template-columns: 1fr;
+  }
+}
+
 
 /* ── 아티클 목록 표: 한 화면에 담기 ─────────────────────────
  * 열이 9 개까지 늘면서 가로 스크롤이 생겼습니다. 스크롤이 생기면

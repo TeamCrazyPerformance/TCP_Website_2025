@@ -369,7 +369,7 @@ describe("파이프라인 단계", () => {
 
   test("자동 평가와 관리자 검토를 라벨에서 구분한다", () => {
     expect(stageMeta(STAGE.INGESTED).label).toBe("자동 품질 평가 중");
-    expect(stageMeta(STAGE.QUALITY_REVIEW).label).toBe("관리자 품질 검토 필요");
+    expect(stageMeta(STAGE.QUALITY_REVIEW).label).toBe("품질 검토 필요");
     expect(stageMeta(STAGE.ENRICHING).label).toBe("AI 요약 중");
     expect(stageMeta(STAGE.PUBLICATION_REVIEW).label).toBe("공개 검토 필요");
   });

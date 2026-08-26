@@ -23,6 +23,7 @@ jest.mock("../../api/techArticles", () => ({
 }));
 
 describe("TechArticleCrawlPanel", () => {
+  // dialog 의 showModal/close 폴리필은 src/setupTests.js 에 있습니다.
   beforeEach(() => {
     jest.clearAllMocks();
     getCrawlSources.mockResolvedValue({
@@ -61,7 +62,6 @@ describe("TechArticleCrawlPanel", () => {
     expect(
       (await screen.findAllByText(/GitHub Trending/)).length,
     ).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: "비동기 수집 실행" }));
     const articleCount = screen.getByLabelText("최대 아티클 수");
     expect(articleCount).toHaveAttribute("max", "3");
     await waitFor(() => expect(articleCount).toHaveValue(3));
@@ -91,19 +91,21 @@ describe("TechArticleCrawlPanel", () => {
     expect(getCrawlRun).not.toHaveBeenCalled();
   });
 
-  it("keeps history, runner toggle, and operation details in document order", async () => {
+  it("keeps the runner visible under the history without a toggle", async () => {
     render(<TechArticleCrawlPanel />);
 
     const historyTitle = await screen.findByText("크롤링 실행 이력");
     const history = historyTitle.closest("section");
-    const toggle = screen
-      .getByRole("button", { name: "비동기 수집 실행" })
-      .closest("div");
-    const detailTitle = await screen.findByText("선택 실행 상세");
-    const operations = detailTitle.closest(".crawl-layout-v9");
+    const runner = await screen.findByRole("heading", {
+      name: "비동기 수집 실행",
+    });
 
-    expect(history.nextElementSibling).toBe(toggle);
-    expect(toggle.nextElementSibling).toBe(operations);
+    expect(history.nextElementSibling).toBe(runner.closest("form"));
+    expect(
+      screen.queryByRole("button", { name: "실행 설정 닫기" }),
+    ).not.toBeInTheDocument();
+    // 상세는 팝업으로만 열리므로 처음에는 실행 정보가 그려지지 않습니다.
+    expect(screen.queryByText("실행 ID")).not.toBeInTheDocument();
   });
 
   it("restores scheduled crawl history and opens a selected run", async () => {
@@ -157,10 +159,14 @@ describe("TechArticleCrawlPanel", () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /github-trending/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "github-trending 실행 상세 보기" }),
+    );
     await waitFor(() =>
       expect(getCrawlRun).toHaveBeenCalledWith("crawl-auto-1"),
     );
+    expect(await screen.findByText("crawl-auto-1")).toBeInTheDocument();
+    expect(screen.getByText("실행 ID")).toBeInTheDocument();
   });
 
   it("shows only the final statistics guaranteed by the crawler contract", async () => {
@@ -193,6 +199,12 @@ describe("TechArticleCrawlPanel", () => {
     });
 
     render(<TechArticleCrawlPanel />);
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "github-trending 실행 상세 보기",
+      }),
+    );
 
     expect(await screen.findByText("최종 수집 통계")).toBeInTheDocument();
     expect(screen.getByText("3건 성공")).toBeInTheDocument();
@@ -247,6 +259,10 @@ describe("TechArticleCrawlPanel", () => {
       ),
     );
     expect(await screen.findByText("infoq")).toBeInTheDocument();
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "infoq 실행 상세 보기" }),
+    );
     expect(await screen.findByText("crawl-page-2")).toBeInTheDocument();
   });
 
@@ -283,7 +299,9 @@ describe("TechArticleCrawlPanel", () => {
     });
 
     render(<TechArticleCrawlPanel />);
-    await screen.findByText("crawl-page-1");
+    await screen.findByRole("button", {
+      name: "github-trending 실행 상세 보기",
+    });
     fireEvent.click(screen.getByRole("button", { name: "다음" }));
 
     await waitFor(() => {

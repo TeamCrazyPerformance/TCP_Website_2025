@@ -3,7 +3,13 @@
 // 기술 아티클의 비동기 수집 실행 패널입니다.
 // 별도 "크롤링 관리" 화면에서 수동 실행과 전체 실행 이력을 함께 관리합니다.
 // 서버가 허용한 소스와 옵션만 선택할 수 있으며, 임의 URL 입력은 제공하지 않습니다.
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   getCrawlRun,
   getCrawlRuns,
@@ -136,12 +142,14 @@ function resultDescription(run) {
 }
 
 function TechArticleCrawlPanel() {
-  const [isRunnerOpen, setIsRunnerOpen] = useState(false);
   const [sources, setSources] = useState([]);
   const [sourceId, setSourceId] = useState("");
   const [capabilityIndex, setCapabilityIndex] = useState(0);
   const [options, setOptions] = useState({});
-  const [run, setRun] = useState(null);
+  // 실행 상세는 이력 행의 "상세" 버튼으로만 엽니다. 목록에 이미 있는 값으로
+  // 먼저 그리고 getCrawlRun 응답이 오면 같은 팝업 안에서 교체합니다.
+  const [detailRun, setDetailRun] = useState(null);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [runs, setRuns] = useState([]);
   const [runsPagination, setRunsPagination] = useState(null);
   const [runsPage, setRunsPage] = useState(1);
@@ -156,6 +164,7 @@ function TechArticleCrawlPanel() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [notice, setNotice] = useState(null);
   const [idempotencyKey, setIdempotencyKey] = useState("");
+  const detailDialogRef = useRef(null);
 
   const currentSource = useMemo(
     () => sources.find((source) => source.sourceId === sourceId),
@@ -222,14 +231,16 @@ function TechArticleCrawlPanel() {
         }
         setRuns(items);
         setRunsPagination(data?.pagination || null);
-        setRun((current) => {
-          if (!current) return items[0] || null;
+        // 팝업이 열려 있는 동안에만 같은 실행을 최신 목록 값으로 갱신합니다.
+        // 필터나 페이지가 바뀌어 목록에서 사라져도 팝업을 닫지 않습니다.
+        setDetailRun((current) => {
+          if (!current) return null;
           const updated = items.find(
             (item) => item.crawlRunId === current.crawlRunId,
           );
           return updated
             ? { ...current, ...updated, items: current.items }
-            : items[0] || null;
+            : current;
         });
       } catch (error) {
         if (!quiet) {
@@ -301,6 +312,14 @@ function TechArticleCrawlPanel() {
     setIdempotencyKey("");
   }, [canFollowPagination, capabilityIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 네이티브 dialog 를 쓰면 ESC 와 포커스 트랩을 브라우저가 처리합니다.
+  useEffect(() => {
+    const dialog = detailDialogRef.current;
+    if (!dialog) return;
+    if (detailRun && !dialog.open) dialog.showModal();
+    if (!detailRun && dialog.open) dialog.close();
+  }, [detailRun]);
+
   useEffect(() => {
     if (!notice) return undefined;
     const timer = window.setTimeout(() => setNotice(null), 3600);
@@ -311,7 +330,9 @@ function TechArticleCrawlPanel() {
     if (!crawlRunId) return;
     if (!quiet) setIsRefreshing(true);
     try {
-      setRun(await getCrawlRun(crawlRunId));
+      // 빈 응답으로 상세를 지우면 열려 있던 팝업이 닫힙니다.
+      const detail = await getCrawlRun(crawlRunId);
+      if (detail) setDetailRun(detail);
     } catch (error) {
       setNotice({
         type: "error",
@@ -352,7 +373,7 @@ function TechArticleCrawlPanel() {
           return [key, Number(value)];
         }),
       );
-      const accepted = await startCrawlRun(
+      await startCrawlRun(
         {
           source: {
             sourceId,
@@ -363,7 +384,6 @@ function TechArticleCrawlPanel() {
         },
         key,
       );
-      setRun(accepted);
       setRunFilters({ status: "", sourceId: "", trigger: "" });
       setRunsPage(1);
       setNotice({
@@ -381,336 +401,217 @@ function TechArticleCrawlPanel() {
     }
   };
 
-  const statistics = finalStatistics(run);
+  const statistics = finalStatistics(detailRun);
   const visibleStatistics = OFFICIAL_STATISTICS.filter(([key]) =>
     Object.prototype.hasOwnProperty.call(statistics || {}, key),
   );
 
-  const selectRun = (selected) => {
-    setRun(selected);
-    refreshRun(selected.crawlRunId, true);
+  // 목록 행의 값으로 즉시 열고, 상세 응답이 오면 같은 팝업에서 교체합니다.
+  const openDetail = async (selected) => {
+    setDetailRun(selected);
+    setIsDetailLoading(true);
+    try {
+      const detail = await getCrawlRun(selected.crawlRunId);
+      if (detail) setDetailRun(detail);
+    } catch (error) {
+      setNotice({
+        type: "error",
+        message: techArticleErrorMessage(
+          error,
+          "수집 실행 상태를 조회하지 못했습니다.",
+        ),
+      });
+    } finally {
+      setIsDetailLoading(false);
+    }
   };
 
+  const closeDetail = () => setDetailRun(null);
+
   const updateRunFilter = (key, value) => {
-    setRun(null);
     setRunFilters((current) => ({ ...current, [key]: value }));
     setRunsPage(1);
   };
 
-  const operations = (
-    <>
-      {isLoadingSources ? (
-        <section className="widget-card crawl-loading-v9">
-          <i className="fas fa-circle-notch fa-spin" aria-hidden="true"></i>
-          <p>허용된 수집 소스를 불러오는 중입니다.</p>
-        </section>
-      ) : (
-        <div
-          className={`crawl-layout-v9 ${isRunnerOpen ? "" : "is-detail-only"}`}
-        >
-          {isRunnerOpen && (
-            <form
-              id="asyncCrawlRunner"
-              className="widget-card crawl-card-v9"
-              onSubmit={submit}
-            >
-              <div className="section-heading-row">
-                <div>
-                  <p className="section-eyebrow orbitron">ASYNC CRAWL RUN</p>
-                  <h3>비동기 수집 실행</h3>
-                </div>
-                <span className="policy-scope-badge">임의 URL 입력 없음</span>
-              </div>
 
-              <div className="form-field crawl-field-v9">
-                <label htmlFor="crawlSource">수집 소스</label>
-                <select
-                  id="crawlSource"
-                  className="form-input"
-                  value={sourceId}
-                  onChange={(event) => setSourceId(event.target.value)}
-                >
-                  {sources.map((source) => (
-                    <option value={source.sourceId} key={source.sourceId}>
-                      {source.name} · {source.domain}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <fieldset className="crawl-capabilities-v9">
-                <legend>허용된 수집 방식</legend>
-                <div>
-                  {currentSource?.capabilities?.map((item, index) => (
-                    <label key={`${item.sourceType}-${item.sectionKey}`}>
-                      <input
-                        type="radio"
-                        name="capability"
-                        checked={capabilityIndex === index}
-                        onChange={() => setCapabilityIndex(index)}
-                      />
-                      <span>
-                        <strong>{item.sourceType}</strong>
-                        <small>{item.sectionKey}</small>
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-
-              <div className="crawl-options-v9">
-                {optionContract.maximumArticleCount && (
-                  <div className="form-field">
-                    <label htmlFor="maximumArticleCount">최대 아티클 수</label>
-                    <input
-                      id="maximumArticleCount"
-                      className="form-input"
-                      type="number"
-                      required
-                      min={optionContract.maximumArticleCount.minimum ?? 1}
-                      max={optionContract.maximumArticleCount.maximum ?? 100}
-                      value={options.maximumArticleCount ?? ""}
-                      onChange={(event) =>
-                        updateOption("maximumArticleCount", event.target.value)
-                      }
-                    />
-                  </div>
-                )}
-                {optionContract.maximumAgeHours && (
-                  <div className="form-field">
-                    <label htmlFor="maximumAgeHours">
-                      최대 원문 나이 (시간)
-                    </label>
-                    <input
-                      id="maximumAgeHours"
-                      className="form-input"
-                      type="number"
-                      required
-                      min={optionContract.maximumAgeHours.minimum ?? 1}
-                      value={options.maximumAgeHours ?? ""}
-                      onChange={(event) =>
-                        updateOption("maximumAgeHours", event.target.value)
-                      }
-                    />
-                  </div>
-                )}
-                {optionContract.maximumPageCount && (
-                  <div className="form-field">
-                    <label htmlFor="maximumPageCount">최대 페이지 수</label>
-                    <input
-                      id="maximumPageCount"
-                      className="form-input"
-                      type="number"
-                      required
-                      min={optionContract.maximumPageCount.minimum ?? 1}
-                      max={optionContract.maximumPageCount.maximum ?? 10}
-                      value={options.maximumPageCount ?? ""}
-                      onChange={(event) =>
-                        updateOption("maximumPageCount", event.target.value)
-                      }
-                    />
-                  </div>
-                )}
-                {optionContract.requestTimeoutMs && (
-                  <div className="form-field">
-                    <label htmlFor="requestTimeoutMs">
-                      요청 제한 시간 (ms)
-                    </label>
-                    <input
-                      id="requestTimeoutMs"
-                      className="form-input"
-                      type="number"
-                      required
-                      step="1000"
-                      min={optionContract.requestTimeoutMs.minimum ?? 1000}
-                      max={optionContract.requestTimeoutMs.maximum ?? 60000}
-                      value={options.requestTimeoutMs ?? ""}
-                      onChange={(event) =>
-                        updateOption("requestTimeoutMs", event.target.value)
-                      }
-                    />
-                  </div>
-                )}
-              </div>
-
-              {optionContract.followPagination && (
-                <label
-                  className={`crawl-follow-v9 ${canFollowPagination ? "" : "is-disabled"}`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={Boolean(options.followPagination)}
-                    disabled={!canFollowPagination}
-                    onChange={(event) =>
-                      updateOption("followPagination", event.target.checked)
-                    }
-                  />
-                  <span>
-                    <strong>페이지네이션 따라가기</strong>
-                    <small>
-                      {canFollowPagination
-                        ? "현재 WEB_CRAWL 방식에서 지원됩니다."
-                        : "현재 소스·방식 조합에서는 사용할 수 없습니다."}
-                    </small>
-                  </span>
-                </label>
-              )}
-              {idempotencyKey && (
-                <p className="crawl-idempotency-v9">
-                  <i className="fas fa-key" aria-hidden="true"></i>재시도 키{" "}
-                  <code>{idempotencyKey}</code>
-                </p>
-              )}
-              <button
-                className="btn-primary crawl-submit-v9"
-                type="submit"
-                disabled={isSubmitting || !capability}
-              >
-                {isSubmitting ? (
-                  <>
-                    <i
-                      className="fas fa-circle-notch fa-spin"
-                      aria-hidden="true"
-                    ></i>
-                    요청 중
-                  </>
-                ) : (
-                  <>
-                    <i className="fas fa-play" aria-hidden="true"></i>수집 시작
-                  </>
-                )}
-              </button>
-            </form>
-          )}
-
-          <aside className="widget-card crawl-card-v9 crawl-status-v9">
-            <div className="section-heading-row">
-              <div>
-                <p className="section-eyebrow orbitron">RUN STATUS</p>
-                <h3>선택 실행 상세</h3>
-              </div>
-              {run?.crawlRunId && (
-                <button
-                  className="btn-secondary btn-small"
-                  type="button"
-                  onClick={() => refreshRun(run.crawlRunId)}
-                  disabled={isRefreshing}
-                  aria-label="실행 상태 새로고침"
-                >
-                  <i
-                    className={`fas fa-rotate ${isRefreshing ? "fa-spin" : ""}`}
-                    aria-hidden="true"
-                  ></i>
-                </button>
-              )}
-            </div>
-            {!run ? (
-              <div className="crawl-empty-v9">
-                <i className="fas fa-satellite-dish" aria-hidden="true"></i>
-                <p>
-                  실행 이력에서 항목을 선택하면 실행 ID와 서버 상태가 여기에
-                  표시됩니다.
-                </p>
-              </div>
-            ) : (
-              <>
-                <div className="crawl-run-heading-v9">
-                  <RunStatus status={run.status} />
-                  <small>job {run.jobStatus || run.job?.status || "—"}</small>
-                </div>
-                <dl className="crawl-run-facts-v9">
-                  <div>
-                    <dt>실행 ID</dt>
-                    <dd>{run.crawlRunId}</dd>
-                  </div>
-                  <div>
-                    <dt>소스</dt>
-                    <dd>
-                      {run.sourceId || sourceId}
-                      {run.sourceType ? ` · ${run.sourceType}` : ""}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>실행 구분</dt>
-                    <dd>{run.trigger === "SCHEDULED" ? "자동" : "수동"}</dd>
-                  </div>
-                  <div>
-                    <dt>실행 상태</dt>
-                    <dd>{executionStateText(run)}</dd>
-                  </div>
-                  <div>
-                    <dt>시도 횟수</dt>
-                    <dd>
-                      {run.job?.attemptCount ?? "—"} /{" "}
-                      {run.job?.maxAttempts ?? "—"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>저장 결과</dt>
-                    <dd>
-                      {ACTIVE_STATUSES.has(run.status)
-                        ? "종료 후 확정"
-                        : `${run.itemCount ?? run.items?.length ?? 0}건`}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>요청 시각</dt>
-                    <dd>{formatDate(run.requestedAt || run.createdAt)}</dd>
-                  </div>
-                  <div>
-                    <dt>시작 시각</dt>
-                    <dd>{formatDate(run.startedAt)}</dd>
-                  </div>
-                  <div>
-                    <dt>종료 시각</dt>
-                    <dd>{formatDate(run.completedAt)}</dd>
-                  </div>
-                  <div>
-                    <dt>소요 시간</dt>
-                    <dd>{run.startedAt ? runDuration(run) : "—"}</dd>
-                  </div>
-                </dl>
-                {visibleStatistics.length > 0 && (
-                  <div className="crawl-statistics-v9">
-                    <h4>최종 수집 통계</h4>
-                    {visibleStatistics.map(([key, label]) => (
-                      <div key={key}>
-                        <span>{label}</span>
-                        <strong>{String(statistics[key])}</strong>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {run.error && (
-                  <div className="crawl-error-v9">
-                    <strong>실행 오류</strong>
-                    <p>
-                      {run.error.message ||
-                        run.job?.error?.message ||
-                        "수집 실행 중 오류가 발생했습니다."}
-                    </p>
-                    <details>
-                      <summary>기술 정보 보기</summary>
-                      <pre>{JSON.stringify(run.error, null, 2)}</pre>
-                    </details>
-                  </div>
-                )}
-                {!TERMINAL_STATUSES.has(run.status) && (
-                  <p className="crawl-refresh-v9">
-                    <i
-                      className="fas fa-circle-notch fa-spin"
-                      aria-hidden="true"
-                    ></i>
-                    3초마다 실행 상태를 확인합니다. 수집 통계는 종료 후
-                    확정됩니다.
-                  </p>
-                )}
-              </>
-            )}
-          </aside>
+  const runner = isLoadingSources ? (
+    <section className="widget-card crawl-loading-v9">
+      <i className="fas fa-circle-notch fa-spin" aria-hidden="true"></i>
+      <p>허용된 수집 소스를 불러오는 중입니다.</p>
+    </section>
+  ) : (
+    <form
+      id="asyncCrawlRunner"
+      className="widget-card crawl-card-v9 crawl-runner-v9"
+      onSubmit={submit}
+    >
+        <div className="section-heading-row">
+          <div>
+            <p className="section-eyebrow orbitron">ASYNC CRAWL RUN</p>
+            <h3>비동기 수집 실행</h3>
+          </div>
+          <span className="policy-scope-badge">임의 URL 입력 없음</span>
         </div>
-      )}
-    </>
+
+        <div className="form-field crawl-field-v9">
+          <label htmlFor="crawlSource">수집 소스</label>
+          <select
+            id="crawlSource"
+            className="form-input"
+            value={sourceId}
+            onChange={(event) => setSourceId(event.target.value)}
+          >
+            {sources.map((source) => (
+              <option value={source.sourceId} key={source.sourceId}>
+                {source.name} · {source.domain}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <fieldset className="crawl-capabilities-v9">
+          <legend>허용된 수집 방식</legend>
+          <div>
+            {currentSource?.capabilities?.map((item, index) => (
+              <label key={`${item.sourceType}-${item.sectionKey}`}>
+                <input
+                  type="radio"
+                  name="capability"
+                  checked={capabilityIndex === index}
+                  onChange={() => setCapabilityIndex(index)}
+                />
+                <span>
+                  <strong>{item.sourceType}</strong>
+                  <small>{item.sectionKey}</small>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <div className="crawl-options-v9">
+          {optionContract.maximumArticleCount && (
+            <div className="form-field">
+              <label htmlFor="maximumArticleCount">최대 아티클 수</label>
+              <input
+                id="maximumArticleCount"
+                className="form-input"
+                type="number"
+                required
+                min={optionContract.maximumArticleCount.minimum ?? 1}
+                max={optionContract.maximumArticleCount.maximum ?? 100}
+                value={options.maximumArticleCount ?? ""}
+                onChange={(event) =>
+                  updateOption("maximumArticleCount", event.target.value)
+                }
+              />
+            </div>
+          )}
+          {optionContract.maximumAgeHours && (
+            <div className="form-field">
+              <label htmlFor="maximumAgeHours">
+                최대 원문 나이 (시간)
+              </label>
+              <input
+                id="maximumAgeHours"
+                className="form-input"
+                type="number"
+                required
+                min={optionContract.maximumAgeHours.minimum ?? 1}
+                value={options.maximumAgeHours ?? ""}
+                onChange={(event) =>
+                  updateOption("maximumAgeHours", event.target.value)
+                }
+              />
+            </div>
+          )}
+          {optionContract.maximumPageCount && (
+            <div className="form-field">
+              <label htmlFor="maximumPageCount">최대 페이지 수</label>
+              <input
+                id="maximumPageCount"
+                className="form-input"
+                type="number"
+                required
+                min={optionContract.maximumPageCount.minimum ?? 1}
+                max={optionContract.maximumPageCount.maximum ?? 10}
+                value={options.maximumPageCount ?? ""}
+                onChange={(event) =>
+                  updateOption("maximumPageCount", event.target.value)
+                }
+              />
+            </div>
+          )}
+          {optionContract.requestTimeoutMs && (
+            <div className="form-field">
+              <label htmlFor="requestTimeoutMs">
+                요청 제한 시간 (ms)
+              </label>
+              <input
+                id="requestTimeoutMs"
+                className="form-input"
+                type="number"
+                required
+                step="1000"
+                min={optionContract.requestTimeoutMs.minimum ?? 1000}
+                max={optionContract.requestTimeoutMs.maximum ?? 60000}
+                value={options.requestTimeoutMs ?? ""}
+                onChange={(event) =>
+                  updateOption("requestTimeoutMs", event.target.value)
+                }
+              />
+            </div>
+          )}
+        </div>
+
+        {optionContract.followPagination && (
+          <label
+            className={`crawl-follow-v9 ${canFollowPagination ? "" : "is-disabled"}`}
+          >
+            <input
+              type="checkbox"
+              checked={Boolean(options.followPagination)}
+              disabled={!canFollowPagination}
+              onChange={(event) =>
+                updateOption("followPagination", event.target.checked)
+              }
+            />
+            <span>
+              <strong>페이지네이션 따라가기</strong>
+              <small>
+                {canFollowPagination
+                  ? "현재 WEB_CRAWL 방식에서 지원됩니다."
+                  : "현재 소스·방식 조합에서는 사용할 수 없습니다."}
+              </small>
+            </span>
+          </label>
+        )}
+        {idempotencyKey && (
+          <p className="crawl-idempotency-v9">
+            <i className="fas fa-key" aria-hidden="true"></i>재시도 키{" "}
+            <code>{idempotencyKey}</code>
+          </p>
+        )}
+        <button
+          className="btn-primary crawl-submit-v9"
+          type="submit"
+          disabled={isSubmitting || !capability}
+        >
+          {isSubmitting ? (
+            <>
+              <i
+                className="fas fa-circle-notch fa-spin"
+                aria-hidden="true"
+              ></i>
+              요청 중
+            </>
+          ) : (
+            <>
+              <i className="fas fa-play" aria-hidden="true"></i>수집 시작
+            </>
+          )}
+        </button>
+    </form>
   );
 
   return (
@@ -812,33 +713,22 @@ function TechArticleCrawlPanel() {
                   <th scope="col">결과</th>
                   <th scope="col">요청 시각</th>
                   <th scope="col">소요 시간</th>
+                  <th scope="col">상세</th>
                 </tr>
               </thead>
               <tbody>
                 {runs.map((item) => (
-                  <tr
-                    key={item.crawlRunId}
-                    className={
-                      run?.crawlRunId === item.crawlRunId ? "is-selected" : ""
-                    }
-                    onClick={() => selectRun(item)}
-                  >
+                  <tr key={item.crawlRunId}>
                     <td>
                       <RunStatus status={item.status} />
                     </td>
                     <td>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          selectRun(item);
-                        }}
-                      >
+                      <div className="crawl-history-source-v9">
                         <strong>{item.sourceId}</strong>
                         <small>
                           {item.sourceType || "—"} · {item.sectionKey || "—"}
                         </small>
-                      </button>
+                      </div>
                     </td>
                     <td>{item.trigger === "SCHEDULED" ? "자동" : "수동"}</td>
                     <td>
@@ -847,6 +737,17 @@ function TechArticleCrawlPanel() {
                     </td>
                     <td>{formatDate(item.requestedAt || item.createdAt)}</td>
                     <td>{runDuration(item)}</td>
+                    <td>
+                      <button
+                        className="btn-secondary btn-small crawl-detail-button-v9"
+                        type="button"
+                        onClick={() => openDetail(item)}
+                        aria-label={`${item.sourceId} 실행 상세 보기`}
+                      >
+                        <i className="fas fa-list-ul" aria-hidden="true"></i>
+                        상세
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -898,23 +799,7 @@ function TechArticleCrawlPanel() {
         )}
       </section>
 
-      <div className="crawl-runner-toggle-v9">
-        <button
-          className="btn-secondary"
-          type="button"
-          aria-expanded={isRunnerOpen}
-          aria-controls="asyncCrawlRunner"
-          onClick={() => setIsRunnerOpen((current) => !current)}
-        >
-          <i
-            className={`fas ${isRunnerOpen ? "fa-chevron-up" : "fa-play"}`}
-            aria-hidden="true"
-          ></i>
-          {isRunnerOpen ? "실행 설정 닫기" : "비동기 수집 실행"}
-        </button>
-      </div>
-
-      {operations}
+      {runner}
 
       {notice && (
         <p
@@ -928,6 +813,157 @@ function TechArticleCrawlPanel() {
           {notice.message}
         </p>
       )}
+
+      <dialog
+        ref={detailDialogRef}
+        className="admin-dialog admin-dialog-wide crawl-detail-dialog-v9"
+        aria-labelledby="crawlRunDetailTitle"
+        onClose={closeDetail}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) closeDetail();
+        }}
+      >
+        <div className="dialog-panel">
+          <header className="dialog-header">
+            <div>
+              <p className="section-eyebrow orbitron">RUN STATUS</p>
+              <h2 id="crawlRunDetailTitle">실행 상세</h2>
+            </div>
+            <div className="crawl-detail-actions-v9">
+              {detailRun?.crawlRunId && (
+                <button
+                  className="btn-secondary btn-small"
+                  type="button"
+                  onClick={() => refreshRun(detailRun.crawlRunId)}
+                  disabled={isRefreshing || isDetailLoading}
+                  aria-label="실행 상태 새로고침"
+                >
+                  <i
+                    className={`fas fa-rotate ${
+                      isRefreshing || isDetailLoading ? "fa-spin" : ""
+                    }`}
+                    aria-hidden="true"
+                  ></i>
+                </button>
+              )}
+              <button
+                className="dialog-close-button"
+                type="button"
+                onClick={closeDetail}
+                aria-label="실행 상세 닫기"
+              >
+                <i className="fas fa-xmark" aria-hidden="true"></i>
+              </button>
+            </div>
+          </header>
+          <div className="detail-dialog-content">
+            {detailRun && (
+              <>
+                <div className="crawl-run-heading-v9">
+                  <RunStatus status={detailRun.status} />
+                  <small>job {detailRun.jobStatus || detailRun.job?.status || "—"}</small>
+                </div>
+                <dl className="crawl-run-facts-v9">
+                  <div>
+                    <dt>실행 ID</dt>
+                    <dd>{detailRun.crawlRunId}</dd>
+                  </div>
+                  <div>
+                    <dt>소스</dt>
+                    <dd>
+                      {detailRun.sourceId || sourceId}
+                      {detailRun.sourceType ? ` · ${detailRun.sourceType}` : ""}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>실행 구분</dt>
+                    <dd>{detailRun.trigger === "SCHEDULED" ? "자동" : "수동"}</dd>
+                  </div>
+                  <div>
+                    <dt>실행 상태</dt>
+                    <dd>{executionStateText(detailRun)}</dd>
+                  </div>
+                  <div>
+                    <dt>시도 횟수</dt>
+                    <dd>
+                      {detailRun.job?.attemptCount ?? "—"} /{" "}
+                      {detailRun.job?.maxAttempts ?? "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>저장 결과</dt>
+                    <dd>
+                      {ACTIVE_STATUSES.has(detailRun.status)
+                        ? "종료 후 확정"
+                        : `${detailRun.itemCount ?? detailRun.items?.length ?? 0}건`}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>요청 시각</dt>
+                    <dd>{formatDate(detailRun.requestedAt || detailRun.createdAt)}</dd>
+                  </div>
+                  <div>
+                    <dt>시작 시각</dt>
+                    <dd>{formatDate(detailRun.startedAt)}</dd>
+                  </div>
+                  <div>
+                    <dt>종료 시각</dt>
+                    <dd>{formatDate(detailRun.completedAt)}</dd>
+                  </div>
+                  <div>
+                    <dt>소요 시간</dt>
+                    <dd>{detailRun.startedAt ? runDuration(detailRun) : "—"}</dd>
+                  </div>
+                </dl>
+                {visibleStatistics.length > 0 && (
+                  <div className="crawl-statistics-v9">
+                    <h4>최종 수집 통계</h4>
+                    {visibleStatistics.map(([key, label]) => (
+                      <div key={key}>
+                        <span>{label}</span>
+                        <strong>{String(statistics[key])}</strong>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {detailRun.error && (
+                  <div className="crawl-error-v9">
+                    <strong>실행 오류</strong>
+                    <p>
+                      {detailRun.error.message ||
+                        detailRun.job?.error?.message ||
+                        "수집 실행 중 오류가 발생했습니다."}
+                    </p>
+                    <details>
+                      <summary>기술 정보 보기</summary>
+                      <pre>{JSON.stringify(detailRun.error, null, 2)}</pre>
+                    </details>
+                  </div>
+                )}
+                {!TERMINAL_STATUSES.has(detailRun.status) && (
+                  <p className="crawl-refresh-v9">
+                    <i
+                      className="fas fa-circle-notch fa-spin"
+                      aria-hidden="true"
+                    ></i>
+                    3초마다 실행 상태를 확인합니다. 수집 통계는 종료 후
+                    확정됩니다.
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+          <footer className="admin-dialog-actions">
+            <button
+              className="btn-secondary"
+              type="button"
+              onClick={closeDetail}
+            >
+              닫기
+            </button>
+          </footer>
+        </div>
+      </dialog>
     </>
   );
 }

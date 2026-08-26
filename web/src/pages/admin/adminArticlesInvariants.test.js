@@ -139,7 +139,7 @@ describe("목록 표 폭 예산", () => {
 
   test("단계 배지가 옆 칸을 덮지 않는다", () => {
     // fixed 레이아웃에서 nowrap 배지는 칸을 넘으면 줄바꿈 대신 옆 칸을
-    // 파고듭니다. 실제로 "관리자 품질 검토 필요"가 공개 설정을 덮었습니다.
+    // 파고듭니다. 실제로 품질 검토 단계 배지가 공개 설정을 덮었습니다.
     expect(CSS).toMatch(
       /\.ta-admin \.admin-articles-table \.stage-badge \{[^}]*white-space: normal;/,
     );

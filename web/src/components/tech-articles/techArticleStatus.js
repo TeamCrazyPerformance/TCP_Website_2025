@@ -206,7 +206,7 @@ const STAGE_META = {
   [STAGE.QUALITY_REVIEW]: {
     waiting: true,
     order: 1,
-    label: "관리자 품질 검토 필요",
+    label: "품질 검토 필요",
     tone: "status-pending",
     icon: "fa-user-check",
     hint: "관리자 판단을 기다립니다.",
