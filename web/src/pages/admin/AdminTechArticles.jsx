@@ -121,6 +121,27 @@ function StageBadge({ article, withHint = false }) {
   );
 }
 
+// 상세를 연 횟수. 공개 상세에 인증이 걸려 있어 비회원은 401 로 막히는데,
+// 그 시도까지 세기 때문에 인증을 통과하지 못한 봇 요청도 함께 잡힙니다.
+// 두 숫자를 붙여 쓰면(예: "42 +5") 뒤엣것이 무엇인지 알 수 없으므로, 이 표가
+// 이미 쓰는 라벨+값 방식(admin-date-cell)을 따라 각각 이름을 답니다.
+function ViewCountCell({ counts }) {
+  const member = counts?.member ?? 0;
+  const guest = counts?.guest ?? 0;
+  return (
+    /* td 에 직접 grid 를 걸면 그 칸이 표의 셀에서 빠져 행 구분선이 끊깁니다.
+       칸은 그대로 두고 안쪽 상자에 격자를 겁니다. */
+    <div className="admin-view-grid">
+      {/* 전체가 이 열의 대표값입니다. 내역은 그 아래에 붙입니다. */}
+      <strong className="admin-view-total">{member + guest}</strong>
+      <span>회원</span>
+      <strong>{member}</strong>
+      <span>비회원</span>
+      <strong>{guest}</strong>
+    </div>
+  );
+}
+
 // 표 뷰와 모바일 카드 뷰가 함께 씁니다.
 function PublishControl({ article, isMutating, onToggle }) {
   const published = article.publicationStatus === "PUBLISHED";
@@ -913,7 +934,10 @@ function AdminTechArticles() {
 
         <div className="widget-card article-table-card">
           <div className="article-table-wrap">
-            <table className="article-table admin-v9-table">
+            {/* admin-articles-table 은 이 목록 표에만 붙습니다. 중복 검토 화면
+                (AdminTechArticleReviews)이 같은 article-table 클래스를 쓰기
+                때문에, 열 폭 규칙을 그쪽까지 끌고 가지 않으려는 표식입니다. */}
+            <table className="article-table admin-v9-table admin-articles-table">
               <caption className="sr-only">아티클 목록 및 관리 작업</caption>
               <thead>
                 <tr>
@@ -926,19 +950,38 @@ function AdminTechArticles() {
                       aria-label="현재 페이지 전체 선택"
                     />
                   </th>
+                  {/* 표가 table-layout: fixed 라 열 폭은 이 머리글이 정합니다.
+                      아티클만 폭을 주지 않아 남는 자리를 모두 가져갑니다.
+                      폭 값은 techArticlesAdminAlign.css 에 있습니다. */}
                   <th scope="col">아티클</th>
-                  <th scope="col">출처 · 언어</th>
-                  <th scope="col">가치 점수</th>
-                  <th scope="col">원문 게시 · 수집</th>
-                  <th scope="col">파이프라인 단계</th>
-                  <th scope="col">공개 설정</th>
-                  <th scope="col">작업</th>
+                  <th className="admin-source-col" scope="col">
+                    출처 · 언어
+                  </th>
+                  <th className="admin-score-col" scope="col">
+                    가치 점수
+                  </th>
+                  <th className="admin-view-col" scope="col">
+                    조회수
+                  </th>
+                  {/* 칸 안의 "원문 게시 / 수집 완료" 라벨이 뜻을 이미 밝힙니다. */}
+                  <th className="admin-date-col" scope="col">
+                    게시 · 수집
+                  </th>
+                  <th className="admin-stage-col" scope="col">
+                    파이프라인 단계
+                  </th>
+                  <th className="admin-publish-col" scope="col">
+                    공개 설정
+                  </th>
+                  <th className="admin-actions-col" scope="col">
+                    작업
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {isLoading && !response ? (
                   <tr>
-                    <td className="admin-empty-state" colSpan="8">
+                    <td className="admin-empty-state" colSpan="9">
                       <i
                         className="fas fa-circle-notch fa-spin"
                         aria-hidden="true"
@@ -948,7 +991,7 @@ function AdminTechArticles() {
                   </tr>
                 ) : !pageItems.length ? (
                   <tr>
-                    <td className="admin-empty-state" colSpan="8">
+                    <td className="admin-empty-state" colSpan="9">
                       <i className="fas fa-inbox" aria-hidden="true"></i>
                       <h3>조건에 맞는 항목이 없습니다.</h3>
                       <p>검색어 또는 필터를 변경해 보세요.</p>
@@ -1005,6 +1048,9 @@ function AdminTechArticles() {
                           >
                             {article.valueScore ?? article.score ?? "—"}
                           </span>
+                        </td>
+                        <td className="admin-view-cell">
+                          <ViewCountCell counts={article.viewCounts} />
                         </td>
                         <td className="admin-date-cell">
                           <span>원문 게시</span>
@@ -1246,6 +1292,37 @@ function AdminTechArticles() {
                         <span>공개 상태</span>
                         <StatusBadge status={detail.publicationStatus} />
                       </div>
+                    </div>
+                  </section>
+                  <section className="admin-detail-section">
+                    <h4>조회수</h4>
+                    {/* 목록에서는 합쳐 보여주지만 여기서는 나눕니다. 공개 상세에
+                        인증이 걸려 있어 비회원 시도에는 봇도 섞여 들어옵니다.
+                        나눠 두어야 운영자가 그 왜곡을 알아볼 수 있습니다. */}
+                    <div className="admin-detail-grid">
+                      <DetailFact
+                        label="전체 조회"
+                        value={`${
+                          (detail.viewCounts?.member ?? 0) +
+                          (detail.viewCounts?.guest ?? 0)
+                        }회`}
+                      />
+                      <DetailFact
+                        label="회원 조회"
+                        value={`${detail.viewCounts?.member ?? 0}회`}
+                      />
+                      <DetailFact
+                        label="비회원 조회 시도"
+                        value={`${detail.viewCounts?.guest ?? 0}회 · 로그인 전에 막힘(봇 포함)`}
+                      />
+                      <DetailFact
+                        label="마지막 조회"
+                        value={
+                          detail.viewCounts?.lastViewedAt
+                            ? fullDate(detail.viewCounts.lastViewedAt)
+                            : "기록 없음"
+                        }
+                      />
                     </div>
                   </section>
                   <QualityEvaluationPanel

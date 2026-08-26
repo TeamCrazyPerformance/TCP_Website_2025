@@ -439,8 +439,24 @@ const hasStatusMismatch = (a) =>
   a.reviewStatus === "APPROVED" &&
   !APPROVED_COMPATIBLE.includes(a.processingStatus);
 
+// 아티클별 조회수. 실제로는 파이프라인 MySQL 의 article_view_counts 입니다.
+const viewCounts = new Map();
+const viewCountsOf = (id) =>
+  viewCounts.get(id) || { member: 0, guest: 0, lastViewedAt: null };
+
+// 조회수가 화면에 보이도록 몇 건 시드한다. 비회원 시도가 회원 열람보다 많은
+// 아티클을 하나 넣어 두 숫자를 나눠 보여주는 이유가 드러나게 한다.
+articles.slice(0, 5).forEach((a, index) => {
+  viewCounts.set(a.articleId, {
+    member: [42, 17, 8, 3, 0][index],
+    guest: [5, 2, 0, 61, 1][index],
+    lastViewedAt: new Date(Date.now() - index * 3600 * 1000).toISOString(),
+  });
+});
+
 const adminItem = (a) => ({
   ...a,
+  viewCounts: viewCountsOf(a.articleId),
   evaluation: evaluationOf(a, false),
   score: a.valueScore,
   stage: articleStage(a),
@@ -1016,6 +1032,20 @@ function handle(method, pathname, query, body) {
   }
 
   // 소스는 계속 늘어나므로 목록 응답이 아니라 별도 경로로 줍니다.
+  // Nest 미들웨어가 가드 앞에서 부르는 경로. 회원/비회원을 나눠 셉니다.
+  if (method === "POST" && /\/view$/.test(pathname) && pathname.startsWith(`${PUBLIC_BASE}/`)) {
+    const id = decodeURIComponent(pathname.slice(PUBLIC_BASE.length + 1, -"/view".length));
+    if (!articles.some((a) => a.articleId === id)) return [204, null];
+    const current = viewCountsOf(id);
+    const key = query.get("member") === "true" ? "member" : "guest";
+    viewCounts.set(id, {
+      ...current,
+      [key]: current[key] + 1,
+      lastViewedAt: new Date().toISOString(),
+    });
+    return [204, null];
+  }
+
   if (method === "GET" && pathname === `${PUBLIC_BASE}/sources`) {
     const published = articles.filter(isPublic);
     return [200, {

@@ -62,8 +62,9 @@ describe("공개 토글 가드", () => {
 describe("파이프라인 단계 표시", () => {
   test("목록 컬럼이 검토 상태에서 단계로 바뀌었다", () => {
     // reviewStatus 단독 표시가 위조 APPROVED 를 "검토 승인"으로 보이게 한 원인
-    expect(SOURCE).toMatch(/<th scope="col">파이프라인 단계<\/th>/);
-    expect(SOURCE).not.toMatch(/<th scope="col">검토 상태<\/th>/);
+    // 머리글에 열 폭 className 이 붙을 수 있어 속성은 느슨하게 봅니다.
+    expect(SOURCE).toMatch(/<th[^>]*>\s*파이프라인 단계\s*<\/th>/);
+    expect(SOURCE).not.toMatch(/<th[^>]*>\s*검토 상태\s*<\/th>/);
     expect(SOURCE).not.toMatch(/status=\{[\s\S]{0,60}REVIEW_NOT_REQUIRED/);
   });
 
@@ -98,6 +99,95 @@ describe("파이프라인 단계 표시", () => {
     // 이제 서버가 걸러 주므로 다른 페이지에서 빈 목록이 되지 않습니다.
     expect(SOURCE).not.toMatch(/setStageFilter\(""\)/);
     expect(SOURCE).toMatch(/setPage\(1\);[\s\S]{0,60}\[stageFilter, keyword/);
+  });
+});
+
+describe("목록 표 폭 예산", () => {
+  const CSS = fs.readFileSync(
+    path.join(__dirname, "..", "..", "styles", "techArticlesAdminAlign.css"),
+    "utf8",
+  );
+
+  // 사이드바 260 + main 좌우 여백 48 을 뺀, 화면 1280 에서 표가 쓸 수 있는 폭.
+  const NARROWEST_SCREEN = 969;
+  // 폭을 주지 않은 "아티클" 열에 남겨야 할 최소치. 화면이 가장 좁을 때
+  // 줄어드는 것은 제목뿐이고, 제목은 두 줄에서 말줄임으로 끊깁니다.
+  const TITLE_MIN = 156;
+
+  const widths = [
+    ...CSS.matchAll(
+      /\.ta-admin \.admin-articles-table \.[a-z-]+ \{\s*width: (\d+)px;/g,
+    ),
+  ].map((m) => Number(m[1]));
+
+  const declared = Number(
+    CSS.match(
+      /\.ta-admin \.article-table\.admin-articles-table \{[\s\S]*?min-width: (\d+)px;/,
+    )[1],
+  );
+
+  test("고정 폭 열 + 제목 최소폭이 표의 min-width 와 맞는다", () => {
+    // 열을 추가하면서 이 예산을 안 고치면 다시 가로 스크롤이 생깁니다.
+    expect(widths.length).toBeGreaterThan(0);
+    const sum = widths.reduce((a, b) => a + b, 0);
+    expect(sum + TITLE_MIN).toBeLessThanOrEqual(declared);
+  });
+
+  test("1280 화면에서 가로 스크롤이 생기지 않는다", () => {
+    expect(declared).toBeLessThanOrEqual(NARROWEST_SCREEN);
+  });
+
+  test("단계 배지가 옆 칸을 덮지 않는다", () => {
+    // fixed 레이아웃에서 nowrap 배지는 칸을 넘으면 줄바꿈 대신 옆 칸을
+    // 파고듭니다. 실제로 "관리자 품질 검토 필요"가 공개 설정을 덮었습니다.
+    expect(CSS).toMatch(
+      /\.ta-admin \.admin-articles-table \.stage-badge \{[^}]*white-space: normal;/,
+    );
+  });
+
+  test("열 폭 규칙이 중복 검토 표로 새지 않는다", () => {
+    // AdminTechArticleReviews 도 article-table admin-v9-table 을 씁니다.
+    // 여기 규칙을 .article-table 로 걸면 그 표까지 fixed 레이아웃이 되어
+    // 열이 균등 분할되고 작업 버튼이 세로로 쌓입니다.
+    const scoped = CSS.split("아티클 목록 표: 한 화면에 담기")[1];
+    expect(scoped).toBeTruthy();
+    const leaked =
+      scoped.match(/\.ta-admin \.article-table(?!\.admin-articles-table)/g) ||
+      [];
+    expect(leaked).toEqual([]);
+
+    const reviews = fs.readFileSync(
+      path.join(__dirname, "AdminTechArticleReviews.jsx"),
+      "utf8",
+    );
+    expect(reviews).not.toMatch(/admin-articles-table/);
+  });
+
+  test("폭을 지정하지 않은 열은 아티클 하나뿐이다", () => {
+    // 둘 이상이면 남는 자리를 나눠 가져 제목이 좁아집니다.
+    const headers = SOURCE.match(/<th[\s>]/g) || [];
+    expect(headers.length - widths.length).toBe(1);
+  });
+});
+
+describe("조회수 열", () => {
+  test("전체를 먼저 보여주고 회원·비회원은 그 아래에 붙는다", () => {
+    // 대표값은 합계입니다. 내역만 있으면 "이 글이 얼마나 읽혔나"에
+    // 관리자가 암산으로 답해야 합니다.
+    const cell = SOURCE.match(
+      /function ViewCountCell\(\{ counts \}\) \{[\s\S]*?\n\}/,
+    );
+    expect(cell).not.toBeNull();
+    const body = cell[0];
+    expect(body).toMatch(/admin-view-total/);
+    expect(body).toMatch(/\{member \+ guest\}/);
+    expect(body.indexOf("admin-view-total")).toBeLessThan(body.indexOf("회원"));
+  });
+
+  test("합계를 서버 값으로 착각하지 않는다", () => {
+    // 파이프라인은 member/guest 두 칸만 저장합니다. total 이 생기면
+    // 화면 합계와 저장 값이 어긋날 수 있습니다.
+    expect(SOURCE).not.toMatch(/viewCounts\?\.total/);
   });
 });
 

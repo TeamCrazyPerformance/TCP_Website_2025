@@ -3,12 +3,13 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import logging
 import os
 from contextlib import asynccontextmanager, suppress
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Query, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from tech_article_pipeline.catalog import (
     crawl_source_catalog,
@@ -33,6 +34,8 @@ from tech_article_pipeline.runtime import Runtime, build_runtime
 from tech_article_pipeline.settings import Settings
 
 from .security import require_service_token
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _digest(payload: dict[str, Any]) -> bytes:
@@ -334,6 +337,27 @@ def create_app(
     @internal.get("/public/tags")
     async def public_tags() -> dict[str, Any]:
         return {"items": tag_catalog()}
+
+    @internal.post("/public/articles/{article_id}/view", status_code=status.HTTP_204_NO_CONTENT)
+    async def record_article_view(
+        request: Request,
+        article_id: str,
+        member: bool = Query(default=False),
+    ) -> Response:
+        """조회수를 올립니다. 운영 판단용 집계이며 사용자별 이력은 남기지 않습니다.
+
+        호출자(Nest 미들웨어)는 응답을 기다리지 않습니다. 여기서 실패해도
+        아티클 조회 자체는 정상적으로 끝나야 하므로 오류를 삼킵니다.
+        """
+        try:
+            await asyncio.to_thread(
+                request.app.state.runtime.repository.record_article_view,
+                article_id,
+                member=member,
+            )
+        except Exception:  # noqa: BLE001 - 부가 기능이 본 기능을 막지 않습니다.
+            _LOGGER.warning("failed to record article view", exc_info=True)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @internal.get("/public/sources")
     async def public_sources(request: Request) -> dict[str, Any]:

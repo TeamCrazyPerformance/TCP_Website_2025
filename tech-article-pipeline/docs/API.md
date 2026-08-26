@@ -87,6 +87,11 @@ through less than 92%.
   normally; GitHub Trending uses its UTC crawl observation time because that source
   has no original publication timestamp. The `isNew` flag remains based on collection
   time rather than this source-specific fallback.
+- `POST /public/articles/{articleId}/view?member=true|false` — bumps the per-article
+  counter. Operations-only aggregate; no per-user history is stored, so it is not
+  personal data. Unknown ids match no row in `articles`, so the insert affects nothing
+  and raises nothing — the path is reachable without auth, so a foreign-key error per
+  request would let anyone flood the log with stack traces. Callers do not await it.
 - `GET /public/sources` — id, name, domain, category and published `count` per source.
   Sources keep growing, so this is a separate call rather than a field on the list
   response, mirroring `GET /public/tags`.

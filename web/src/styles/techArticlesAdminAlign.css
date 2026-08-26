@@ -1144,3 +1144,158 @@
   background: rgba(148, 163, 184, 0.12);
   border-color: rgba(203, 213, 225, 0.16);
 }
+
+/* ── 조회수 ───────────────────────────────────────────────
+ * 공개 상세에 인증이 걸려 있어 비회원은 401 로 막히는데, 그 시도까지 세기
+ * 때문에 인증을 통과하지 못한 봇 요청도 함께 잡힙니다. 두 숫자를 붙여 쓰면
+ * 뒤엣것이 무엇인지 알 수 없으므로 각각 이름을 답니다.
+ *
+ * 그리드를 쓰는 이유 — "회원"과 "비회원"은 글자 폭이 달라서, 라벨을 그냥
+ * 나열하면 두 숫자가 세로로 어긋납니다. 라벨 열과 숫자 열을 나누면 라벨이
+ * 가장 긴 것에 맞춰지고 숫자는 오른쪽으로 정렬되어 자릿수끼리 맞습니다. */
+.ta-admin .admin-view-cell {
+  min-width: 72px;
+  color: var(--gray-500);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+/* 격자는 칸(td)이 아니라 안쪽 상자에 겁니다. td 자체의 display 를 바꾸면
+ * 그 칸이 표의 셀 취급을 받지 못해 행 구분선이 그 자리에서 끊깁니다. */
+.ta-admin .admin-view-grid {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  gap: 1px 8px;
+}
+
+.ta-admin .admin-view-cell strong {
+  color: var(--gray-300);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  justify-self: end;
+}
+
+/* 이 열의 대표값. 두 줄을 합친 수라 눈이 먼저 닿아야 합니다. */
+.ta-admin .admin-view-grid .admin-view-total {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin-bottom: 1px;
+  color: var(--gray-200);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* ── 아티클 목록 표: 한 화면에 담기 ─────────────────────────
+ * 열이 9 개까지 늘면서 가로 스크롤이 생겼습니다. 스크롤이 생기면
+ * "공개 설정"과 "작업"이 화면 밖으로 밀려, 정작 손을 대야 할 열이
+ * 가장 안 보입니다.
+ *
+ * 원인은 두 가지였습니다.
+ *   1) 칸마다 좌우 14px 여백 → 9 열이면 여백만 252px.
+ *   2) 각 칸에 붙은 min-width 가 실제 내용보다 훨씬 컸습니다.
+ *      (아티클 330 / 출처 150 / 날짜 142 / 단계·공개 132 / 작업 174)
+ *      내용이 필요로 한 폭은 그보다 200px 가까이 작았습니다.
+ *
+ * 그래서 table-layout: fixed 로 바꾸고 열 폭을 여기서 못 박습니다.
+ * 폭을 주지 않은 "아티클" 열이 남는 자리를 전부 가져갑니다 —
+ * 화면이 넓어지면 제목이 길게 보이고, 좁아지면 제목만 줄어듭니다.
+ *
+ * 계산 근거 (사이드바 260 + main 좌우 여백 48 을 뺀 값):
+ *   화면 1440 → 표에 1129px, 1280 → 969px.
+ *   폭을 고정한 8 개 열의 합이 813px 이므로 아티클 열에 최소 156px 를
+ *   남겨 min-width 를 969px 로 둡니다. 1280 에서도 들어갑니다.
+ *   화면이 가장 좁을 때 줄어드는 것은 제목 하나뿐이고, 제목은 두 줄에서
+ *   말줄임으로 끊깁니다. 나머지 열은 어느 폭에서도 그대로입니다.
+ *
+ * 열을 더 추가한다면 이 합계를 다시 맞춰 주세요. 그냥 붙이면
+ * 969px 를 넘겨 다시 스크롤이 생깁니다. */
+.ta-admin .article-table.admin-articles-table {
+  table-layout: fixed;
+  min-width: 969px;
+}
+
+/* 여백 14 → 11. 9 열이면 이것만으로 54px 가 돌아옵니다. */
+.ta-admin .admin-articles-table th {
+  padding: 13px 11px;
+}
+.ta-admin .admin-articles-table td {
+  padding: 15px 11px;
+}
+
+/* fixed 레이아웃에서는 첫 행(머리글)의 폭만 반영됩니다.
+ * 값은 머리글 글자 폭과 칸 내용 중 넓은 쪽에 맞췄습니다. */
+.ta-admin .admin-articles-table .selection-column {
+  width: 40px;
+  min-width: 40px;
+}
+.ta-admin .admin-articles-table .admin-source-col {
+  width: 100px;
+}
+.ta-admin .admin-articles-table .admin-score-col {
+  width: 78px;
+}
+.ta-admin .admin-articles-table .admin-view-col {
+  width: 92px;
+}
+/* 날짜 "2026-08-20" 이 62px 입니다. 88px 로는 글자가 칸 벽에 붙었습니다. */
+.ta-admin .admin-articles-table .admin-date-col {
+  width: 108px;
+}
+/* 가장 긴 단계 이름 "관리자 품질 검토 필요" 배지가 161px 입니다.
+ * 칸 여백 22px 을 더한 값이라 아홉 단계 어느 것도 넘치지 않습니다.
+ * 여기를 줄이면 배지가 옆 "공개 설정" 칸을 파고듭니다. */
+.ta-admin .admin-articles-table .admin-stage-col {
+  width: 183px;
+}
+.ta-admin .admin-articles-table .admin-publish-col {
+  width: 104px;
+}
+/* 버튼을 세로로 쌓아도 84px 에서는 글자와 테두리 사이가 눌렸습니다. */
+.ta-admin .admin-articles-table .admin-actions-col {
+  width: 108px;
+}
+
+/* 위에서 폭을 정했으므로 칸마다 붙은 min-width 는 이제 방해만 됩니다.
+ * 남겨 두면 fixed 레이아웃이 지정한 폭을 도로 밀어냅니다. */
+.ta-admin .admin-articles-table .admin-article-cell,
+.ta-admin .admin-articles-table .admin-source-cell,
+.ta-admin .admin-articles-table .admin-date-cell,
+.ta-admin .admin-articles-table .admin-view-cell,
+.ta-admin .admin-articles-table .stage-cell,
+.ta-admin .admin-articles-table .publish-control,
+.ta-admin .admin-articles-table .publish-control-group,
+.ta-admin .admin-articles-table .row-actions {
+  min-width: 0;
+}
+
+/* 단계 이름이 나중에 더 길어져도 옆 칸을 덮지 않게 합니다.
+ * 배지의 nowrap 은 fixed 레이아웃에서 줄바꿈 대신 넘침으로 이어집니다.
+ * 지금 폭(183px)에서는 아홉 단계 모두 한 줄에 들어가므로 이 규칙이
+ * 실제로 작동할 일은 없고, 새 단계가 추가됐을 때의 안전망입니다. */
+.ta-admin .admin-articles-table .stage-badge {
+  white-space: normal;
+  text-align: center;
+}
+
+/* 출처 이름은 길이를 통제할 수 없습니다. 칸을 넘기지 말고 접습니다. */
+.ta-admin .admin-articles-table .admin-source-cell strong {
+  overflow-wrap: anywhere;
+}
+
+/* 작업 버튼 둘을 가로로 두면 열에 130px 이 필요합니다. 세로로 쌓으면
+ * 그보다 훨씬 좁게 끝나고, 행 높이는 이미 조회수·날짜 칸이 두 줄이라
+ * 그대로입니다.
+ *
+ * 버튼은 칸 폭을 채우지 않습니다(stretch 아님). 칸에 여유를 주는 것과
+ * 버튼을 키우는 것은 다른 이야기라, 버튼은 글자에 맞는 크기로 두고
+ * 머리글 "작업"과 같은 선에서 왼쪽으로 맞춥니다. */
+.ta-admin .admin-articles-table .row-actions {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+.ta-admin .admin-articles-table .row-action {
+  padding: 5px 9px;
+  justify-content: center;
+}

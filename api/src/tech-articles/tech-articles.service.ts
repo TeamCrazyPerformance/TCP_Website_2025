@@ -62,6 +62,11 @@ interface PipelineArticle {
   originalPublishedAt?: string | null;
   collectedAt?: string | null;
   isNew?: boolean;
+  viewCounts?: {
+    member?: number;
+    guest?: number;
+    lastViewedAt?: string | null;
+  };
   normalizedAt?: string | null;
   qualityScore?: number | null;
   valueScore?: number | null;
@@ -609,6 +614,12 @@ export class TechArticlesService {
   private adminItem(article: PipelineArticle) {
     return {
       articleId: article.articleId,
+      // 운영 판단용 집계. 공개 응답(publicItem)에는 넣지 않습니다.
+      viewCounts: {
+        member: article.viewCounts?.member ?? 0,
+        guest: article.viewCounts?.guest ?? 0,
+        lastViewedAt: article.viewCounts?.lastViewedAt ?? null,
+      },
       recordVersion: article.recordVersion,
       title: article.localizedTitle || article.title,
       originalTitle: article.title,

@@ -128,6 +128,7 @@ def test_migrations_are_idempotent_and_checksummed(mysql_pool):
             ("002", 64),
             ("003", 64),
             ("004", 64),
+            ("005", 64),
         ]
     finally:
         connection.close()
@@ -446,3 +447,86 @@ def test_admission_rolls_back_if_bucket_write_fails(mysql_pool):
         assert cursor.fetchone()[0] == 0
     finally:
         connection.close()
+
+
+def _view_counts(repository, article_id):
+    """조회 투영에서 조회수를 꺼냅니다 — get_article 도 목록과 같은 질의를 쓰므로
+    article_view_counts 를 LEFT JOIN 한 결과가 그대로 드러납니다."""
+    article = repository.get_article(article_id)
+    assert article is not None
+    return article["viewCounts"]
+
+
+def _ingest_article(mysql_pool, label: str):
+    service = ArticleAdmissionService(MySQLAdmissionRepository(mysql_pool))
+    suffix = uuid4().hex
+    result = service.admit(
+        admission_payload(
+            f"{label}-item-{suffix}",
+            f"{label} content {suffix} " + ("technical detail " * 20),
+            f"https://integration.example/{label}/{suffix}",
+        )
+    )
+    assert result["outcome"] == "ARTICLE_INGESTED"
+    return result["articleIngested"]["articleId"]
+
+
+def test_article_view_counts_increment_separately_and_project_as_zero(mysql_pool):
+    """조회수 경로를 실제 MySQL 에서 확인합니다.
+
+    단위 테스트는 메모리 저장소와 SQL 문자열만 봅니다. INSERT ... SELECT ...
+    ON DUPLICATE KEY UPDATE 가 실제로 도는지, 행이 없는 아티클이 목록에서 0 으로
+    투영되는지는 여기서만 드러납니다.
+    """
+    repository = MySQLPipelineRepository(mysql_pool)
+    article_id = _ingest_article(mysql_pool, "view")
+
+    # 아무도 보지 않은 아티클에는 행이 없습니다. LEFT JOIN 이라 0 이어야 합니다.
+    assert _view_counts(repository, article_id) == {
+        "member": 0,
+        "guest": 0,
+        "lastViewedAt": None,
+    }
+
+    repository.record_article_view(article_id, member=True)
+    repository.record_article_view(article_id, member=True)
+    repository.record_article_view(article_id, member=False)
+
+    counts = _view_counts(repository, article_id)
+    assert counts["member"] == 2
+    assert counts["guest"] == 1
+    assert counts["lastViewedAt"] is not None
+
+
+def test_unknown_article_view_is_ignored_without_error(mysql_pool):
+    """조회수 경로는 인증 없이도 닿습니다. 없는 id 가 예외를 던지면 요청마다
+    스택 트레이스가 쌓여 누구나 로그를 부풀릴 수 있게 됩니다."""
+    repository = MySQLPipelineRepository(mysql_pool)
+    repository.record_article_view(f"no-such-article-{uuid4().hex}", member=True)
+
+    connection = mysql_pool.get_connection()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            "SELECT COUNT(*) FROM article_view_counts WHERE article_id LIKE 'no-such-article-%'"
+        )
+        assert cursor.fetchone()[0] == 0
+    finally:
+        connection.close()
+
+
+def test_concurrent_views_do_not_lose_increments(mysql_pool):
+    """단일 upsert 라 read-modify-write 손실이 없어야 합니다. 같은 아티클에
+    동시에 몰리면 행 잠금으로 직렬화되지만 값은 하나도 빠지지 않습니다."""
+    repository = MySQLPipelineRepository(mysql_pool)
+    article_id = _ingest_article(mysql_pool, "concurrent-view")
+
+    def bump(index: int) -> None:
+        repository.record_article_view(article_id, member=index % 2 == 0)
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        list(executor.map(bump, range(20)))
+
+    counts = _view_counts(repository, article_id)
+    assert counts["member"] == 10
+    assert counts["guest"] == 10

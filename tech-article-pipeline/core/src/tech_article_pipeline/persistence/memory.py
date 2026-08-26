@@ -50,6 +50,8 @@ class MemoryPipelineRepository:
         self.crawl_idempotency: dict[str, str] = {}
         self.crawl_jobs: dict[str, dict[str, Any]] = {}
         self.crawl_items: dict[str, dict[str, Any]] = {}
+        # 아티클별 조회수. 사용자별 이력은 남기지 않습니다.
+        self.article_views: dict[str, dict[str, Any]] = {}
 
     def check_readiness(self) -> None:
         return None
@@ -862,6 +864,12 @@ class MemoryPipelineRepository:
                 "valueScore": article.get("qualityScore"),
                 "duplicateStatus": "UNIQUE",
                 "stage": self._article_stage(article),
+                "viewCounts": copy.deepcopy(
+                    self.article_views.get(
+                        article.get("articleId"),
+                        {"member": 0, "guest": 0, "lastViewedAt": None},
+                    )
+                ),
             }
         )
         return projected
@@ -998,6 +1006,17 @@ class MemoryPipelineRepository:
         with self._lock:
             article = self.articles.get(article_id)
             return None if article is None else self._project_article(article)
+
+    def record_article_view(self, article_id: str, *, member: bool) -> None:
+        with self._lock:
+            if article_id not in self.articles:
+                # mysql 쪽도 articles 를 훑는 SELECT 가 0 행을 내어 같습니다.
+                return
+            counts = self.article_views.setdefault(
+                article_id, {"member": 0, "guest": 0, "lastViewedAt": None}
+            )
+            counts["member" if member else "guest"] += 1
+            counts["lastViewedAt"] = _now()
 
     def article_stats(
         self, *, keyword: str | None = None, publication_status: str | None = None
