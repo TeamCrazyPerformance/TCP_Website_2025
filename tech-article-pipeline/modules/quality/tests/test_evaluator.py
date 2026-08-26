@@ -56,7 +56,9 @@ def test_valid_article_passes_at_low_boundary():
     assert evaluation["decision"] == "PASS"
     assert evaluation["schemaVersion"] == "2.0"
     assert evaluation["score"]["dimensions"].keys() == {
-        "relevance", "timeliness", "sourceReliability"
+        "relevance",
+        "timeliness",
+        "sourceReliability",
     }
 
 
@@ -111,9 +113,7 @@ def test_length_and_language_are_hard_rejections_even_with_zero_threshold():
     result = evaluator().evaluate(payload)
     evaluation = result["qualityEvaluation"]
     assert evaluation["decision"] == "REJECT"
-    assert {"CONTENT_TOO_SHORT", "LANGUAGE_NOT_ALLOWED"} <= set(
-        evaluation["rejectionCodes"]
-    )
+    assert {"CONTENT_TOO_SHORT", "LANGUAGE_NOT_ALLOWED"} <= set(evaluation["rejectionCodes"])
 
 
 def test_maximum_length_is_enforced():

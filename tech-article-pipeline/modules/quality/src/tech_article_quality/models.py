@@ -19,9 +19,7 @@ class Article(ContractModel):
     content: str = Field(min_length=1)
     language: str = Field(min_length=2, max_length=16)
     authors: list[str] = Field(default_factory=list)
-    original_published_at: datetime | None = Field(
-        alias="originalPublishedAt", default=None
-    )
+    original_published_at: datetime | None = Field(alias="originalPublishedAt", default=None)
 
     @field_validator("language")
     @classmethod
@@ -40,16 +38,10 @@ class Article(ContractModel):
 
 class QualityPolicy(ContractModel):
     policy_version: str = Field(alias="policyVersion", default="quality-policy-v1")
-    minimum_evaluation_score: int = Field(
-        alias="minimumEvaluationScore", default=70, ge=0, le=100
-    )
+    minimum_evaluation_score: int = Field(alias="minimumEvaluationScore", default=70, ge=0, le=100)
     review_lower_bound: int = Field(alias="reviewLowerBound", default=45, ge=0, le=100)
-    minimum_content_length: int = Field(
-        alias="minimumContentLength", default=200, ge=1
-    )
-    maximum_content_length: int = Field(
-        alias="maximumContentLength", default=2_000_000, ge=1
-    )
+    minimum_content_length: int = Field(alias="minimumContentLength", default=200, ge=1)
+    maximum_content_length: int = Field(alias="maximumContentLength", default=2_000_000, ge=1)
     allowed_languages: list[str] = Field(
         alias="allowedLanguages", default_factory=lambda: ["ko", "en"]
     )
