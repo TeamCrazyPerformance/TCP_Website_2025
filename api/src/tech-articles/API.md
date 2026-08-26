@@ -93,6 +93,20 @@
 - `GET /api/v1/tech-articles/sources`: 소스 선택기용 목록(`id`, `name`, `domain`,
   `category`, 공개 건수 `count`). 소스는 계속 늘어나므로 목록 응답에 얹지 않고
   `tags` 와 같은 방식으로 따로 둡니다.
+- 아티클 상세(`GET /api/v1/tech-articles/{articleId}`)는 조회수를 집계합니다.
+  미들웨어가 **응답이 끝난 뒤 상태 코드를 보고** 셉니다.
+
+  | 응답 | 판정 | 이유 |
+  |---|---|---|
+  | `200`·`304` | 회원 열람 | `304`는 브라우저 캐시 재검증. 본문만 생략됐을 뿐 열람입니다 |
+  | `401` (토큰 없음) | 비회원 열람 시도 | 로그인하지 않은 요청 |
+  | `401` (토큰 있음) | 세지 않음 | 만료된 회원. 프런트가 갱신 후 재시도해 `200`으로 잡힙니다 |
+  | `404`·`5xx` | 세지 않음 | 비공개·보관·없는 아티클이거나 우리 쪽 실패 |
+
+  상태 코드는 가드와 컨트롤러의 최종 판정이라, 서명만 맞고 실제로는 거부되는
+  토큰(로그아웃·refresh 토큰 등)이 회원으로 잘못 잡히지 않습니다. 사용자별
+  이력은 남기지 않으며, 집계는 관리자 응답(`viewCounts`)에만 실리고 공개
+  응답에는 없습니다.
 - `GET /api/v1/admin/tech-articles`: `page`, `pageSize`, `keyword`, `publicationStatus`,
   `stage=INGESTED|QUALITY_REVIEW|ENRICHING|PUBLICATION_REVIEW|COMPLETED|FAILED_AFTER_APPROVAL|FAILED|QUALITY_REJECTED`,
   `statusMismatch=true`, `sort=NEWEST|OLDEST|SCORE_DESC|SCORE_ASC`. `stage` 와
