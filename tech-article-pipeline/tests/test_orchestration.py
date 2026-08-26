@@ -164,6 +164,13 @@ def test_real_admission_and_quality_modules_connect_to_core(normalized_payload):
         "QUALITY",
         "ENRICHMENT",
     ]
+    stored = repository.get_submission(submission["submissionId"])
+    score = stored["quality_result"]["qualityEvaluation"]["score"]
+    assert [axis["key"] for axis in score["axes"]] == [
+        "relevance",
+        "timeliness",
+        "sourceReliability",
+    ]
     assert summarizer.last_input is not None
     assert set(summarizer.last_input["qualityEvaluation"]["score"]) == {"overall"}
 

@@ -17,11 +17,20 @@ from .models import (
     QualityEvaluationRequest,
     QualityEvaluationResult,
     Score,
+    ScoreAxis,
     Signals,
 )
 
 Clock = Callable[[], datetime]
 EVALUATOR_VERSION = "1.0.0"
+
+# 계산과 표시 계약이 같은 정의를 사용합니다. 축을 바꿀 때 계산식만 고치거나
+# 프런트 라벨만 고쳐 서로 어긋나는 일을 막기 위한 단일 기준입니다.
+QUALITY_AXES = (
+    {"key": "relevance", "label": "개발 관련성", "weight": 0.45},
+    {"key": "timeliness", "label": "시의성", "weight": 0.30},
+    {"key": "sourceReliability", "label": "출처 신뢰도", "weight": 0.25},
+)
 
 DEVELOPER_KEYWORDS = frozenset(
     {
@@ -99,8 +108,25 @@ class QualityEvaluator:
         relevance = self.evaluate_developer_relevance(article)
         timeliness = self.evaluate_timeliness(article.original_published_at, now)
         source_reliability = self.evaluate_source_reliability(request)
-        overall = round(relevance * 0.45 + timeliness * 0.30 + source_reliability * 0.25)
+        dimension_values = {
+            "relevance": relevance,
+            "timeliness": timeliness,
+            "sourceReliability": source_reliability,
+        }
+        overall = round(
+            sum(dimension_values[axis["key"]] * float(axis["weight"]) for axis in QUALITY_AXES)
+        )
         overall = max(0, min(100, overall))
+        axes = [
+            ScoreAxis(
+                key=str(axis["key"]),
+                label=str(axis["label"]),
+                value=dimension_values[str(axis["key"])],
+                weight=float(axis["weight"]),
+                contribution=round(dimension_values[str(axis["key"])] * float(axis["weight"]), 2),
+            )
+            for axis in QUALITY_AXES
+        ]
 
         rejection_codes = list(hard_rejections)
         if relevance < 30:
@@ -147,6 +173,7 @@ class QualityEvaluator:
                         timeliness=timeliness,
                         sourceReliability=source_reliability,
                     ),
+                    axes=axes,
                 ),
                 reason=reason,
                 rejectionCodes=list(dict.fromkeys(rejection_codes)),

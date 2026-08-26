@@ -102,12 +102,28 @@ class Dimensions(ContractModel):
     source_reliability: int = Field(alias="sourceReliability", ge=0, le=100)
 
 
+class ScoreScale(ContractModel):
+    minimum: int = Field(alias="min", default=0)
+    maximum: int = Field(alias="max", default=100)
+
+
+class ScoreAxis(ContractModel):
+    key: str = Field(min_length=1, max_length=64)
+    label: str = Field(min_length=1, max_length=100)
+    value: int = Field(ge=0, le=100)
+    weight: float | None = Field(default=None, ge=0, le=1)
+    contribution: float | None = None
+
+
 class Score(ContractModel):
     overall: int = Field(ge=0, le=100)
     dimensions: Dimensions
+    scale: ScoreScale = Field(default_factory=ScoreScale)
+    axes: list[ScoreAxis] = Field(default_factory=list, max_length=20)
 
 
 class Evaluation(ContractModel):
+    schema_version: str = Field(alias="schemaVersion", default="2.0")
     status: Literal["SUCCESS", "FAILED"]
     decision: Literal["PASS", "REJECT", "REVIEW_REQUIRED"] | None
     evaluated_at: datetime = Field(alias="evaluatedAt")

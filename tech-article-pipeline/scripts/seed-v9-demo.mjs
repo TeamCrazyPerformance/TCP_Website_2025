@@ -87,15 +87,30 @@ for (const article of articles) {
   };
   const qualityResult = {
     qualityEvaluation: {
+      schemaVersion: "2.0",
+      evaluatorVersion: "v9-demo",
+      policyVersion: "quality-policy-v1",
       decision: "PASS",
       reason: "v9 로컬 화면 검증용 데이터",
       score: {
         overall: article.score,
+        scale: { min: 0, max: 100 },
         dimensions: {
           relevance: article.scoreBreakdown?.relevance ?? article.score,
           timeliness: article.scoreBreakdown?.freshness ?? article.score,
           sourceReliability: article.scoreBreakdown?.sourceTrust ?? article.score,
         },
+        axes: [
+          ["relevance", "개발 관련성", 0.45, article.scoreBreakdown?.relevance ?? article.score],
+          ["timeliness", "시의성", 0.3, article.scoreBreakdown?.freshness ?? article.score],
+          ["sourceReliability", "출처 신뢰도", 0.25, article.scoreBreakdown?.sourceTrust ?? article.score],
+        ].map(([key, label, weight, value]) => ({
+          key,
+          label,
+          value,
+          weight,
+          contribution: Number((value * weight).toFixed(2)),
+        })),
       },
     },
   };

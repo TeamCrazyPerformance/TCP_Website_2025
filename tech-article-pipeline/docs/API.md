@@ -25,6 +25,14 @@ The submission body is the admission module's normalized article contract plus
 generation policy, while `duplicatePolicy` is explicit because it affects the
 atomic admission decision.
 
+Successful quality results are self-describing. `qualityEvaluation.score.axes`
+stores the ordered axis key, display label, numeric value, optional weight, and
+server-calculated contribution used by that evaluation. `score.scale` declares
+the numeric range. The legacy `score.dimensions` object remains temporarily for
+rolling-deployment compatibility, but clients should consume `axes`. Because the
+metadata is stored with each result, historical articles keep the policy that
+actually produced their score when a later evaluator changes its axes.
+
 The crawl request does not accept URLs. This prevents the internal endpoint from
 becoming an SSRF proxy; entry points are selected from the registered source:
 

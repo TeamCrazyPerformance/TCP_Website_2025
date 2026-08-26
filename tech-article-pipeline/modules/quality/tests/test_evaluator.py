@@ -54,9 +54,31 @@ def test_valid_article_passes_at_low_boundary():
     evaluation = result["qualityEvaluation"]
     assert evaluation["status"] == "SUCCESS"
     assert evaluation["decision"] == "PASS"
+    assert evaluation["schemaVersion"] == "2.0"
     assert evaluation["score"]["dimensions"].keys() == {
         "relevance", "timeliness", "sourceReliability"
     }
+
+
+def test_score_describes_the_axes_used_for_the_evaluation():
+    evaluation = evaluator().evaluate(request(minimumEvaluationScore=0))["qualityEvaluation"]
+    score = evaluation["score"]
+
+    assert score["scale"] == {"min": 0, "max": 100}
+    assert [axis["key"] for axis in score["axes"]] == [
+        "relevance",
+        "timeliness",
+        "sourceReliability",
+    ]
+    assert [axis["label"] for axis in score["axes"]] == [
+        "개발 관련성",
+        "시의성",
+        "출처 신뢰도",
+    ]
+    assert [axis["weight"] for axis in score["axes"]] == [0.45, 0.30, 0.25]
+    assert round(sum(axis["contribution"] for axis in score["axes"])) == score["overall"]
+    for axis in score["axes"]:
+        assert axis["value"] == score["dimensions"][axis["key"]]
 
 
 def test_exactly_24_hours_has_zero_timeliness():
