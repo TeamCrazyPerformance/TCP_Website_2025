@@ -85,6 +85,139 @@
 /* 목업 셸이 body 에 주던 배경을 스코프 루트가 대신 담당 */
 .ta-public {
   background: var(--primary-black);
+  --article-tag-foreground: #111827;
+  --article-tag-tone-01: #df52ae;
+  --article-tag-tone-02: #ab9dbc;
+  --article-tag-tone-03: #e2d2f4;
+  --article-tag-tone-04: #997eac;
+  --article-tag-tone-05: #aa78ab;
+  --article-tag-tone-06: #a974c1;
+  --article-tag-tone-07: #ac6ed3;
+  --article-tag-tone-08: #6b8da1;
+  --article-tag-tone-09: #45dec2;
+  --article-tag-tone-10: #808b89;
+  --article-tag-tone-11: #61c4b2;
+  --article-tag-tone-12: #24ab92;
+  --article-tag-tone-13: #5fb351;
+  --article-tag-tone-14: #bd9649;
+  --article-tag-tone-15: #d0c76e;
+}
+
+/* ── 목록·상세 태그 팔레트 ────────────────────────────────
+ * 모든 태그의 글자를 짙은 네이비로 통일하고, 어두운 배경색만 같은 색조의
+ * 밝은 톤으로 조정해 작은 글자도 최소 5:1 대비를 갖게 합니다.
+ * 필터 버튼과 목록·상세의 표시 태그는 같은 분야 색을 공유합니다. */
+.ta-public .tag-button,
+.ta-public .article-tag {
+  color: var(--article-tag-foreground);
+  background: var(--article-tag-background);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ta-public .tag-ai-ml {
+  --article-tag-background: var(--article-tag-tone-01);
+}
+
+.ta-public .tag-frontend {
+  --article-tag-background: var(--article-tag-tone-02);
+}
+
+.ta-public .tag-mobile {
+  --article-tag-background: var(--article-tag-tone-03);
+}
+
+.ta-public .tag-language-framework {
+  --article-tag-background: var(--article-tag-tone-04);
+}
+
+.ta-public .tag-data-db {
+  --article-tag-background: var(--article-tag-tone-05);
+}
+
+.ta-public .tag-cloud {
+  --article-tag-background: var(--article-tag-tone-06);
+}
+
+.ta-public .tag-devops {
+  --article-tag-background: var(--article-tag-tone-07);
+}
+
+.ta-public .tag-security {
+  --article-tag-background: var(--article-tag-tone-08);
+}
+
+.ta-public .tag-backend {
+  --article-tag-background: var(--article-tag-tone-09);
+}
+
+.ta-public .tag-architecture {
+  --article-tag-background: var(--article-tag-tone-10);
+}
+
+.ta-public .tag-developer-tools {
+  --article-tag-background: var(--article-tag-tone-11);
+}
+
+.ta-public .tag-software-quality {
+  --article-tag-background: var(--article-tag-tone-12);
+}
+
+.ta-public .tag-open-source {
+  --article-tag-background: var(--article-tag-tone-13);
+}
+
+.ta-public .tag-development-organization {
+  --article-tag-background: var(--article-tag-tone-14);
+}
+
+.ta-public .tag-industry-trends {
+  --article-tag-background: var(--article-tag-tone-15);
+}
+
+.ta-public .tag-more {
+  --article-tag-background: var(--article-tag-tone-08);
+}
+
+.ta-public .tag-button[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px rgba(248, 250, 252, 0.9);
+}
+
+/* 카드 상단의 제목과 하단의 태그 칩이 가장자리에서 같은 거리를
+   갖도록 하나의 여백 값을 공유합니다. */
+.ta-public .article-card {
+  --article-card-edge-space: 18px;
+  padding-top: var(--article-card-edge-space);
+  padding-bottom: var(--article-card-edge-space);
+}
+
+.ta-public .article-title {
+  font-weight: 500;
+}
+
+.ta-public .search-submit {
+  color: #0b1220;
+}
+
+.ta-public .category-filter-panel legend,
+.ta-public .article-list-heading #resultCount {
+  font-weight: 500;
+}
+
+/* 한 줄 요약과 태그는 한 글의 연속된 정보이므로
+   구분선을 없애고 작은 여백만 남깁니다. */
+.ta-public .article-card-bottom {
+  margin-top: 6px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* 좌우가 한 줄인 화면에서 높은 공유 버튼 때문에 칩이 떠 보이지
+   않도록 하단선을 맞촥니다. */
+@media (min-width: 768px) {
+  .ta-public .article-card-bottom {
+    align-items: flex-end;
+  }
 }
 
 /* ── 소스 선택 ────────────────────────────────────────────
@@ -489,4 +622,81 @@
   font-size: 16px;
   font-weight: 800;
   line-height: 1.45;
+}
+
+/* ── 상세 페이지 읽기 밝기 조정 ───────────────────────────
+ * 거의 검은 배경 위에 순백색·굵은 글자가 넓게 반복되면서 생기던 눈부심을
+ * 줄입니다. 제목 → 한 줄 요약 → 본문의 밝기 단계를 분리하고, 점수 카드의
+ * 강조색은 실제 점수에만 남겨 본문과 시선을 경쟁하지 않도록 합니다. */
+.ta-public {
+  --detail-title-text: #d9dee7;
+  --detail-emphasis-text: #d8dee7;
+  --detail-reading-text: #c8ced8;
+  --detail-muted-accent: #ad9cbd;
+  --detail-score-accent: #80c69b;
+}
+
+.ta-public .detail-title {
+  color: var(--detail-title-text);
+  font-weight: 500;
+}
+
+.ta-public .summary-card::before {
+  display: none;
+  content: none;
+}
+
+.ta-public .detail-one-line-summary {
+  color: var(--detail-emphasis-text);
+  background: rgba(49, 67, 110, 0.14);
+  border-left-color: rgba(168, 197, 230, 0.62);
+  font-weight: 500;
+}
+
+.ta-public .summary-body,
+.ta-public .summary-body-v9 > p:first-child,
+.ta-public .summary-body li {
+  color: var(--detail-reading-text);
+}
+
+.ta-public .summary-body strong,
+.ta-public .summary-body h3,
+.ta-public .summary-body h4,
+.ta-public .summary-body h5,
+.ta-public .summary-body h6 {
+  color: var(--detail-emphasis-text);
+}
+
+.ta-public .detail-sidebar h2,
+.ta-public .score-gate-card h3 {
+  color: var(--detail-title-text);
+}
+
+.ta-public .detail-sidebar h2 {
+  font-weight: 500;
+}
+
+.ta-public .source-notice h2 {
+  font-weight: 500;
+}
+
+.ta-public .detail-source-notice h2 {
+  color: var(--detail-title-text);
+}
+
+.ta-public .detail-sidebar .scenario-eyebrow {
+  color: var(--detail-muted-accent);
+}
+
+.ta-public .score-summary strong,
+.ta-public .score-breakdown dd {
+  color: var(--detail-score-accent);
+}
+
+.ta-public .score-meter::-webkit-meter-optimum-value {
+  background: linear-gradient(90deg, #7f9bb8, var(--detail-score-accent));
+}
+
+.ta-public .score-meter::-moz-meter-bar {
+  background: linear-gradient(90deg, #7f9bb8, var(--detail-score-accent));
 }

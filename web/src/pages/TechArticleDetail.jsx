@@ -7,6 +7,10 @@ import {
 } from "../components/tech-articles/TechArticleCommon";
 import TechArticlePublicContent from "../components/tech-articles/TechArticlePublicContent";
 import { QualityScoreAxes } from "../components/tech-articles/ArticleQualityPanel";
+import {
+  holdArticleListReturn,
+  releaseArticleListReturn,
+} from "../components/tech-articles/articleListReturn";
 import { V9ArticleTags } from "./TechArticles";
 import { useAuth } from "../context/AuthContext";
 
@@ -18,6 +22,16 @@ function TechArticleDetail() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    const returnState = holdArticleListReturn(articleId);
+    return () => {
+      // 아티클 목록·상세 흐름을 완전히 벗어날 때는 브라우저 기본 정책을 즉시 복구합니다.
+      if (!window.location.pathname.startsWith("/tech-articles")) {
+        releaseArticleListReturn(returnState);
+      }
+    };
+  }, [articleId]);
 
   useEffect(() => {
     let active = true;
@@ -170,12 +184,8 @@ function TechArticleDetail() {
               <div className="detail-primary">
                 <article
                   className="summary-card"
-                  aria-labelledby="summaryHeading"
+                  aria-label="한 줄 요약과 주요 내용"
                 >
-                  <header className="summary-heading">
-                    <h2 id="summaryHeading">핵심 요약</h2>
-                  </header>
-
                   {article?.oneLineSummary && (
                     <p id="oneLineSummary" className="detail-one-line-summary">
                       {article.oneLineSummary}
@@ -204,10 +214,7 @@ function TechArticleDetail() {
                   <p className="orbitron scenario-eyebrow">VALUE SCORE</p>
                   <h2 id="scoreHeading">가치 점수</h2>
                   {isScoreLocked ? (
-                    <div
-                      className="score-gate-card"
-                      role="note"
-                    >
+                    <div className="score-gate-card" role="note">
                       <div className="score-gate-heading">
                         <span className="member-gate-icon" aria-hidden="true">
                           <i className="fas fa-lock"></i>

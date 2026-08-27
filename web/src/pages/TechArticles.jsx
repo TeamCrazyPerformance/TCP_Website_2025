@@ -1,11 +1,18 @@
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useNavigationType,
+  useSearchParams,
+} from "react-router-dom";
 import {
   getTechArticles,
   getTechArticleSources,
@@ -18,6 +25,11 @@ import {
   shouldOpenFromCardClick,
 } from "../components/tech-articles/TechArticleCommon";
 import { shareArticle } from "../components/tech-articles/articleShare";
+import {
+  readArticleListReturn,
+  releaseArticleListReturn,
+  rememberArticleListReturn,
+} from "../components/tech-articles/articleListReturn";
 import { getPageTokens } from "../components/tech-articles/TechArticlePagination";
 import TechArticlePublicContent from "../components/tech-articles/TechArticlePublicContent";
 
@@ -28,16 +40,16 @@ const TAG_CLASS_NAMES = {
   모바일: "tag-mobile",
   "프로그래밍 언어": "tag-language-framework",
   데이터: "tag-data-db",
-  클라우드: "tag-cloud-devops",
-  DevOps: "tag-cloud-devops",
+  클라우드: "tag-cloud",
+  DevOps: "tag-devops",
   보안: "tag-security",
   네트워크: "tag-backend",
   "소프트웨어 아키텍처": "tag-architecture",
-  "개발자 도구": "tag-language-framework",
-  "소프트웨어 품질": "tag-industry-career",
+  "개발자 도구": "tag-developer-tools",
+  "소프트웨어 품질": "tag-software-quality",
   오픈소스: "tag-open-source",
-  "개발 조직": "tag-industry-career",
-  "산업 동향": "tag-blockchain-web3",
+  "개발 조직": "tag-development-organization",
+  "산업 동향": "tag-industry-trends",
 };
 
 export function v9TagClassName(tag) {
@@ -138,7 +150,7 @@ function SourcePickerDialog({
     <dialog className="source-dialog" ref={dialogRef} onClose={onClose}>
       <form method="dialog" className="source-dialog-inner">
         <header className="source-dialog-header">
-          <h2>소스 고르기</h2>
+          <h2>소스 선택</h2>
           <button
             className="source-dialog-close"
             type="button"
@@ -212,6 +224,12 @@ function sameValues(left, right) {
   return leftSorted.every((value, index) => value === rightSorted[index]);
 }
 
+function moveToResults() {
+  document
+    .getElementById("resultsStart")
+    ?.scrollIntoView({ behavior: "auto", block: "start" });
+}
+
 function V9TagButtons({
   tags,
   selectedTags,
@@ -265,6 +283,8 @@ export function V9ArticleTags({
 
 function TechArticles() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const navigationType = useNavigationType();
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Math.max(
     1,
@@ -292,7 +312,9 @@ function TechArticles() {
   const [isLoading, setIsLoading] = useState(true);
   const [filterOpen, setFilterOpen] = useState(false);
   const [toast, setToast] = useState("");
+  const [listScrollRevision, setListScrollRevision] = useState(0);
   const requestId = useRef(0);
+  const pendingListScroll = useRef(false);
   const filterDialogRef = useRef(null);
   const sourceDialogRef = useRef(null);
 
@@ -360,6 +382,65 @@ function TechArticles() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
+  useLayoutEffect(() => {
+    if (listScrollRevision === 0) return;
+    moveToResults();
+  }, [listScrollRevision]);
+
+  useLayoutEffect(() => {
+    const returnState = readArticleListReturn();
+    if (!returnState) return;
+
+    const listPath = `${location.pathname}${location.search || ""}`;
+    const shouldRestore =
+      navigationType === "POP" &&
+      returnState.listPath === listPath &&
+      returnState.listLocationKey === (location.key || "default");
+
+    // 화면 안의 "목록으로 돌아가기"나 헤더 링크는 새 목록 이동(PUSH)입니다.
+    // 이때는 기존 상단 이동 정책을 유지하고 남아 있던 복원 정보만 버립니다.
+    if (!shouldRestore) {
+      releaseArticleListReturn(returnState);
+      return;
+    }
+
+    // 네 개의 스켈레톤 높이를 기준으로 복원하면 실제 카드가 들어올 때 위치가
+    // 다시 밀립니다. 목록 요청이 끝난 뒤 실제 아티클 ID를 앵커로 사용합니다.
+    if (isLoading) return;
+
+    const card = Array.from(
+      document.querySelectorAll(".article-card[data-article-id]"),
+    ).find((element) => element.dataset.articleId === returnState.articleId);
+
+    if (card) {
+      const currentCardTop = card.getBoundingClientRect().top + window.scrollY;
+      const viewportOffset = Number.isFinite(returnState.viewportOffset)
+        ? returnState.viewportOffset
+        : 0;
+      window.scrollTo({
+        top: Math.max(0, currentCardTop - viewportOffset),
+        behavior: "auto",
+      });
+    } else {
+      // 글이 삭제되거나 필터 결과에서 사라졌다면 예측 가능한 목록 시작점으로 갑니다.
+      moveToResults();
+    }
+
+    releaseArticleListReturn(returnState);
+  }, [
+    isLoading,
+    location.key,
+    location.pathname,
+    location.search,
+    navigationType,
+  ]);
+
+  const completePendingListScroll = useCallback(() => {
+    if (!pendingListScroll.current) return;
+    pendingListScroll.current = false;
+    setListScrollRevision((current) => current + 1);
+  }, []);
+
   const loadArticles = useCallback(async () => {
     const currentRequest = ++requestId.current;
     setIsLoading(true);
@@ -374,6 +455,7 @@ function TechArticles() {
       });
       if (requestId.current !== currentRequest) return;
       setResponse(data);
+      completePendingListScroll();
       if (data?.pagination?.totalPages && page > data.pagination.totalPages) {
         const next = new URLSearchParams(searchParams);
         next.set("page", String(data.pagination.totalPages));
@@ -387,6 +469,7 @@ function TechArticles() {
             "아티클 목록을 불러오지 못했습니다.",
           ),
         );
+        completePendingListScroll();
       }
     } finally {
       if (requestId.current === currentRequest) setIsLoading(false);
@@ -400,6 +483,7 @@ function TechArticles() {
     searchParams,
     selectedTagKey,
     selectedSourceKey,
+    completePendingListScroll,
     setSearchParams,
   ]);
 
@@ -432,19 +516,21 @@ function TechArticles() {
     nextPage = 1,
     scroll = true,
   } = {}) => {
+    const conditionsChanged =
+      nextKeyword.trim() !== keyword ||
+      !sameValues(nextTags, selectedTags) ||
+      !sameValues(nextSources, selectedSources) ||
+      nextPage !== page;
     const next = new URLSearchParams();
     if (nextKeyword.trim()) next.set("q", nextKeyword.trim());
     if (nextTags.length) next.set("tags", nextTags.join(","));
     if (nextSources.length) next.set("sources", nextSources.join(","));
     if (nextPage > 1) next.set("page", String(nextPage));
-    setSearchParams(next);
     if (scroll) {
-      window.setTimeout(() => {
-        document
-          .getElementById("resultsStart")
-          ?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 0);
+      if (conditionsChanged) pendingListScroll.current = true;
+      else moveToResults();
     }
+    setSearchParams(next);
   };
 
   const toggleDraftTag = (tag) => {
@@ -475,7 +561,31 @@ function TechArticles() {
   // 카드 전체를 상세 이동 영역으로 사용. 예외 규칙은 shouldOpenFromCardClick 참고
   const openArticleFromCard = (event, articleId) => {
     if (!shouldOpenFromCardClick(event)) return;
+    rememberArticleListReturn({
+      articleId,
+      location,
+      card: event.currentTarget,
+    });
     navigate(`/tech-articles/${encodeURIComponent(articleId)}`);
+  };
+
+  const rememberReturnFromTitle = (event, articleId) => {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+
+    rememberArticleListReturn({
+      articleId,
+      location,
+      card: event.currentTarget.closest(".article-card"),
+    });
   };
 
   const handleShare = async (article) => {
@@ -588,7 +698,7 @@ function TechArticles() {
                 <i className="fas fa-rss" aria-hidden="true"></i>
                 {selectedSources.length
                   ? `소스 ${selectedSources.length}곳`
-                  : "모든 소스"}
+                  : "소스 선택"}
                 <i className="fas fa-chevron-down" aria-hidden="true"></i>
               </button>
 
@@ -784,6 +894,9 @@ function TechArticles() {
                       <Link
                         className="article-title"
                         to={`/tech-articles/${encodeURIComponent(article.id)}`}
+                        onClick={(event) =>
+                          rememberReturnFromTitle(event, article.id)
+                        }
                       >
                         {/* 목록이 원문 게시일 순이라 새로 들어온 글이 위로
                             오지 않습니다. 배지가 없으면 찾을 방법이 없습니다.

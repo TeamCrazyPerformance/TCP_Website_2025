@@ -6,18 +6,28 @@
  *
  * API 는 모킹하며, 엔드포인트 정합성은 백엔드 라우트 대조로 따로 확인합니다. */
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+
+let mockNavigationType = "PUSH";
+let mockLocation = {
+  pathname: "/tech-articles",
+  search: "",
+  state: null,
+  key: "list-key",
+};
 
 jest.mock(
   "react-router-dom",
   () => {
     const ReactLib = require("react");
-    // 훅 반환값은 렌더마다 같은 참조 유지. 새 객체 반환 시 의존성 배열이 매번 변해 무한 루프.
-    const searchParams = new URLSearchParams();
     const setSearchParams = jest.fn();
-    const searchParamsTuple = [searchParams, setSearchParams];
     const params = { articleId: "article-1" };
-    const location = { pathname: "/tech-articles", search: "", state: null };
     const navigate = jest.fn();
     return {
       __esModule: true,
@@ -26,9 +36,22 @@ jest.mock(
       NavLink: ({ to, children, ...rest }) =>
         ReactLib.createElement("a", { href: String(to), ...rest }, children),
       useNavigate: () => navigate,
-      useSearchParams: () => searchParamsTuple,
+      useSearchParams: () => {
+        const [searchParams, updateSearchParams] = ReactLib.useState(
+          () => new URLSearchParams(),
+        );
+        const update = ReactLib.useCallback((next) => {
+          setSearchParams(next);
+          updateSearchParams(new URLSearchParams(next));
+        }, []);
+        return ReactLib.useMemo(
+          () => [searchParams, update],
+          [searchParams, update],
+        );
+      },
       useParams: () => params,
-      useLocation: () => location,
+      useLocation: () => mockLocation,
+      useNavigationType: () => mockNavigationType,
     };
   },
   { virtual: true },
@@ -44,6 +67,19 @@ const PAGINATION = { page: 1, pageSize: 20, totalCount: 0, totalPages: 1 };
 beforeEach(() => {
   jest.clearAllMocks();
   localStorage.clear();
+  sessionStorage.clear();
+  mockNavigationType = "PUSH";
+  mockLocation = {
+    pathname: "/tech-articles",
+    search: "",
+    state: null,
+    key: "list-key",
+  };
+  Object.defineProperty(window.history, "scrollRestoration", {
+    configurable: true,
+    writable: true,
+    value: "auto",
+  });
 
   api.getTechArticles.mockResolvedValue({ items: [], pagination: PAGINATION });
   api.getTechArticleTags.mockResolvedValue({ items: ["AI", "데이터"] });
@@ -101,6 +137,29 @@ function asAdmin() {
 }
 
 describe("공개 화면", () => {
+  test("15개 분야 태그가 서로 다른 팔레트 클래스를 사용한다", () => {
+    const { v9TagClassName } = require("./TechArticles");
+    const tags = [
+      "AI",
+      "애플리케이션 개발",
+      "모바일",
+      "프로그래밍 언어",
+      "데이터",
+      "클라우드",
+      "DevOps",
+      "보안",
+      "네트워크",
+      "소프트웨어 아키텍처",
+      "개발자 도구",
+      "소프트웨어 품질",
+      "오픈소스",
+      "개발 조직",
+      "산업 동향",
+    ];
+
+    expect(new Set(tags.map(v9TagClassName)).size).toBe(tags.length);
+  });
+
   test("아티클 목록이 .ta-public 스코프로 렌더되고 목록을 요청한다", async () => {
     const TechArticles = require("./TechArticles").default;
     const { container } = renderWithAuth(<TechArticles />);
@@ -112,6 +171,136 @@ describe("공개 화면", () => {
     expect(container.querySelector(".site-header")).toBeNull();
     expect(container.querySelector(".site-footer")).toBeNull();
     expect(container.querySelector("[class*='v9-shadow-host']")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: /\uC18C\uC2A4 \uC120\uD0DD/ }),
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector(".source-dialog-header h2"),
+    ).toHaveTextContent("소스 선택");
+    expect(screen.queryByText("모든 소스")).not.toBeInTheDocument();
+    expect(screen.queryByText("소스 고르기")).not.toBeInTheDocument();
+  });
+
+  test("페이지 이동은 새 목록을 받은 뒤 애니메이션 없이 상단으로 이동한다", async () => {
+    const initialResponse = {
+      items: [],
+      pagination: {
+        currentPage: 1,
+        pageSize: 20,
+        totalCount: 40,
+        totalPages: 2,
+      },
+    };
+    const pageTwoResponse = {
+      ...initialResponse,
+      pagination: { ...initialResponse.pagination, currentPage: 2 },
+    };
+    let resolvePageTwo;
+    api.getTechArticles.mockImplementation(({ page }) => {
+      if (page === 2) {
+        return new Promise((resolve) => {
+          resolvePageTwo = resolve;
+        });
+      }
+      return Promise.resolve(initialResponse);
+    });
+    const scrollIntoView = jest.fn();
+    Object.defineProperty(Element.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+
+    const TechArticles = require("./TechArticles").default;
+    renderWithAuth(<TechArticles />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "다음 페이지" }));
+    await waitFor(() =>
+      expect(api.getTechArticles).toHaveBeenCalledWith(
+        expect.objectContaining({ page: 2 }),
+      ),
+    );
+    expect(scrollIntoView).not.toHaveBeenCalled();
+
+    await act(async () => resolvePageTwo(pageTwoResponse));
+
+    await waitFor(() =>
+      expect(scrollIntoView).toHaveBeenCalledWith({
+        behavior: "auto",
+        block: "start",
+      }),
+    );
+  });
+
+  test("브라우저 뒤로가기는 목록 로딩 후 읽던 아티클 카드 위치를 복원한다", async () => {
+    api.getTechArticles.mockResolvedValue({
+      items: [
+        {
+          id: "article-1",
+          title: "복원할 아티클",
+          oneLineSummary: "스크롤 복원 테스트",
+          tags: ["AI"],
+          source: { name: "InfoQ" },
+          originalPublishedAt: "2026-08-25T00:00:00Z",
+        },
+      ],
+      pagination: {
+        currentPage: 1,
+        pageSize: 20,
+        totalCount: 1,
+        totalPages: 1,
+      },
+    });
+
+    let cardTop = 240;
+    const originalGetBoundingClientRect =
+      Element.prototype.getBoundingClientRect;
+    Object.defineProperty(Element.prototype, "getBoundingClientRect", {
+      configurable: true,
+      value: function getBoundingClientRect() {
+        if (this.matches?.(".article-card[data-article-id]")) {
+          return { top: cardTop };
+        }
+        return originalGetBoundingClientRect.call(this);
+      },
+    });
+    const scrollTo = jest.fn();
+    Object.defineProperty(window, "scrollTo", {
+      configurable: true,
+      value: scrollTo,
+    });
+    Object.defineProperty(window, "scrollY", {
+      configurable: true,
+      value: 0,
+    });
+
+    const TechArticles = require("./TechArticles").default;
+    const firstRender = renderWithAuth(<TechArticles />);
+    const articleLink = await screen.findByRole("link", {
+      name: "복원할 아티클",
+    });
+    fireEvent.click(articleLink.closest("article"));
+
+    expect(window.history.scrollRestoration).toBe("manual");
+    expect(sessionStorage.length).toBe(1);
+    firstRender.unmount();
+
+    mockNavigationType = "POP";
+    cardTop = 900;
+    renderWithAuth(<TechArticles />);
+
+    await waitFor(() =>
+      expect(scrollTo).toHaveBeenCalledWith({
+        top: 660,
+        behavior: "auto",
+      }),
+    );
+    expect(window.history.scrollRestoration).toBe("auto");
+    expect(sessionStorage.length).toBe(0);
+
+    Object.defineProperty(Element.prototype, "getBoundingClientRect", {
+      configurable: true,
+      value: originalGetBoundingClientRect,
+    });
   });
 
   test("아티클 상세가 .ta-public 스코프로 렌더된다", async () => {
@@ -143,9 +332,17 @@ describe("공개 화면", () => {
       collectedAt: "2026-08-25T01:00:00Z",
     });
     const TechArticleDetail = require("./TechArticleDetail").default;
-    renderWithAuth(<TechArticleDetail />);
+    const { container } = renderWithAuth(<TechArticleDetail />);
 
     await waitFor(() => expect(api.getTechArticle).toHaveBeenCalled());
+    expect(
+      screen.queryByRole("heading", { name: "핵심 요약" }),
+    ).not.toBeInTheDocument();
+    expect(
+      container.querySelector(
+        ".summary-card > .detail-one-line-summary:first-child",
+      ),
+    ).not.toBeNull();
     expect(screen.getByText("로그인 없이 읽는 상세 요약")).toBeInTheDocument();
     expect(
       screen.getByRole("region", { name: "원문 및 출처 정보" }),

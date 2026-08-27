@@ -120,13 +120,111 @@ describe("Tech Articles CSS 스코프", () => {
       "login-button",
       "footer-grid",
     ];
-    const all = ["techArticlesPublic.css", "techArticlesPublicAlign.css"].flatMap(
-      (f) => selectorsByFile[f],
-    );
+    const all = [
+      "techArticlesPublic.css",
+      "techArticlesPublicAlign.css",
+    ].flatMap((f) => selectorsByFile[f]);
     const leftover = all.filter((selector) =>
       dead.some((cls) => new RegExp(`\\.${cls}(?![\\w-])`).test(selector)),
     );
     expect(leftover).toEqual([]);
+  });
+
+  test("공개 목록·상세 태그는 단일 글자색과 5:1 이상의 대비를 사용한다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+    const palette = [
+      ...css.matchAll(/--article-tag-tone-\d+:\s*(#[\da-f]{6})/gi),
+    ].map((match) => match[1].toUpperCase());
+    expect(palette).toEqual([
+      "#DF52AE",
+      "#AB9DBC",
+      "#E2D2F4",
+      "#997EAC",
+      "#AA78AB",
+      "#A974C1",
+      "#AC6ED3",
+      "#6B8DA1",
+      "#45DEC2",
+      "#808B89",
+      "#61C4B2",
+      "#24AB92",
+      "#5FB351",
+      "#BD9649",
+      "#D0C76E",
+    ]);
+
+    const foregrounds = [
+      ...css.matchAll(/--article-tag-foreground:\s*(#[\da-f]{6})/gi),
+    ].map((match) => match[1].toUpperCase());
+
+    expect([...new Set(foregrounds)]).toEqual(["#111827"]);
+
+    const luminance = (hex) =>
+      [1, 3, 5]
+        .map((start) => Number.parseInt(hex.slice(start, start + 2), 16) / 255)
+        .map((channel) =>
+          channel <= 0.04045
+            ? channel / 12.92
+            : ((channel + 0.055) / 1.055) ** 2.4,
+        )
+        .reduce(
+          (total, channel, index) =>
+            total + channel * [0.2126, 0.7152, 0.0722][index],
+          0,
+        );
+    const foregroundLuminance = luminance(foregrounds[0]);
+
+    for (const background of palette) {
+      const backgroundLuminance = luminance(background);
+      const contrast =
+        (Math.max(backgroundLuminance, foregroundLuminance) + 0.05) /
+        (Math.min(backgroundLuminance, foregroundLuminance) + 0.05);
+      expect(contrast).toBeGreaterThanOrEqual(5);
+    }
+    expect(css).toContain("font-weight: 600");
+    expect(css).toMatch(
+      /\.ta-public \.tag-button,\s*\.ta-public \.article-tag\s*{[^}]*font-size:\s*11px/s,
+    );
+
+    for (const className of [
+      "tag-ai-ml",
+      "tag-frontend",
+      "tag-mobile",
+      "tag-language-framework",
+      "tag-data-db",
+      "tag-cloud",
+      "tag-devops",
+      "tag-security",
+      "tag-backend",
+      "tag-architecture",
+      "tag-developer-tools",
+      "tag-software-quality",
+      "tag-open-source",
+      "tag-development-organization",
+      "tag-industry-trends",
+    ]) {
+      expect(css).toContain(`.ta-public .${className}`);
+    }
+  });
+
+  test("목록 카드의 상·하단 여백을 맞추고 요약과 태그 사이의 구분선을 없앤다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    expect(css).toMatch(
+      /\.ta-public \.article-card\s*{[^}]*--article-card-edge-space:\s*18px;[^}]*padding-top:\s*var\(--article-card-edge-space\);[^}]*padding-bottom:\s*var\(--article-card-edge-space\);/s,
+    );
+    expect(css).toMatch(
+      /\.ta-public \.article-card-bottom\s*{[^}]*margin-top:\s*6px;[^}]*padding-top:\s*0;[^}]*border-top:\s*0;/s,
+    );
+    expect(css).toMatch(
+      /@media \(min-width:\s*768px\)\s*{\s*\.ta-public \.article-card-bottom\s*{[^}]*align-items:\s*flex-end;/s,
+    );
   });
 
   test("관리자 번들에 마크업이 사라진 셸 전용 규칙이 남아있지 않다", () => {
