@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
 import math
+import os
 import re
+import urllib.request
 from collections import Counter
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
@@ -16,20 +19,21 @@ from .models import (
     Evaluation,
     QualityEvaluationRequest,
     QualityEvaluationResult,
+    QualityPolicy,
     Score,
     ScoreAxis,
     Signals,
 )
 
 Clock = Callable[[], datetime]
-EVALUATOR_VERSION = "1.0.0"
+EVALUATOR_VERSION = "1.1.0"
 
-# 계산과 표시 계약이 같은 정의를 사용합니다. 축을 바꿀 때 계산식만 고치거나
-# 프런트 라벨만 고쳐 서로 어긋나는 일을 막기 위한 단일 기준입니다.
+# 개편된 4대 평가 축 정의 (총 가중치 100%)
 QUALITY_AXES = (
-    {"key": "relevance", "label": "개발 관련성", "weight": 0.45},
-    {"key": "timeliness", "label": "시의성", "weight": 0.30},
-    {"key": "sourceReliability", "label": "출처 신뢰도", "weight": 0.25},
+    {"key": "relevance", "label": "개발 관련성", "weight": 0.35},
+    {"key": "technicalDepth", "label": "기술적 깊이", "weight": 0.30},
+    {"key": "timeliness", "label": "최신성", "weight": 0.25},
+    {"key": "articleQuality", "label": "기사 품질", "weight": 0.10},
 )
 
 DEVELOPER_KEYWORDS = frozenset(
@@ -42,43 +46,101 @@ DEVELOPER_KEYWORDS = frozenset(
         "rust",
         "kotlin",
         "swift",
+        "php",
+        "ruby",
+        "scala",
+        "dart",
+        "elixir",
+        "zig",
+        "lua",
+        "haskell",
+        "clojure",
         "react",
         "vue",
         "next.js",
+        "nuxt",
         "angular",
         "svelte",
+        "tailwind",
+        "webpack",
+        "vite",
+        "redux",
+        "zustand",
+        "webassembly",
+        "three.js",
+        "webgl",
         "docker",
         "kubernetes",
+        "k8s",
         "aws",
         "gcp",
         "azure",
         "terraform",
+        "ansible",
         "ci/cd",
+        "jenkins",
         "github actions",
+        "nginx",
+        "istio",
+        "serverless",
+        "helm",
+        "prometheus",
+        "grafana",
         "postgresql",
         "mysql",
         "redis",
         "mongodb",
         "elasticsearch",
         "kafka",
+        "rabbitmq",
+        "sqlite",
+        "spark",
+        "airflow",
+        "vector db",
+        "milvus",
+        "pinecone",
+        "cassandra",
+        "dynamodb",
+        "clickhouse",
+        "duckdb",
         "ai",
         "llm",
+        "deepmind",
         "openai",
+        "gpt",
+        "langchain",
+        "rag",
+        "pytorch",
+        "tensorflow",
+        "huggingface",
         "machine learning",
         "deep learning",
+        "neural network",
+        "fine-tuning",
         "transformer",
-        "api",
-        "graphql",
-        "grpc",
-        "microservice",
+        "ollama",
         "architecture",
         "refactoring",
+        "clean code",
+        "design pattern",
+        "domain driven design",
+        "ddd",
+        "test driven development",
+        "tdd",
+        "code review",
         "security",
         "oauth",
-        "performance",
+        "performance tuning",
+        "memory leak",
+        "profiling",
         "concurrency",
+        "async",
+        "multithreading",
         "pytest",
+        "junit",
         "jest",
+        "cypress",
+        "playwright",
         "개발",
         "개발자",
         "프로그래밍",
@@ -126,7 +188,7 @@ def _utcnow() -> datetime:
 
 
 class QualityEvaluator:
-    """Deterministic implementation of the supplied 45/30/25 scoring policy."""
+    """Deterministic implementation of the updated 40/30/20/10 scoring policy with LLM depth and 48h half-life."""
 
     def __init__(self, *, clock: Clock = _utcnow) -> None:
         self._clock = clock
@@ -165,13 +227,18 @@ class QualityEvaluator:
         if policy.reject_advertisements and advertisement:
             hard_rejections.append("ADVERTISEMENT_SUSPECTED")
 
+        # 4대 평가 축 채점
+        effective_api_key = request.llm_api_key or policy.llm_api_key
         relevance = self.evaluate_developer_relevance(article)
+        technical_depth = self.evaluate_technical_depth_llm(article, api_key=effective_api_key)
         timeliness = self.evaluate_timeliness(article.original_published_at, now)
-        source_reliability = self.evaluate_source_reliability(request)
+        article_quality = self.evaluate_article_quality(request)
+
         dimension_values = {
             "relevance": relevance,
+            "technicalDepth": technical_depth,
             "timeliness": timeliness,
-            "sourceReliability": source_reliability,
+            "articleQuality": article_quality,
         }
         overall = round(
             sum(dimension_values[axis["key"]] * float(axis["weight"]) for axis in QUALITY_AXES)
@@ -230,8 +297,9 @@ class QualityEvaluator:
                     overall=overall,
                     dimensions=Dimensions(
                         relevance=relevance,
+                        technicalDepth=technical_depth,
                         timeliness=timeliness,
-                        sourceReliability=source_reliability,
+                        articleQuality=article_quality,
                     ),
                     axes=axes,
                 ),
@@ -244,7 +312,10 @@ class QualityEvaluator:
 
     @staticmethod
     def evaluate_developer_relevance(article: Article) -> int:
+        """TF-IDF Sigmoid (math.tanh) 키워드 밀도 알고리즘 (가중치 40%)"""
         if NON_ARTICLE_PATTERN.search(article.title):
+            return 0
+        if len(article.content.strip()) < 200:
             return 0
         text = f"{article.title} {article.content}".lower()
         tokens = TOKEN_PATTERN.findall(text)
@@ -258,23 +329,76 @@ class QualityEvaluator:
         return round(100.0 * math.tanh(55.0 * (tf_sum / len(tokens))))
 
     @staticmethod
+    def evaluate_technical_depth_llm(article: Article, api_key: str | None = None) -> int:
+        """LLM API 연동 기술적 깊이 분석 (가중치 30%, 미설정/실패 시 Fallback 50점)"""
+        effective_key = api_key or os.environ.get("OPENAI_API_KEY") or os.environ.get("LLM_API_KEY")
+        if not effective_key:
+            return 50
+
+        try:
+            url = "https://api.openai.com/v1/chat/completions"
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {effective_key}",
+            }
+            prompt = (
+                f"Evaluate technical depth from 0 to 100 for this article.\n"
+                f"Title: {article.title}\n"
+                f"Content: {article.content[:1500]}\n"
+                f"Return JSON: {{\"depth_score\": number}}"
+            )
+            payload = {
+                "model": "gpt-4o-mini",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.1,
+                "response_format": {"type": "json_object"},
+            }
+            req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
+            with urllib.request.urlopen(req, timeout=5) as response:
+                res_data = json.loads(response.read().decode("utf-8"))
+                res_text = res_data["choices"][0]["message"]["content"]
+                parsed = json.loads(res_text)
+                score = int(parsed.get("depth_score", 50))
+                return max(0, min(100, score))
+        except Exception:
+            return 50
+
+    @staticmethod
     def evaluate_timeliness(published_at: datetime | None, evaluated_at: datetime) -> int:
+        """48시간 반감기(Half-Life) 지수 곡선 수식 적용 (가중치 20%)"""
         if published_at is None:
             return 50
         published = published_at.astimezone(UTC)
         hours = (evaluated_at - published).total_seconds() / 3600
         if hours <= 0:
             return 100
-        if hours >= 24:
-            return 0
-        return round(100 - hours / 24 * 100)
+        return round(100.0 * (0.5 ** (hours / 48.0)))
 
     @staticmethod
-    def evaluate_source_reliability(request: QualityEvaluationRequest) -> int:
-        score = 35 if request.source.source_id.strip() else 15
-        score += 30 if any(author.strip() for author in request.article.authors) else 10
-        score += 35 if request.article.original_published_at is not None else 10
-        return min(100, score)
+    def evaluate_article_quality(request: QualityEvaluationRequest) -> int:
+        """기본 메타데이터 충실도 및 본문 분량 충실도 평가 (가중치 10%)"""
+        source_id = request.source.source_id.strip()
+        authors = request.article.authors
+        published_at = request.article.original_published_at
+        content_length = len(request.article.content.strip())
+        min_length = request.quality_policy.minimum_content_length
+        max_length = request.quality_policy.maximum_content_length
+
+        meta_score = 0
+        if source_id:
+            meta_score += 20
+        if authors and any(a.strip() for a in authors):
+            meta_score += 15
+        if published_at is not None:
+            meta_score += 15
+
+        length_score = 0
+        if min_length <= content_length <= max_length:
+            length_score = 50
+        elif content_length > 0:
+            length_score = 25
+
+        return min(100, meta_score + length_score)
 
     @staticmethod
     def _spam_suspected(content: str) -> bool:

@@ -48,6 +48,7 @@ class QualityPolicy(ContractModel):
     reject_spam: bool = Field(alias="rejectSpam", default=True)
     reject_advertisements: bool = Field(alias="rejectAdvertisements", default=True)
     require_admin_review: bool = Field(alias="requireAdminReview", default=False)
+    llm_api_key: str | None = Field(alias="llmApiKey", default=None)
 
     @field_validator("allowed_languages")
     @classmethod
@@ -71,6 +72,7 @@ class QualityEvaluationRequest(ContractModel):
     source: Source
     article: Article
     quality_policy: QualityPolicy = Field(alias="qualityPolicy")
+    llm_api_key: str | None = Field(alias="llmApiKey", default=None)
 
 
 class ErrorPayload(ContractModel):
@@ -90,8 +92,9 @@ class Signals(ContractModel):
 
 class Dimensions(ContractModel):
     relevance: int = Field(ge=0, le=100)
+    technical_depth: int = Field(alias="technicalDepth", default=50, ge=0, le=100)
     timeliness: int = Field(ge=0, le=100)
-    source_reliability: int = Field(alias="sourceReliability", ge=0, le=100)
+    article_quality: int = Field(alias="articleQuality", default=100, ge=0, le=100)
 
 
 class ScoreScale(ContractModel):
