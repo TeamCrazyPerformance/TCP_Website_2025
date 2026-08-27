@@ -673,7 +673,13 @@ function AdminTechArticles() {
           <h2 id="adminViewTitle" className="orbitron gradient-text">
             전체 아티클
           </h2>
-          <p>수집된 아티클의 처리 현황과 공개 상태를 관리합니다.</p>
+          <p>
+            중복 검토를 통과해 등록된 아티클의 처리 현황과 공개 상태를
+            관리합니다.
+            <br />
+            중복 검토 대기 항목은 &lsquo;중복 의심&rsquo; 메뉴에서 확인할 수
+            있습니다.
+          </p>
         </div>
         <div className="admin-intro-actions">
           <Link className="public-page-link" to="/tech-articles">
@@ -695,17 +701,25 @@ function AdminTechArticles() {
             >
               <i className="fas fa-newspaper"></i>
             </span>
-            <div>
-              <p>총 아티클</p>
-              <p className="overview-caption">현재 등록된 전체</p>
-            </div>
+            <p className="overview-card-title">등록된 아티클</p>
           </div>
           <p className="total-article-count">
             {stats?.totalCount ?? response?.pagination?.totalCount ?? "—"}
           </p>
-          <p className="queue-stat-inline">
-            공개 {publishedCount} · 비공개 {hiddenCount}
-          </p>
+          <div
+            className="queue-stat-inline"
+            aria-label={`공개 ${publishedCount}건, 비공개 ${hiddenCount}건`}
+          >
+            <span>
+              공개 {publishedCount}
+            </span>
+            <span className="queue-stat-divider" aria-hidden="true">
+              |
+            </span>
+            <span>
+              비공개 {hiddenCount}
+            </span>
+          </div>
         </article>
 
         <article className="widget-card policy-card">
@@ -716,7 +730,7 @@ function AdminTechArticles() {
             </div>
             <span className="policy-scope-badge">전체 적용</span>
           </div>
-          <form onSubmit={savePolicy}>
+          <form className="policy-form" onSubmit={savePolicy}>
             <fieldset>
               <legend className="sr-only">새 아티클 공개 방식 선택</legend>
               <div className="policy-options">

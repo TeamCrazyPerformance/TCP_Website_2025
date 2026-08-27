@@ -1257,6 +1257,42 @@
   font-size: 13px;
 }
 
+/* ── 등록 아티클 집계 카드 ─────────────────────────────────
+ * 부연 문구 없이 카드 제목을 아이콘과 한 줄로 맞추고, 공개 여부는
+ * 별도 배지 없이 한 줄의 담백한 집계로 보여 줍니다. */
+.ta-admin .total-card .overview-card-title,
+.ta-admin .queue-stat-card .queue-stat-title {
+  margin: 0;
+  color: #e5e7eb;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.ta-admin .total-card .queue-stat-inline {
+  display: flex;
+  position: relative;
+  z-index: 1;
+  margin: 16px 0 0;
+  align-items: center;
+  gap: 10px;
+  color: #f3f4f6;
+  font-size: 15px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+}
+
+.ta-admin .total-card .queue-stat-divider {
+  color: var(--gray-500);
+  font-weight: 400;
+}
+
+/* 정책 제목과 선택 영역이 한 덩어리로 붙어 보이지 않을 정도의 작은 간격만 둡니다. */
+.ta-admin .policy-card .policy-form {
+  margin-top: 12px;
+}
+
 /* 13px -> 14px  (버튼 · 본문) */
 .ta-admin .policy-option-content strong,
 .ta-admin .admin-score,

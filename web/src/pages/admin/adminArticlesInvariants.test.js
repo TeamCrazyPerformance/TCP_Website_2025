@@ -60,6 +60,45 @@ describe("공개 토글 가드", () => {
 });
 
 describe("파이프라인 단계 표시", () => {
+  test("전체 아티클 화면이 등록 전 중복 검토 대상을 범위에서 구분한다", () => {
+    expect(SOURCE).toContain("중복 검토를 통과해 등록된 아티클");
+    expect(SOURCE).toContain("중복 검토 대기 항목은");
+    expect(SOURCE).toMatch(/관리합니다\.\s*<br \/>\s*중복 검토 대기 항목은/);
+    expect(SOURCE).toContain("등록된 아티클");
+    expect(SOURCE).not.toContain("중복 검토 통과 후 등록");
+    expect(SOURCE).not.toContain("<p>총 아티클</p>");
+  });
+
+  test("등록 아티클 집계가 흰색 평문과 구분자로 표시된다", () => {
+    expect(SOURCE).not.toMatch(/queue-stat-item is-published/);
+    expect(SOURCE).not.toMatch(/queue-stat-item is-unpublished/);
+    expect(SOURCE).toMatch(/queue-stat-divider/);
+    expect(SOURCE).not.toMatch(/<strong>\{publishedCount\}<\/strong>/);
+    expect(SOURCE).not.toMatch(/<strong>\{hiddenCount\}<\/strong>/);
+    expect(ALIGN_CSS).toMatch(/\.queue-stat-inline \{[\s\S]*?color: #f3f4f6;/);
+    expect(ALIGN_CSS).toMatch(/\.queue-stat-inline \{[\s\S]*?font-weight: 400;/);
+    expect(ALIGN_CSS).not.toMatch(/\.queue-stat-item\.is-published/);
+    expect(ALIGN_CSS).not.toMatch(/\.queue-stat-item\.is-unpublished/);
+  });
+
+  test("검토 큐 카드 제목이 등록 아티클 카드와 같은 위계를 쓴다", () => {
+    for (const title of ["판정 대기", "품질 검토", "공개 검토"]) {
+      expect(REVIEWS).toContain(
+        `<p className="queue-stat-title">${title}</p>`,
+      );
+    }
+    expect(ALIGN_CSS).toMatch(
+      /\.overview-card-title,\s*\.ta-admin \.queue-stat-card \.queue-stat-title \{[\s\S]*?font-size: 16px;/,
+    );
+  });
+
+  test("공개 정책 제목과 선택 영역 사이에 작은 간격이 있다", () => {
+    expect(SOURCE).toMatch(/<form className="policy-form" onSubmit=\{savePolicy\}>/);
+    expect(ALIGN_CSS).toMatch(
+      /\.policy-card \.policy-form \{\s*margin-top: 12px;/,
+    );
+  });
+
   test("목록 컬럼이 검토 상태에서 단계로 바뀌었다", () => {
     // reviewStatus 단독 표시가 위조 APPROVED 를 "검토 승인"으로 보이게 한 원인
     // 머리글에 열 폭 className 이 붙을 수 있어 속성은 느슨하게 봅니다.
