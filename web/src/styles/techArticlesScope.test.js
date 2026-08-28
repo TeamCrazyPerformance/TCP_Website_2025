@@ -130,6 +130,34 @@ describe("Tech Articles CSS 스코프", () => {
     expect(leftover).toEqual([]);
   });
 
+  test("공개 아티클 검색창은 브라우저 기본 지우기 버튼을 숨긴다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    expect(css).toMatch(
+      /\.ta-public\s+\.search-input-wrap\s+input\[type="search"\]::\-webkit-search-cancel-button\s*\{[\s\S]*?display:\s*none;/,
+    );
+  });
+
+  test("공개 목록 첫 화면은 헤더·소개·목록 사이의 수직 리듬을 유지한다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    expect(css).toMatch(
+      /\.ta-public \.page-hero\s*\{[\s\S]*?padding-top:\s*112px;[\s\S]*?padding-bottom:\s*32px;/,
+    );
+    expect(css).toMatch(
+      /\.ta-public \.articles-section\s*\{[\s\S]*?padding-top:\s*32px;/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width:\s*767px\)[\s\S]*?\.ta-public \.page-hero\s*\{[\s\S]*?padding-top:\s*96px;[\s\S]*?padding-bottom:\s*24px;[\s\S]*?\.ta-public \.articles-section\s*\{[\s\S]*?padding-top:\s*24px;/,
+    );
+  });
+
   test("공개 목록·상세 태그는 단일 글자색과 5:1 이상의 대비를 사용한다", () => {
     const css = fs.readFileSync(
       path.join(__dirname, "techArticlesPublicAlign.css"),

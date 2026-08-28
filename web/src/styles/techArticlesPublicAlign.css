@@ -82,6 +82,29 @@
   padding-top: 6rem;
 }
 
+/* ── 목록 첫 화면의 수직 리듬 ──────────────────────────────
+ * 64px 고정 헤더 아래 48px을 비우고, 소개 마지막 문장과 목록 제목 사이는
+ * 64px로 둡니다. 모바일에서는 각각 32px·48px로 줄여 첫 화면을 압축합니다. */
+.ta-public .page-hero {
+  padding-top: 112px;
+  padding-bottom: 32px;
+}
+
+.ta-public .articles-section {
+  padding-top: 32px;
+}
+
+@media (max-width: 767px) {
+  .ta-public .page-hero {
+    padding-top: 96px;
+    padding-bottom: 24px;
+  }
+
+  .ta-public .articles-section {
+    padding-top: 24px;
+  }
+}
+
 /* 목업 셸이 body 에 주던 배경을 스코프 루트가 대신 담당 */
 .ta-public {
   background: var(--primary-black);
@@ -197,6 +220,16 @@
 
 .ta-public .search-submit {
   color: #0b1220;
+}
+
+/* type="search"가 만드는 브라우저 기본 X와 직접 구현한 지우기 버튼이
+   겹치지 않도록, 아티클 검색 입력창에서는 기본 버튼만 숨깁니다. */
+.ta-public
+  .search-input-wrap
+  input[type="search"]::-webkit-search-cancel-button {
+  display: none;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .ta-public .category-filter-panel legend,
