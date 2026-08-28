@@ -383,9 +383,7 @@
      생성 파일이 .detail-breadcrumb a (0,2,1) 와
      .category-filter-panel .mobile-filter-button (0,3,0) 으로 더 좁게
      잡아 두어서, 같은 깊이로 맞추지 않으면 이 규칙이 지고 맙니다. */
-  .ta-public .source-trigger,
   .ta-public .page-button,
-  .ta-public .category-filter-panel .mobile-filter-button,
   .ta-public .search-mobile-filter-button,
   .ta-public .detail-breadcrumb .back-to-list-link {
     min-height: 44px;
@@ -495,25 +493,41 @@
     gap: 8px 10px;
   }
 
-  /* 분야 선택을 소스 선택과 같은 외형으로 맞춥니다. 검색 화면의
-     .search-mobile-filter-button 은 별도 클래스라 영향받지 않습니다. */
+  /* 분야 선택은 .filter-trigger 로 외형을 이미 공유합니다. 여기서는
+     전체 폭·여백처럼 목업이 이 버튼에만 주던 값만 되돌립니다.
+     검색 화면의 .search-mobile-filter-button 은 별도 클래스라
+     영향받지 않습니다. */
   .ta-public .article-list-heading .mobile-filter-button {
     width: auto;
     margin: 0;
-    padding: 8px 14px;
-    gap: 8px;
-    justify-content: center;
-    border: 1px solid var(--gray-700, #374151);
-    border-radius: 8px;
-    background: transparent;
-    color: var(--gray-200, #e5e7eb);
-    font-size: 13px;
-    font-weight: 600;
+    justify-content: normal;
   }
 
-  .ta-public .article-list-heading .mobile-filter-button.is-active {
-    border-color: var(--accent-blue, #3b82f6);
-    color: #fff;
+  /* 좁은 화면에서 두 트리거는 헤더의 로그아웃 버튼과 같은 크기로 둡니다
+     (12px / 상하 6px / 모서리 8px). 보이는 크기만 줄이고, 손가락이 닿는
+     영역은 ::after 로 44px 를 유지합니다. */
+  .ta-public .article-list-heading .filter-trigger {
+    position: relative;
+    min-height: 0;
+    padding: 6px 10px;
+    gap: 6px;
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  .ta-public .article-list-heading .filter-trigger::after {
+    /* 기준면이 테두리가 아니라 패딩 박스라, 28px(패딩 박스) + 8px x 2 로
+       44px 를 채웁니다. */
+    position: absolute;
+    inset: -8px 0;
+    content: "";
+  }
+
+  /* 카드 태그는 카드 안에서 보조 정보라 한 단계 낮춥니다. 상세 화면의
+     .detail-tags 는 그대로 둡니다. */
+  .ta-public .article-card .article-tag {
+    padding: 3px 7px;
+    font-size: 10px;
   }
 
   /* 래퍼가 한 줄을 통째로 차지하므로 두 트리거는 항상 제목 줄 아래에
@@ -598,8 +612,10 @@
   margin: 0 0 14px;
 }
 
-.ta-public .source-trigger {
-  display: inline-flex;
+/* 소스 선택과 분야 선택은 목록을 좁히는 같은 성격의 조작입니다. 외형
+   선언을 한 규칙에 모아 두 버튼이 서로 어긋날 수 없게 합니다. display 는
+   각 버튼의 노출 조건이 달라(분야 선택은 데스크톱에서 숨김) 제외합니다. */
+.ta-public .filter-trigger {
   align-items: center;
   gap: 8px;
   padding: 8px 14px;
@@ -612,13 +628,17 @@
   font-weight: 600;
 }
 
-.ta-public .source-trigger:hover {
+.ta-public .filter-trigger:hover {
   border-color: var(--gray-500, #6b7280);
 }
 
-.ta-public .source-trigger.is-active {
+.ta-public .filter-trigger.is-active {
   border-color: var(--accent-blue, #3b82f6);
   color: #fff;
+}
+
+.ta-public .source-trigger {
+  display: inline-flex;
 }
 
 .ta-public .source-chip-list {

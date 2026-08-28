@@ -689,7 +689,7 @@ function TechArticles() {
                     있는 줄이 건수와 목록 사이에 빈 띠를 만들지 않게 합니다. */}
                 <button
                   type="button"
-                  className={`source-trigger ${selectedSources.length ? "is-active" : ""}`}
+                  className={`filter-trigger source-trigger ${selectedSources.length ? "is-active" : ""}`}
                   onClick={() => setSourceOpen(true)}
                   aria-haspopup="dialog"
                   aria-expanded={sourceOpen}
@@ -707,7 +707,7 @@ function TechArticles() {
                     더는 상속되지 않으므로 같은 조건을 직접 넘깁니다. */}
                 <button
                   id="openFilterButton"
-                  className={`mobile-filter-button ${selectedTags.length ? "is-active" : ""}`}
+                  className={`filter-trigger mobile-filter-button ${selectedTags.length ? "is-active" : ""}`}
                   type="button"
                   aria-haspopup="dialog"
                   aria-expanded={filterOpen}

@@ -369,15 +369,47 @@ describe("Tech Articles CSS 스코프", () => {
       /\.ta-public \.article-list-heading \.source-trigger,\s*\.ta-public \.article-list-heading \.mobile-filter-button\s*{[^}]*flex:\s*0 0 auto;/s,
     );
 
-    // 분야 선택은 소스 선택과 같은 외형(면 없는 테두리)으로 맞춘다.
+    // 두 버튼의 외형은 한 규칙(.filter-trigger)에서만 정의해야 어긋나지
+    // 않는다. 어느 한쪽에 외형 선언을 따로 두면 이 검사가 깨진다.
+    expect(css).toMatch(
+      /\.ta-public \.filter-trigger\s*{[^}]*background:\s*transparent;[^}]*font-weight:\s*600;/s,
+    );
+    expect(block[1]).not.toMatch(
+      /\.ta-public \.article-list-heading \.mobile-filter-button\s*{[^}]*(background|border-radius|font-weight):/s,
+    );
+
+    // 보이는 크기는 헤더 로그아웃 버튼과 같게(12px / 상하 6px) 줄이되,
+    // 손가락이 닿는 영역은 ::after 로 44px 를 유지한다.
     expect(block[1]).toMatch(
-      /\.ta-public \.article-list-heading \.mobile-filter-button\s*{[^}]*background:\s*transparent;/s,
+      /\.ta-public \.article-list-heading \.filter-trigger\s*{[^}]*padding:\s*6px 10px;[^}]*font-size:\s*12px;/s,
+    );
+    expect(block[1]).toMatch(
+      /\.ta-public \.article-list-heading \.filter-trigger::after\s*{[^}]*inset:\s*-8px 0;/s,
     );
 
     // 버튼이 머리글로 올라가면서 비게 된 fieldset 은 숨긴다.
     expect(block[1]).toMatch(
       /\.ta-public \.category-filter-panel\s*{\s*display:\s*none;/s,
     );
+  });
+
+  test("좁은 화면에서 카드 태그는 한 단계 작아진다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    const block = [
+      ...css.matchAll(/@media \(max-width:\s*767px\)\s*{([\s\S]*?)\n}/g),
+    ]
+      .map((m) => m[1])
+      .join("\n");
+
+    // 상세 화면의 .detail-tags 까지 건드리지 않도록 카드 안으로 한정한다.
+    expect(block).toMatch(
+      /\.ta-public \.article-card \.article-tag\s*{[^}]*font-size:\s*10px;/s,
+    );
+    expect(block).not.toMatch(/\.ta-public \.detail-tags \.article-tag/);
   });
 
   test("좁은 화면에서 공유 버튼은 카드 오른쪽 아래에 고정된다", () => {
