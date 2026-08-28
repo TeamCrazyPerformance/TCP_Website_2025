@@ -387,6 +387,15 @@ describe("Tech Articles CSS 스코프", () => {
       /\.ta-public \.article-list-heading \.filter-trigger::after\s*{[^}]*inset:\s*-8px 0;/s,
     );
 
+    // 목업이 .mobile-filter-button i 에 준 margin-right 가 gap 과 겹쳐
+    // 분야 선택만 넓어졌었다. 간격은 gap 하나로만 만든다.
+    expect(css).toMatch(/\.ta-public \.filter-trigger i\s*{[^}]*margin:\s*0;/s);
+    // 글리프 폭 차이(fa-rss 10.5px / fa-sliders-h 12px)까지 묶어야 두
+    // 버튼의 폭이 라벨 길이에만 좌우된다.
+    expect(block[1]).toMatch(
+      /\.ta-public \.article-list-heading \.filter-trigger i\s*{[^}]*width:\s*1em;/s,
+    );
+
     // 버튼이 머리글로 올라가면서 비게 된 fieldset 은 숨긴다.
     expect(block[1]).toMatch(
       /\.ta-public \.category-filter-panel\s*{\s*display:\s*none;/s,

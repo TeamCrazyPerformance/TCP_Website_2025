@@ -515,6 +515,13 @@
     line-height: 16px;
   }
 
+  /* 글리프 폭이 아이콘마다 달라(fa-rss 10.5px / fa-sliders-h 12px) 같은
+     길이의 라벨인데도 버튼 폭이 어긋납니다. 고정 폭으로 묶습니다. */
+  .ta-public .article-list-heading .filter-trigger i {
+    width: 1em;
+    text-align: center;
+  }
+
   .ta-public .article-list-heading .filter-trigger::after {
     /* 기준면이 테두리가 아니라 패딩 박스라, 28px(패딩 박스) + 8px x 2 로
        44px 를 채웁니다. */
@@ -626,6 +633,15 @@
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
+}
+
+/* 목업이 .mobile-filter-button i 에 margin-right: 8px 를 주고 있습니다.
+   gap 과 겹쳐 분야 선택만 아이콘 양옆으로 벌어져, 같은 길이의 라벨인데도
+   소스 선택보다 12px 넓었습니다. 간격은 gap 하나로 둡니다.
+   (아이콘 글리프 폭 정규화는 두 버튼이 나란히 놓이는 좁은 화면 쪽에서
+   따로 처리합니다. 데스크톱 치수는 건드리지 않기 위해서입니다.) */
+.ta-public .filter-trigger i {
+  margin: 0;
 }
 
 .ta-public .filter-trigger:hover {
