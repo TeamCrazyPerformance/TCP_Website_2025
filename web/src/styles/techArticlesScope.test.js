@@ -342,11 +342,11 @@ describe("Tech Articles CSS 스코프", () => {
     );
 
     expect(css).toMatch(
-      /\.ta-public \.article-list-heading \.source-trigger\s*{[^}]*margin-left:\s*auto;[^}]*align-self:\s*baseline;/s,
+      /\.ta-public \.article-list-heading \.list-filter-row\s*{[^}]*margin-left:\s*auto;/s,
     );
   });
 
-  test("좁은 화면에서는 소스·분야 선택이 한 줄을 반씩 나눠 쓴다", () => {
+  test("좁은 화면에서는 소스·분야 선택이 제목 아래 한 줄에 함께 놓인다", () => {
     const css = fs.readFileSync(
       path.join(__dirname, "techArticlesPublicAlign.css"),
       "utf8",
@@ -360,9 +360,13 @@ describe("Tech Articles CSS 스코프", () => {
     const block = [null, blocks];
     expect(blocks).not.toHaveLength(0);
 
-    // 둘이 각각 절반을 요구해야 제목 줄에 끼지 않고 함께 다음 줄로 내려간다.
+    // 래퍼가 한 줄을 통째로 차지해야 건수 길이와 무관하게 줄 구성이 같다.
     expect(block[1]).toMatch(
-      /\.ta-public \.article-list-heading \.source-trigger,\s*\.ta-public \.article-list-heading \.mobile-filter-button\s*{[^}]*flex:\s*1 1 calc\(50% - 5px\);/s,
+      /\.ta-public \.article-list-heading \.list-filter-row\s*{[^}]*width:\s*100%;[^}]*justify-content:\s*flex-start;/s,
+    );
+    // 버튼 폭은 글자에 맞춘다(늘리지 않는다).
+    expect(block[1]).toMatch(
+      /\.ta-public \.article-list-heading \.source-trigger,\s*\.ta-public \.article-list-heading \.mobile-filter-button\s*{[^}]*flex:\s*0 0 auto;/s,
     );
 
     // 분야 선택은 소스 선택과 같은 외형(면 없는 테두리)으로 맞춘다.
@@ -373,6 +377,28 @@ describe("Tech Articles CSS 스코프", () => {
     // 버튼이 머리글로 올라가면서 비게 된 fieldset 은 숨긴다.
     expect(block[1]).toMatch(
       /\.ta-public \.category-filter-panel\s*{\s*display:\s*none;/s,
+    );
+  });
+
+  test("좁은 화면에서 공유 버튼은 카드 오른쪽 아래에 고정된다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    const block = [
+      null,
+      [...css.matchAll(/@media \(max-width:\s*767px\)\s*{([\s\S]*?)\n}/g)]
+        .map((m) => m[1])
+        .join("\n"),
+    ];
+
+    expect(block[1]).toMatch(
+      /\.ta-public \.article-card \.share-button\s*{[^}]*position:\s*absolute;[^}]*right:\s*var\(--article-card-edge-space[^}]*bottom:\s*var\(--article-card-edge-space/s,
+    );
+    // 흐름에서 빠진 버튼과 메타가 겹치지 않도록 오른쪽 자리를 비워 둔다.
+    expect(block[1]).toMatch(
+      /\.ta-public \.article-card \.article-meta\s*{[^}]*padding-right:/s,
     );
   });
 

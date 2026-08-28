@@ -459,9 +459,11 @@
    세로 위치는 큰 제목이 아니라 건수 줄에 맞춥니다. 머리글 전체를 가운데로
    맞추면 버튼이 건수보다 7px 떠서 어느 쪽과도 줄이 맞지 않습니다.
    baseline 은 머리글이 이미 쓰는 정렬이라 같은 방식으로 붙습니다. */
-.ta-public .article-list-heading .source-trigger {
+.ta-public .article-list-heading .list-filter-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
   margin-left: auto;
-  align-self: baseline;
 }
 
 /* 조건 요약은 좁은 화면에서만 씁니다. */
@@ -514,13 +516,43 @@
     color: #fff;
   }
 
-  /* 둘이 각각 절반을 요구하므로 제목 줄에는 들어가지 못하고 함께 다음
-     줄로 내려가 나란히 놓입니다. */
+  /* 래퍼가 한 줄을 통째로 차지하므로 두 트리거는 항상 제목 줄 아래에
+     함께 놓입니다. 폭은 글자에 맞추고 왼쪽부터 채웁니다. */
+  .ta-public .article-list-heading .list-filter-row {
+    width: 100%;
+    margin-left: 0;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
   .ta-public .article-list-heading .source-trigger,
   .ta-public .article-list-heading .mobile-filter-button {
-    flex: 1 1 calc(50% - 5px);
+    flex: 0 0 auto;
     margin-left: 0;
     align-self: auto;
+  }
+
+  /* 공유 버튼은 카드 오른쪽 아래 모서리에 고정합니다. 흐름에 두면 좁은
+     화면에서 메타 줄과 나란히 서지 못해 아래로 접히고, 그 위에 빈 띠가
+     한 줄 생깁니다. 흐름에서 빼면 카드가 그만큼 짧아집니다.
+     메타는 버튼과 겹치지 않도록 오른쪽 자리를 비워 둡니다. */
+  .ta-public .article-card {
+    position: relative;
+  }
+
+  .ta-public .article-card .share-button {
+    position: absolute;
+    right: var(--article-card-edge-space, 18px);
+    bottom: var(--article-card-edge-space, 18px);
+    margin: 0;
+  }
+
+  .ta-public .article-card .article-card-info {
+    width: 100%;
+  }
+
+  .ta-public .article-card .article-meta {
+    padding-right: 52px;
   }
 
   /* 고른 조건을 하나씩 늘어놓을 자리가 없습니다. 개수만 알리고, 해제는
@@ -548,7 +580,7 @@
   }
 
   .ta-public .article-list-heading h2 {
-    font-size: 21px;
+    font-size: 24px;
   }
 
   .ta-public .article-list-heading #resultCount {

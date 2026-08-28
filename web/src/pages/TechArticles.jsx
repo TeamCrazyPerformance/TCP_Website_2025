@@ -680,45 +680,50 @@ function TechArticles() {
                 )}
               </div>
 
-              {/* 소스는 분야 태그와 다른 축이라 필터 패널이 아니라 목록
-                  머리글에 둡니다. 건수와 같은 줄 오른쪽 끝에 붙여, 버튼만
-                  있는 줄이 건수와 목록 사이에 빈 띠를 만들지 않게 합니다. */}
-              <button
-                type="button"
-                className={`source-trigger ${selectedSources.length ? "is-active" : ""}`}
-                onClick={() => setSourceOpen(true)}
-                aria-haspopup="dialog"
-                aria-expanded={sourceOpen}
-              >
-                <i className="fas fa-rss" aria-hidden="true"></i>
-                {selectedSources.length
-                  ? `소스 ${selectedSources.length}곳`
-                  : "소스 선택"}
-                <i className="fas fa-chevron-down" aria-hidden="true"></i>
-              </button>
+              {/* 좁은 화면에서는 두 트리거가 제목 줄 아래 한 줄을 함께
+                  씁니다. 래퍼가 없으면 건수 길이에 따라 소스 선택만 제목
+                  줄에 붙는 날이 생겨 줄 구성이 들쭉날쭉해집니다. */}
+              <div className="list-filter-row">
+                {/* 소스는 분야 태그와 다른 축이라 필터 패널이 아니라 목록
+                    머리글에 둡니다. 건수와 같은 줄 오른쪽 끝에 붙여, 버튼만
+                    있는 줄이 건수와 목록 사이에 빈 띠를 만들지 않게 합니다. */}
+                <button
+                  type="button"
+                  className={`source-trigger ${selectedSources.length ? "is-active" : ""}`}
+                  onClick={() => setSourceOpen(true)}
+                  aria-haspopup="dialog"
+                  aria-expanded={sourceOpen}
+                >
+                  <i className="fas fa-rss" aria-hidden="true"></i>
+                  {selectedSources.length
+                    ? `소스 ${selectedSources.length}곳`
+                    : "소스 선택"}
+                  <i className="fas fa-chevron-down" aria-hidden="true"></i>
+                </button>
 
-              {/* 분야 선택은 데스크톱에서 패널 안 태그 목록으로 펼쳐지지만,
-                  모바일에서는 소스 선택과 나란히 놓이는 같은 성격의 트리거라
-                  머리글로 함께 올립니다. fieldset 밖으로 나오면서 disabled 가
-                  더는 상속되지 않으므로 같은 조건을 직접 넘깁니다. */}
-              <button
-                id="openFilterButton"
-                className={`mobile-filter-button ${selectedTags.length ? "is-active" : ""}`}
-                type="button"
-                aria-haspopup="dialog"
-                aria-expanded={filterOpen}
-                disabled={isLoading || Boolean(tagError)}
-                onClick={() => {
-                  setDraftTags(selectedTags);
-                  setFilterOpen(true);
-                }}
-              >
-                <i className="fas fa-sliders-h" aria-hidden="true"></i>
-                {selectedTags.length
-                  ? `분야 ${selectedTags.length}개`
-                  : "분야 선택"}
-                <i className="fas fa-chevron-down" aria-hidden="true"></i>
-              </button>
+                {/* 분야 선택은 데스크톱에서 패널 안 태그 목록으로 펼쳐지지만,
+                    모바일에서는 소스 선택과 나란히 놓이는 같은 성격의 트리거라
+                    머리글로 함께 올립니다. fieldset 밖으로 나오면서 disabled 가
+                    더는 상속되지 않으므로 같은 조건을 직접 넘깁니다. */}
+                <button
+                  id="openFilterButton"
+                  className={`mobile-filter-button ${selectedTags.length ? "is-active" : ""}`}
+                  type="button"
+                  aria-haspopup="dialog"
+                  aria-expanded={filterOpen}
+                  disabled={isLoading || Boolean(tagError)}
+                  onClick={() => {
+                    setDraftTags(selectedTags);
+                    setFilterOpen(true);
+                  }}
+                >
+                  <i className="fas fa-sliders-h" aria-hidden="true"></i>
+                  {selectedTags.length
+                    ? `분야 ${selectedTags.length}개`
+                    : "분야 선택"}
+                  <i className="fas fa-chevron-down" aria-hidden="true"></i>
+                </button>
+              </div>
             </div>
 
             {selectedSources.length > 0 && (
