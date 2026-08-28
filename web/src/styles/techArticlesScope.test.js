@@ -255,6 +255,24 @@ describe("Tech Articles CSS 스코프", () => {
     );
   });
 
+  test("공개 목록과 상세가 같은 읽기 폭을 쓰고 공유는 반응형 아이콘으로 표시된다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    // 목록·상세 히어로·상세 본문이 한 규칙에서 같은 상한을 공유해야 한다.
+    expect(css).toMatch(
+      /\.ta-public \.articles-section > \.container,\s*\.ta-public \.detail-hero > \.container,\s*\.ta-public \.detail-content-section > \.container\s*{[^}]*max-width:\s*1120px;/s,
+    );
+    expect(css).toMatch(
+      /\.ta-public \.article-card \.share-button\s*{[^}]*width:\s*36px;[^}]*height:\s*36px;/s,
+    );
+    expect(css).toMatch(
+      /@media \(max-width:\s*767px\)[\s\S]*?\.ta-public \.article-card \.share-button\s*{[^}]*width:\s*44px;[^}]*height:\s*44px;/s,
+    );
+  });
+
   test("공유 버튼 호버 숨김은 hover 가능한 포인터에서만 적용된다", () => {
     const css = fs.readFileSync(
       path.join(__dirname, "techArticlesPublicAlign.css"),
@@ -274,6 +292,47 @@ describe("Tech Articles CSS 스코프", () => {
 
     // 게이트 밖에서는 공유 버튼을 숨기지 않는다.
     expect(css.replace(gate, "")).not.toMatch(/pointer-events:\s*none;/);
+  });
+
+  test("상세 사이드바 폭 조정이 900px 이하 1단 배치를 건드리지 않는다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    expect(css).toMatch(
+      /@media \(min-width:\s*1101px\)\s*{\s*\.ta-public \.detail-layout\s*{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 272px;/s,
+    );
+    expect(css).toMatch(
+      /@media \(min-width:\s*901px\) and \(max-width:\s*1100px\)\s*{\s*\.ta-public \.detail-layout\s*{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 252px;/s,
+    );
+
+    // 정렬 레이어는 생성 파일보다 뒤에 로드된다. 조건 없이 열을 지정하면
+    // 생성 파일의 900px 이하 1단 규칙까지 이겨 모바일이 2단으로 깨진다.
+    const unguarded = css
+      .replace(/@media[^{]*{[\s\S]*?\n}/g, "")
+      .match(/\.ta-public \.detail-layout\s*{[^}]*}/g);
+    expect(unguarded).toBeNull();
+  });
+
+  test("가치 점수 평가축은 구분선 없이 행 간격만으로 구분된다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    const row = /\.ta-public \.score-breakdown > div\s*{([^}]*)}/.exec(css);
+    expect(row).not.toBeNull();
+    expect(row[1]).toMatch(/border:\s*0;/);
+    expect(row[1]).not.toMatch(/border-bottom:/);
+
+    // 구분선을 되살리면 마지막 행 예외 규칙이 함께 돌아온다.
+    expect(css).not.toMatch(/\.ta-public \.score-breakdown > div:last-child/);
+
+    // 선이 없어진 만큼 숫자 세로 정렬은 tabular-nums 가 대신 잡는다.
+    expect(css).toMatch(
+      /\.ta-public \.score-breakdown dd\s*{[^}]*font-variant-numeric:\s*tabular-nums;/s,
+    );
   });
 
   test("관리자 번들에 마크업이 사라진 셸 전용 규칙이 남아있지 않다", () => {
