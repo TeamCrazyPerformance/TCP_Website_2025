@@ -210,6 +210,30 @@ describe("공개 화면", () => {
     expect(container.querySelector(".source-bar")).toBeNull();
   });
 
+  test("분야 선택 버튼이 머리글로 올라가 소스 선택과 나란히 놓인다", async () => {
+    const TechArticles = require("./TechArticles").default;
+    const { container } = renderWithAuth(<TechArticles />);
+    await waitFor(() =>
+      expect(container.querySelector(".source-trigger")).not.toBeNull(),
+    );
+
+    // fieldset 밖 머리글 안에 있어야 소스 선택과 같은 줄을 나눠 쓸 수 있다.
+    const trigger = container.querySelector(
+      ".article-list-heading #openFilterButton",
+    );
+    expect(trigger).not.toBeNull();
+    expect(
+      container.querySelector("#categoryFieldset #openFilterButton"),
+    ).toBeNull();
+
+    // 소스 선택과 같은 방식으로 개수를 글자로 알린다(배지 없음).
+    expect(trigger).toHaveTextContent("분야 선택");
+    expect(container.querySelector("#mobileFilterCount")).toBeNull();
+
+    // fieldset 이 주던 disabled 를 직접 넘겨받았는지 확인한다.
+    expect(trigger).not.toBeDisabled();
+  });
+
   test("태그 칩은 선택해도 아이콘이 붙지 않아 폭이 흔들리지 않는다", async () => {
     const TechArticles = require("./TechArticles").default;
     const { container } = renderWithAuth(<TechArticles />);

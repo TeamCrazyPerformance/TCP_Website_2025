@@ -696,6 +696,29 @@ function TechArticles() {
                   : "소스 선택"}
                 <i className="fas fa-chevron-down" aria-hidden="true"></i>
               </button>
+
+              {/* 분야 선택은 데스크톱에서 패널 안 태그 목록으로 펼쳐지지만,
+                  모바일에서는 소스 선택과 나란히 놓이는 같은 성격의 트리거라
+                  머리글로 함께 올립니다. fieldset 밖으로 나오면서 disabled 가
+                  더는 상속되지 않으므로 같은 조건을 직접 넘깁니다. */}
+              <button
+                id="openFilterButton"
+                className={`mobile-filter-button ${selectedTags.length ? "is-active" : ""}`}
+                type="button"
+                aria-haspopup="dialog"
+                aria-expanded={filterOpen}
+                disabled={isLoading || Boolean(tagError)}
+                onClick={() => {
+                  setDraftTags(selectedTags);
+                  setFilterOpen(true);
+                }}
+              >
+                <i className="fas fa-sliders-h" aria-hidden="true"></i>
+                {selectedTags.length
+                  ? `분야 ${selectedTags.length}개`
+                  : "분야 선택"}
+                <i className="fas fa-chevron-down" aria-hidden="true"></i>
+              </button>
             </div>
 
             {selectedSources.length > 0 && (
@@ -776,25 +799,6 @@ function TechArticles() {
                   </button>
                 </div>
               </div>
-              <button
-                id="openFilterButton"
-                className="mobile-filter-button"
-                type="button"
-                aria-haspopup="dialog"
-                aria-expanded={filterOpen}
-                onClick={() => {
-                  setDraftTags(selectedTags);
-                  setFilterOpen(true);
-                }}
-              >
-                <span>
-                  <i className="fas fa-sliders-h" aria-hidden="true"></i>
-                  분야 선택
-                </span>
-                {selectedTags.length > 0 && (
-                  <strong id="mobileFilterCount">{selectedTags.length}</strong>
-                )}
-              </button>
             </fieldset>
 
             {tagError && <p className="detail-data-error">{tagError}</p>}
@@ -802,6 +806,11 @@ function TechArticles() {
             {hasConditions && (
               <div className="active-filters">
                 <span>적용 중</span>
+                {/* 좁은 화면에는 조건을 하나씩 늘어놓을 자리가 없습니다.
+                    개수만 알리고, 해제는 각 시트에서 하도록 둡니다. */}
+                <span className="active-filter-summary">
+                  조건 {(keyword ? 1 : 0) + selectedTags.length}개
+                </span>
                 <div className="filter-chips">
                   {keyword && (
                     <span className="filter-chip">

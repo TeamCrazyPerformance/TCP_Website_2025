@@ -335,7 +335,7 @@ describe("Tech Articles CSS 스코프", () => {
     );
   });
 
-  test("소스 선택 버튼은 목록 머리글 오른쪽 끝에 붙는다", () => {
+  test("소스 선택 버튼은 데스크톱에서 목록 머리글 오른쪽 끝에 붙는다", () => {
     const css = fs.readFileSync(
       path.join(__dirname, "techArticlesPublicAlign.css"),
       "utf8",
@@ -344,9 +344,81 @@ describe("Tech Articles CSS 스코프", () => {
     expect(css).toMatch(
       /\.ta-public \.article-list-heading \.source-trigger\s*{[^}]*margin-left:\s*auto;[^}]*align-self:\s*baseline;/s,
     );
-    // 한 열로 접히는 폭에서는 왼쪽 정렬로 되돌린다.
+  });
+
+  test("좁은 화면에서는 소스·분야 선택이 한 줄을 반씩 나눠 쓴다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    const blocks = [
+      ...css.matchAll(/@media \(max-width:\s*767px\)\s*{([\s\S]*?)\n}/g),
+    ]
+      .map((m) => m[1])
+      .join("\n");
+    const block = [null, blocks];
+    expect(blocks).not.toHaveLength(0);
+
+    // 둘이 각각 절반을 요구해야 제목 줄에 끼지 않고 함께 다음 줄로 내려간다.
+    expect(block[1]).toMatch(
+      /\.ta-public \.article-list-heading \.source-trigger,\s*\.ta-public \.article-list-heading \.mobile-filter-button\s*{[^}]*flex:\s*1 1 calc\(50% - 5px\);/s,
+    );
+
+    // 분야 선택은 소스 선택과 같은 외형(면 없는 테두리)으로 맞춘다.
+    expect(block[1]).toMatch(
+      /\.ta-public \.article-list-heading \.mobile-filter-button\s*{[^}]*background:\s*transparent;/s,
+    );
+
+    // 버튼이 머리글로 올라가면서 비게 된 fieldset 은 숨긴다.
+    expect(block[1]).toMatch(
+      /\.ta-public \.category-filter-panel\s*{\s*display:\s*none;/s,
+    );
+  });
+
+  test("좁은 화면에서는 고른 조건을 개수로만 알린다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    // 요약은 좁은 화면 전용이므로 기본값은 숨김이어야 한다.
     expect(css).toMatch(
-      /@media \(max-width:\s*479px\)\s*{[\s\S]*?\.ta-public \.article-list-heading \.source-trigger\s*{[^}]*margin-left:\s*0;/s,
+      /\.ta-public \.active-filter-summary\s*{[^}]*display:\s*none;/s,
+    );
+
+    const block = [
+      null,
+      [...css.matchAll(/@media \(max-width:\s*767px\)\s*{([\s\S]*?)\n}/g)]
+        .map((m) => m[1])
+        .join("\n"),
+    ];
+    expect(block[1]).toMatch(
+      /\.ta-public \.active-filters \.filter-chips\s*{\s*display:\s*none;/s,
+    );
+    expect(block[1]).toMatch(
+      /\.ta-public \.active-filter-summary\s*{\s*display:\s*inline;/s,
+    );
+    expect(block[1]).toMatch(
+      /\.ta-public \.source-bar\s*{\s*display:\s*none;/s,
+    );
+  });
+
+  test("제목과 건수는 같은 줄에 두되 아주 좁아지면 개행한다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    const block = /@media \(max-width:\s*479px\)\s*{([\s\S]*?)\n}/g;
+    const all = [...css.matchAll(block)].map((m) => m[1]).join("\n");
+
+    expect(all).toMatch(
+      /\.ta-public \.article-list-heading\s*{[^}]*flex-direction:\s*row;/s,
+    );
+    // nowrap 이라야 한 줄에 담길 때는 붙어 있고, 못 담을 때만 내려간다.
+    expect(all).toMatch(
+      /\.ta-public \.article-list-heading #resultCount\s*{[^}]*white-space:\s*nowrap;/s,
     );
   });
 

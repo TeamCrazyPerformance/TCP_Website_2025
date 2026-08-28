@@ -464,13 +464,96 @@
   align-self: baseline;
 }
 
-/* 머리글이 한 열로 접히는 폭에서는 오른쪽 끝에 혼자 떨어져 있으면 위쪽
-   글과 관계가 끊겨 보입니다. 왼쪽 정렬로 되돌리고 간격만 벌립니다. */
-@media (max-width: 479px) {
-  .ta-public .article-list-heading .source-trigger {
-    margin-top: 6px;
+/* 조건 요약은 좁은 화면에서만 씁니다. */
+.ta-public .active-filter-summary {
+  display: none;
+  color: var(--gray-300, #d1d5db);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* ── 좁은 화면의 목록 머리글과 필터 줄 ────────────────────
+ * 모바일에서는 제목·건수·소스 선택·분야 선택이 각각 한 줄씩 네 줄을 써서,
+ * 첫 화면이 거의 안내문으로만 채워졌습니다. 두 줄로 접습니다.
+ *
+ *   1행  아티클 목록      전체 38건 ⋅ 원문 게시일 최신순
+ *   2행  [ 소스 선택 ]  [ 분야 선택 ]
+ *
+ * 소스와 분야는 "무엇에 관한 글인가 / 누가 쓴 글인가"로 축은 다르지만
+ * 목록을 좁히는 같은 성격의 조작이라, 좁은 화면에서는 같은 모양으로
+ * 나란히 두는 편이 데스크톱의 패널·트리거 구분보다 이해하기 쉽습니다. */
+@media (max-width: 767px) {
+  /* 분야 선택 버튼이 머리글로 올라가면서 이 fieldset 은 비었습니다.
+     데스크톱 태그 목록은 이 폭에서 이미 숨겨져 있습니다. */
+  .ta-public .category-filter-panel {
+    display: none;
+  }
+
+  .ta-public .article-list-heading {
+    gap: 8px 10px;
+  }
+
+  /* 분야 선택을 소스 선택과 같은 외형으로 맞춥니다. 검색 화면의
+     .search-mobile-filter-button 은 별도 클래스라 영향받지 않습니다. */
+  .ta-public .article-list-heading .mobile-filter-button {
+    width: auto;
+    margin: 0;
+    padding: 8px 14px;
+    gap: 8px;
+    justify-content: center;
+    border: 1px solid var(--gray-700, #374151);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--gray-200, #e5e7eb);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .ta-public .article-list-heading .mobile-filter-button.is-active {
+    border-color: var(--accent-blue, #3b82f6);
+    color: #fff;
+  }
+
+  /* 둘이 각각 절반을 요구하므로 제목 줄에는 들어가지 못하고 함께 다음
+     줄로 내려가 나란히 놓입니다. */
+  .ta-public .article-list-heading .source-trigger,
+  .ta-public .article-list-heading .mobile-filter-button {
+    flex: 1 1 calc(50% - 5px);
     margin-left: 0;
-    align-self: flex-start;
+    align-self: auto;
+  }
+
+  /* 고른 조건을 하나씩 늘어놓을 자리가 없습니다. 개수만 알리고, 해제는
+     각 시트에서 하도록 둡니다. 소스도 트리거가 "소스 N곳"으로 이미
+     알려 주므로 칩 줄을 따로 두지 않습니다. */
+  .ta-public .active-filters .filter-chips {
+    display: none;
+  }
+
+  .ta-public .active-filter-summary {
+    display: inline;
+  }
+
+  .ta-public .source-bar {
+    display: none;
+  }
+}
+
+/* 제목과 건수를 한 줄에 둡니다. 건수는 nowrap 이라 한 줄에 담기지 않을
+   만큼 좁아졌을 때에만 아래로 내려갑니다(그 외에는 항상 같은 줄). */
+@media (max-width: 479px) {
+  .ta-public .article-list-heading {
+    align-items: baseline;
+    flex-direction: row;
+  }
+
+  .ta-public .article-list-heading h2 {
+    font-size: 21px;
+  }
+
+  .ta-public .article-list-heading #resultCount {
+    font-size: 13px;
+    white-space: nowrap;
   }
 }
 
