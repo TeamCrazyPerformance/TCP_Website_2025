@@ -179,6 +179,58 @@ describe("공개 화면", () => {
     ).toHaveTextContent("소스 선택");
     expect(screen.queryByText("모든 소스")).not.toBeInTheDocument();
     expect(screen.queryByText("소스 고르기")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "TCP가 한데 모은 여러 개발·기술 뉴스를 이곳에서 만나보세요.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "TCP가 한데 모은 여러 소식을 이곳에서 확인할 수 있어요.",
+      ),
+    ).not.toBeInTheDocument();
+    expect(container.querySelector("#mobileFilterCount")).toBeNull();
+    expect(container.querySelector("#searchMobileFilterCount")).toBeNull();
+  });
+
+  test("소스 선택 버튼은 건수와 같은 줄에 놓이고 빈 소스 줄을 남기지 않는다", async () => {
+    const TechArticles = require("./TechArticles").default;
+    const { container } = renderWithAuth(<TechArticles />);
+    await waitFor(() =>
+      expect(container.querySelector(".source-trigger")).not.toBeNull(),
+    );
+
+    // 건수와 같은 머리글 안에 있어야 한다. 밖으로 나가면 버튼만 있는 줄이
+    // 생기면서 건수와 목록 사이에 빈 띠가 다시 만들어진다.
+    expect(
+      container.querySelector(".article-list-heading .source-trigger"),
+    ).not.toBeNull();
+
+    // 고른 소스가 없으면 칩 줄 자체가 렌더되지 않는다.
+    expect(container.querySelector(".source-bar")).toBeNull();
+  });
+
+  test("태그 칩은 선택해도 아이콘이 붙지 않아 폭이 흔들리지 않는다", async () => {
+    const TechArticles = require("./TechArticles").default;
+    const { container } = renderWithAuth(<TechArticles />);
+    await waitFor(() =>
+      expect(container.querySelector(".tag-button")).not.toBeNull(),
+    );
+
+    const chip = () => container.querySelector(".tag-button");
+    const before = chip().textContent;
+
+    expect(chip().getAttribute("aria-pressed")).toBe("false");
+    expect(container.querySelector(".tag-button i")).toBeNull();
+
+    fireEvent.click(chip());
+
+    await waitFor(() =>
+      expect(chip().getAttribute("aria-pressed")).toBe("true"),
+    );
+    // 체크 아이콘이 끼어들면 칩 내용 폭이 그때그때 달라져 필터 줄이 밀린다.
+    expect(container.querySelector(".tag-button i")).toBeNull();
+    expect(chip().textContent).toBe(before);
   });
 
   test("페이지 이동은 새 목록을 받은 뒤 애니메이션 없이 상단으로 이동한다", async () => {
@@ -363,6 +415,76 @@ describe("공개 화면", () => {
     expect(
       screen.getByRole("link", { name: /로그인하고 점수 보기/ }),
     ).toBeInTheDocument();
+  });
+
+  test("상세 히어로는 출처·게시 시각을 중복하지 않고 원문 링크와 태그만 남긴다", async () => {
+    api.getTechArticle.mockResolvedValueOnce({
+      id: "article-1",
+      title: "공개 아티클",
+      oneLineSummary: "한 줄 요약",
+      summaryMarkdown: "상세 요약",
+      tags: ["AI", "인프라"],
+      source: {
+        name: "InfoQ",
+        domain: "infoq.com",
+        path: "/article-1",
+        articleUrl: "https://infoq.com/article-1",
+      },
+      originalLanguage: { code: "ko", label: "한국어" },
+      originalPublishedAt: "2026-08-25T00:00:00Z",
+      collectedAt: "2026-08-25T01:00:00Z",
+    });
+    const TechArticleDetail = require("./TechArticleDetail").default;
+    const { container } = renderWithAuth(<TechArticleDetail />);
+
+    await waitFor(() => expect(api.getTechArticle).toHaveBeenCalled());
+
+    const hero = container.querySelector(".detail-hero");
+    expect(hero.textContent).not.toMatch(/원출처/);
+    expect(hero.textContent).not.toMatch(/원문 게시/);
+    expect(hero.querySelector("#heroOriginalLink")).not.toBeNull();
+    expect(hero.querySelectorAll(".detail-tags .article-tag")).toHaveLength(2);
+
+    // 지운 정보는 사이드바 출처 카드가 계속 책임진다. 양쪽이 함께 사라지면
+    // 중복 제거가 아니라 정보 유실이다.
+    const sourceCard = container.querySelector(".source-card");
+    expect(sourceCard.textContent).toMatch(/출처/);
+    expect(sourceCard.textContent).toMatch(/원문 게시/);
+    expect(sourceCard.querySelector("#sourceName").textContent).toBe("InfoQ");
+  });
+
+  test("출처 카드는 원문 URL을 맨 앞에 두고 정해진 순서로 보여준다", async () => {
+    api.getTechArticle.mockResolvedValueOnce({
+      id: "article-1",
+      title: "공개 아티클",
+      oneLineSummary: "한 줄 요약",
+      summaryMarkdown: "상세 요약",
+      tags: ["AI"],
+      source: {
+        name: "InfoQ",
+        domain: "infoq.com",
+        path: "/article-1",
+        articleUrl: "https://infoq.com/article-1",
+      },
+      originalLanguage: { code: "ko", label: "한국어" },
+      originalPublishedAt: "2026-08-25T00:00:00Z",
+      collectedAt: "2026-08-25T01:00:00Z",
+    });
+    const TechArticleDetail = require("./TechArticleDetail").default;
+    const { container } = renderWithAuth(<TechArticleDetail />);
+
+    await waitFor(() => expect(api.getTechArticle).toHaveBeenCalled());
+
+    const labels = [...container.querySelectorAll(".source-details dt")].map(
+      (node) => node.textContent,
+    );
+    expect(labels).toEqual([
+      "원문 URL",
+      "출처",
+      "원문 언어",
+      "원문 게시",
+      "TCP 수집",
+    ]);
   });
 
   test("로그인 상세는 서버가 보낸 평가 축과 기여도를 보여준다", async () => {

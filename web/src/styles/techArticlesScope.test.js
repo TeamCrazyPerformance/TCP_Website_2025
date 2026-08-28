@@ -167,21 +167,21 @@ describe("Tech Articles CSS 스코프", () => {
       ...css.matchAll(/--article-tag-tone-\d+:\s*(#[\da-f]{6})/gi),
     ].map((match) => match[1].toUpperCase());
     expect(palette).toEqual([
-      "#DF52AE",
-      "#AB9DBC",
-      "#E2D2F4",
-      "#997EAC",
-      "#AA78AB",
-      "#A974C1",
-      "#AC6ED3",
-      "#6B8DA1",
-      "#45DEC2",
+      "#C978A9",
+      "#A99FB4",
+      "#D9CDE5",
+      "#9B89A8",
+      "#A684A7",
+      "#A181AF",
+      "#A17EBA",
+      "#758F9F",
+      "#6FB8AA",
       "#808B89",
-      "#61C4B2",
-      "#24AB92",
-      "#5FB351",
-      "#BD9649",
-      "#D0C76E",
+      "#75AEA4",
+      "#579C8F",
+      "#7BA672",
+      "#AB915D",
+      "#B8B077",
     ]);
 
     const foregrounds = [
@@ -333,6 +333,85 @@ describe("Tech Articles CSS 스코프", () => {
     expect(css).toMatch(
       /\.ta-public \.score-breakdown dd\s*{[^}]*font-variant-numeric:\s*tabular-nums;/s,
     );
+  });
+
+  test("소스 선택 버튼은 목록 머리글 오른쪽 끝에 붙는다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    expect(css).toMatch(
+      /\.ta-public \.article-list-heading \.source-trigger\s*{[^}]*margin-left:\s*auto;[^}]*align-self:\s*baseline;/s,
+    );
+    // 한 열로 접히는 폭에서는 왼쪽 정렬로 되돌린다.
+    expect(css).toMatch(
+      /@media \(max-width:\s*479px\)\s*{[\s\S]*?\.ta-public \.article-list-heading \.source-trigger\s*{[^}]*margin-left:\s*0;/s,
+    );
+  });
+
+  test("모바일 분야 적용 버튼은 비활성 상태를 중립색으로 구분한다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    expect(css).toMatch(
+      /\.ta-public \.sheet-actions \.cta-button:disabled,[\s\S]*?background:\s*#374151;[\s\S]*?cursor:\s*not-allowed;[\s\S]*?opacity:\s*1;/,
+    );
+  });
+
+  test("보조 동작 버튼은 남색 면 대신 같은 계열 테두리로 그린다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    const rule =
+      /\.ta-public \.detail-original-link,\s*\.ta-public \.article-card \.share-button\s*{([^}]*)}/.exec(
+        css,
+      );
+    expect(rule).not.toBeNull();
+    expect(rule[1]).toMatch(/background:\s*transparent;/);
+    expect(rule[1]).toMatch(/border:\s*1px solid rgba\(168, 197, 230/);
+    // 강조는 hover 에서만. 기본 상태에 면이 다시 깔리면 얼룩처럼 뜬다.
+    expect(css).toMatch(
+      /\.ta-public \.detail-original-link:hover,[\s\S]*?background:\s*rgba\(168, 197, 230/,
+    );
+  });
+
+  test("상세 출처 정보는 보조 위계를 유지하며 충분히 밝게 표시한다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    expect(css).toMatch(
+      /\.ta-public \.source-card \.source-details dt\s*{[^}]*color:\s*#aeb6c2;/s,
+    );
+    expect(css).toMatch(
+      /\.ta-public \.source-card \.source-details dd,[\s\S]*?color:\s*#d0d5de;/,
+    );
+  });
+
+  test("공개 번들에 마크업이 사라진 규칙이 남아있지 않다", () => {
+    // 히어로 설명 문단은 hero-lead 로 합쳐졌고, 상세 히어로의 출처·게시
+    // 시각 줄은 사이드바 출처 카드와 중복이라 걷어냈다. 생성 파일은 손으로
+    // 고치지 않고 scope_v9.py 의 PUBLIC_DEAD 로 걸러 낸다.
+    const dead = [
+      "hero-description",
+      "detail-info-item",
+      "detail-source-item",
+      "detail-info-label",
+    ];
+    const all = [
+      "techArticlesPublic.css",
+      "techArticlesPublicAlign.css",
+    ].flatMap((f) => selectorsByFile[f]);
+    const leftover = all.filter((selector) =>
+      dead.some((cls) => new RegExp(`\\.${cls}(?![\\w-])`).test(selector)),
+    );
+    expect(leftover).toEqual([]);
   });
 
   test("관리자 번들에 마크업이 사라진 셸 전용 규칙이 남아있지 않다", () => {

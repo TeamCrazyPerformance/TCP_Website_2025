@@ -38,6 +38,12 @@ PUBLIC_DEAD = {
     "login-button","register-button",
     "site-footer","footer-grid","footer-brand","copyright",
     "skip-link","admin-body",
+    # 셸은 아니지만 React 화면에서 사라진 마크업. 히어로 설명 문단은
+    # hero-lead 한 줄로 합쳐졌고, 목업에만 남아 있다.
+    "hero-description",
+    # 상세 히어로의 출처·게시 시각 줄. 같은 정보를 사이드바 출처 카드가
+    # 싣고 있어 제거했고, 남은 것은 원문 링크와 태그뿐이다.
+    "detail-info-item","detail-source-item","detail-info-label",
 }
 
 TARGETS = {

@@ -250,7 +250,6 @@ function V9TagButtons({
             aria-pressed={selected}
             onClick={() => onToggle(tag)}
           >
-            <i className="fas fa-check" aria-hidden="true"></i>
             {tag}
           </button>
         );
@@ -632,10 +631,7 @@ function TechArticles() {
             <h1 className="orbitron gradient-text">Tech Articles</h1>
             {/* 한글에는 Orbitron 을 쓰지 않습니다. 라틴 제목에만 남깁니다. */}
             <p className="hero-lead">
-              여러 개발·기술 뉴스를 한 곳에서 만나보세요
-            </p>
-            <p className="hero-description">
-              TCP가 한데 모은 여러 소식을 이곳에서 확인할 수 있어요.
+              TCP가 한데 모은 여러 개발·기술 뉴스를 이곳에서 만나보세요.
             </p>
             <p className="last-collected">
               <i className="fas fa-clock" aria-hidden="true"></i>
@@ -683,11 +679,10 @@ function TechArticles() {
                   </span>
                 )}
               </div>
-            </div>
 
-            {/* 소스는 분야 태그와 다른 축이라 필터 패널 밖, 목록 바로 위에
-                따로 둡니다. 한 줄에 섞으면 같은 종류로 읽힙니다. */}
-            <div className="source-bar">
+              {/* 소스는 분야 태그와 다른 축이라 필터 패널이 아니라 목록
+                  머리글에 둡니다. 건수와 같은 줄 오른쪽 끝에 붙여, 버튼만
+                  있는 줄이 건수와 목록 사이에 빈 띠를 만들지 않게 합니다. */}
               <button
                 type="button"
                 className={`source-trigger ${selectedSources.length ? "is-active" : ""}`}
@@ -701,8 +696,10 @@ function TechArticles() {
                   : "소스 선택"}
                 <i className="fas fa-chevron-down" aria-hidden="true"></i>
               </button>
+            </div>
 
-              {selectedSources.length > 0 && (
+            {selectedSources.length > 0 && (
+              <div className="source-bar">
                 <ul className="source-chip-list" aria-label="선택한 소스">
                   {selectedSources.map((id) => {
                     const source = sourceById[id];
@@ -741,8 +738,8 @@ function TechArticles() {
                     </button>
                   </li>
                 </ul>
-              )}
-            </div>
+              </div>
+            )}
 
             <fieldset
               id="categoryFieldset"
@@ -794,7 +791,9 @@ function TechArticles() {
                   <i className="fas fa-sliders-h" aria-hidden="true"></i>
                   분야 선택
                 </span>
-                <strong id="mobileFilterCount">{selectedTags.length}</strong>
+                {selectedTags.length > 0 && (
+                  <strong id="mobileFilterCount">{selectedTags.length}</strong>
+                )}
               </button>
             </fieldset>
 
@@ -1105,9 +1104,11 @@ function TechArticles() {
                         <i className="fas fa-sliders-h" aria-hidden="true"></i>
                         분야 선택
                       </span>
-                      <strong id="searchMobileFilterCount">
-                        {selectedTags.length}
-                      </strong>
+                      {selectedTags.length > 0 && (
+                        <strong id="searchMobileFilterCount">
+                          {selectedTags.length}
+                        </strong>
+                      )}
                     </button>
                   </div>
                   <label htmlFor="searchInput">검색</label>

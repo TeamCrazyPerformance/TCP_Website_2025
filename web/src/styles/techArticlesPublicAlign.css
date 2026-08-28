@@ -109,21 +109,21 @@
 .ta-public {
   background: var(--primary-black);
   --article-tag-foreground: #111827;
-  --article-tag-tone-01: #df52ae;
-  --article-tag-tone-02: #ab9dbc;
-  --article-tag-tone-03: #e2d2f4;
-  --article-tag-tone-04: #997eac;
-  --article-tag-tone-05: #aa78ab;
-  --article-tag-tone-06: #a974c1;
-  --article-tag-tone-07: #ac6ed3;
-  --article-tag-tone-08: #6b8da1;
-  --article-tag-tone-09: #45dec2;
+  --article-tag-tone-01: #c978a9;
+  --article-tag-tone-02: #a99fb4;
+  --article-tag-tone-03: #d9cde5;
+  --article-tag-tone-04: #9b89a8;
+  --article-tag-tone-05: #a684a7;
+  --article-tag-tone-06: #a181af;
+  --article-tag-tone-07: #a17eba;
+  --article-tag-tone-08: #758f9f;
+  --article-tag-tone-09: #6fb8aa;
   --article-tag-tone-10: #808b89;
-  --article-tag-tone-11: #61c4b2;
-  --article-tag-tone-12: #24ab92;
-  --article-tag-tone-13: #5fb351;
-  --article-tag-tone-14: #bd9649;
-  --article-tag-tone-15: #d0c76e;
+  --article-tag-tone-11: #75aea4;
+  --article-tag-tone-12: #579c8f;
+  --article-tag-tone-13: #7ba672;
+  --article-tag-tone-14: #ab915d;
+  --article-tag-tone-15: #b8b077;
 }
 
 /* ── 목록·상세 태그 팔레트 ────────────────────────────────
@@ -237,6 +237,19 @@
   font-weight: 500;
 }
 
+/* 건수와 정렬 기준은 목록을 훑기 전에 가장 먼저 확인하는 값인데, 옆의 큰
+   제목에 눌려 부차 정보처럼 읽혔습니다. 한 단계만 키웁니다. 좁은 폭의
+   13px 도 같은 폭만큼 올립니다(생성 파일의 479px 규칙을 덮어씁니다). */
+.ta-public .article-list-heading #resultCount {
+  font-size: 15px;
+}
+
+@media (max-width: 479px) {
+  .ta-public .article-list-heading #resultCount {
+    font-size: 14px;
+  }
+}
+
 /* 한 줄 요약과 태그는 한 글의 연속된 정보이므로
    구분선을 없애고 작은 여백만 남깁니다. */
 .ta-public .article-card-bottom {
@@ -289,8 +302,6 @@
   }
 }
 
-/* 좌우가 한 줄인 화면에서 높은 공유 버튼 때문에 칩이 떠 보이지
-   않도록 하단선을 맞춥니다. */
 @media (min-width: 768px) {
   .ta-public .article-card-bottom {
     align-items: flex-end;
@@ -305,6 +316,24 @@
     min-height: 44px;
     margin-left: auto;
   }
+
+  /* 배지는 선택한 분야가 있을 때만 렌더되므로, 남은 자리를 밀어내지 않도록
+     고정 폭으로 둡니다. */
+  .ta-public .mobile-filter-button strong {
+    flex: 0 0 auto;
+  }
+
+  /* 활성 버튼과 혼동되지 않도록 색과 동작 효과를 함께 낮춥니다. */
+  .ta-public .sheet-actions .cta-button:disabled,
+  .ta-public .sheet-actions .cta-button:disabled:hover {
+    color: #9ca3af;
+    background: #374151;
+    box-shadow: none;
+    cursor: not-allowed;
+    filter: none;
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* ── 소스 선택 ────────────────────────────────────────────
@@ -314,6 +343,28 @@
  * 모서리도 다르게 둡니다(태그 pill 999px / 소스 8px). 모양 차이는 넷일 때만
  * 통하지만, 아이콘과 도메인은 소스가 수십 개가 되어도 유효한 구분 수단입니다.
  * 아이콘은 우리 서버에서만 가져옵니다 — images/sources/README.md 참고. */
+/* 소스 선택 버튼은 목록 머리글의 오른쪽 끝에 붙입니다. 버튼만 있는 줄을
+   따로 두면 건수 줄과 목록 사이에 빈 띠가 생깁니다.
+
+   세로 위치는 큰 제목이 아니라 건수 줄에 맞춥니다. 머리글 전체를 가운데로
+   맞추면 버튼이 건수보다 7px 떠서 어느 쪽과도 줄이 맞지 않습니다.
+   baseline 은 머리글이 이미 쓰는 정렬이라 같은 방식으로 붙습니다. */
+.ta-public .article-list-heading .source-trigger {
+  margin-left: auto;
+  align-self: baseline;
+}
+
+/* 머리글이 한 열로 접히는 폭에서는 오른쪽 끝에 혼자 떨어져 있으면 위쪽
+   글과 관계가 끊겨 보입니다. 왼쪽 정렬로 되돌리고 간격만 벌립니다. */
+@media (max-width: 479px) {
+  .ta-public .article-list-heading .source-trigger {
+    margin-top: 6px;
+    margin-left: 0;
+    align-self: flex-start;
+  }
+}
+
+/* 선택한 소스 칩 줄. 고른 소스가 없으면 마크업 자체가 렌더되지 않습니다. */
 .ta-public .source-bar {
   display: flex;
   flex-wrap: wrap;
@@ -675,6 +726,32 @@
   text-decoration: none;
 }
 
+/* ── 보조 동작 버튼 배색 ──────────────────────────────────
+ * 원문 보기·공유 버튼은 진한 남색 면(rgba(30, 58, 138, 0.2))을 깔고
+ * 있었습니다. 거의 검은 배경 위에서 이 면은 파란 얼룩처럼 떠 보이고,
+ * 상세 화면에서 채도를 낮춰 둔 나머지 팔레트와도 계열이 어긋납니다.
+ * 면을 걷어내고 글자와 같은 계열의 얇은 테두리만 남깁니다. 강조는
+ * hover·focus 에서만 들어옵니다. */
+.ta-public .detail-original-link,
+.ta-public .article-card .share-button {
+  color: var(--accent-blue);
+  background: transparent;
+  border: 1px solid rgba(168, 197, 230, 0.26);
+}
+
+.ta-public .detail-original-link:hover,
+.ta-public .article-card .share-button:hover {
+  color: #e3edf8;
+  background: rgba(168, 197, 230, 0.12);
+  border-color: rgba(168, 197, 230, 0.55);
+}
+
+.ta-public .detail-original-link:focus-visible,
+.ta-public .article-card .share-button:focus-visible {
+  outline: 2px solid rgba(168, 197, 230, 0.9);
+  outline-offset: 3px;
+}
+
 /* ── 상세 사이드바 밀도 ───────────────────────────────────
  * 가치 점수·출처 카드가 본문 읽기 폭을 과하게 밀어내고 있었습니다.
  * 열 폭과 카드 안쪽 여백을 함께 줄여 본문 쪽에 폭을 돌려줍니다.
@@ -830,6 +907,26 @@
 
 .ta-public .detail-sidebar .scenario-eyebrow {
   color: var(--detail-muted-accent);
+}
+
+/* 출처 정보는 보조 위계를 유지하되 비활성 문구처럼 흐려 보이지 않게 합니다. */
+.ta-public .source-card .source-details dt {
+  color: #aeb6c2;
+}
+
+.ta-public .source-card .source-details dd,
+.ta-public .source-card .source-details dd strong {
+  color: #d0d5de;
+}
+
+.ta-public .source-card .source-details dd span,
+.ta-public .source-card .source-language-value span {
+  color: #aeb6c2;
+}
+
+.ta-public .source-card .source-details dd a,
+.ta-public .source-card .source-details dd a span {
+  color: var(--accent-blue);
 }
 
 .ta-public .score-summary strong,

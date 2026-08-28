@@ -108,47 +108,30 @@ function TechArticleDetail() {
                     ? "아티클을 불러오는 중입니다."
                     : "아티클을 표시할 수 없습니다.")}
               </h1>
-              {article && (
+              {/* 출처와 게시 시각은 오른쪽 "원문 및 출처 정보" 카드가 이미
+                  전부 싣고 있습니다. 제목 아래에는 바로 누를 동작(원문 보기)과
+                  분류(태그)만 남겨 첫 화면을 가볍게 유지합니다. */}
+              {article && (sourceUrl || article.tags?.length > 0) && (
                 <div
                   className="detail-info-row"
-                  aria-label="아티클 출처, 게시 시각, 태그와 원문 링크"
+                  aria-label="원문 링크와 분야 태그"
                 >
                   <div className="detail-info-items">
-                    <span className="detail-info-item detail-source-item">
-                      <span className="detail-info-label">
-                        <i className="fas fa-building" aria-hidden="true"></i>
-                        원출처 <strong id="heroSourceName">{sourceName}</strong>
-                      </span>
-                      {sourceUrl && (
-                        <a
-                          className="detail-original-link"
-                          id="heroOriginalLink"
-                          href={sourceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          원문 보기
-                          <i
-                            className="fas fa-arrow-up-right-from-square"
-                            aria-hidden="true"
-                          ></i>
-                        </a>
-                      )}
-                    </span>
-                    <span className="detail-info-item">
-                      <i className="fas fa-calendar-day" aria-hidden="true"></i>
-                      원문 게시{" "}
-                      <time
-                        id="heroPublishedAt"
-                        dateTime={article.originalPublishedAt}
+                    {sourceUrl && (
+                      <a
+                        className="detail-original-link"
+                        id="heroOriginalLink"
+                        href={sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
                       >
-                        {formatTechArticleDate(
-                          article.originalPublishedAt,
-                          true,
-                        )}{" "}
-                        KST
-                      </time>
-                    </span>
+                        원문 보기
+                        <i
+                          className="fas fa-arrow-up-right-from-square"
+                          aria-hidden="true"
+                        ></i>
+                      </a>
+                    )}
                     <V9ArticleTags
                       tags={article.tags}
                       id="detailTags"
@@ -276,26 +259,6 @@ function TechArticleDetail() {
                   <h2 id="sourceHeading">원문 및 출처 정보</h2>
                   <dl className="source-details">
                     <div>
-                      <dt>출처</dt>
-                      <dd>
-                        <strong id="sourceName">{sourceName}</strong>
-                        <span id="sourceDomain">
-                          {article?.source?.domain || ""}
-                        </span>
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>원문 언어</dt>
-                      <dd id="sourceLanguage" className="source-language-value">
-                        <strong>
-                          {article?.originalLanguage?.label || "확인 중"}
-                        </strong>
-                        {article?.originalLanguage?.code && (
-                          <span>({article.originalLanguage.code})</span>
-                        )}
-                      </dd>
-                    </div>
-                    <div>
                       <dt>원문 URL</dt>
                       <dd>
                         {sourceUrl ? (
@@ -316,6 +279,26 @@ function TechArticleDetail() {
                           </a>
                         ) : (
                           "원문 주소 확인 중"
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>출처</dt>
+                      <dd>
+                        <strong id="sourceName">{sourceName}</strong>
+                        <span id="sourceDomain">
+                          {article?.source?.domain || ""}
+                        </span>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>원문 언어</dt>
+                      <dd id="sourceLanguage" className="source-language-value">
+                        <strong>
+                          {article?.originalLanguage?.label || "확인 중"}
+                        </strong>
+                        {article?.originalLanguage?.code && (
+                          <span>({article.originalLanguage.code})</span>
                         )}
                       </dd>
                     </div>
