@@ -255,6 +255,27 @@ describe("Tech Articles CSS 스코프", () => {
     );
   });
 
+  test("공유 버튼 호버 숨김은 hover 가능한 포인터에서만 적용된다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    // 폭만으로 숨기면 768px 이상 터치 기기(예: iPad 세로)에서 hover 도 탭도
+    // 닿지 않아 공유 버튼이 잠긴다. 게이트가 사라지지 않도록 고정한다.
+    const gate =
+      /@media \(min-width:\s*768px\) and \(hover:\s*hover\) and \(pointer:\s*fine\)\s*{([\s\S]*?)\n}/;
+    const block = gate.exec(css);
+    expect(block).not.toBeNull();
+    expect(block[1]).toMatch(/opacity:\s*0;[\s\S]*?pointer-events:\s*none;/);
+    expect(block[1]).toMatch(
+      /\.ta-public \.article-card:hover \.share-button,[\s\S]*?opacity:\s*1;[\s\S]*?pointer-events:\s*auto;/,
+    );
+
+    // 게이트 밖에서는 공유 버튼을 숨기지 않는다.
+    expect(css.replace(gate, "")).not.toMatch(/pointer-events:\s*none;/);
+  });
+
   test("관리자 번들에 마크업이 사라진 셸 전용 규칙이 남아있지 않다", () => {
     const dead = [
       "admin-shell",

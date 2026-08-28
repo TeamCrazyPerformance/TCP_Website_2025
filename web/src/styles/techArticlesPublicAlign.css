@@ -245,11 +245,56 @@
   border-top: 0;
 }
 
+/* 공유는 보조 동작이므로 카드에 접근했을 때만 보여 줍니다. 숨김은 hover 가
+   실제로 동작하는 포인터 환경으로만 한정합니다. 터치 기기는 hover 가 발생하지
+   않는 데다 pointer-events: none 이면 탭으로 focus 를 줄 수도 없어서, 폭으로만
+   구분하면 768px 이상 태블릿에서 공유 버튼이 완전히 잠깁니다. */
+.ta-public .article-card .share-button {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition:
+    opacity 0.16s ease,
+    color 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+@media (min-width: 768px) and (hover: hover) and (pointer: fine) {
+  /* opacity 만 바꾸어 숨겨진 상태에서도 키보드 이동 순서는 유지합니다. */
+  .ta-public .article-card .share-button {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .ta-public .article-card:hover .share-button,
+  .ta-public .article-card:focus-within .share-button,
+  .ta-public .article-card .share-button:focus-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
 /* 좌우가 한 줄인 화면에서 높은 공유 버튼 때문에 칩이 떠 보이지
-   않도록 하단선을 맞촥니다. */
+   않도록 하단선을 맞춥니다. */
 @media (min-width: 768px) {
   .ta-public .article-card-bottom {
     align-items: flex-end;
+  }
+}
+
+@media (max-width: 767px) {
+  .ta-public .article-card .share-button {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    margin-left: auto;
   }
 }
 

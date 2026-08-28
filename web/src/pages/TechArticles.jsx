@@ -952,8 +952,8 @@ function TechArticles() {
                         type="button"
                         onClick={() => handleShare(article)}
                         aria-label={`${article.title} 세부 페이지 공유`}
+                        title="공유"
                       >
-                        공유{" "}
                         <i
                           className="fas fa-share-nodes"
                           aria-hidden="true"

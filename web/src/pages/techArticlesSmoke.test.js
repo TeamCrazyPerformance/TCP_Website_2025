@@ -278,6 +278,13 @@ describe("공개 화면", () => {
     const articleLink = await screen.findByRole("link", {
       name: "복원할 아티클",
     });
+    const shareButton = firstRender.container.querySelector(".share-button");
+    expect(shareButton).toHaveTextContent("");
+    expect(shareButton).toHaveAttribute(
+      "aria-label",
+      "복원할 아티클 세부 페이지 공유",
+    );
+    expect(shareButton.querySelector("i.fa-share-nodes")).not.toBeNull();
     fireEvent.click(articleLink.closest("article"));
 
     expect(window.history.scrollRestoration).toBe("manual");
