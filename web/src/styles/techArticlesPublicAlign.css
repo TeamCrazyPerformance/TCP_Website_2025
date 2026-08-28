@@ -336,6 +336,116 @@
   }
 }
 
+/* ── 터치 기기 조작 영역 ──────────────────────────────────
+ * 주 사용 환경이 모바일입니다. Galaxy S26(360px) · iPhone 17(402px) ·
+ * 17 Pro Max(440px) 모두 이 화면의 가장 좁은 브레이크포인트에 들어갑니다.
+ *
+ * 폭이 아니라 포인터 성격으로 가릅니다. 손가락은 화면이 넓어도 굵기가
+ * 같아서, 폭으로 나누면 큰 화면 태블릿이 빠집니다. 데스크톱은 이 블록에
+ * 걸리지 않으므로 기존 치수를 그대로 유지합니다. */
+@media (hover: none) and (pointer: coarse) {
+  /* 상세 페이지의 유일한 주 행동인데 74x28 로 태그 칩보다도 작았습니다.
+     같은 줄의 태그와 구분되도록 크기와 글자를 함께 올립니다. */
+  .ta-public .detail-original-link {
+    min-height: 44px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+
+  /* 조건 해제 x 는 24x24 였습니다. 칩 사이 간격이 8px 뿐이라 그대로
+     넓히면 이웃 칩의 영역과 겹칩니다. 간격을 10px 로 벌린 뒤, 보이는
+     크기는 36px 로 키우고 나머지는 ::after 로만 확장해 44px 를
+     채웁니다(양쪽 4px, 간격 10px 안이라 겹치지 않습니다). */
+  .ta-public .filter-chips {
+    gap: 10px;
+  }
+
+  .ta-public .filter-chip {
+    min-height: 44px;
+    padding: 4px 6px 4px 14px;
+  }
+
+  .ta-public .filter-chip button {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
+
+  .ta-public .filter-chip button::after {
+    position: absolute;
+    inset: -4px;
+    content: "";
+  }
+
+  /* 나머지 보조 컨트롤은 36~42px 로 조금씩 모자랐습니다.
+     생성 파일이 .detail-breadcrumb a (0,2,1) 와
+     .category-filter-panel .mobile-filter-button (0,3,0) 으로 더 좁게
+     잡아 두어서, 같은 깊이로 맞추지 않으면 이 규칙이 지고 맙니다. */
+  .ta-public .source-trigger,
+  .ta-public .page-button,
+  .ta-public .category-filter-panel .mobile-filter-button,
+  .ta-public .search-mobile-filter-button,
+  .ta-public .detail-breadcrumb .back-to-list-link {
+    min-height: 44px;
+  }
+
+  /* 페이지 번호는 글자가 한 자라 폭이 42px 에서 멈춥니다. */
+  .ta-public .page-button {
+    min-width: 44px;
+  }
+
+  /* 출처 카드의 원문 URL 링크가 19px 높이였습니다. */
+  .ta-public .source-card .source-details dd a {
+    min-height: 44px;
+    align-items: center;
+  }
+
+  /* text-button 은 display 가 없어 min-height 가 먹지 않습니다. */
+  .ta-public .active-filters .text-button {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+  }
+}
+
+/* ── 좁은 화면의 조건 표시 줄 ─────────────────────────────
+ * "적용 중" 라벨 · 조건 칩 · 전체 초기화가 한 줄 flex 라, 폭이 좁아지면
+ * 칩이 가운데에서 여러 줄로 늘어나고 초기화 버튼이 두 글자씩 접힙니다.
+ * 좁은 화면에서는 세 덩어리를 세로로 쌓습니다. */
+@media (max-width: 479px) {
+  .ta-public .active-filters {
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+  }
+
+  /* "적용 중"과 전체 초기화를 첫 줄 양끝에 두고, 칩은 아래 줄 전체를
+     씁니다. 셋을 모두 세로로 쌓으면 한 줄이 더 늘어 첫 화면에서 카드가
+     그만큼 밀립니다. */
+  .ta-public .active-filters .filter-chips {
+    width: 100%;
+    order: 1;
+  }
+
+  .ta-public .active-filters .text-button {
+    margin-left: auto;
+  }
+}
+
+/* 첫 화면에 카드가 더 들어오도록 여백을 줄입니다. 히어로 위쪽 96px 중
+   64px 은 고정 헤더 자리라 건드리지 않고, 아래쪽 여백만 줄입니다. */
+@media (max-width: 479px) {
+  .ta-public .page-hero {
+    padding-bottom: 16px;
+  }
+
+  .ta-public .articles-section {
+    padding-top: 20px;
+  }
+}
+
 /* ── 소스 선택 ────────────────────────────────────────────
  * 분야 태그와 다른 축입니다. 태그는 "무엇에 관한 글인가", 소스는 "누가 쓴
  * 글인가" — 같은 모양으로 나열하면 사용자가 하나의 축으로 읽습니다.

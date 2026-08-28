@@ -394,6 +394,40 @@ describe("Tech Articles CSS 스코프", () => {
     );
   });
 
+  test("터치 조작 영역 확대는 터치 기기에서만 적용된다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    // 주 사용 환경이 모바일이라 44px 를 확보하되, 데스크톱 치수는 건드리지
+    // 않는다. 폭이 아니라 포인터 성격으로 갈라야 큰 화면 태블릿도 포함된다.
+    const gate =
+      /@media \(hover:\s*none\) and \(pointer:\s*coarse\)\s*{([\s\S]*?)\n}/;
+    const block = gate.exec(css);
+    expect(block).not.toBeNull();
+
+    for (const selector of [
+      "\\.detail-original-link",
+      "\\.filter-chip button",
+      "\\.detail-breadcrumb \\.back-to-list-link",
+      "\\.category-filter-panel \\.mobile-filter-button",
+    ]) {
+      expect(block[1]).toMatch(new RegExp(selector));
+    }
+
+    // 게이트 밖에서 같은 셀렉터를 넓히면 데스크톱 치수까지 함께 바뀐다.
+    // (공유 버튼의 767px 블록은 별개 규칙이라 그대로 둔다.)
+    const outside = css.replace(gate, "");
+    expect(outside).not.toMatch(
+      /\.ta-public \.detail-original-link\s*{[^}]*min-height/s,
+    );
+    expect(outside).not.toMatch(/\.ta-public \.detail-breadcrumb/);
+    expect(outside).not.toMatch(
+      /\.ta-public \.filter-chip\s*{[^}]*min-height/s,
+    );
+  });
+
   test("공개 번들에 마크업이 사라진 규칙이 남아있지 않다", () => {
     // 히어로 설명 문단은 hero-lead 로 합쳐졌고, 상세 히어로의 출처·게시
     // 시각 줄은 사이드바 출처 카드와 중복이라 걷어냈다. 생성 파일은 손으로
