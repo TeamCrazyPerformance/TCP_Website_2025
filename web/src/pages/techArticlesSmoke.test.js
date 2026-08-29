@@ -727,7 +727,8 @@ describe("공개 화면", () => {
     expect(hero.querySelector("#heroOriginalLink")).not.toBeNull();
     const detailShareButton = hero.querySelector(".detail-share-button");
     expect(detailShareButton).not.toBeNull();
-    expect(detailShareButton).toHaveTextContent("공유");
+    expect(detailShareButton).not.toHaveTextContent("공유");
+    expect(detailShareButton.querySelector(".fa-share-nodes")).not.toBeNull();
     expect(detailShareButton).toHaveAttribute(
       "aria-label",
       "공개 아티클 세부 페이지 공유",

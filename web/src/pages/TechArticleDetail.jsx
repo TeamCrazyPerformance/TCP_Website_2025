@@ -137,8 +137,8 @@ function TechArticleDetail() {
                     : "아티클을 표시할 수 없습니다.")}
               </h1>
               {/* 출처와 게시 시각은 오른쪽 "원문 및 출처 정보" 카드가 이미
-                  전부 싣고 있습니다. 제목 아래에는 바로 누를 동작(원문 보기)과
-                  분류(태그)만 남겨 첫 화면을 가볍게 유지합니다. */}
+                  전부 싣고 있습니다. 제목 아래에는 분류(태그)와 바로 누를
+                  동작(원문 보기·공유)만 남겨 첫 화면을 가볍게 유지합니다. */}
               {article && (sourceUrl || article.tags?.length > 0) && (
                 <div
                   className="detail-info-row"
@@ -170,7 +170,6 @@ function TechArticleDetail() {
                             className="fas fa-share-nodes"
                             aria-hidden="true"
                           ></i>
-                          공유
                         </button>
                       </>
                     )}

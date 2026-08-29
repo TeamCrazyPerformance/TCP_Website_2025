@@ -567,7 +567,7 @@ describe("Tech Articles CSS 스코프", () => {
 
     // 보이는 크기는 줄이되 손가락 영역은 ::after 로 유지한다.
     expect(block).toMatch(
-      /\.ta-public \.pagination-v3 \.page-button\s*{[^}]*min-height:\s*32px;/s,
+      /\.ta-public \.pagination-v3 \.page-button\s*{[^}]*display:\s*inline-flex;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;[^}]*min-height:\s*32px;/s,
     );
     expect(block).toMatch(
       /\.ta-public \.pagination-v3 \.page-button::after\s*{[^}]*inset:\s*-6px 0;/s,
@@ -619,7 +619,7 @@ describe("Tech Articles CSS 스코프", () => {
     );
     const wide = wideBlocks();
 
-    // 28px 짜리 납작한 링크였다. 좁은 화면은 터치 블록의 44px 를 지킨다.
+    // 넓은 화면과 좁은 화면 모두 34px 높이의 조밀한 원문 버튼을 쓴다.
     expect(wide).toMatch(
       /\.ta-public \.detail-original-link\s*{[^}]*min-height:\s*34px;[^}]*padding:\s*7px 12px;/s,
     );
@@ -628,12 +628,20 @@ describe("Tech Articles CSS 스코프", () => {
       /\.ta-public \.score-gate-card h3 span\s*{[^}]*display:\s*block;/s,
     );
 
-    // 터치 블록이 뒤에 와야 넓은 태블릿에서 44px 가 유지된다.
-    expect(
-      css.indexOf(
-        "@media (min-width: 768px) {\n  .ta-public .detail-original-link",
-      ),
-    ).toBeLessThan(css.indexOf("@media (hover: none) and (pointer: coarse)"));
+    const narrow = [
+      ...css.matchAll(/@media \(max-width:\s*767px\)\s*{([\s\S]*?)\n}/g),
+    ]
+      .map((match) => match[1])
+      .join("\n");
+    expect(narrow).toMatch(
+      /\.ta-public \.detail-info-items \.detail-tags\s*{[^}]*order:\s*-1;[^}]*flex-basis:\s*100%;/s,
+    );
+    expect(narrow).toMatch(
+      /\.ta-public \.detail-share-button\s*{[^}]*width:\s*34px;[^}]*height:\s*34px;[^}]*padding:\s*0;/s,
+    );
+    expect(narrow).toMatch(
+      /\.ta-public \.detail-original-link::after,[\s\S]*?inset:\s*-5px 0;/s,
+    );
   });
 
   test("가치 점수 카드의 회원가입 안내를 작은 글자에 필요한 대비로 올린다", () => {
@@ -842,6 +850,17 @@ describe("Tech Articles CSS 스코프", () => {
     );
   });
 
+  test("한 줄 요약 박스는 좌측 세로 강조선을 그리지 않는다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    expect(css).toMatch(
+      /\.ta-public \.detail-one-line-summary\s*{[^}]*border-left:\s*0;[^}]*border-radius:\s*9px;/s,
+    );
+  });
+
   test("상세 출처 정보는 보조 위계를 유지하며 충분히 밝게 표시한다", () => {
     const css = fs.readFileSync(
       path.join(__dirname, "techArticlesPublicAlign.css"),
@@ -856,37 +875,32 @@ describe("Tech Articles CSS 스코프", () => {
     );
   });
 
-  test("터치 조작 영역 확대는 터치 기기에서만 적용된다", () => {
+  test("터치 조작 영역 확대는 조밀한 상세 동작 버튼을 제외한다", () => {
     const css = fs.readFileSync(
       path.join(__dirname, "techArticlesPublicAlign.css"),
       "utf8",
     );
 
-    // 주 사용 환경이 모바일이라 44px 를 확보하되, 데스크톱 치수는 건드리지
-    // 않는다. 폭이 아니라 포인터 성격으로 갈라야 큰 화면 태블릿도 포함된다.
+    // 페이지 이동과 목록 복귀는 터치 기기에서 44px를 확보한다. 상세의 원문·
+    // 공유 버튼은 별도 모바일 규칙에서 조밀하게 보이되 가상 영역만 넓힌다.
     const gate =
       /@media \(hover:\s*none\) and \(pointer:\s*coarse\)\s*{([\s\S]*?)\n}/;
     const block = gate.exec(css);
     expect(block).not.toBeNull();
 
     for (const selector of [
-      "\\.detail-original-link",
-      "\\.detail-share-button",
       "\\.detail-breadcrumb \\.back-to-list-link",
       "\\.category-filter-panel \\.mobile-filter-button",
     ]) {
       expect(block[1]).toMatch(new RegExp(selector));
     }
+    expect(block[1]).not.toMatch(/\.detail-original-link|\.detail-share-button/);
 
-    // 게이트 밖에서 같은 셀렉터를 넓히면 데스크톱 치수까지 함께 바뀐다.
-    // (공유 버튼의 767px 블록과 원문 보기의 768px 이상 블록은 폭으로 갈라
-    //  놓은 별개 규칙이라 그대로 둔다.)
+    // 게이트 밖에서 목록 복귀까지 넓히면 데스크톱 치수도 함께 바뀐다.
+    // 상세 동작은 폭별 규칙과 가상 터치 영역이 따로 책임진다.
     const outside = css
       .replace(gate, "")
       .replace(/@media \(min-width:\s*768px\)\s*{[\s\S]*?\n}/g, "");
-    expect(outside).not.toMatch(
-      /\.ta-public \.detail-original-link\s*{[^}]*min-height/s,
-    );
     expect(outside).not.toMatch(/\.ta-public \.detail-breadcrumb/);
   });
 
