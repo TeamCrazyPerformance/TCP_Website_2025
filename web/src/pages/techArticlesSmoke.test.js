@@ -12,6 +12,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 
 let mockNavigationType = "PUSH";
@@ -177,13 +178,24 @@ describe("공개 화면", () => {
     expect(
       container.querySelector(".source-dialog-header h2"),
     ).toHaveTextContent("소스 선택");
+    expect(
+      container.querySelector(".filter-sheet-heading h2"),
+    ).toHaveTextContent("분야 선택");
+    expect(screen.queryByText("FILTER")).not.toBeInTheDocument();
+    expect(
+      container.querySelector(".filter-sheet-heading .sheet-close"),
+    ).toHaveAttribute("aria-label", "닫기");
+    expect(
+      container.querySelector(".filter-sheet-heading .sheet-close i"),
+    ).toHaveClass("fa-xmark");
     expect(screen.queryByText("모든 소스")).not.toBeInTheDocument();
     expect(screen.queryByText("소스 고르기")).not.toBeInTheDocument();
+    // 좁은 화면의 개행 지점을 고정하려고 의미 단위로 나눠 두었으므로
+    // 한 덩어리 문자열이 아니라 문단 전체로 확인한다.
     expect(
-      screen.getByText(
-        "TCP가 한데 모은 여러 개발·기술 뉴스를 이곳에서 만나보세요.",
-      ),
-    ).toBeInTheDocument();
+      container.querySelector(".hero-lead").textContent.replace(/\s+/g, " "),
+    ).toBe("TCP가 한데 모은 여러 개발·기술 뉴스를 이곳에서 만나보세요.");
+    expect(container.querySelectorAll(".hero-lead span")).toHaveLength(2);
     expect(
       screen.queryByText(
         "TCP가 한데 모은 여러 소식을 이곳에서 확인할 수 있어요.",
@@ -191,9 +203,182 @@ describe("공개 화면", () => {
     ).not.toBeInTheDocument();
     expect(container.querySelector("#mobileFilterCount")).toBeNull();
     expect(container.querySelector("#searchMobileFilterCount")).toBeNull();
+    expect(container.querySelector("#mobileResetAllButton")).toBeNull();
   });
 
-  test("소스 선택 버튼은 건수와 같은 줄에 놓이고 빈 소스 줄을 남기지 않는다", async () => {
+  test("검색 화면의 분야 패널도 목록 패널과 같은 자리에 초기화·적용을 둔다", async () => {
+    const scrollIntoView = jest.fn();
+    Object.defineProperty(Element.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+
+    const TechArticles = require("./TechArticles").default;
+    const { container } = renderWithAuth(<TechArticles />);
+    await waitFor(() =>
+      expect(container.querySelector("#searchTagFilters")).not.toBeNull(),
+    );
+
+    const row = container.querySelector(
+      ".search-category-filter .filter-apply-row",
+    );
+    expect(row).not.toBeNull();
+    expect(row.querySelector("#resetSearchDraftTagsButton")).not.toBeNull();
+    expect(row.querySelector("#applySearchTagsButton")).not.toBeNull();
+
+    // 폼 안에 있어 type 을 빼면 submit 으로 새어 검색이 실행된다.
+    expect(container.querySelector("#applySearchTagsButton")).toHaveAttribute(
+      "type",
+      "button",
+    );
+
+    // 태그 목록과 버튼 줄이 한 그리드의 형제여야 위쪽 패널과 배치가 같다.
+    expect(
+      container.querySelector(
+        ".search-category-filter .desktop-filter > .filter-apply-row",
+      ),
+    ).not.toBeNull();
+
+    // 고른 태그는 검색 버튼이 아니라 적용으로 반영된다.
+    const panel = container.querySelector("#searchTagFilters");
+    fireEvent.click(within(panel).getByRole("button", { name: "AI" }));
+    fireEvent.click(container.querySelector("#applySearchTagsButton"));
+    await waitFor(() =>
+      expect(api.getTechArticles).toHaveBeenLastCalledWith(
+        expect.objectContaining({ tags: ["AI"] }),
+      ),
+    );
+
+    // 목록이 짧아지면 아래쪽 패널이 화면 밖으로 밀립니다. 목록 머리글이
+    // 아니라 방금 조작한 검색 패널로 돌아와야 자리를 잃지 않습니다.
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+    const target = scrollIntoView.mock.instances.at(-1);
+    expect(target).toBe(container.querySelector("#article-filters"));
+    // 위쪽 끝에 붙이면 패널이 화면 맨 위로 올라붙어 어색합니다. 가운데로
+    // 옮겨야 방금 누른 버튼이 시야에 남습니다.
+    expect(scrollIntoView).toHaveBeenLastCalledWith({
+      behavior: "auto",
+      block: "center",
+    });
+  });
+
+  test("소스 적용 버튼은 고른 소스가 달라졌을 때만 눌린다", async () => {
+    const TechArticles = require("./TechArticles").default;
+    const { container } = renderWithAuth(<TechArticles />);
+    await waitFor(() =>
+      expect(container.querySelector(".source-option input")).not.toBeNull(),
+    );
+
+    // 분야 선택과 같게, 바꾼 것이 없으면 적용할 것도 없다.
+    expect(container.querySelector(".source-apply")).toBeDisabled();
+
+    fireEvent.click(container.querySelector(".source-option input"));
+    await waitFor(() =>
+      expect(container.querySelector(".source-apply")).toBeEnabled(),
+    );
+  });
+
+  test("페이지 표시는 전체 쪽수만 알린다", async () => {
+    api.getTechArticles.mockResolvedValue({
+      items: [],
+      pagination: {
+        currentPage: 1,
+        pageSize: 20,
+        totalCount: 40,
+        totalPages: 2,
+      },
+    });
+    const TechArticles = require("./TechArticles").default;
+    const { container } = renderWithAuth(<TechArticles />);
+    await waitFor(() =>
+      expect(container.querySelector(".pagination-status")).not.toBeNull(),
+    );
+
+    // 바로 위 번호 버튼이 현재 쪽을 이미 보여 준다.
+    expect(container.querySelector(".pagination-status")).toHaveTextContent(
+      "전체 2페이지",
+    );
+    expect(
+      container.querySelector(".pagination-status").textContent,
+    ).not.toMatch(/현재/);
+  });
+
+  test("검색 입력은 보이는 라벨 없이도 이름을 갖는다", async () => {
+    const TechArticles = require("./TechArticles").default;
+    const { container } = renderWithAuth(<TechArticles />);
+    await waitFor(() =>
+      expect(container.querySelector("#searchInput")).not.toBeNull(),
+    );
+
+    expect(container.querySelector("label[for='searchInput']")).toBeNull();
+    expect(
+      screen.getByRole("searchbox", { name: "검색어" }),
+    ).toBeInTheDocument();
+  });
+
+  test("조건을 적용하거나 데스크톱에서 초기화해도 목록으로 강제 이동하지 않는다", async () => {
+    const scrollIntoView = jest.fn();
+    Object.defineProperty(Element.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+
+    const TechArticles = require("./TechArticles").default;
+    const { container } = renderWithAuth(<TechArticles />);
+    await waitFor(() => expect(api.getTechArticles).toHaveBeenCalled());
+
+    const panel = container.querySelector("#desktopTagFilters");
+    fireEvent.click(within(panel).getByRole("button", { name: "AI" }));
+    fireEvent.click(container.querySelector("#applyDesktopTagsButton"));
+
+    await waitFor(() =>
+      expect(api.getTechArticles).toHaveBeenCalledWith(
+        expect.objectContaining({ tags: ["AI"] }),
+      ),
+    );
+    // 조건을 바꿨다고 목록 머리글로 끌고 가지 않는다.
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    const mobileReset = container.querySelector("#mobileResetAllButton");
+    expect(mobileReset).not.toBeNull();
+    expect(mobileReset.closest(".list-filter-row")).not.toBeNull();
+    expect(mobileReset.parentElement.lastElementChild).toBe(mobileReset);
+    expect(container.querySelector(".active-filters")).toBeNull();
+    expect(container.querySelector(".filter-chips")).toBeNull();
+    expect(screen.queryByText("적용 중")).not.toBeInTheDocument();
+    expect(container.querySelector(".active-filter-summary")).toBeNull();
+
+    // 데스크톱 초기화는 따로 적용을 누르지 않아도 그 자리에서 반영된다.
+    fireEvent.click(container.querySelector("#resetDraftTagsButton"));
+    await waitFor(() =>
+      expect(api.getTechArticles).toHaveBeenLastCalledWith(
+        expect.objectContaining({ tags: [] }),
+      ),
+    );
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    expect(within(panel).getByRole("button", { name: "AI" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(container.querySelector("#resetDraftTagsButton")).toBeDisabled();
+    expect(container.querySelector("#mobileResetAllButton")).toBeNull();
+  });
+
+  test("소스 대화상자의 되돌리기 버튼은 초기화로 표기한다", async () => {
+    const TechArticles = require("./TechArticles").default;
+    const { container } = renderWithAuth(<TechArticles />);
+    await waitFor(() =>
+      expect(container.querySelector(".source-reset")).not.toBeNull(),
+    );
+
+    expect(container.querySelector(".source-reset")).toHaveTextContent(
+      "초기화",
+    );
+    expect(container.querySelector(".source-dialog")).not.toHaveTextContent(
+      "전체 해제",
+    );
+  });
+
+  test("소스 선택은 트리거 개수만 갱신하고 별도 칩을 만들지 않는다", async () => {
     const TechArticles = require("./TechArticles").default;
     const { container } = renderWithAuth(<TechArticles />);
     await waitFor(() =>
@@ -208,6 +393,36 @@ describe("공개 화면", () => {
 
     // 고른 소스가 없으면 칩 줄 자체가 렌더되지 않는다.
     expect(container.querySelector(".source-bar")).toBeNull();
+
+    fireEvent.click(container.querySelector(".source-option input"));
+    fireEvent.click(container.querySelector(".source-apply"));
+    await waitFor(() =>
+      expect(api.getTechArticles).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sources: ["infoq"] }),
+      ),
+    );
+
+    const reset = container.querySelector("#mobileResetAllButton");
+    expect(reset).not.toBeNull();
+    expect(reset).toHaveTextContent("전체 초기화");
+    expect(reset).not.toHaveClass("filter-trigger");
+    expect(reset.closest(".list-filter-row")).not.toBeNull();
+    expect(reset.parentElement.lastElementChild).toBe(reset);
+    expect(container.querySelector(".source-trigger")).toHaveTextContent(
+      "소스 1곳",
+    );
+    expect(container.querySelector(".source-bar")).toBeNull();
+    expect(container.querySelector(".source-chip-list")).toBeNull();
+    expect(container.querySelector(".source-chip")).toBeNull();
+
+    fireEvent.click(reset);
+    await waitFor(() =>
+      expect(api.getTechArticles).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sources: [] }),
+      ),
+    );
+    expect(container.querySelector(".source-bar")).toBeNull();
+    expect(container.querySelector("#mobileResetAllButton")).toBeNull();
   });
 
   test("분야 선택 버튼이 머리글로 올라가 소스 선택과 나란히 놓인다", async () => {

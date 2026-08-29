@@ -245,7 +245,7 @@ describe("Tech Articles CSS 스코프", () => {
     );
 
     expect(css).toMatch(
-      /\.ta-public \.article-card\s*{[^}]*--article-card-edge-space:\s*18px;[^}]*padding-top:\s*var\(--article-card-edge-space\);[^}]*padding-bottom:\s*var\(--article-card-edge-space\);/s,
+      /\.ta-public \.article-card\s*{[^}]*--article-card-edge-space:\s*15px;[^}]*padding-top:\s*var\(--article-card-edge-space\);[^}]*padding-bottom:\s*var\(--article-card-edge-space\);/s,
     );
     expect(css).toMatch(
       /\.ta-public \.article-card-bottom\s*{[^}]*margin-top:\s*6px;[^}]*padding-top:\s*0;[^}]*border-top:\s*0;/s,
@@ -255,7 +255,7 @@ describe("Tech Articles CSS 스코프", () => {
     );
   });
 
-  test("공개 목록과 상세가 같은 읽기 폭을 쓰고 공유는 반응형 아이콘으로 표시된다", () => {
+  test("공개 목록과 상세가 같은 읽기 폭을 쓰고 카드 공유는 모바일에서 숨긴다", () => {
     const css = fs.readFileSync(
       path.join(__dirname, "techArticlesPublicAlign.css"),
       "utf8",
@@ -269,7 +269,13 @@ describe("Tech Articles CSS 스코프", () => {
       /\.ta-public \.article-card \.share-button\s*{[^}]*width:\s*36px;[^}]*height:\s*36px;/s,
     );
     expect(css).toMatch(
-      /@media \(max-width:\s*767px\)[\s\S]*?\.ta-public \.article-card \.share-button\s*{[^}]*width:\s*44px;[^}]*height:\s*44px;/s,
+      /@media \(max-width:\s*767px\)[\s\S]*?\.ta-public \.article-card \.share-button\s*{[^}]*display:\s*none;/s,
+    );
+    expect(css).toMatch(
+      /\.ta-public \.detail-share-button\s*{[^}]*display:\s*none;[\s\S]*?@media \(max-width:\s*767px\)\s*{[\s\S]*?\.ta-public \.detail-share-button\s*{[^}]*display:\s*inline-flex;/s,
+    );
+    expect(css).toMatch(
+      /@media \(max-width:\s*767px\)[\s\S]*?\.ta-public \.detail-info-items\s*{[^}]*flex-direction:\s*row;/s,
     );
   });
 
@@ -341,12 +347,16 @@ describe("Tech Articles CSS 스코프", () => {
       "utf8",
     );
 
+    // 마크업은 건수 → 트리거 순이지만 화면에서는 트리거가 왼쪽이다.
     expect(css).toMatch(
-      /\.ta-public \.article-list-heading \.list-filter-row\s*{[^}]*margin-left:\s*auto;/s,
+      /\.ta-public \.article-list-heading \.list-filter-row\s*{[^}]*order:\s*-1;/s,
+    );
+    expect(css).toMatch(
+      /\.ta-public \.article-list-heading \.result-summary\s*{[^}]*margin-left:\s*auto;/s,
     );
   });
 
-  test("좁은 화면에서는 소스·분야 선택이 제목 아래 한 줄에 함께 놓인다", () => {
+  test("좁은 화면에서는 건수와 소스·분야 선택이 한 줄을 나눠 쓴다", () => {
     const css = fs.readFileSync(
       path.join(__dirname, "techArticlesPublicAlign.css"),
       "utf8",
@@ -360,11 +370,13 @@ describe("Tech Articles CSS 스코프", () => {
     const block = [null, blocks];
     expect(blocks).not.toHaveLength(0);
 
-    // 래퍼가 한 줄을 통째로 차지해야 건수 길이와 무관하게 줄 구성이 같다.
+    // 제목을 걷어낸 뒤로는 건수와 두 트리거가 같은 줄을 나눠 쓴다.
+    // 건수는 왼쪽, 트리거는 오른쪽 끝.
     expect(block[1]).toMatch(
-      /\.ta-public \.article-list-heading \.list-filter-row\s*{[^}]*width:\s*100%;[^}]*justify-content:\s*flex-start;/s,
+      /\.ta-public \.article-list-heading \.list-filter-row\s*{[^}]*margin-left:\s*0;[^}]*justify-content:\s*flex-start;/s,
     );
-    // 버튼 폭은 글자에 맞춘다(늘리지 않는다).
+    // 두 선택 버튼은 글자 폭만 사용합니다. 초기화는 별도의 텍스트 동작이라
+    // 이 외형 그룹에 들어가면 안 됩니다.
     expect(block[1]).toMatch(
       /\.ta-public \.article-list-heading \.source-trigger,\s*\.ta-public \.article-list-heading \.mobile-filter-button\s*{[^}]*flex:\s*0 0 auto;/s,
     );
@@ -381,7 +393,7 @@ describe("Tech Articles CSS 스코프", () => {
     // 보이는 크기는 헤더 로그아웃 버튼과 같게(12px / 상하 6px) 줄이되,
     // 손가락이 닿는 영역은 ::after 로 44px 를 유지한다.
     expect(block[1]).toMatch(
-      /\.ta-public \.article-list-heading \.filter-trigger\s*{[^}]*padding:\s*6px 10px;[^}]*font-size:\s*12px;/s,
+      /\.ta-public \.article-list-heading \.filter-trigger\s*{[^}]*padding:\s*8px 10px;[^}]*font-size:\s*12px;/s,
     );
     expect(block[1]).toMatch(
       /\.ta-public \.article-list-heading \.filter-trigger::after\s*{[^}]*inset:\s*-8px 0;/s,
@@ -402,6 +414,20 @@ describe("Tech Articles CSS 스코프", () => {
     );
   });
 
+  test("소스와 분야 선택 창의 닫기 동작은 같은 간결한 외형을 쓴다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    expect(css).toMatch(
+      /\.ta-public \.source-dialog-close,\s*\.ta-public \.sheet-close\s*{[^}]*width:\s*auto;[^}]*height:\s*auto;[^}]*padding:\s*0;[^}]*border:\s*0;[^}]*border-radius:\s*0;[^}]*background:\s*none;[^}]*font-size:\s*16px;/s,
+    );
+    expect(css).toMatch(
+      /\.ta-public \.source-dialog-close::after,\s*\.ta-public \.sheet-close::after\s*{[^}]*inset:\s*-12px;/s,
+    );
+  });
+
   test("좁은 화면에서 카드 태그는 한 단계 작아진다", () => {
     const css = fs.readFileSync(
       path.join(__dirname, "techArticlesPublicAlign.css"),
@@ -416,12 +442,12 @@ describe("Tech Articles CSS 스코프", () => {
 
     // 상세 화면의 .detail-tags 까지 건드리지 않도록 카드 안으로 한정한다.
     expect(block).toMatch(
-      /\.ta-public \.article-card \.article-tag\s*{[^}]*font-size:\s*10px;/s,
+      /\.ta-public \.article-card \.article-tag\s*{[^}]*font-size:\s*9px;/s,
     );
     expect(block).not.toMatch(/\.ta-public \.detail-tags \.article-tag/);
   });
 
-  test("좁은 화면에서 공유 버튼은 카드 오른쪽 아래에 고정된다", () => {
+  test("좁은 화면에서 카드 공유와 장식을 덜고 출처와 날짜만 나란히 둔다", () => {
     const css = fs.readFileSync(
       path.join(__dirname, "techArticlesPublicAlign.css"),
       "utf8",
@@ -435,23 +461,203 @@ describe("Tech Articles CSS 스코프", () => {
     ];
 
     expect(block[1]).toMatch(
-      /\.ta-public \.article-card \.share-button\s*{[^}]*position:\s*absolute;[^}]*right:\s*var\(--article-card-edge-space[^}]*bottom:\s*var\(--article-card-edge-space/s,
+      /\.ta-public \.article-card \.share-button\s*{[^}]*display:\s*none;/s,
     );
-    // 흐름에서 빠진 버튼과 메타가 겹치지 않도록 오른쪽 자리를 비워 둔다.
     expect(block[1]).toMatch(
-      /\.ta-public \.article-card \.article-meta\s*{[^}]*padding-right:/s,
+      /\.ta-public \.article-card \.article-title\s*{[^}]*font-size:\s*17px;/s,
+    );
+    expect(block[1]).toMatch(
+      /\.ta-public \.article-card \.article-new-badge\s*{[^}]*margin-right:\s*10px;/s,
+    );
+    // 요약과 메타는 한 인라인 흐름이어야 요약이 카드 폭을 다 쓰고 메타가
+    // 마지막 줄 뒤에 붙는다. 플렉스로 나란히 두면 메타가 세로로 한 열을
+    // 차지해 요약 첫 줄 오른쪽이 늘 빈다.
+    expect(block[1]).toMatch(
+      /\.ta-public \.article-card \.article-summary-row\s*{[^}]*display:\s*block;/s,
+    );
+    expect(block[1]).toMatch(
+      /\.ta-public \.article-card \.article-summary-row \.article-summary\s*{[^}]*display:\s*inline;/s,
+    );
+    expect(block[1]).toMatch(
+      /\.ta-public \.article-card \.article-meta-mobile\s*{[^}]*display:\s*inline;[^}]*font-size:\s*11px;[^}]*white-space:\s*nowrap;/s,
+    );
+    // 간격은 요약 끝의 빈 칸으로 만든다. 메타의 왼쪽 여백으로 두면 메타가
+    // 다음 줄로 내려갔을 때 들여쓰기가 남아 윗줄과 어긋난다.
+    expect(block[1]).toMatch(
+      /\.ta-public \.article-card \.article-summary-row \.article-summary::after\s*{[^}]*width:\s*8px;/s,
+    );
+    expect(block[1]).not.toMatch(
+      /\.ta-public \.article-card \.article-meta-mobile\s*{[^}]*margin-left:/s,
+    );
+    // 인라인 줄바꿈이 알아서 처리하므로 폭 분기를 따로 두지 않는다.
+    expect(css).not.toMatch(/@media \(max-width:\s*359px\)/);
+    // 아이콘·라벨 정리와 구분자는 화면 폭과 무관하므로 최상위에 둔다.
+    // 미디어 블록 안에만 있으면 데스크톱 카드에 아이콘이 되살아난다.
+    expect(css).toMatch(
+      /\.ta-public \.article-card \.article-meta i\s*{[^}]*display:\s*none;/s,
+    );
+    expect(css).toMatch(
+      /\.ta-public \.article-card \.article-source-label\s*{[^}]*clip:\s*rect\(0, 0, 0, 0\);/s,
+    );
+    expect(css).toMatch(
+      /\.ta-public \.article-card \.article-meta \.meta-divider::after\s*{[^}]*content:\s*"\|";/s,
+    );
+    // 구분자는 카드 배경에 묻히지 않을 만큼 밝고, 좌우로 떨어져 있어야 한다.
+    expect(css).toMatch(
+      /\.ta-public \.article-card \.article-meta \.meta-divider\s*{[^}]*margin:\s*0 7px;[^}]*color:\s*var\(--gray-500/s,
+    );
+    expect(block[1]).not.toMatch(/\.ta-public \.article-card \.article-meta i/);
+  });
+
+  test("카드 여백과 구분자 세로 정렬을 조인 값으로 고정한다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    expect(css).toMatch(/\.ta-public \.article-list\s*{[^}]*gap:\s*12px;/s);
+    expect(css).toMatch(
+      /\.ta-public \.article-card\s*{[^}]*padding-inline:\s*20px;/s,
+    );
+    expect(css).toMatch(
+      /@media \(max-width:\s*767px\)\s*{\s*\.ta-public \.article-card\s*{[^}]*padding-inline:\s*16px;/s,
+    );
+    // 세로줄 글리프 보정은 메타가 flex 인 넓은 화면에만 필요하다. 좁은
+    // 화면은 인라인이라 이미 맞아 있고, 같이 내리면 과보정된다.
+    expect(css).toMatch(
+      /@media \(min-width:\s*768px\)\s*{\s*\.ta-public \.article-card \.article-meta \.meta-divider::after\s*{[^}]*top:\s*1\.3px;/s,
     );
   });
 
-  test("좁은 화면에서는 고른 조건을 개수로만 알린다", () => {
+  test("페이지 이동과 분야 패널 여백을 목록 리듬에 맞춘다", () => {
     const css = fs.readFileSync(
       path.join(__dirname, "techArticlesPublicAlign.css"),
       "utf8",
     );
 
-    // 요약은 좁은 화면 전용이므로 기본값은 숨김이어야 한다.
+    // 전체 쪽수 표시는 12px 이라 잘 보이지 않았고 대비도 기준 아래였다.
     expect(css).toMatch(
-      /\.ta-public \.active-filter-summary\s*{[^}]*display:\s*none;/s,
+      /\.ta-public \.pagination-status\s*{[^}]*color:\s*var\(--gray-400[^}]*font-size:\s*14px;/s,
+    );
+    // 분야 패널과 첫 카드 사이를 카드 간격과 같은 값으로 둔다.
+    expect(css).toMatch(
+      /\.ta-public \.category-filter-panel\s*{[^}]*margin-bottom:\s*12px;/s,
+    );
+
+    const block = [
+      ...css.matchAll(/@media \(max-width:\s*767px\)\s*{([\s\S]*?)\n}/g),
+    ]
+      .map((m) => m[1])
+      .join("\n");
+
+    // 보이는 크기는 줄이되 손가락 영역은 ::after 로 유지한다.
+    expect(block).toMatch(
+      /\.ta-public \.pagination-v3 \.page-button\s*{[^}]*min-height:\s*32px;/s,
+    );
+    expect(block).toMatch(
+      /\.ta-public \.pagination-v3 \.page-button::after\s*{[^}]*inset:\s*-6px 0;/s,
+    );
+  });
+
+  test("좁은 화면의 검색 자리는 감싸는 상자 없이 두 층으로 놓인다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    const block = [
+      ...css.matchAll(/@media \(max-width:\s*767px\)\s*{([\s\S]*?)\n}/g),
+    ]
+      .map((m) => m[1])
+      .join("\n");
+
+    // 감싸던 패널·폼을 display: contents 로 걷어내야 두 층으로 배치된다.
+    expect(block).toMatch(
+      /\.ta-public \.explore-heading,\s*\.ta-public #searchFieldset,\s*\.ta-public #searchForm\s*{\s*display:\s*contents;/s,
+    );
+    // 1층: 분야 선택(왼쪽) · 목록으로 돌아가기(오른쪽), 2층: 검색창
+    expect(block).toMatch(
+      /\.ta-public \.search-category-filter\s*{[^}]*order:\s*1;/s,
+    );
+    expect(block).toMatch(
+      /\.ta-public \.explore-heading \.back-to-list-link\s*{[^}]*order:\s*2;[^}]*margin-left:\s*auto;/s,
+    );
+    expect(block).toMatch(
+      /\.ta-public \.search-row\s*{[^}]*order:\s*3;[^}]*flex-basis:\s*100%;/s,
+    );
+  });
+
+  test("소스 적용 버튼은 고른 것이 그대로면 눌러도 소용없음을 알린다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    expect(css).toMatch(
+      /\.ta-public \.source-apply:disabled\s*{[^}]*background:\s*#374151;[^}]*cursor:\s*not-allowed;/s,
+    );
+  });
+
+  test("좁은 화면의 검색 자리는 분야 버튼과 검색창만 남긴다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    const block = [
+      ...css.matchAll(/@media \(max-width:\s*767px\)\s*{([\s\S]*?)\n}/g),
+    ]
+      .map((m) => m[1])
+      .join("\n");
+
+    // 제출 버튼을 숨겨도 폼의 암시적 제출 대상으로 남아 엔터로 검색된다.
+    expect(block).toMatch(
+      /\.ta-public \.search-submit\s*{\s*display:\s*none;/s,
+    );
+    // 목업이 이 버튼에만 주던 전체 폭·양끝 정렬을 되돌려야 위쪽 트리거와
+    // 같은 모양이 된다.
+    expect(block).toMatch(
+      /\.ta-public \.search-mobile-filter-button\s*{[^}]*width:\s*auto;[^}]*justify-content:\s*normal;/s,
+    );
+    // 카드 위아래 여백도 한 단계 더 줄인다.
+    expect(block).toMatch(
+      /\.ta-public \.article-card\s*{[^}]*--article-card-edge-space:\s*12px;/s,
+    );
+  });
+
+  test("검색 화면의 분야 패널은 목록 패널과 같은 배치를 쓴다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    // 태그 목록 왼쪽 · 버튼 오른쪽 한 줄. 생성 파일의
+    // .category-filter-panel .desktop-filter 와 같은 그리드를 쓴다.
+    expect(css).toMatch(
+      /\.ta-public \.search-category-filter \.desktop-filter\s*{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto;/s,
+    );
+    // 두 버튼은 양끝이 아니라 오른쪽에 나란히 붙는다.
+    expect(css).toMatch(
+      /\.ta-public \.search-category-filter \.filter-apply-row\s*{[^}]*justify-content:\s*flex-end;/s,
+    );
+    expect(css).toMatch(
+      /\.ta-public \.search-category-filter \.apply-filter-button\s*{[^}]*min-height:\s*32px;/s,
+    );
+    // 적용·초기화 뒤 되돌아올 자리가 고정 헤더에 가리지 않아야 한다.
+    expect(css).toMatch(
+      /\.ta-public \.explore-section\s*{[^}]*scroll-margin-top:\s*88px;/s,
+    );
+  });
+
+  test("전체 초기화는 모바일 선택 버튼 행의 옅은 텍스트로만 표시된다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    // 전체 초기화는 모바일 선택 버튼 행 전용이므로 데스크톱에서는 숨깁니다.
+    expect(css).toMatch(
+      /\.ta-public \.mobile-reset-button\s*{[^}]*display:\s*none;/s,
     );
 
     const block = [
@@ -461,14 +667,15 @@ describe("Tech Articles CSS 스코프", () => {
         .join("\n"),
     ];
     expect(block[1]).toMatch(
-      /\.ta-public \.active-filters \.filter-chips\s*{\s*display:\s*none;/s,
+      /\.ta-public \.article-list-heading \.mobile-reset-button\s*{[^}]*display:\s*inline-flex;[^}]*margin-left:\s*auto;[^}]*padding:\s*4px 2px;[^}]*color:\s*var\(--gray-400[^}]*background:\s*transparent;[^}]*border:\s*0;[^}]*font-size:\s*11px;/s,
     );
-    expect(block[1]).toMatch(
-      /\.ta-public \.active-filter-summary\s*{\s*display:\s*inline;/s,
+    expect(block[1]).not.toMatch(
+      /\.ta-public \.article-list-heading \.mobile-reset-button\s*{[^}]*text-decoration:/s,
     );
-    expect(block[1]).toMatch(
-      /\.ta-public \.source-bar\s*{\s*display:\s*none;/s,
+    expect(css).not.toMatch(
+      /\.ta-public \.(?:source-bar|source-chip-list|source-chip|active-filters|filter-chips|filter-chip)(?![\w-])/,
     );
+    expect(css).not.toMatch(/\.active-filter-summary/);
   });
 
   test("제목과 건수는 같은 줄에 두되 아주 좁아지면 개행한다", () => {
@@ -507,7 +714,7 @@ describe("Tech Articles CSS 스코프", () => {
     );
 
     const rule =
-      /\.ta-public \.detail-original-link,\s*\.ta-public \.article-card \.share-button\s*{([^}]*)}/.exec(
+      /\.ta-public \.detail-original-link,\s*\.ta-public \.detail-share-button,\s*\.ta-public \.article-card \.share-button\s*{([^}]*)}/.exec(
         css,
       );
     expect(rule).not.toBeNull();
@@ -515,7 +722,7 @@ describe("Tech Articles CSS 스코프", () => {
     expect(rule[1]).toMatch(/border:\s*1px solid rgba\(168, 197, 230/);
     // 강조는 hover 에서만. 기본 상태에 면이 다시 깔리면 얼룩처럼 뜬다.
     expect(css).toMatch(
-      /\.ta-public \.detail-original-link:hover,[\s\S]*?background:\s*rgba\(168, 197, 230/,
+      /\.ta-public \.detail-original-link:hover,\s*\.ta-public \.detail-share-button:hover,[\s\S]*?background:\s*rgba\(168, 197, 230/,
     );
   });
 
@@ -548,7 +755,7 @@ describe("Tech Articles CSS 스코프", () => {
 
     for (const selector of [
       "\\.detail-original-link",
-      "\\.filter-chip button",
+      "\\.detail-share-button",
       "\\.detail-breadcrumb \\.back-to-list-link",
       "\\.category-filter-panel \\.mobile-filter-button",
     ]) {
@@ -562,9 +769,6 @@ describe("Tech Articles CSS 스코프", () => {
       /\.ta-public \.detail-original-link\s*{[^}]*min-height/s,
     );
     expect(outside).not.toMatch(/\.ta-public \.detail-breadcrumb/);
-    expect(outside).not.toMatch(
-      /\.ta-public \.filter-chip\s*{[^}]*min-height/s,
-    );
   });
 
   test("공개 번들에 마크업이 사라진 규칙이 남아있지 않다", () => {

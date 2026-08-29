@@ -208,8 +208,11 @@
 
 /* 카드 상단의 제목과 하단의 태그 칩이 가장자리에서 같은 거리를
    갖도록 하나의 여백 값을 공유합니다. */
+/* 카드 안이 정리되면서(아이콘·라벨 제거, 메타 인라인화, 태그 축소) 같은
+   여백이 이전보다 헐거워 보입니다. 위아래 18→15px, 좌우는 화면별로 한
+   단계씩 줄이고, 카드 사이도 16→12px 로 좁힙니다. */
 .ta-public .article-card {
-  --article-card-edge-space: 18px;
+  --article-card-edge-space: 15px;
   padding-top: var(--article-card-edge-space);
   padding-bottom: var(--article-card-edge-space);
 }
@@ -256,6 +259,10 @@
   margin-top: 6px;
   padding-top: 0;
   border-top: 0;
+}
+
+.ta-public .article-meta-mobile {
+  display: none;
 }
 
 /* 목록과 상세가 같은 읽기 폭을 갖도록 본문 컨테이너를 1120px 로 제한합니다.
@@ -310,11 +317,7 @@
 
 @media (max-width: 767px) {
   .ta-public .article-card .share-button {
-    width: 44px;
-    min-width: 44px;
-    height: 44px;
-    min-height: 44px;
-    margin-left: auto;
+    display: none;
   }
 
   /* 배지는 선택한 분야가 있을 때만 렌더되므로, 남은 자리를 밀어내지 않도록
@@ -336,6 +339,37 @@
   }
 }
 
+/* 목록에서는 제거한 공유 동작을 모바일 상세의 원문 보기 옆에서만
+   제공합니다. 두 동작의 크기와 배색을 맞춰 한 묶음으로 읽히게 합니다. */
+.ta-public .detail-share-button {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .ta-public .detail-info-items {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .ta-public .detail-share-button {
+    display: inline-flex;
+    min-height: 28px;
+    padding: 4px 8px;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: inherit;
+  }
+
+  .ta-public .detail-info-items .detail-tags {
+    flex-basis: 100%;
+  }
+}
+
 /* ── 터치 기기 조작 영역 ──────────────────────────────────
  * 주 사용 환경이 모바일입니다. Galaxy S26(360px) · iPhone 17(402px) ·
  * 17 Pro Max(440px) 모두 이 화면의 가장 좁은 브레이크포인트에 들어갑니다.
@@ -346,37 +380,12 @@
 @media (hover: none) and (pointer: coarse) {
   /* 상세 페이지의 유일한 주 행동인데 74x28 로 태그 칩보다도 작았습니다.
      같은 줄의 태그와 구분되도록 크기와 글자를 함께 올립니다. */
-  .ta-public .detail-original-link {
+  .ta-public .detail-original-link,
+  .ta-public .detail-share-button {
     min-height: 44px;
     padding: 10px 16px;
     border-radius: 8px;
     font-size: 14px;
-  }
-
-  /* 조건 해제 x 는 24x24 였습니다. 칩 사이 간격이 8px 뿐이라 그대로
-     넓히면 이웃 칩의 영역과 겹칩니다. 간격을 10px 로 벌린 뒤, 보이는
-     크기는 36px 로 키우고 나머지는 ::after 로만 확장해 44px 를
-     채웁니다(양쪽 4px, 간격 10px 안이라 겹치지 않습니다). */
-  .ta-public .filter-chips {
-    gap: 10px;
-  }
-
-  .ta-public .filter-chip {
-    min-height: 44px;
-    padding: 4px 6px 4px 14px;
-  }
-
-  .ta-public .filter-chip button {
-    position: relative;
-    width: 36px;
-    height: 36px;
-    font-size: 16px;
-  }
-
-  .ta-public .filter-chip button::after {
-    position: absolute;
-    inset: -4px;
-    content: "";
   }
 
   /* 나머지 보조 컨트롤은 36~42px 로 조금씩 모자랐습니다.
@@ -399,37 +408,6 @@
     min-height: 44px;
     align-items: center;
   }
-
-  /* text-button 은 display 가 없어 min-height 가 먹지 않습니다. */
-  .ta-public .active-filters .text-button {
-    display: inline-flex;
-    min-height: 44px;
-    align-items: center;
-  }
-}
-
-/* ── 좁은 화면의 조건 표시 줄 ─────────────────────────────
- * "적용 중" 라벨 · 조건 칩 · 전체 초기화가 한 줄 flex 라, 폭이 좁아지면
- * 칩이 가운데에서 여러 줄로 늘어나고 초기화 버튼이 두 글자씩 접힙니다.
- * 좁은 화면에서는 세 덩어리를 세로로 쌓습니다. */
-@media (max-width: 479px) {
-  .ta-public .active-filters {
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px 10px;
-  }
-
-  /* "적용 중"과 전체 초기화를 첫 줄 양끝에 두고, 칩은 아래 줄 전체를
-     씁니다. 셋을 모두 세로로 쌓으면 한 줄이 더 늘어 첫 화면에서 카드가
-     그만큼 밀립니다. */
-  .ta-public .active-filters .filter-chips {
-    width: 100%;
-    order: 1;
-  }
-
-  .ta-public .active-filters .text-button {
-    margin-left: auto;
-  }
 }
 
 /* 첫 화면에 카드가 더 들어오도록 여백을 줄입니다. 히어로 위쪽 96px 중
@@ -442,6 +420,245 @@
   .ta-public .articles-section {
     padding-top: 20px;
   }
+}
+
+.ta-public .article-list {
+  gap: 12px;
+}
+
+.ta-public .article-card {
+  padding-inline: 20px;
+}
+
+@media (max-width: 767px) {
+  .ta-public .article-card {
+    padding-inline: 16px;
+  }
+}
+
+/* ── 목록 머리글 ──────────────────────────────────────────
+ * "아티클 목록" 제목은 화면에서 뺐습니다(문서 구조상으로만 남김).
+ * 건수가 첫 항목이 되어 왼쪽에 붙고, 소개 문구와의 간격도 좁힙니다. */
+.ta-public .page-hero {
+  padding-bottom: 24px;
+}
+
+.ta-public .articles-section {
+  padding-top: 20px;
+}
+
+/* 소개 문구는 의미 단위로 끊습니다. 넓은 화면에서는 한 줄에 들어가므로
+   그대로 두고, 한 줄에 담기지 않는 폭에서만 두 줄로 나눕니다. */
+@media (max-width: 767px) {
+  .ta-public .hero-lead span {
+    display: block;
+  }
+}
+
+/* 좁은 화면에서는 건수와 두 트리거가 한 줄을 나눠 씁니다. 정렬 기준을
+   통째로 빼면 무엇으로 정렬됐는지 알 수 없으므로, 지우는 대신 줄입니다.
+   (카드 구분자와 같은 방식 — 원문은 남고 화면에만 짧은 형태가 보입니다.) */
+@media (max-width: 479px) {
+  .ta-public .result-sort {
+    font-size: 0;
+  }
+
+  .ta-public .result-sort::after {
+    content: " ⋅ 최신순";
+    font-size: 13px;
+  }
+}
+
+/* ── 좁은 화면의 검색 자리 ────────────────────────────────
+ * 아래에는 분야 선택 버튼과 검색창만 둡니다. "SEARCH"·"아티클 검색하기"·
+ * "분야 선택" 라벨은 화면에서 뺐고, 버튼은 목록 위쪽 트리거와 같은
+ * 외형(.filter-trigger)을 씁니다. */
+@media (max-width: 767px) {
+  /* 목업이 이 버튼에만 주던 전체 폭·양끝 정렬을 되돌립니다. */
+  .ta-public .search-mobile-filter-button {
+    width: auto;
+    margin: 0;
+    padding: 8px 10px;
+    gap: 6px;
+    justify-content: normal;
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  .ta-public .search-mobile-filter-button i {
+    width: 1em;
+    margin: 0;
+    text-align: center;
+  }
+
+  /* 검색은 입력창에서 엔터(모바일 키보드의 "이동"·"검색")로 실행됩니다.
+     제출 버튼은 숨겨도 폼의 암시적 제출 대상으로 남으므로 동작은 그대로고,
+     좁은 화면에서 자리만 돌려받습니다. */
+  .ta-public .search-submit {
+    display: none;
+  }
+
+  .ta-public .search-category-filter {
+    margin-bottom: 12px;
+  }
+}
+
+/* ── 페이지 이동 ──────────────────────────────────────────
+ * "현재 n / m 페이지"는 바로 위 번호 버튼과 같은 말을 반복합니다. 전체
+ * 쪽수만 남기고, 12px 은 작아서 잘 보이지 않았으므로 한 단계 키웁니다.
+ * gray-500 은 검은 배경에서 4.3:1 이라 기준(4.5)에도 살짝 못 미쳤습니다. */
+.ta-public .pagination-status {
+  margin-top: 8px;
+  color: var(--gray-400, #9ca3af);
+  font-size: 14px;
+}
+
+/* 넓은 화면에서 분야 패널과 첫 카드 사이가 카드 간격(12px)보다 넓게
+   벌어져 있었습니다. 같은 값으로 맞춰 목록이 하나의 리듬으로 읽히게
+   합니다. */
+.ta-public .category-filter-panel {
+  margin-bottom: 12px;
+}
+
+@media (max-width: 767px) {
+  /* 번호 이동은 보조 동작인데 44px 씩 차지해 목록 끝이 무거웠습니다.
+     보이는 크기만 줄이고 손가락이 닿는 영역은 ::after 로 유지합니다. */
+  .ta-public .pagination-v3 .page-button {
+    position: relative;
+    min-width: 34px;
+    min-height: 32px;
+    padding: 5px 10px;
+    font-size: 13px;
+  }
+
+  .ta-public .pagination-v3 .page-button::after {
+    position: absolute;
+    inset: -6px 0;
+    content: "";
+  }
+
+  /* ── 좁은 화면의 검색 자리 배치 ───────────────────────────
+   * 1층: 분야 선택(왼쪽) · 목록으로 돌아가기(오른쪽)
+   * 2층: 검색창
+   * 감싸던 패널 상자는 걷어냅니다. 남는 것이 버튼 하나와 입력 하나뿐이라
+   * 테두리가 오히려 요소를 무겁게 만듭니다. 상자를 없애도 fieldset 의
+   * disabled 는 그대로 전달됩니다(표시 방식과 무관한 속성입니다). */
+  .ta-public .explore-section {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .ta-public .explore-heading,
+  .ta-public #searchFieldset,
+  .ta-public #searchForm {
+    display: contents;
+  }
+
+  /* 태그 목록을 감싸던 구획선입니다. 버튼 하나만 남은 자리에서는 밑줄이
+     남아 떠 보입니다. */
+  .ta-public .search-category-filter {
+    order: 1;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .ta-public .explore-heading .back-to-list-link {
+    order: 2;
+    margin-left: auto;
+  }
+
+  .ta-public .search-row {
+    order: 3;
+    flex-basis: 100%;
+  }
+}
+
+/* ── 카드 메타: 출처 | 날짜 ────────────────────────────────
+ * 카드마다 아이콘 두 개와 "원출처" 라벨이 붙으면 값보다 장식이 많아집니다.
+ * 화면 폭과 무관하게 값만 남깁니다. 라벨은 화면에서만 감추고 보조 기술에는
+ * 남겨, 출처명이 무엇인지 읽어 줄 수 있게 합니다. */
+.ta-public .article-card .article-meta i {
+  display: none;
+}
+
+.ta-public .article-card .article-source-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+/* 구분자는 마크업의 가운뎃점을 지우고 세로줄로 바꿔 씁니다.
+   gray-700(#374151)은 카드 배경과 거의 붙어 보이지 않았습니다. 본문
+   메타와 같은 톤으로 올리고, 출처와 날짜가 붙지 않도록 좌우를 띄웁니다. */
+/* 값 두 개만 남았으므로 항목 간격은 구분자 좌우 여백으로만 만듭니다.
+   목업의 20px 를 그대로 두면 데스크톱에서 출처와 날짜가 57px 벌어집니다. */
+.ta-public .article-card .article-meta {
+  gap: 0;
+}
+
+.ta-public .article-card .article-meta .meta-divider {
+  display: inline;
+  margin: 0 7px;
+  color: var(--gray-500, #6b7280);
+  font-size: 0;
+}
+
+.ta-public .article-card .article-meta .meta-divider::after {
+  content: "|";
+  font-size: 12px;
+}
+
+/* 넓은 화면의 메타는 flex 라 span 이 em 상자 기준으로 가운데 맞춰집니다.
+   세로줄 글리프는 그 상자 안에서 글자보다 위에 놓여서, 8배로 확대해 재면
+   글자 시각 중심보다 1.3px 높았습니다. 그만큼만 내립니다.
+   좁은 화면은 메타가 인라인이라 글자 기준선을 그대로 타고, 재 보면 이미
+   -0.1px 로 맞아 있어 건드리지 않습니다. */
+@media (min-width: 768px) {
+  .ta-public .article-card .article-meta .meta-divider::after {
+    position: relative;
+    top: 1.3px;
+  }
+}
+
+/* ── 검색 화면의 분야 패널 ─────────────────────────────────
+ * 목록 위쪽 분야 패널과 같은 배치를 씁니다. 태그 목록이 왼쪽,
+ * 초기화·적용이 오른쪽 한 줄입니다. 값은 생성 파일의
+ * .category-filter-panel 규칙과 같은 것을 씁니다. */
+.ta-public .search-category-filter .desktop-filter {
+  display: grid;
+  margin-top: 3px;
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+}
+
+.ta-public .search-category-filter .filter-apply-row {
+  margin: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.ta-public .search-category-filter .apply-filter-button {
+  min-height: 32px;
+  padding: 5px 12px;
+}
+
+.ta-public .search-category-filter .tag-button {
+  min-height: 26px;
+  padding: 3px 10px;
+}
+
+/* 적용·초기화를 누르면 이 패널로 되돌아옵니다. 고정 헤더에 가리지 않도록
+   목록 패널과 같은 여백을 둡니다. */
+.ta-public .explore-section {
+  scroll-margin-top: 88px;
 }
 
 /* ── 소스 선택 ────────────────────────────────────────────
@@ -461,15 +678,19 @@
   display: flex;
   align-items: baseline;
   gap: 8px;
+  /* 마크업은 건수 → 트리거 순이지만, 화면에서는 트리거가 왼쪽입니다.
+     건수는 읽어 주는 값이고 트리거는 누르는 자리라, 누르는 쪽을 먼저
+     두는 편이 눈이 덜 왕복합니다. */
+  order: -1;
+}
+
+.ta-public .article-list-heading .result-summary {
   margin-left: auto;
 }
 
-/* 조건 요약은 좁은 화면에서만 씁니다. */
-.ta-public .active-filter-summary {
+/* 전체 초기화는 모바일의 선택 버튼 행 안에서만 노출합니다. */
+.ta-public .mobile-reset-button {
   display: none;
-  color: var(--gray-300, #d1d5db);
-  font-size: 14px;
-  font-weight: 600;
 }
 
 /* ── 좁은 화면의 목록 머리글과 필터 줄 ────────────────────
@@ -509,7 +730,9 @@
   .ta-public .article-list-heading .filter-trigger {
     position: relative;
     min-height: 0;
-    padding: 6px 10px;
+    /* 오른쪽 화살표를 뺐으므로 좌우는 줄이고, 위아래는 눌리는 자리처럼
+       보이도록 조금 늘립니다. */
+    padding: 8px 10px;
     gap: 6px;
     font-size: 12px;
     line-height: 16px;
@@ -533,14 +756,20 @@
   /* 카드 태그는 카드 안에서 보조 정보라 한 단계 낮춥니다. 상세 화면의
      .detail-tags 는 그대로 둡니다. */
   .ta-public .article-card .article-tag {
-    padding: 3px 7px;
-    font-size: 10px;
+    padding: 2px 6px;
+    font-size: 9px;
+  }
+
+  /* 카드 안이 더 조여진 만큼 위아래 여백도 한 단계 줄입니다. */
+  .ta-public .article-card {
+    --article-card-edge-space: 12px;
   }
 
   /* 래퍼가 한 줄을 통째로 차지하므로 두 트리거는 항상 제목 줄 아래에
      함께 놓입니다. 폭은 글자에 맞추고 왼쪽부터 채웁니다. */
+  /* 제목을 걷어낸 자리에 두 트리거와 건수가 한 줄로 들어갑니다.
+     트리거가 왼쪽, 건수가 오른쪽 끝입니다. */
   .ta-public .article-list-heading .list-filter-row {
-    width: 100%;
     margin-left: 0;
     align-items: center;
     justify-content: flex-start;
@@ -549,46 +778,103 @@
   .ta-public .article-list-heading .source-trigger,
   .ta-public .article-list-heading .mobile-filter-button {
     flex: 0 0 auto;
-    margin-left: 0;
     align-self: auto;
+    margin-left: 0;
   }
 
-  /* 공유 버튼은 카드 오른쪽 아래 모서리에 고정합니다. 흐름에 두면 좁은
-     화면에서 메타 줄과 나란히 서지 못해 아래로 접히고, 그 위에 빈 띠가
-     한 줄 생깁니다. 흐름에서 빼면 카드가 그만큼 짧아집니다.
-     메타는 버튼과 겹치지 않도록 오른쪽 자리를 비워 둡니다. */
-  .ta-public .article-card {
-    position: relative;
+  /* 위험한 전체 초기화는 선택 버튼처럼 보이지 않는 작은 텍스트 동작으로
+     둡니다. 기본 글자보다 한 단계 옅고 작게 하되, 오른쪽 끝의 고정된 위치와
+     포커스 표시로 동작임을 알립니다. 실제 영역도 24px 높이로 제한해 인접한
+     분야 선택을 누르다 잘못 건드릴 가능성을 낮춥니다. */
+  .ta-public .article-list-heading .mobile-reset-button {
+    display: inline-flex;
+    margin-left: auto;
+    padding: 4px 2px;
+    align-items: center;
+    align-self: center;
+    justify-content: center;
+    color: var(--gray-400, #9ca3af);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 16px;
   }
 
-  .ta-public .article-card .share-button {
-    position: absolute;
-    right: var(--article-card-edge-space, 18px);
-    bottom: var(--article-card-edge-space, 18px);
-    margin: 0;
+  .ta-public .article-list-heading .mobile-reset-button:hover {
+    color: var(--gray-300, #d1d5db);
+  }
+
+  .ta-public .article-list-heading .mobile-reset-button:focus-visible {
+    outline: 1px solid rgba(156, 163, 175, 0.75);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  /* 검색 화면의 분야 패널도 좁은 화면에서는 태그 목록 대신 시트를 엽니다.
+     시트가 자체 초기화·적용을 갖고 있으므로 이 묶음은 데스크톱 전용입니다. */
+  .ta-public .search-category-filter .desktop-filter {
+    display: none;
   }
 
   .ta-public .article-card .article-card-info {
     width: 100%;
   }
 
-  .ta-public .article-card .article-meta {
-    padding-right: 52px;
+  .ta-public .article-card .article-title {
+    font-size: 17px;
   }
 
-  /* 고른 조건을 하나씩 늘어놓을 자리가 없습니다. 개수만 알리고, 해제는
-     각 시트에서 하도록 둡니다. 소스도 트리거가 "소스 N곳"으로 이미
-     알려 주므로 칩 줄을 따로 두지 않습니다. */
-  .ta-public .active-filters .filter-chips {
-    display: none;
+  .ta-public .article-card .article-new-badge {
+    margin-right: 10px;
   }
 
-  .ta-public .active-filter-summary {
+  /* 요약과 메타를 하나의 인라인 흐름으로 둡니다. 플렉스로 나란히 두면
+     메타가 세로로 한 열을 통째로 차지해, 요약 첫 줄 오른쪽이 늘 비고
+     그만큼 글이 일찍 잘립니다. 인라인이면 요약이 카드 폭을 다 쓰고
+     메타는 마지막 줄 뒤에 이어 붙습니다. 자리가 모자랄 때만 다음 줄로
+     내려가므로 폭 분기를 따로 두지 않아도 됩니다. */
+  .ta-public .article-card .article-summary-row {
+    display: block;
+    margin-top: 9px;
+  }
+
+  /* -webkit-box + line-clamp 는 인라인으로 흐르지 못합니다. 좁은 화면에서는
+     말줄임 대신 자연스러운 줄바꿈을 씁니다. */
+  .ta-public .article-card .article-summary-row .article-summary {
     display: inline;
+    margin: 0;
+    overflow: visible;
+    text-overflow: clip;
   }
 
-  .ta-public .source-bar {
+  .ta-public .article-card .article-meta-desktop {
     display: none;
+  }
+
+  /* 간격은 메타의 왼쪽 여백이 아니라 요약 끝의 빈 칸으로 만듭니다.
+     여백으로 두면 메타가 다음 줄로 내려갔을 때 그 8px 이 들여쓰기로
+     남아 윗줄과 왼쪽이 어긋납니다. */
+  .ta-public .article-card .article-summary-row .article-summary::after {
+    display: inline-block;
+    width: 8px;
+    content: "";
+  }
+
+  .ta-public .article-card .article-meta-mobile {
+    display: inline;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 11px;
+    line-height: 1.4;
+    /* 출처와 날짜가 서로 떨어지지 않게 한 덩어리로 움직입니다. */
+    white-space: nowrap;
+  }
+
+  .ta-public .article-card .article-meta span {
+    gap: 0;
   }
 }
 
@@ -608,15 +894,6 @@
     font-size: 13px;
     white-space: nowrap;
   }
-}
-
-/* 선택한 소스 칩 줄. 고른 소스가 없으면 마크업 자체가 렌더되지 않습니다. */
-.ta-public .source-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 14px;
 }
 
 /* 소스 선택과 분야 선택은 목록을 좁히는 같은 성격의 조작입니다. 외형
@@ -655,33 +932,6 @@
 
 .ta-public .source-trigger {
   display: inline-flex;
-}
-
-.ta-public .source-chip-list {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ta-public .source-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
-  border: 1px solid var(--gray-700, #374151);
-  border-radius: 8px;
-  background: rgba(148, 163, 184, 0.1);
-  color: var(--gray-200, #e5e7eb);
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.ta-public .source-chip:hover {
-  border-color: var(--danger, #ef4444);
 }
 
 .ta-public .source-icon {
@@ -770,12 +1020,34 @@
   font-weight: 700;
 }
 
-.ta-public .source-dialog-close {
-  border: none;
+.ta-public .source-dialog-close,
+.ta-public .sheet-close {
+  position: relative;
+  display: inline-flex;
+  width: auto;
+  height: auto;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0;
   background: none;
   color: var(--gray-400, #9ca3af);
   cursor: pointer;
   font-size: 16px;
+  line-height: 1;
+}
+
+.ta-public .source-dialog-close::after,
+.ta-public .sheet-close::after {
+  position: absolute;
+  inset: -12px;
+  content: "";
+}
+
+.ta-public .source-dialog-close:hover,
+.ta-public .sheet-close:hover {
+  color: var(--gray-200, #e5e7eb);
 }
 
 .ta-public .source-search {
@@ -860,23 +1132,113 @@
   gap: 10px;
 }
 
+/* --accent-blue 는 #a8c5e6 인 옅은 파랑입니다. 그 위의 흰 글자는 대비가
+   1.78:1 로 읽히지 않습니다. 같은 파일이 이미 옅은 면 위에 쓰는 어두운
+   남색(#0b1220, 10.5:1)으로 맞춥니다. */
 .ta-public .source-apply {
   padding: 9px 18px;
   border: none;
   border-radius: 8px;
   background: var(--accent-blue, #3b82f6);
-  color: #fff;
+  color: #0b1220;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* 시트의 초기화와 같은 성격·같은 무게의 동작이라 형태도 맞춥니다.
+   글자만 있으면 눌러야 하는 것으로 읽히지 않습니다. */
+.ta-public .source-reset {
+  padding: 9px 18px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--gray-700, #374151);
+  color: var(--gray-300, #d1d5db);
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
 }
 
-.ta-public .source-reset {
-  border: none;
-  background: none;
-  color: var(--gray-400, #9ca3af);
-  cursor: pointer;
-  font-size: 13px;
+.ta-public .source-reset:hover {
+  background: var(--gray-600, #4b5563);
+}
+
+/* 고른 소스가 그대로면 적용할 것이 없습니다. 분야 시트와 같은 중립색으로
+   눌러도 소용없는 상태임을 알립니다. */
+.ta-public .source-apply:disabled {
+  color: #9ca3af;
+  background: #374151;
+  cursor: not-allowed;
+}
+
+/* 시트의 주 동작 버튼도 같은 옅은 그라디언트 위에 흰 글자였습니다
+   (1.78~2.08:1). 같은 이유로 어두운 글자로 바꿉니다. */
+.ta-public .sheet-actions .cta-button {
+  color: #0b1220;
+}
+
+/* ── 좁은 화면의 대화상자 형태 통일 ───────────────────────
+ * 소스 선택은 화면 가운데 팝업, 분야 선택은 하단 시트로 서로 달랐습니다.
+ * 좁은 화면에서는 하단 시트로 맞춥니다.
+ *   - 확인·취소가 엄지 닿는 화면 아래쪽에 옵니다. 세로로 긴 요즘 기기
+ *     (S26 780 / iPhone 17 874pt)에서 가운데 팝업의 버튼은 손이 멉니다.
+ *   - 목록이 길어질 때 아래에서 올라와 늘어나는 편이 자연스럽습니다.
+ * 데스크톱에서는 소스 선택만 열리므로 지금의 가운데 팝업을 유지합니다.
+ * (분야 선택은 데스크톱에서 인라인 패널을 쓰고 시트를 열지 않습니다.) */
+@media (max-width: 767px) {
+  .ta-public .source-dialog {
+    align-items: end;
+    padding: 0;
+  }
+
+  .ta-public .source-dialog-inner {
+    width: 100%;
+    max-height: 82vh;
+    border-width: 1px 0 0;
+    border-radius: 12px 12px 0 0;
+  }
+
+  /* 두 시트의 동작 버튼 크기를 맞춥니다. 시트 버튼은 글자 크기를 따로
+     주지 않아 본문 16px 를 그대로 물려받고 있었습니다.
+
+     3등분 그리드도 문제였습니다. 360px 화면에서 한 칸이 101px 뿐이라
+     "선택 조건으로 보기"가 두 줄로 접히고, 그리드가 높이를 맞추면서
+     세 버튼이 모두 75px 로 커졌습니다. 보조 두 개는 글자 폭으로 두고
+     주 동작이 남은 자리를 갖게 합니다(소스 대화상자의 배치와 같은 결). */
+  .ta-public .sheet-actions {
+    margin-top: 18px;
+    grid-template-columns: auto auto 1fr;
+    gap: 8px;
+  }
+
+  .ta-public .sheet-actions button {
+    min-height: 38px;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  /* 38px 는 손가락 기준 44px 에 6px 모자랍니다. 보이는 크기는 그대로
+     두고 닿는 영역만 넓힙니다(목록 화면의 트리거와 같은 방식). */
+  .ta-public .sheet-actions button,
+  .ta-public .source-dialog-actions button {
+    position: relative;
+  }
+
+  .ta-public .sheet-actions button::after,
+  .ta-public .source-dialog-actions button::after {
+    position: absolute;
+    inset: -4px 0;
+    content: "";
+  }
+
+  .ta-public .filter-sheet {
+    padding: 20px;
+  }
+
+  .ta-public .filter-sheet-heading h2 {
+    font-size: 18px;
+  }
 }
 
 /* ── NEW 배지 ─────────────────────────────────────────────
@@ -994,6 +1356,7 @@
  * 면을 걷어내고 글자와 같은 계열의 얇은 테두리만 남깁니다. 강조는
  * hover·focus 에서만 들어옵니다. */
 .ta-public .detail-original-link,
+.ta-public .detail-share-button,
 .ta-public .article-card .share-button {
   color: var(--accent-blue);
   background: transparent;
@@ -1001,6 +1364,7 @@
 }
 
 .ta-public .detail-original-link:hover,
+.ta-public .detail-share-button:hover,
 .ta-public .article-card .share-button:hover {
   color: #e3edf8;
   background: rgba(168, 197, 230, 0.12);
@@ -1008,6 +1372,7 @@
 }
 
 .ta-public .detail-original-link:focus-visible,
+.ta-public .detail-share-button:focus-visible,
 .ta-public .article-card .share-button:focus-visible {
   outline: 2px solid rgba(168, 197, 230, 0.9);
   outline-offset: 3px;
