@@ -80,7 +80,7 @@ def test_score_describes_the_axes_used_for_the_evaluation():
         "최신성",
         "기사 품질",
     ]
-    assert [axis["weight"] for axis in score["axes"]] == [0.40, 0.30, 0.20, 0.10]
+    assert [axis["weight"] for axis in score["axes"]] == [0.35, 0.30, 0.25, 0.10]
     assert round(sum(axis["contribution"] for axis in score["axes"])) == score["overall"]
     for axis in score["axes"]:
         assert axis["value"] == score["dimensions"][axis["key"]]

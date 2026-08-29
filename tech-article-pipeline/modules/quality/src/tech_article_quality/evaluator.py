@@ -19,7 +19,6 @@ from .models import (
     Evaluation,
     QualityEvaluationRequest,
     QualityEvaluationResult,
-    QualityPolicy,
     Score,
     ScoreAxis,
     Signals,
@@ -188,7 +187,7 @@ def _utcnow() -> datetime:
 
 
 class QualityEvaluator:
-    """Deterministic implementation of the updated 40/30/20/10 scoring policy with LLM depth and 48h half-life."""
+    """Deterministic implementation of the 35/30/25/10 scoring policy with LLM depth and 48h half-life."""
 
     def __init__(self, *, clock: Clock = _utcnow) -> None:
         self._clock = clock
@@ -345,7 +344,7 @@ class QualityEvaluator:
                 f"Evaluate technical depth from 0 to 100 for this article.\n"
                 f"Title: {article.title}\n"
                 f"Content: {article.content[:1500]}\n"
-                f"Return JSON: {{\"depth_score\": number}}"
+                f'Return JSON: {{"depth_score": number}}'
             )
             payload = {
                 "model": "gpt-4o-mini",
@@ -353,7 +352,9 @@ class QualityEvaluator:
                 "temperature": 0.1,
                 "response_format": {"type": "json_object"},
             }
-            req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
+            req = urllib.request.Request(
+                url, data=json.dumps(payload).encode("utf-8"), headers=headers
+            )
             with urllib.request.urlopen(req, timeout=5) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
                 res_text = res_data["choices"][0]["message"]["content"]
