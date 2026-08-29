@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { QualityScoreAxes } from "./ArticleQualityPanel";
+import PublicValueScoreBreakdown from "./PublicValueScoreBreakdown";
 
 describe("QualityScoreAxes", () => {
   it("renders arbitrary server supplied axes in server order", () => {
@@ -56,21 +57,10 @@ describe("QualityScoreAxes", () => {
     expect(screen.queryByText(/기여 50/)).not.toBeInTheDocument();
   });
 
-  it("shows only the axis label and contribution in the public article view", () => {
+  it("uses the separate minimal breakdown contract in the public article view", () => {
     render(
-      <QualityScoreAxes
-        variant="public"
-        score={{
-          axes: [
-            {
-              key: "custom",
-              label: "사용자 정의 축",
-              value: 100,
-              weight: 0.5,
-              contribution: 7.25,
-            },
-          ],
-        }}
+      <PublicValueScoreBreakdown
+        breakdown={[{ label: "사용자 정의 축", contribution: 7.25 }]}
       />,
     );
 

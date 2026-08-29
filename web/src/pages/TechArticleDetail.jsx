@@ -6,11 +6,12 @@ import {
   formatTechArticleDate,
 } from "../components/tech-articles/TechArticleCommon";
 import TechArticlePublicContent from "../components/tech-articles/TechArticlePublicContent";
-import { QualityScoreAxes } from "../components/tech-articles/ArticleQualityPanel";
+import PublicValueScoreBreakdown from "../components/tech-articles/PublicValueScoreBreakdown";
 import {
   holdArticleListReturn,
   releaseArticleListReturn,
 } from "../components/tech-articles/articleListReturn";
+import { shareArticle } from "../components/tech-articles/articleShare";
 import { V9ArticleTags } from "./TechArticles";
 import { useAuth } from "../context/AuthContext";
 
@@ -22,6 +23,7 @@ function TechArticleDetail() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
+  const [toast, setToast] = useState("");
 
   useEffect(() => {
     const returnState = holdArticleListReturn(articleId);
@@ -70,10 +72,16 @@ function TechArticleDetail() {
     };
   }, [article?.title]);
 
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = window.setTimeout(() => setToast(""), 3000);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
   const sourceName =
     article?.source?.name || article?.source?.domain || "확인 중";
   const sourceUrl = article?.source?.articleUrl;
-  const scoreData = article?.evaluation?.score;
+  const scoreData = article?.valueScore;
   const score = scoreData?.overall;
   const scoreMinimum = Number.isFinite(scoreData?.scale?.min)
     ? scoreData.scale.min
@@ -83,7 +91,27 @@ function TechArticleDetail() {
     : 100;
   // 로그인 상태가 아니라 서버 응답을 신뢰합니다. 토큰 경계에서 화면과
   // 실제 공개 데이터가 어긋나지 않게 하는 기준입니다.
-  const isScoreLocked = Boolean(article && !article.evaluation);
+  const isScoreLocked = Boolean(
+    article && !Object.prototype.hasOwnProperty.call(article, "valueScore"),
+  );
+
+  const handleShare = async () => {
+    if (!article) return;
+    const url = `${window.location.origin}/tech-articles/${encodeURIComponent(article.id)}`;
+    const result = await shareArticle({
+      title: article.title,
+      text: article.oneLineSummary,
+      url,
+    });
+
+    if (result === "shared") {
+      setToast("세부 페이지를 공유했습니다.");
+    } else if (result === "copied") {
+      setToast("세부 페이지 주소를 복사했습니다.");
+    } else if (result === "failed") {
+      setToast("세부 페이지 주소를 복사하지 못했습니다.");
+    }
+  };
 
   return (
     <TechArticlePublicContent>
@@ -118,19 +146,33 @@ function TechArticleDetail() {
                 >
                   <div className="detail-info-items">
                     {sourceUrl && (
-                      <a
-                        className="detail-original-link"
-                        id="heroOriginalLink"
-                        href={sourceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        원문 보기
-                        <i
-                          className="fas fa-arrow-up-right-from-square"
-                          aria-hidden="true"
-                        ></i>
-                      </a>
+                      <>
+                        <a
+                          className="detail-original-link"
+                          id="heroOriginalLink"
+                          href={sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          원문 보기
+                          <i
+                            className="fas fa-arrow-up-right-from-square"
+                            aria-hidden="true"
+                          ></i>
+                        </a>
+                        <button
+                          className="detail-share-button"
+                          type="button"
+                          onClick={handleShare}
+                          aria-label={`${article.title} 세부 페이지 공유`}
+                        >
+                          <i
+                            className="fas fa-share-nodes"
+                            aria-hidden="true"
+                          ></i>
+                          공유
+                        </button>
+                      </>
                     )}
                     <V9ArticleTags
                       tags={article.tags}
@@ -246,7 +288,9 @@ function TechArticleDetail() {
                           ? `${score}점`
                           : `${scoreMinimum}점`}
                       </meter>
-                      <QualityScoreAxes score={scoreData} variant="public" />
+                      <PublicValueScoreBreakdown
+                        breakdown={scoreData?.breakdown}
+                      />
                     </>
                   )}
                 </section>
@@ -340,23 +384,36 @@ function TechArticleDetail() {
               <i className="fas fa-circle-info" aria-hidden="true"></i>
               <div>
                 <h2 id="sourceNoticeHeading" className="orbitron">
-                  데이터 출처 및 AI 요약 안내
+                  데이터 출처 및 AI 생성 정보 안내
                 </h2>
                 <p>
-                  TCP는 공식 기술 블로그와 개발자 커뮤니티 등에서 수집한 원문의
-                  제목, 출처, 게시 시각을 정규화해 제공합니다. 콘텐츠의 권리와
-                  최종 내용은 원문 발행처에 있습니다.
+                  TCP는 기술 블로그, 개발자 뉴스·커뮤니티 및 공개 저장소 등 외부
+                  출처의 콘텐츠를 수집, 제공합니다. 원문 주소와 출처 정보는 각
+                  아티클에서 확인할 수 있습니다. 원문 콘텐츠의 모든 권리는 원문
+                  발행처 또는 작성자에게 있습니다.
                 </p>
                 <p>
-                  AI 요약과 가치 점수는 탐색을 돕기 위한 참고 정보이며 원문의
-                  전체 맥락이나 작성자의 의도를 대체하지 않습니다. 상세 요약과
-                  가치 점수는 서버의 최신 응답을 기준으로 표시됩니다.
+                  번역 제목, 한 줄 요약, 상세 요약과 분야 태그는 원문을 바탕으로
+                  AI가 생성합니다. AI는 실수를 할 수 있으므로, 중요한 내용은
+                  반드시 원문을 확인해 주세요.
+                </p>
+                <p>
+                  가치 점수는 TCP 내부 기준을 통해 산정한 참고 지표입니다. 이
+                  점수는 글의 정확성을 의미하지 않으며, 개별 아티클에 대한
+                  절대적인 품질 또한 보증하지 않습니다.
                 </p>
               </div>
             </aside>
           </div>
         </section>
       </main>
+
+      {toast && (
+        <div className="toast" role="status" aria-live="polite">
+          <i className="fas fa-circle-info" aria-hidden="true"></i>
+          <p>{toast}</p>
+        </div>
+      )}
     </TechArticlePublicContent>
   );
 }

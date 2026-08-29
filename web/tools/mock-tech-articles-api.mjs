@@ -310,7 +310,7 @@ articles
 
 const LAST_CRAWLED_AT = iso(0, -1);
 
-const evaluationOf = (article, flat) => {
+const evaluationOf = (article) => {
   const overall = article.valueScore;
   if (typeof overall !== "number") return null;
   const dimensions = {
@@ -354,7 +354,7 @@ const evaluationOf = (article, flat) => {
       overall,
       scale: { min: 0, max: 100 },
       axes,
-      ...(flat ? dimensions : { dimensions }),
+      dimensions,
     },
   };
 };
@@ -372,21 +372,47 @@ const paginate = (rows, page, pageSize) => {
   };
 };
 
-const publicItem = (a) => ({
+const publicListItem = (a) => ({
   id: a.articleId,
   title: a.title,
   oneLineSummary: a.oneLineSummary,
   tags: a.tags,
-  source: a.source,
-  originalLanguage: a.originalLanguage,
+  source: { name: a.source.name, domain: a.source.domain },
   originalPublishedAt: a.originalPublishedAt,
-  collectedAt: a.collectedAt,
-  // 서버와 같은 기준(수집 후 12시간). base.NEW_ARTICLE_WINDOW_HOURS 와 맞춰야
-  // 로컬에서 본 화면이 운영과 같아집니다.
   isNew: isNewArticle(a.collectedAt),
 });
 
-const NEW_ARTICLE_WINDOW_HOURS = 12;
+const publicDetailItem = (a) => ({
+  id: a.articleId,
+  title: a.title,
+  oneLineSummary: a.oneLineSummary,
+  summaryMarkdown: a.summaryMarkdown,
+  tags: a.tags,
+  source: {
+    name: a.source.name,
+    domain: a.source.domain,
+    path: a.source.path,
+    articleUrl: a.source.articleUrl,
+  },
+  originalLanguage: a.originalLanguage,
+  originalPublishedAt: a.originalPublishedAt,
+  collectedAt: a.collectedAt,
+});
+
+const publicValueScoreOf = (article) => {
+  const score = evaluationOf(article)?.score;
+  if (!score) return null;
+  return {
+    overall: score.overall,
+    scale: score.scale,
+    breakdown: score.axes.map(({ label, contribution }) => ({
+      label,
+      contribution,
+    })),
+  };
+};
+
+const NEW_ARTICLE_WINDOW_HOURS = 24;
 const isNewArticle = (collectedAt) => {
   if (!collectedAt) return false;
   const t = new Date(collectedAt).getTime();
@@ -495,7 +521,7 @@ articles.slice(0, 5).forEach((a, index) => {
 const adminItem = (a) => ({
   ...a,
   viewCounts: viewCountsOf(a.articleId),
-  evaluation: evaluationOf(a, false),
+  evaluation: evaluationOf(a),
   score: a.valueScore,
   stage: articleStage(a),
 });
@@ -559,7 +585,7 @@ const qualityCases = articles
   .filter((a) => a.processingStatus === "QUALITY_EVALUATED")
   .slice(0, 6)
   .map((a, i) => {
-    const evaluation = evaluationOf(a, false);
+    const evaluation = evaluationOf(a);
     return {
       caseId: `qcase-2026081-${String(i + 1).padStart(3, "0")}`,
       caseVersion: 1,
@@ -1117,7 +1143,7 @@ function handle(method, pathname, query, body, headers = {}) {
           !selectedSources.length || selectedSources.includes(a.source?.id),
       )
       .sort(byNewest)
-      .map(publicItem);
+      .map(publicListItem);
     return [
       200,
       { ...paginate(rows, page, pageSize), lastCrawledAt: LAST_CRAWLED_AT },
@@ -1138,12 +1164,10 @@ function handle(method, pathname, query, body, headers = {}) {
     return [
       200,
       {
-        ...publicItem(found),
-        authors: found.authors,
-        summaryMarkdown: found.summaryMarkdown,
+        ...publicDetailItem(found),
         ...(headers.authorization
           ? {
-              evaluation: evaluationOf(found, true), // 한 릴리스 동안 평탄 필드도 유지
+              valueScore: publicValueScoreOf(found),
             }
           : {}),
       },
@@ -1448,7 +1472,7 @@ function handle(method, pathname, query, body, headers = {}) {
       {
         ...adminItem(found),
         latestCrawlItemId: `item-${found.articleId}`,
-        evaluation: evaluationOf(found, false), // 관리자 상세는 dimensions 중첩 형태
+        evaluation: evaluationOf(found), // 관리자 상세는 dimensions 중첩 형태
       },
     ];
   }

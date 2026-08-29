@@ -79,4 +79,41 @@ describe('projectQualityEvaluation', () => {
       axes: [],
     });
   });
+
+  it('restores the four-axis dimensions shape used before axes were stored', () => {
+    const result = projectQualityEvaluation({
+      score: {
+        overall: 84,
+        dimensions: {
+          relevance: 90,
+          technicalDepth: 80,
+          timeliness: 85,
+          articleQuality: 70,
+        },
+      },
+    });
+
+    expect((result?.score as Record<string, unknown>).axes).toEqual([
+      expect.objectContaining({
+        key: 'relevance',
+        label: '개발 관련성',
+        weight: 0.35,
+      }),
+      expect.objectContaining({
+        key: 'technicalDepth',
+        label: '기술적 깊이',
+        weight: 0.3,
+      }),
+      expect.objectContaining({
+        key: 'timeliness',
+        label: '최신성',
+        weight: 0.25,
+      }),
+      expect.objectContaining({
+        key: 'articleQuality',
+        label: '기사 품질',
+        weight: 0.1,
+      }),
+    ]);
+  });
 });

@@ -43,9 +43,15 @@ describe('TechArticlesService', () => {
       sources: [],
     });
 
-    expect(result.items[0]).toEqual(
-      expect.objectContaining({ id: 'article-1', title: '제목' }),
-    );
+    expect(result.items[0]).toEqual({
+      id: 'article-1',
+      title: '제목',
+      oneLineSummary: '한 줄',
+      tags: ['AI'],
+      source: { name: null, domain: null },
+      originalPublishedAt: null,
+      isNew: false,
+    });
     expect(result.items[0]).not.toHaveProperty('score');
     expect(result.items[0]).not.toHaveProperty('content');
     expect(result.items[0]).not.toHaveProperty('localizedContent');
@@ -65,16 +71,26 @@ describe('TechArticlesService', () => {
 
     const result = await service.publicDetail('article-1', false);
 
-    expect(result).toEqual(
-      expect.objectContaining({
-        title: '공개 제목',
-        summaryMarkdown: '## 공개 요약',
-      }),
-    );
+    expect(result).toEqual({
+      id: 'article-1',
+      title: '공개 제목',
+      oneLineSummary: null,
+      summaryMarkdown: '## 공개 요약',
+      tags: [],
+      source: {
+        name: null,
+        domain: null,
+        path: null,
+        articleUrl: null,
+      },
+      originalLanguage: null,
+      originalPublishedAt: null,
+      collectedAt: null,
+    });
     expect(result).not.toHaveProperty('evaluation');
   });
 
-  it('returns server supplied score axes to a member', async () => {
+  it('returns only display-safe score fields to a member', async () => {
     pipeline.get.mockResolvedValue({
       articleId: 'article-1',
       title: 'title',
@@ -99,13 +115,18 @@ describe('TechArticlesService', () => {
 
     const result = await service.publicDetail('article-1', true);
 
-    expect(
-      (result as { evaluation?: { score?: unknown } }).evaluation?.score,
-    ).toEqual(
+    expect(result).toEqual(
       expect.objectContaining({
-        overall: 88,
-        axes: [expect.objectContaining({ key: 'usefulness' })],
+        valueScore: {
+          overall: 88,
+          scale: { min: 0, max: 100 },
+          breakdown: [{ label: '실무 활용성', contribution: 36.8 }],
+        },
       }),
+    );
+    expect(result).not.toHaveProperty('evaluation');
+    expect(JSON.stringify(result)).not.toMatch(
+      /schemaVersion|decision|usefulness|weight|"value":/,
     );
   });
 

@@ -682,6 +682,16 @@ describe("공개 화면", () => {
     expect(hero.textContent).not.toMatch(/원출처/);
     expect(hero.textContent).not.toMatch(/원문 게시/);
     expect(hero.querySelector("#heroOriginalLink")).not.toBeNull();
+    const detailShareButton = hero.querySelector(".detail-share-button");
+    expect(detailShareButton).not.toBeNull();
+    expect(detailShareButton).toHaveTextContent("공유");
+    expect(detailShareButton).toHaveAttribute(
+      "aria-label",
+      "공개 아티클 세부 페이지 공유",
+    );
+    expect(hero.querySelector("#heroOriginalLink").nextElementSibling).toBe(
+      detailShareButton,
+    );
     expect(hero.querySelectorAll(".detail-tags .article-tag")).toHaveLength(2);
 
     // 지운 정보는 사이드바 출처 카드가 계속 책임진다. 양쪽이 함께 사라지면
@@ -726,27 +736,22 @@ describe("공개 화면", () => {
     ]);
   });
 
-  test("로그인 상세는 서버가 보낸 평가 축과 기여도를 보여준다", async () => {
+  test("로그인 상세는 공개 표시용 점수와 기여도만 보여준다", async () => {
     localStorage.setItem("access_token", "member-token");
     api.getTechArticle.mockResolvedValueOnce({
       id: "article-1",
       title: "회원 아티클",
       summaryMarkdown: "회원 상세 요약",
       tags: [],
-      evaluation: {
-        score: {
-          overall: 88,
-          scale: { min: 0, max: 100 },
-          axes: [
-            {
-              key: "usefulness",
-              label: "실무 활용성",
-              value: 92,
-              weight: 0.4,
-              contribution: 36.8,
-            },
-          ],
-        },
+      valueScore: {
+        overall: 88,
+        scale: { min: 0, max: 100 },
+        breakdown: [
+          {
+            label: "실무 활용성",
+            contribution: 36.8,
+          },
+        ],
       },
     });
     const TechArticleDetail = require("./TechArticleDetail").default;
@@ -758,6 +763,26 @@ describe("공개 화면", () => {
     expect(screen.queryByText("최종 기여 점수")).not.toBeInTheDocument();
     expect(screen.queryByText(/가중치/)).not.toBeInTheDocument();
     expect(screen.getByRole("meter")).toBeInTheDocument();
+    expect(
+      screen.queryByText("로그인하면 가치 점수도 확인할 수 있어요."),
+    ).not.toBeInTheDocument();
+  });
+
+  test("로그인 응답에 점수가 없으면 로그인 안내 대신 확인 불가로 표시한다", async () => {
+    localStorage.setItem("access_token", "member-token");
+    api.getTechArticle.mockResolvedValueOnce({
+      id: "article-without-score",
+      title: "점수 없는 회원 아티클",
+      summaryMarkdown: "상세 요약",
+      tags: [],
+      valueScore: null,
+    });
+    const TechArticleDetail = require("./TechArticleDetail").default;
+    renderWithAuth(<TechArticleDetail />);
+
+    expect(
+      await screen.findByLabelText("가치 점수를 확인할 수 없음"),
+    ).toBeInTheDocument();
     expect(
       screen.queryByText("로그인하면 가치 점수도 확인할 수 있어요."),
     ).not.toBeInTheDocument();

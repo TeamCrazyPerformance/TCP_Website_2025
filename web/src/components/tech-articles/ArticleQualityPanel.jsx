@@ -58,25 +58,9 @@ function axisPresentation(axis, scale) {
 }
 
 /** 서버가 평가 당시 저장한 축 순서와 표시 정보를 그대로 사용합니다. */
-export function QualityScoreAxes({ score, variant = "admin" }) {
+export function QualityScoreAxes({ score }) {
   const axes = scoreAxes(score);
   if (!axes.length) return null;
-
-  if (variant === "public") {
-    return (
-      <dl className="score-breakdown">
-        {axes.map((axis) => {
-          const { contribution } = axisPresentation(axis, score?.scale);
-          return (
-            <div key={axis.key}>
-              <dt>{axis.label}</dt>
-              <dd>{contribution ?? "—"}</dd>
-            </div>
-          );
-        })}
-      </dl>
-    );
-  }
 
   return (
     <ul className="quality-dimensions">

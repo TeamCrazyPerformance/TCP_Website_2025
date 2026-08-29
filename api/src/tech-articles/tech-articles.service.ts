@@ -20,56 +20,19 @@ import {
   projectQualityEvaluation,
   QualityEvaluation,
 } from './quality-evaluation.projection';
+import {
+  projectPublicArticleDetail,
+  projectPublicArticleListItem,
+} from './public-tech-article.projection';
+import {
+  LanguageProjection,
+  PipelineArticle,
+  PipelinePublicDetailArticle,
+  PipelinePublicListArticle,
+  SourceProjection,
+} from './tech-articles.types';
 
-export interface SourceProjection {
-  id?: string;
-  name?: string;
-  type?: string;
-  domain?: string | null;
-  path?: string;
-  articleUrl?: string | null;
-}
-
-export interface LanguageProjection {
-  code: string;
-  label: string;
-}
-
-interface PipelineArticle {
-  articleId: string;
-  recordVersion?: number;
-  title?: string | null;
-  localizedTitle?: string | null;
-  authors?: string[];
-  oneLineSummary?: string | null;
-  summaryMarkdown?: string | null;
-  summary?: string | null;
-  tags?: string[];
-  source?: SourceProjection | null;
-  canonicalUrl?: string | null;
-  articleUrl?: string | null;
-  originalLanguage?: LanguageProjection | null;
-  originalPublishedAt?: string | null;
-  collectedAt?: string | null;
-  isNew?: boolean;
-  viewCounts?: {
-    member?: number;
-    guest?: number;
-    lastViewedAt?: string | null;
-  };
-  normalizedAt?: string | null;
-  qualityScore?: number | null;
-  valueScore?: number | null;
-  qualityDecision?: string | null;
-  evaluation?: QualityEvaluation | null;
-  processingStatus?: string;
-  duplicateStatus?: string;
-  reviewStatus?: string;
-  publicationStatus?: string;
-  publishedAt?: string | null;
-  createdAt?: string | null;
-  updatedAt?: string | null;
-}
+export { LanguageProjection, SourceProjection } from './tech-articles.types';
 
 interface DuplicateCandidateEvidence {
   articleId?: string;
@@ -149,18 +112,17 @@ export class TechArticlesService {
   constructor(private readonly pipeline: TechArticlePipelineClient) {}
 
   async listPublic(query: PublicArticleQueryDto) {
-    const upstream = await this.pipeline.get<PipelinePage<PipelineArticle>>(
-      '/internal/v1/public/articles',
-      {
-        limit: query.pageSize,
-        offset: (query.page - 1) * query.pageSize,
-        keyword: query.keyword,
-        tags: query.tags,
-        sources: query.sources,
-      },
-    );
+    const upstream = await this.pipeline.get<
+      PipelinePage<PipelinePublicListArticle>
+    >('/internal/v1/public/articles', {
+      limit: query.pageSize,
+      offset: (query.page - 1) * query.pageSize,
+      keyword: query.keyword,
+      tags: query.tags,
+      sources: query.sources,
+    });
     return {
-      items: upstream.items.map((article) => this.publicItem(article)),
+      items: upstream.items.map(projectPublicArticleListItem),
       pagination: this.pagination(
         upstream.totalCount,
         query.page,
@@ -181,10 +143,10 @@ export class TechArticlesService {
   }
 
   async publicDetail(articleId: string, isMember: boolean) {
-    const article = await this.pipeline.get<PipelineArticle>(
+    const article = await this.pipeline.get<PipelinePublicDetailArticle>(
       `/internal/v1/public/articles/${encodeURIComponent(articleId)}`,
     );
-    return this.publicDetailItem(article, isMember);
+    return projectPublicArticleDetail(article, isMember);
   }
 
   async listAdmin(query: AdminArticleQueryDto) {
@@ -560,41 +522,6 @@ export class TechArticlesService {
       code: error.code,
       message: error.message,
       retryable: retryable ?? error.retryable,
-    };
-  }
-
-  private publicItem(article: PipelineArticle) {
-    return {
-      id: article.articleId,
-      title: article.localizedTitle || article.title,
-      oneLineSummary: article.oneLineSummary,
-      tags: article.tags ?? [],
-      source: article.source,
-      originalLanguage: article.originalLanguage,
-      originalPublishedAt: article.originalPublishedAt,
-      collectedAt: article.collectedAt,
-      // 수집 직후인지. 목록이 원문 게시일 순이라 새 글이 위로 오지 않습니다.
-      isNew: article.isNew ?? false,
-    };
-  }
-
-  private publicDetailItem(article: PipelineArticle, isMember: boolean) {
-    const base = {
-      ...this.publicItem(article),
-      authors: article.authors ?? [],
-      summaryMarkdown: article.summaryMarkdown ?? article.summary,
-    };
-    if (!isMember) return base;
-    return {
-      ...base,
-      evaluation: projectQualityEvaluation(
-        article.evaluation ?? {
-          decision: article.qualityDecision,
-        },
-        article.qualityScore,
-        // 전환기용 옛 형태. 제거 조건은 quality-evaluation.projection.ts 참고.
-        { legacyShape: 'flat' },
-      ),
     };
   }
 
