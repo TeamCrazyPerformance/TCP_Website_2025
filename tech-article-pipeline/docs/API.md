@@ -86,8 +86,14 @@ through less than 92%.
 ## Reads and administration
 
 - `GET /public/articles` — keeps `limit|offset` and adds `keyword`, repeated
-  canonical `tags`, `totalCount`, and `lastCrawledAt`.
-- `GET /public/tags` and `GET /public/articles/{articleId}`
+  canonical `tags`, `totalCount`, and `lastCrawledAt`. Each item is a dedicated
+  list projection containing only identity/display title, one-line summary, tags,
+  source name/domain, publication time, and `isNew`.
+- `GET /public/tags` and `GET /public/articles/{articleId}`. Detail uses a separate
+  projection with summary Markdown, source path/article URL, language, collection
+  time, and a minimal `valueScore`. The score contains only `overall`, `scale`, and
+  ordered `breakdown[{label, contribution}]`; evaluator/policy versions, decision,
+  reason, signals, axis keys, raw axis values, and weights do not cross this boundary.
 - `GET /public/articles` — also supports `sources` (repeatable). Unknown ids return
   422 `INVALID_ARTICLE_SOURCE`. Every item carries `isNew`, true when the article was
   collected within `NEW_ARTICLE_WINDOW_HOURS` (24). The public list is ordered by the
@@ -138,6 +144,13 @@ scores remain available in the persisted quality result and admin projections.
 
 The publication policy setting is `IMMEDIATE|REVIEW`, defaults to `IMMEDIATE`,
 and uses an optional expected version on PATCH for optimistic concurrency.
+
+Public list SQL selects neither article bodies nor authors, quality payloads,
+workflow states, crawl payloads, or view counts. Public detail selects the score JSON
+subdocument instead of the full quality evaluation. The API then constructs a fresh
+allowlisted object, so repository row widening cannot automatically widen the service
+response. Stored axes are preferred; pre-axes three-axis and four-axis dimensions are
+restored with their respective historical labels and weights.
 
 Review queues accept `limit`, `offset`, `keyword`, `filter`, and a queue-specific
 `sort` value and return `totalCount`. Article and review projections combine the

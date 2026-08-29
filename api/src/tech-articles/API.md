@@ -13,7 +13,8 @@
 - 회원 API는 `Authorization: Bearer <access-token>`, 관리자 API는 ADMIN 권한까지 필요하다.
 - 버전이 바뀐 검수·게시 요청은 `409 VERSION_CONFLICT`를 반환한다.
 - 파이프라인 장애·timeout·설정 누락은 `503 TECH_ARTICLE_PIPELINE_UNAVAILABLE`로 정규화한다.
-- 외부 응답에는 수집 원문 `content`와 `localizedContent`가 포함되지 않는다.
+- 공개 응답은 allowlist projector가 새 객체로 구성한다. 수집 원문뿐 아니라 내부 상태,
+  레코드 버전, 소스 ID·수집 방식, 평가 정책·판정 근거도 포함되지 않는다.
 
 ## 공개 및 회원 API
 
@@ -37,16 +38,10 @@
       "oneLineSummary": "AI 한 줄 요약",
       "tags": ["AI", "데이터"],
       "source": {
-        "id": "infoq",
         "name": "InfoQ",
-        "type": "RSS",
-        "domain": "infoq.com",
-        "path": "/articles/example",
-        "articleUrl": "https://www.infoq.com/articles/example"
+        "domain": "infoq.com"
       },
-      "originalLanguage": { "code": "en", "label": "영어" },
       "originalPublishedAt": "2026-08-15T00:00:00Z",
-      "collectedAt": "2026-08-15T01:00:00Z",
       "isNew": true
     }
   ],
@@ -61,54 +56,56 @@
 
 ### `GET /api/v1/tech-articles/:articleId`
 
-인증 없이도 목록 필드와 `authors`, `summaryMarkdown`, 출처·원문 링크를 조회할 수 있다.
-정상 회원 토큰이 있으면 같은 응답에 `evaluation`이 추가된다. `Authorization` 헤더를
+인증 없이도 제목·요약·표시용 출처·원문 링크를 조회할 수 있다. 목록과 상세는 필요한
+필드가 달라 별도 projection을 사용한다. 정상 회원 토큰이 있으면 같은 응답에
+`valueScore`가 추가된다. `Authorization` 헤더를
 보냈지만 토큰이 만료·위조됐거나 로그아웃된 사용자라면 게스트로 강등하지 않고 401을
 반환한다. 공개 상태가 아니거나 처리 완료 전인 아티클은 404이다.
 
-비회원 응답에는 `evaluation` 키 자체가 없다.
+비회원 응답에는 `valueScore` 키 자체가 없다. `authors`, `isNew`, 소스의 `id`·`type`,
+평가의 `schemaVersion`·버전·판정·근거·신호는 회원 여부와 무관하게 상세 응답에 없다.
 
 ```json
 {
   "id": "article-20260816-000001",
   "title": "한국어 표시 제목",
-  "authors": ["Example Author"],
-  "summaryMarkdown": "## AI 상세 요약"
+  "oneLineSummary": "AI 한 줄 요약",
+  "summaryMarkdown": "## AI 상세 요약",
+  "tags": ["AI", "데이터"],
+  "source": {
+    "name": "InfoQ",
+    "domain": "infoq.com",
+    "path": "/articles/example",
+    "articleUrl": "https://www.infoq.com/articles/example"
+  },
+  "originalLanguage": { "code": "en", "label": "영어" },
+  "originalPublishedAt": "2026-08-15T00:00:00Z",
+  "collectedAt": "2026-08-15T01:00:00Z"
 }
 ```
 
-회원 응답의 점수는 평가 당시의 축·표시명·가중치·기여도를 함께 기록한다. 프런트는
-`axes`의 순서를 그대로 사용하며 기여도를 다시 계산하지 않는다.
+회원 응답의 점수는 화면에 필요한 전체 점수·범위와 축 표시명·기여도만 제공한다.
+축 식별자, 원점수, 가중치는 평가 정책을 드러내므로 공개 계약에 포함하지 않는다.
+프런트는 `breakdown` 순서를 그대로 사용하며 기여도를 다시 계산하지 않는다.
 
 ```json
 {
   "id": "article-20260816-000001",
   "title": "한국어 표시 제목",
-  "authors": ["Example Author"],
   "summaryMarkdown": "## AI 상세 요약",
-  "evaluation": {
-    "schemaVersion": "2.0",
-    "evaluatorVersion": "1.0.0",
-    "policyVersion": "quality-policy-v1",
-    "decision": "PASS",
-    "reason": "품질 기준점 이상입니다.",
-    "signals": {},
-    "score": {
-      "overall": 88,
-      "scale": { "min": 0, "max": 100 },
-      "axes": [
-        {
-          "key": "relevance",
-          "label": "개발 관련성",
-          "value": 91,
-          "weight": 0.45,
-          "contribution": 40.95
-        }
-      ]
-    }
+  "valueScore": {
+    "overall": 88,
+    "scale": { "min": 0, "max": 100 },
+    "breakdown": [
+      { "label": "개발 관련성", "contribution": 31.85 }
+    ]
   }
 }
 ```
+
+파이프라인에 저장된 `score.axes`가 있으면 그 표시명과 기여도를 사용한다. axes 저장 전
+자료는 당시의 3축(`relevance/timeliness/sourceReliability`)과 이후 4축
+(`relevance/technicalDepth/timeliness/articleQuality`) 형태를 각각 복구한다.
 
 상세 응답은 `Vary: Authorization`과 `Cache-Control: private, no-cache`를 사용한다.
 브라우저 ETag 재검증은 허용하지만 공유 캐시에 회원별 응답을 저장하지 않는다.
