@@ -527,6 +527,33 @@
     content: "";
   }
 
+  /* 생성 파일은 좁은 화면에서 현재 쪽을 뺀 모든 번호를 감춥니다. 그러면
+     2쪽짜리 목록이 "1" 한 칸으로만 보여서, 뒤에 쪽이 더 있다는 사실이
+     "다음" 버튼에만 남습니다. 앞뒤로 한 칸씩 되살려 세 칸을 만듭니다.
+
+     끝쪽에서는 한쪽이 비므로 반대편으로 한 칸을 더 엽니다(1쪽이면
+     1·2·3, 마지막 쪽이면 n-2·n-1·n). 생략 부호는 좁은 화면에서 계속
+     감춘 채로 두어 줄 길이를 지킵니다.
+
+     :has() 를 모르는 브라우저는 지금처럼 현재 쪽만 보여 주므로,
+     못 알아들어도 화면이 깨지지 않습니다. */
+  .ta-public .page-number-list .page-button[aria-current="page"] + .page-button,
+  .ta-public
+    .page-number-list
+    .page-button:has(+ .page-button[aria-current="page"]),
+  .ta-public
+    .page-number-list
+    .page-button[aria-current="page"]:first-child
+    + .page-button
+    + .page-button,
+  .ta-public
+    .page-number-list
+    .page-button:has(
+      + .page-button + .page-button[aria-current="page"]:last-child
+    ) {
+    display: inline-flex;
+  }
+
   /* 목록으로 돌아가기는 분야 선택 버튼 옆의 보조 동작이라 한 단계 낮춥니다. */
   .ta-public .explore-heading .back-to-list-link {
     font-size: 13px;

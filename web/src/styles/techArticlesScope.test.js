@@ -564,6 +564,35 @@ describe("Tech Articles CSS 스코프", () => {
     );
   });
 
+  test("좁은 화면 번호 이동은 현재 쪽 앞뒤로 세 칸을 연다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    const block = [
+      ...css.matchAll(/@media \(max-width:\s*767px\)\s*{([\s\S]*?)\n}/g),
+    ]
+      .map((m) => m[1])
+      .join("\n");
+    const flat = block.replace(/\s+/g, " ");
+
+    // 생성 파일이 현재 쪽만 남기고 모두 감춰 2쪽짜리 목록이 "1" 하나로 보였다.
+    expect(flat).toMatch(
+      /\.page-number-list \.page-button\[aria-current="page"\] \+ \.page-button/,
+    );
+    expect(flat).toMatch(
+      /\.page-button:has\( ?\+ \.page-button\[aria-current="page"\]\)/,
+    );
+    // 끝쪽에서는 반대편으로 한 칸을 더 연다.
+    expect(flat).toMatch(
+      /\.page-button\[aria-current="page"\]:first-child \+ \.page-button \+ \.page-button/,
+    );
+    expect(flat).toMatch(
+      /\+ \.page-button \+ \.page-button\[aria-current="page"\]:last-child/,
+    );
+  });
+
   test("좁은 화면 하단의 보조 문구 크기와 안내 간격을 맞춘다", () => {
     const css = fs.readFileSync(
       path.join(__dirname, "techArticlesPublicAlign.css"),
