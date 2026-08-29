@@ -392,11 +392,16 @@ describe("Tech Articles CSS 스코프", () => {
 
     // 보이는 크기는 헤더 로그아웃 버튼과 같게(12px / 상하 6px) 줄이되,
     // 손가락이 닿는 영역은 ::after 로 44px 를 유지한다.
+    // 목록 위쪽 두 개와 페이지 아래 분야 선택이 한 규칙을 함께 쓴다.
+    // 머리글로 좁히면 아래쪽 버튼만 기본 치수로 남아 커진다.
     expect(block[1]).toMatch(
-      /\.ta-public \.article-list-heading \.filter-trigger\s*{[^}]*padding:\s*8px 10px;[^}]*font-size:\s*12px;/s,
+      /\n  \.ta-public \.filter-trigger\s*{[^}]*padding:\s*8px 10px;[^}]*font-size:\s*12px;/s,
+    );
+    expect(block[1]).not.toMatch(
+      /\.ta-public \.search-mobile-filter-button\s*{[^}]*font-size:/s,
     );
     expect(block[1]).toMatch(
-      /\.ta-public \.article-list-heading \.filter-trigger::after\s*{[^}]*inset:\s*-8px 0;/s,
+      /\.ta-public \.filter-trigger::after\s*{[^}]*inset:\s*-8px 0;/s,
     );
 
     // 목업이 .mobile-filter-button i 에 준 margin-right 가 gap 과 겹쳐
@@ -405,7 +410,7 @@ describe("Tech Articles CSS 스코프", () => {
     // 글리프 폭 차이(fa-rss 10.5px / fa-sliders-h 12px)까지 묶어야 두
     // 버튼의 폭이 라벨 길이에만 좌우된다.
     expect(block[1]).toMatch(
-      /\.ta-public \.article-list-heading \.filter-trigger i\s*{[^}]*width:\s*1em;/s,
+      /\.ta-public \.filter-trigger i\s*{[^}]*width:\s*1em;/s,
     );
 
     // 버튼이 머리글로 올라가면서 비게 된 fieldset 은 숨긴다.
@@ -556,6 +561,30 @@ describe("Tech Articles CSS 스코프", () => {
     );
     expect(block).toMatch(
       /\.ta-public \.pagination-v3 \.page-button::after\s*{[^}]*inset:\s*-6px 0;/s,
+    );
+  });
+
+  test("좁은 화면 하단의 보조 문구 크기와 안내 간격을 맞춘다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    const block = [
+      ...css.matchAll(/@media \(max-width:\s*767px\)\s*{([\s\S]*?)\n}/g),
+    ]
+      .map((m) => m[1])
+      .join("\n");
+
+    expect(block).toMatch(
+      /\.ta-public \.explore-heading \.back-to-list-link\s*{[^}]*font-size:\s*13px;/s,
+    );
+    expect(block).toMatch(
+      /\.ta-public \.pagination-status\s*{[^}]*font-size:\s*13px;/s,
+    );
+    // 생성 파일이 margin-top 을 0 으로 덮어 검색창과 안내가 붙어 있었다.
+    expect(block).toMatch(
+      /\.ta-public \.source-notice\s*{[^}]*margin-top:\s*32px;/s,
     );
   });
 
