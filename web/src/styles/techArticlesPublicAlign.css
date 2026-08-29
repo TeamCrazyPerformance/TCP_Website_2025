@@ -370,6 +370,24 @@
   }
 }
 
+/* 넓은 화면에서는 이 링크가 28px 높이에 위아래 4px 여백뿐이라, 같은 줄의
+   태그 칩보다도 납작하게 눌려 보였습니다. 상세 화면의 주 행동이므로
+   글자 높이만큼의 여백을 줍니다. 터치 기기는 바로 아래 블록에서 44px 로
+   다시 잡으므로, 이 규칙보다 뒤에 두어 우선하게 합니다. */
+@media (min-width: 768px) {
+  .ta-public .detail-original-link {
+    min-height: 34px;
+    padding: 7px 12px;
+  }
+
+  /* 넓은 화면에서는 자물쇠 아이콘 오른쪽에 폭이 남아 한 줄로 흘렀습니다.
+     "가치 점수는 / 회원 전용입니다."로 끊어 아이콘 높이와 균형을 맞춥니다.
+     좁은 화면은 폭이 알아서 접어 주므로 건드리지 않습니다. */
+  .ta-public .score-gate-card h3 span {
+    display: block;
+  }
+}
+
 /* ── 터치 기기 조작 영역 ──────────────────────────────────
  * 주 사용 환경이 모바일입니다. Galaxy S26(360px) · iPhone 17(402px) ·
  * 17 Pro Max(440px) 모두 이 화면의 가장 좁은 브레이크포인트에 들어갑니다.
@@ -1361,12 +1379,15 @@
   filter: brightness(1.08);
 }
 
+/* 11px 짜리 --gray-500(#6b7280) 은 이 카드 배경에서 3.6:1 로, 작은 글자에
+   필요한 4.5:1 에 못 미쳤습니다. 회원가입으로 가는 유일한 안내라 한 단계
+   밝히고(#9ca3af, 7.0:1) 크기도 한 단계 올립니다. */
 .ta-public .member-gate-footnote {
   margin: 14px 0 0;
   padding-top: 12px;
-  color: var(--gray-500);
+  color: var(--gray-400, #9ca3af);
   border-top: 1px solid rgba(148, 163, 184, 0.12);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
   text-align: center;
 }

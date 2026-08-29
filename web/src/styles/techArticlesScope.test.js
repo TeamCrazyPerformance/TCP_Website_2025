@@ -612,6 +612,45 @@ describe("Tech Articles CSS 스코프", () => {
     );
   });
 
+  test("넓은 화면에서만 원문 보기와 안내 제목의 세로 자리를 손본다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+    const wide = wideBlocks();
+
+    // 28px 짜리 납작한 링크였다. 좁은 화면은 터치 블록의 44px 를 지킨다.
+    expect(wide).toMatch(
+      /\.ta-public \.detail-original-link\s*{[^}]*min-height:\s*34px;[^}]*padding:\s*7px 12px;/s,
+    );
+    // 자물쇠 아이콘 옆 제목은 넓은 화면에서만 두 줄로 끊는다.
+    expect(wide).toMatch(
+      /\.ta-public \.score-gate-card h3 span\s*{[^}]*display:\s*block;/s,
+    );
+
+    // 터치 블록이 뒤에 와야 넓은 태블릿에서 44px 가 유지된다.
+    expect(
+      css.indexOf(
+        "@media (min-width: 768px) {\n  .ta-public .detail-original-link",
+      ),
+    ).toBeLessThan(css.indexOf("@media (hover: none) and (pointer: coarse)"));
+  });
+
+  test("가치 점수 카드의 회원가입 안내를 작은 글자에 필요한 대비로 올린다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    const rule = css.match(
+      /\.ta-public \.member-gate-footnote\s*{([^}]*)}/,
+    )?.[1];
+
+    // --gray-500(#6b7280) 은 이 카드 배경에서 3.6:1 로 4.5:1 에 못 미쳤다.
+    expect(rule).toMatch(/color:\s*var\(--gray-400, #9ca3af\);/);
+    expect(rule).toMatch(/font-size:\s*12px;/);
+  });
+
   test("좁은 화면 하단의 보조 문구 크기와 안내 간격을 맞춘다", () => {
     const css = fs.readFileSync(
       path.join(__dirname, "techArticlesPublicAlign.css"),
@@ -840,8 +879,11 @@ describe("Tech Articles CSS 스코프", () => {
     }
 
     // 게이트 밖에서 같은 셀렉터를 넓히면 데스크톱 치수까지 함께 바뀐다.
-    // (공유 버튼의 767px 블록은 별개 규칙이라 그대로 둔다.)
-    const outside = css.replace(gate, "");
+    // (공유 버튼의 767px 블록과 원문 보기의 768px 이상 블록은 폭으로 갈라
+    //  놓은 별개 규칙이라 그대로 둔다.)
+    const outside = css
+      .replace(gate, "")
+      .replace(/@media \(min-width:\s*768px\)\s*{[\s\S]*?\n}/g, "");
     expect(outside).not.toMatch(
       /\.ta-public \.detail-original-link\s*{[^}]*min-height/s,
     );

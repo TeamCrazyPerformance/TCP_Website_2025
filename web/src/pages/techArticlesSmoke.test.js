@@ -683,15 +683,20 @@ describe("공개 화면", () => {
     expect(
       screen.getByRole("region", { name: "원문 및 출처 정보" }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText("로그인하면 가치 점수도 확인할 수 있어요."),
-    ).toBeInTheDocument();
+    expect(document.querySelector(".score-gate-card h3")).toHaveTextContent(
+      "가치 점수는 회원 전용입니다.",
+    );
     expect(screen.queryByText(/가중치를 확인/)).not.toBeInTheDocument();
     expect(screen.queryByRole("meter")).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /로그인하고 점수 보기/ }),
     ).toBeInTheDocument();
+    // 안내는 한 문장으로 끊고 회원가입만 링크로 남깁니다.
+    expect(document.querySelector(".member-gate-footnote")).toHaveTextContent(
+      "아직 회원이 아니라면, 회원가입",
+    );
+    expect(screen.getByRole("link", { name: "회원가입" })).toBeInTheDocument();
   });
 
   test("상세 히어로는 출처·게시 시각을 중복하지 않고 원문 링크와 태그만 남긴다", async () => {
@@ -801,9 +806,7 @@ describe("공개 화면", () => {
     expect(screen.queryByText("최종 기여 점수")).not.toBeInTheDocument();
     expect(screen.queryByText(/가중치/)).not.toBeInTheDocument();
     expect(screen.getByRole("meter")).toBeInTheDocument();
-    expect(
-      screen.queryByText("로그인하면 가치 점수도 확인할 수 있어요."),
-    ).not.toBeInTheDocument();
+    expect(document.querySelector(".score-gate-card")).toBeNull();
   });
 
   test("로그인 응답에 점수가 없으면 로그인 안내 대신 확인 불가로 표시한다", async () => {
@@ -821,9 +824,7 @@ describe("공개 화면", () => {
     expect(
       await screen.findByLabelText("가치 점수를 확인할 수 없음"),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText("로그인하면 가치 점수도 확인할 수 있어요."),
-    ).not.toBeInTheDocument();
+    expect(document.querySelector(".score-gate-card")).toBeNull();
   });
 });
 

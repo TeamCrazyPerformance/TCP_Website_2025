@@ -244,7 +244,11 @@ function TechArticleDetail() {
                         <span className="member-gate-icon" aria-hidden="true">
                           <i className="fas fa-lock"></i>
                         </span>
-                        <h3>로그인하면 가치 점수도 확인할 수 있어요.</h3>
+                        <h3>
+                          {/* 넓은 화면에서만 두 줄로 끊습니다. 끊는 자리를
+                              CSS 가 알 수 있도록 의미 단위로 나눠 둡니다. */}
+                          <span>가치 점수는</span> <span>회원 전용입니다.</span>
+                        </h3>
                       </div>
                       <div className="member-gate-actions">
                         <Link
@@ -260,8 +264,8 @@ function TechArticleDetail() {
                         </Link>
                       </div>
                       <p className="member-gate-footnote">
-                        아직 회원이 아니라면{" "}
-                        <Link to="/register">회원가입</Link>할 수 있습니다.
+                        아직 회원이 아니라면,{" "}
+                        <Link to="/register">회원가입</Link>
                       </p>
                     </div>
                   ) : (
