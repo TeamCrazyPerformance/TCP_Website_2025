@@ -130,8 +130,9 @@ def test_unique_pass_enrichment_immediately_publishes(normalized_payload):
     assert job["status"] == "SUCCEEDED"
     public = repository.list_public_articles(limit=10, offset=0)
     assert len(public) == 1
-    assert public[0]["processingStatus"] == "ENRICHED"
-    assert public[0]["publicationStatus"] == "PUBLISHED"
+    assert public[0]["articleId"]
+    assert "processingStatus" not in public[0]
+    assert "publicationStatus" not in public[0]
 
 
 def test_real_admission_and_quality_modules_connect_to_core(normalized_payload):
@@ -166,8 +167,9 @@ def test_real_admission_and_quality_modules_connect_to_core(normalized_payload):
     score = stored["quality_result"]["qualityEvaluation"]["score"]
     assert [axis["key"] for axis in score["axes"]] == [
         "relevance",
+        "technicalDepth",
         "timeliness",
-        "sourceReliability",
+        "articleQuality",
     ]
     assert summarizer.last_input is not None
     assert set(summarizer.last_input["qualityEvaluation"]["score"]) == {"overall"}

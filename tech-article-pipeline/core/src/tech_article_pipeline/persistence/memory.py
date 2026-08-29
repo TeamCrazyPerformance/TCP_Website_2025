@@ -874,6 +874,42 @@ class MemoryPipelineRepository:
         )
         return projected
 
+    def _project_public_list_article(self, article: dict[str, Any]) -> dict[str, Any]:
+        crawl_item = self.crawl_items.get(str(article.get("crawlItemId")))
+        collected_at = crawl_item.get("produced_at") if crawl_item else None
+        return {
+            "articleId": article.get("articleId"),
+            "title": article.get("title"),
+            "localizedTitle": article.get("localizedTitle"),
+            "oneLineSummary": article.get("oneLineSummary"),
+            "tags": list(article.get("tags") or []),
+            "sourceId": article.get("sourceId"),
+            "canonicalUrl": article.get("canonicalUrl"),
+            "originalPublishedAt": article.get("originalPublishedAt"),
+            "isNew": self._is_new(collected_at),
+        }
+
+    def _project_public_detail_article(self, article: dict[str, Any]) -> dict[str, Any]:
+        crawl_item = self.crawl_items.get(str(article.get("crawlItemId")))
+        collected_at = crawl_item.get("produced_at") if crawl_item else None
+        evaluation = article.get("qualityEvaluation")
+        score = evaluation.get("score") if isinstance(evaluation, dict) else None
+        return {
+            "articleId": article.get("articleId"),
+            "title": article.get("title"),
+            "localizedTitle": article.get("localizedTitle"),
+            "oneLineSummary": article.get("oneLineSummary"),
+            "summaryMarkdown": article.get("summary"),
+            "tags": list(article.get("tags") or []),
+            "sourceId": article.get("sourceId"),
+            "canonicalUrl": article.get("canonicalUrl"),
+            "language": article.get("language"),
+            "originalPublishedAt": article.get("originalPublishedAt"),
+            "collectedAt": collected_at,
+            "qualityScore": article.get("qualityScore"),
+            "score": copy.deepcopy(score),
+        }
+
     def list_public_articles(
         self,
         *,
@@ -896,7 +932,9 @@ class MemoryPipelineRepository:
                 key=lambda item: (self._article_time(item), item.get("articleId", "")),
                 reverse=True,
             )
-            return [self._project_article(item) for item in values[offset : offset + limit]]
+            return [
+                self._project_public_list_article(item) for item in values[offset : offset + limit]
+            ]
 
     def count_public_articles(
         self,
@@ -929,7 +967,7 @@ class MemoryPipelineRepository:
                 or article["publicationStatus"] != "PUBLISHED"
             ):
                 return None
-            return self._project_article(article)
+            return self._project_public_detail_article(article)
 
     def list_articles(
         self,

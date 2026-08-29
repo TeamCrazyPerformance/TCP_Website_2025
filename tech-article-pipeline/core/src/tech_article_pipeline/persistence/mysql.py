@@ -1260,7 +1260,12 @@ class MySQLPipelineRepository:
         where, params = self._article_conditions(
             public_only=True, keyword=keyword, tags=tags, sources=sources
         )
-        return self._list_articles(where, params, limit=limit, offset=offset, sort="NEWEST")
+        return self._list_public_article_summaries(
+            where,
+            params,
+            limit=limit,
+            offset=offset,
+        )
 
     def count_public_articles(
         self,
@@ -1308,15 +1313,30 @@ class MySQLPipelineRepository:
             connection.close()
 
     def get_public_article(self, article_id: str) -> dict[str, Any] | None:
-        rows = self._list_articles(
-            "a.article_id = %s AND a.processing_status = 'ENRICHED' "
-            "AND a.publication_status = 'PUBLISHED'",
-            (article_id,),
-            limit=1,
-            offset=0,
-            sort="NEWEST",
-        )
-        return rows[0] if rows else None
+        connection = self._pool.get_connection()
+        try:
+            cursor = connection.cursor(dictionary=True)
+            try:
+                cursor.execute(
+                    "SELECT a.article_id, a.source_id, a.title, a.language, "
+                    "a.original_published_at, a.canonical_url, a.quality_score, "
+                    "a.localized_title, a.tags, a.one_line_summary, a.summary, "
+                    "ci.produced_at AS collected_at, "
+                    "JSON_EXTRACT(ps.quality_result, "
+                    "'$.qualityEvaluation.score') AS score_payload "
+                    "FROM articles a "
+                    "LEFT JOIN pipeline_submissions ps ON ps.article_id = a.article_id "
+                    "LEFT JOIN crawl_items ci ON ci.crawl_item_id = a.crawl_item_id "
+                    "WHERE a.article_id = %s AND a.processing_status = 'ENRICHED' "
+                    "AND a.publication_status = 'PUBLISHED' LIMIT 1",
+                    (article_id,),
+                )
+                row = cursor.fetchone()
+                return None if row is None else self._public_detail_projection(row)
+            finally:
+                cursor.close()
+        finally:
+            connection.close()
 
     def list_articles(
         self,
@@ -1372,6 +1392,61 @@ class MySQLPipelineRepository:
                 cursor.close()
         finally:
             connection.close()
+
+    def _list_public_article_summaries(
+        self,
+        where: str,
+        params: tuple[Any, ...],
+        *,
+        limit: int,
+        offset: int,
+    ) -> list[dict[str, Any]]:
+        connection = self._pool.get_connection()
+        try:
+            cursor = connection.cursor(dictionary=True)
+            try:
+                cursor.execute(
+                    "SELECT a.article_id, a.source_id, a.title, "
+                    "a.original_published_at, a.canonical_url, a.localized_title, "
+                    "a.tags, a.one_line_summary, ci.produced_at AS collected_at "
+                    "FROM articles a "
+                    "LEFT JOIN crawl_items ci ON ci.crawl_item_id = a.crawl_item_id "
+                    f"WHERE {where} "
+                    "ORDER BY COALESCE(a.original_published_at, a.created_at) DESC, "
+                    "a.article_id DESC LIMIT %s OFFSET %s",
+                    (*params, limit, offset),
+                )
+                return [self._public_list_projection(row) for row in cursor.fetchall()]
+            finally:
+                cursor.close()
+        finally:
+            connection.close()
+
+    @staticmethod
+    def _public_list_projection(row: dict[str, Any]) -> dict[str, Any]:
+        collected_at = _utc(row.get("collected_at"))
+        return {
+            "articleId": row["article_id"],
+            "title": row.get("title"),
+            "localizedTitle": row.get("localized_title"),
+            "oneLineSummary": row.get("one_line_summary"),
+            "tags": _decode(row.get("tags")) or [],
+            "sourceId": row.get("source_id"),
+            "canonicalUrl": row.get("canonical_url"),
+            "originalPublishedAt": _utc(row.get("original_published_at")),
+            "isNew": _is_new(collected_at),
+        }
+
+    @staticmethod
+    def _public_detail_projection(row: dict[str, Any]) -> dict[str, Any]:
+        return {
+            **MySQLPipelineRepository._public_list_projection(row),
+            "summaryMarkdown": row.get("summary"),
+            "language": row.get("language"),
+            "collectedAt": _utc(row.get("collected_at")),
+            "qualityScore": row.get("quality_score"),
+            "score": _decode(row.get("score_payload")),
+        }
 
     def _list_articles(
         self,

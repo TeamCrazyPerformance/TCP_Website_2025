@@ -33,6 +33,7 @@ from tech_article_pipeline.persistence.base import (
 from tech_article_pipeline.runtime import Runtime, build_runtime
 from tech_article_pipeline.settings import Settings
 
+from .public_views import public_detail_article_read, public_list_article_read
 from .security import require_service_token
 
 _LOGGER = logging.getLogger(__name__)
@@ -327,7 +328,7 @@ def create_app(
             asyncio.to_thread(request.app.state.runtime.repository.last_crawled_at),
         )
         return {
-            "items": items,
+            "items": [public_list_article_read(item) for item in items],
             "limit": limit,
             "offset": offset,
             "totalCount": total_count,
@@ -363,9 +364,7 @@ def create_app(
     async def public_sources(request: Request) -> dict[str, Any]:
         """소스 선택기용. 태그와 달리 소스는 계속 늘어나므로 목록 응답에
         얹지 않고 별도로 둡니다 (/public/tags 와 같은 방식)."""
-        counts = await asyncio.to_thread(
-            request.app.state.runtime.repository.public_source_counts
-        )
+        counts = await asyncio.to_thread(request.app.state.runtime.repository.public_source_counts)
         return {
             "items": [
                 {**source, "count": counts.get(source["id"], 0)}
@@ -380,7 +379,7 @@ def create_app(
         )
         if article is None:
             raise HTTPException(status_code=404, detail={"code": "ARTICLE_NOT_FOUND"})
-        return article
+        return public_detail_article_read(article)
 
     @internal.get("/admin/articles")
     async def admin_articles(
