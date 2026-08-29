@@ -454,20 +454,6 @@
   }
 }
 
-/* 좁은 화면에서는 건수와 두 트리거가 한 줄을 나눠 씁니다. 정렬 기준을
-   통째로 빼면 무엇으로 정렬됐는지 알 수 없으므로, 지우는 대신 줄입니다.
-   (카드 구분자와 같은 방식 — 원문은 남고 화면에만 짧은 형태가 보입니다.) */
-@media (max-width: 479px) {
-  .ta-public .result-sort {
-    font-size: 0;
-  }
-
-  .ta-public .result-sort::after {
-    content: " ⋅ 최신순";
-    font-size: 13px;
-  }
-}
-
 /* ── 좁은 화면의 검색 자리 ────────────────────────────────
  * 아래에는 분야 선택 버튼과 검색창만 둡니다. "SEARCH"·"아티클 검색하기"·
  * "분야 선택" 라벨은 화면에서 뺐고, 버튼은 목록 위쪽 트리거와 같은
@@ -719,6 +705,17 @@
 
 .ta-public .article-list-heading .result-summary {
   margin-left: auto;
+}
+
+/* 건수는 테두리도 배경도 없는 글자라, 같은 줄의 소스 선택 버튼과
+   baseline 을 맞추면 버튼 상자 위쪽에 붙어 보입니다. 아래의 분야 선택
+   패널까지 함께 보면 혼자 떠 있는 인상이라, 글자 중심이 버튼 상자
+   가운데에 가깝도록 눈에만 보이는 만큼 내립니다(자리는 그대로). */
+@media (min-width: 768px) {
+  .ta-public .article-list-heading .result-summary {
+    position: relative;
+    top: 12px;
+  }
 }
 
 /* 전체 초기화는 모바일의 선택 버튼 행 안에서만 노출합니다. */

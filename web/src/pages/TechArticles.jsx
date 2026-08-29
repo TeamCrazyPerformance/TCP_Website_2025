@@ -671,7 +671,6 @@ function TechArticles() {
               <span>이곳에서 만나보세요.</span>
             </p>
             <p className="last-collected">
-              <i className="fas fa-clock" aria-hidden="true"></i>
               {/* 새 글이 없을 때 "업데이트"라고 하면 사실이 아니게 됩니다. */}
               <span title={lastCheckedAbsolute}>
                 {lastCheckedRelative
@@ -709,7 +708,7 @@ function TechArticles() {
                           [
                             `전체 ${pagination.totalCount}건`,
                             <span className="result-sort" key="sort">
-                              {" ⋅ 원문 게시일 최신순"}
+                              {" ⋅ 최신순"}
                             </span>,
                           ]
                       : error
@@ -1155,7 +1154,9 @@ function TechArticles() {
             <aside className="source-notice">
               <i className="fas fa-circle-info" aria-hidden="true"></i>
               <div>
-                <h2 className="orbitron">데이터 출처 및 AI 생성 정보 안내</h2>
+                {/* 안내 문구 제목이라 브랜드 서체(Orbitron)를 쓰지 않습니다.
+                    한글 사이에 섞인 "AI"만 다른 글꼴로 튀어 보입니다. */}
+                <h2>데이터 출처 및 AI 생성 정보 안내</h2>
                 <p>
                   TCP는 기술 블로그, 개발자 뉴스·커뮤니티 및 공개 저장소 등 외부
                   출처의 콘텐츠를 수집, 제공합니다. 원문 주소와 출처 정보는 각

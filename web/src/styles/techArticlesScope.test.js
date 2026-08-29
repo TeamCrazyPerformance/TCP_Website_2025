@@ -73,6 +73,16 @@ function collectSelectors(nodes, out = []) {
   return out;
 }
 
+function wideBlocks() {
+  const css = fs.readFileSync(
+    path.join(__dirname, "techArticlesPublicAlign.css"),
+    "utf8",
+  );
+  return [...css.matchAll(/@media \(min-width:\s*768px\)\s*{([\s\S]*?)\n}/g)]
+    .map((m) => m[1])
+    .join("\n");
+}
+
 describe("Tech Articles CSS 스코프", () => {
   const selectorsByFile = {};
 
@@ -590,6 +600,15 @@ describe("Tech Articles CSS 스코프", () => {
     );
     expect(flat).toMatch(
       /\+ \.page-button \+ \.page-button\[aria-current="page"\]:last-child/,
+    );
+  });
+
+  test("넓은 화면에서만 건수 줄을 분야 선택 창 쪽으로 내린다", () => {
+    const wide = wideBlocks();
+
+    // 테두리 없는 글자라 baseline 을 맞추면 버튼 위쪽에 붙어 보인다.
+    expect(wide).toMatch(
+      /\.ta-public \.article-list-heading \.result-summary\s*{[^}]*top:\s*12px;/s,
     );
   });
 

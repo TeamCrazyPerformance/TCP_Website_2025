@@ -278,6 +278,44 @@ describe("공개 화면", () => {
     );
   });
 
+  test("안내 문구 제목은 브랜드 서체를 쓰지 않고 정렬 표기는 짧게 둔다", async () => {
+    api.getTechArticles.mockResolvedValue({
+      items: [],
+      pagination: {
+        currentPage: 1,
+        pageSize: 20,
+        totalCount: 38,
+        totalPages: 2,
+      },
+    });
+    const TechArticles = require("./TechArticles").default;
+    const { container } = renderWithAuth(<TechArticles />);
+    await waitFor(() =>
+      expect(container.querySelector(".result-sort")).not.toBeNull(),
+    );
+
+    // Orbitron 은 라틴 대문자용이라 한글 사이의 "AI"만 다른 글꼴로 튄다.
+    expect(container.querySelector(".source-notice h2")).not.toHaveClass(
+      "orbitron",
+    );
+    // 정렬 표기는 화면 폭과 무관하게 짧은 형태 하나만 쓴다.
+    expect(container.querySelector(".result-sort")).toHaveTextContent("최신순");
+    expect(container.querySelector(".result-sort").textContent).not.toMatch(
+      /원문 게시일/,
+    );
+  });
+
+  test("수집 시각 줄은 아이콘 없이 문장만 남긴다", async () => {
+    const TechArticles = require("./TechArticles").default;
+    const { container } = renderWithAuth(<TechArticles />);
+    await waitFor(() =>
+      expect(container.querySelector(".last-collected")).not.toBeNull(),
+    );
+
+    // 시계 그림은 바로 뒤 문장이 이미 말하는 내용을 되풀이할 뿐입니다.
+    expect(container.querySelector(".last-collected i")).toBeNull();
+  });
+
   test("페이지 표시는 전체 쪽수만 알린다", async () => {
     api.getTechArticles.mockResolvedValue({
       items: [],
