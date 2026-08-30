@@ -19,15 +19,16 @@ from .models import (
     Evaluation,
     QualityEvaluationRequest,
     QualityEvaluationResult,
+    QualityPolicy,
     Score,
     ScoreAxis,
     Signals,
 )
 
 Clock = Callable[[], datetime]
-EVALUATOR_VERSION = "1.1.0"
+EVALUATOR_VERSION = "2.2.6"
 
-# 개편된 4대 평가 축 정의 (총 가중치 100%)
+# 개편된 4대 평가 축 정의 (개발 관련성 35%, 기술적 깊이 30%, 최신성 25%, 기사 품질 10%)
 QUALITY_AXES = (
     {"key": "relevance", "label": "개발 관련성", "weight": 0.35},
     {"key": "technicalDepth", "label": "기술적 깊이", "weight": 0.30},
@@ -140,6 +141,44 @@ DEVELOPER_KEYWORDS = frozenset(
         "jest",
         "cypress",
         "playwright",
+        # [QA 피드백 반영] 대폭 확장된 로우레벨 시스템 / 네트워크 / 성능 최적화 키워드
+        "dns",
+        "cache",
+        "memory",
+        "optimization",
+        "socket",
+        "bpf",
+        "ebpf",
+        "kernel",
+        "linux",
+        "buffer",
+        "allocation",
+        "latency",
+        "throughput",
+        "tcp",
+        "udp",
+        "packet",
+        "network",
+        "process",
+        "thread",
+        "pointer",
+        "struct",
+        "algorithm",
+        "hash table",
+        "lru",
+        "trie",
+        "system",
+        "benchmark",
+        "profiling",
+        "garbage collection",
+        "gc",
+        "cpu",
+        "concurrency",
+        "io",
+        "non-blocking",
+        "event loop",
+        "epoll",
+        "kqueue",
         "개발",
         "개발자",
         "프로그래밍",
@@ -187,7 +226,7 @@ def _utcnow() -> datetime:
 
 
 class QualityEvaluator:
-    """Deterministic implementation of the 35/30/25/10 scoring policy with LLM depth and 48h half-life."""
+    """Deterministic implementation of the updated 35/30/25/10 scoring policy with LLM depth and 48h half-life."""
 
     def __init__(self, *, clock: Clock = _utcnow) -> None:
         self._clock = clock
@@ -311,7 +350,7 @@ class QualityEvaluator:
 
     @staticmethod
     def evaluate_developer_relevance(article: Article) -> int:
-        """TF-IDF Sigmoid (math.tanh) 키워드 밀도 알고리즘 (가중치 40%)"""
+        """TF-IDF Sigmoid (math.tanh) 키워드 밀도 알고리즘 (가중치 35%)"""
         if NON_ARTICLE_PATTERN.search(article.title):
             return 0
         if len(article.content.strip()) < 200:
@@ -325,15 +364,50 @@ class QualityEvaluator:
             count = text.count(keyword)
             if count:
                 tf_sum += 1.0 + math.log(count)
-        return round(100.0 * math.tanh(55.0 * (tf_sum / len(tokens))))
+        return round(100.0 * math.tanh(75.0 * (tf_sum / len(tokens))))
 
     @staticmethod
     def evaluate_technical_depth_llm(article: Article, api_key: str | None = None) -> int:
-        """LLM API 연동 기술적 깊이 분석 (가중치 30%, 미설정/실패 시 Fallback 50점)"""
-        effective_key = api_key or os.environ.get("OPENAI_API_KEY") or os.environ.get("LLM_API_KEY")
+        """LLM API 연동 기술적 깊이 분석 (Gemini 및 OpenAI 모두 지원, 미설정/실패 시 Fallback 50점)"""
+        effective_key = (
+            api_key
+            or os.environ.get("GEMINI_API_KEY")
+            or os.environ.get("LLM_API_KEY")
+            or os.environ.get("OPENAI_API_KEY")
+        )
         if not effective_key:
             return 50
 
+        # Gemini API 키 (AIza, AQ 또는 GEMINI/LLM 키)
+        if effective_key:
+            try:
+                model_name = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={effective_key}"
+                prompt = (
+                    f"Evaluate technical depth from 0 to 100 for this article.\n"
+                    f"Title: {article.title}\n"
+                    f"Content snippet: {article.content[:1500]}\n"
+                    f'Return JSON: {{"depth_score": number}}'
+                )
+                payload = {
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {"response_mime_type": "application/json"},
+                }
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                )
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    res_data = json.loads(response.read().decode("utf-8"))
+                    res_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
+                    parsed = json.loads(res_text)
+                    score = int(parsed.get("depth_score", 50))
+                    return max(0, min(100, score))
+            except Exception:
+                pass
+
+        # OpenAI API 호출 (Fallback)
         try:
             url = "https://api.openai.com/v1/chat/completions"
             headers = {
@@ -352,9 +426,7 @@ class QualityEvaluator:
                 "temperature": 0.1,
                 "response_format": {"type": "json_object"},
             }
-            req = urllib.request.Request(
-                url, data=json.dumps(payload).encode("utf-8"), headers=headers
-            )
+            req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
             with urllib.request.urlopen(req, timeout=5) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
                 res_text = res_data["choices"][0]["message"]["content"]
@@ -366,7 +438,7 @@ class QualityEvaluator:
 
     @staticmethod
     def evaluate_timeliness(published_at: datetime | None, evaluated_at: datetime) -> int:
-        """48시간 반감기(Half-Life) 지수 곡선 수식 적용 (가중치 20%)"""
+        """48시간 반감기(Half-Life) 지수 곡선 수식 적용 (가중치 25%)"""
         if published_at is None:
             return 50
         published = published_at.astimezone(UTC)
