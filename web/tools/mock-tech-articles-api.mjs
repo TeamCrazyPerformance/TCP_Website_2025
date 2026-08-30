@@ -239,7 +239,9 @@ const articles = Array.from({ length: ARTICLE_COUNT }, (_, index) => {
     ),
     oneLineSummary: pick(SUMMARIES),
     summaryMarkdown: markdown(originalTitle),
-    tags: pickN(TAGS, intBetween(2, 4)),
+    // 요약기의 maximumTagCount 기본값이 3 입니다(contracts/models.py).
+    // 4개짜리 목 데이터는 실제로 나올 수 없는 화면을 만들어 냅니다.
+    tags: pickN(TAGS, intBetween(1, 3)),
     source: {
       id: source.id,
       name: source.name,

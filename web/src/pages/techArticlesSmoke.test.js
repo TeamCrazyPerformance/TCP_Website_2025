@@ -401,6 +401,128 @@ describe("공개 화면", () => {
     expect(container.querySelector("#mobileResetAllButton")).toBeNull();
   });
 
+  test("분야 시트의 동작은 소스 대화상자와 같은 초기화·적용 둘뿐이다", async () => {
+    const TechArticles = require("./TechArticles").default;
+    const { container } = renderWithAuth(<TechArticles />);
+    await waitFor(() =>
+      expect(container.querySelector("#filterDialog .sheet-actions")).not.toBeNull(),
+    );
+
+    const sheetButtons = [
+      ...container.querySelectorAll("#filterDialog .sheet-actions button"),
+    ];
+    expect(sheetButtons.map((button) => button.textContent)).toEqual([
+      "초기화",
+      "적용",
+    ]);
+    // 형태까지 같아야 두 창이 같은 결로 읽힌다.
+    const dialogButtons = [
+      ...container.querySelectorAll(".source-dialog-actions button"),
+    ];
+    expect(sheetButtons.map((button) => button.className)).toEqual(
+      dialogButtons.map((button) => button.className),
+    );
+
+    // 취소는 지웠다. 오른쪽 위 닫기와 바깥쪽 누르기가 이미 같은 일을 하고,
+    // 소스 대화상자에도 없어 두 창의 결이 어긋났다.
+    expect(
+      container.querySelector("#filterDialog .sheet-actions").textContent,
+    ).not.toMatch(/취소/);
+    expect(container.querySelector("#filterDialog .sheet-close")).not.toBeNull();
+  });
+
+  test("비로그인 상세는 점수 안내 다음에 로그인 동작을 보여 준다", async () => {
+    api.getTechArticle.mockResolvedValueOnce({
+      id: "article-1",
+      title: "비회원 아티클",
+      summaryMarkdown: "상세 요약",
+      tags: [],
+      source: { name: "InfoQ", domain: "infoq.com" },
+    });
+    const TechArticleDetail = require("./TechArticleDetail").default;
+    const { container } = renderWithAuth(<TechArticleDetail />);
+
+    const description = await waitFor(() => {
+      const found = container.querySelector(".score-gate-description");
+      expect(found).not.toBeNull();
+      return found;
+    });
+    const gate = description.closest(".score-gate-card");
+    const actions = gate.querySelector(".member-gate-actions");
+    const footnote = gate.querySelector(".member-gate-footnote");
+
+    expect(gate.firstElementChild).toBe(description);
+    expect(description.nextElementSibling).toBe(actions);
+    expect(actions.nextElementSibling).toBe(footnote);
+    expect(description.textContent.replace(/\s+/g, " ").trim()).toBe(
+      "Tech Articles에서는 AI를 활용해 아티클을 분석하고, 가치 점수를 산정하여 제공하고 있어요.",
+    );
+    // 개행 자리는 CSS 가 정한다. 문장을 한 덩어리로 두면 폭에 따라
+    // 아무 데서나 접힌다.
+    expect(description.querySelectorAll("span")).toHaveLength(2);
+    expect(container.querySelector(".score-gate-card h3")).toBeNull();
+    expect(container.querySelector(".member-gate-icon")).toBeNull();
+    expect(container.querySelector(".score-card .scenario-eyebrow")).toBeNull();
+    expect(container.querySelector(".source-card .scenario-eyebrow")).toBeNull();
+    expect(container).not.toHaveTextContent("가치 점수는 회원 전용입니다.");
+  });
+
+  test("소스 항목은 아이콘 없이 이름·도메인·건수만 보여준다", async () => {
+    const TechArticles = require("./TechArticles").default;
+    const { container } = renderWithAuth(<TechArticles />);
+    await waitFor(() =>
+      expect(container.querySelector(".source-option")).not.toBeNull(),
+    );
+
+    const option = container.querySelector(".source-option");
+    // 여섯 색 표식은 소스를 뜻하지 않으면서 옆의 분야 태그와 같은 색
+    // 언어를 써서 두 축이 섞여 보였다.
+    expect(option.querySelector(".source-icon")).toBeNull();
+    expect(option.querySelector("img")).toBeNull();
+
+    expect(option.querySelector(".source-option-text strong")).toHaveTextContent(
+      "InfoQ",
+    );
+    expect(option.querySelector(".source-option-text small")).toHaveTextContent(
+      "infoq.com",
+    );
+    expect(option.querySelector(".source-option-count")).toHaveTextContent("3");
+  });
+
+  test("소스 선택 창도 바깥쪽을 누르면 분야 시트처럼 닫힌다", async () => {
+    const TechArticles = require("./TechArticles").default;
+    const { container } = renderWithAuth(<TechArticles />);
+    await waitFor(() =>
+      expect(container.querySelector(".source-dialog")).not.toBeNull(),
+    );
+
+    const sourceDialog = container.querySelector(".source-dialog");
+    const filterDialog = container.querySelector("#filterDialog");
+
+    fireEvent.click(
+      container.querySelector(".article-list-heading .source-trigger"),
+    );
+    await waitFor(() => expect(sourceDialog.open).toBe(true));
+
+    // 대화상자 자신이 대상일 때만 닫는다. 안쪽을 눌러도 닫히면 소스를
+    // 고르는 도중에 창이 사라진다.
+    fireEvent.click(container.querySelector(".source-dialog-inner"));
+    expect(sourceDialog.open).toBe(true);
+
+    fireEvent.click(sourceDialog);
+    await waitFor(() => expect(sourceDialog.open).toBe(false));
+
+    // 같은 자리의 분야 시트와 같은 동작이어야 한다.
+    fireEvent.click(
+      container.querySelector(".article-list-heading .mobile-filter-button"),
+    );
+    await waitFor(() => expect(filterDialog.open).toBe(true));
+    fireEvent.click(container.querySelector(".filter-sheet"));
+    expect(filterDialog.open).toBe(true);
+    fireEvent.click(filterDialog);
+    await waitFor(() => expect(filterDialog.open).toBe(false));
+  });
+
   test("소스 대화상자의 되돌리기 버튼은 초기화로 표기한다", async () => {
     const TechArticles = require("./TechArticles").default;
     const { container } = renderWithAuth(<TechArticles />);
@@ -639,6 +761,123 @@ describe("공개 화면", () => {
     });
   });
 
+  test("상세의 목록으로 돌아가기는 보던 목록 주소와 카드 위치로 되돌린다", async () => {
+    // 목록 첫 화면이 아니라 조건이 걸린 2차 화면에서 들어간 상황입니다.
+    mockLocation = {
+      pathname: "/tech-articles",
+      search: "?q=react",
+      state: null,
+      key: "list-key",
+    };
+    api.getTechArticles.mockResolvedValue({
+      items: [
+        {
+          id: "article-1",
+          title: "돌아갈 아티클",
+          oneLineSummary: "복귀 테스트",
+          tags: ["AI"],
+          source: { name: "InfoQ" },
+          originalPublishedAt: "2026-08-25T00:00:00Z",
+        },
+      ],
+      pagination: {
+        currentPage: 1,
+        pageSize: 20,
+        totalCount: 1,
+        totalPages: 1,
+      },
+    });
+    api.getTechArticle.mockResolvedValue({
+      id: "article-1",
+      title: "돌아갈 아티클",
+      summaryMarkdown: "## 요약",
+      tags: ["AI"],
+      source: { name: "InfoQ", domain: "infoq.com" },
+    });
+
+    let cardTop = 240;
+    const originalGetBoundingClientRect =
+      Element.prototype.getBoundingClientRect;
+    Object.defineProperty(Element.prototype, "getBoundingClientRect", {
+      configurable: true,
+      value: function getBoundingClientRect() {
+        if (this.matches?.(".article-card[data-article-id]")) {
+          return { top: cardTop };
+        }
+        return originalGetBoundingClientRect.call(this);
+      },
+    });
+    const scrollTo = jest.fn();
+    Object.defineProperty(window, "scrollTo", {
+      configurable: true,
+      value: scrollTo,
+    });
+    Object.defineProperty(window, "scrollY", {
+      configurable: true,
+      value: 0,
+    });
+
+    const TechArticles = require("./TechArticles").default;
+    const listRender = renderWithAuth(<TechArticles />);
+    const articleLink = await screen.findByRole("link", {
+      name: "돌아갈 아티클",
+    });
+    fireEvent.click(articleLink.closest("article"));
+    listRender.unmount();
+
+    // 상세는 아티클 흐름을 벗어날 때만 복귀 정보를 버립니다. jsdom 의 기본
+    // 주소는 "/" 라, 실제 이동처럼 아티클 경로를 먼저 맞춰 둡니다.
+    window.history.replaceState(null, "", "/tech-articles/article-1");
+
+    // 상세의 링크는 목록 첫 화면이 아니라 조건이 걸린 그 주소를 가리킨다.
+    const TechArticleDetail = require("./TechArticleDetail").default;
+    const detailRender = renderWithAuth(<TechArticleDetail />);
+    const backLink = await waitFor(() => {
+      const link = detailRender.container.querySelector(".back-to-list-link");
+      expect(link).toHaveAttribute("href", "/tech-articles?q=react");
+      return link;
+    });
+    expect(backLink).toHaveTextContent("아티클 목록으로 돌아가기");
+    detailRender.unmount();
+
+    // 링크를 따라가면 뒤로가기가 아닌 새 이동(PUSH)이지만, 링크가 함께 보낸
+    // 표시 덕분에 읽던 카드가 화면의 같은 자리로 돌아온다.
+    mockNavigationType = "PUSH";
+    mockLocation = {
+      pathname: "/tech-articles",
+      search: "?q=react",
+      state: { restoreListPosition: true },
+      key: "pushed-key",
+    };
+    cardTop = 900;
+    window.history.replaceState(null, "", "/tech-articles?q=react");
+    renderWithAuth(<TechArticles />);
+
+    await waitFor(() =>
+      expect(scrollTo).toHaveBeenCalledWith({ top: 660, behavior: "auto" }),
+    );
+    // 한 번 쓰고 나면 복귀 정보는 즉시 비운다.
+    expect(sessionStorage.length).toBe(0);
+
+    Object.defineProperty(Element.prototype, "getBoundingClientRect", {
+      configurable: true,
+      value: originalGetBoundingClientRect,
+    });
+  });
+
+  test("주소로 바로 연 상세는 목록 첫 화면으로 돌아간다", async () => {
+    const TechArticleDetail = require("./TechArticleDetail").default;
+    const { container } = renderWithAuth(<TechArticleDetail />);
+
+    await waitFor(() =>
+      expect(container.querySelector(".back-to-list-link")).not.toBeNull(),
+    );
+    expect(container.querySelector(".back-to-list-link")).toHaveAttribute(
+      "href",
+      "/tech-articles",
+    );
+  });
+
   test("아티클 상세가 .ta-public 스코프로 렌더된다", async () => {
     const TechArticleDetail = require("./TechArticleDetail").default;
     const { container } = renderWithAuth(<TechArticleDetail />);
@@ -683,7 +922,9 @@ describe("공개 화면", () => {
     expect(
       screen.getByRole("region", { name: "원문 및 출처 정보" }),
     ).toBeInTheDocument();
-    expect(document.querySelector(".score-gate-card h3")).toHaveTextContent(
+    expect(document.querySelector(".score-gate-card h3")).toBeNull();
+    expect(document.querySelector(".member-gate-icon")).toBeNull();
+    expect(document.body).not.toHaveTextContent(
       "가치 점수는 회원 전용입니다.",
     );
     expect(screen.queryByText(/가중치를 확인/)).not.toBeInTheDocument();
@@ -724,7 +965,12 @@ describe("공개 화면", () => {
     const hero = container.querySelector(".detail-hero");
     expect(hero.textContent).not.toMatch(/원출처/);
     expect(hero.textContent).not.toMatch(/원문 게시/);
-    expect(hero.querySelector("#heroOriginalLink")).not.toBeNull();
+    const originalLink = hero.querySelector("#heroOriginalLink");
+    expect(originalLink).not.toBeNull();
+    // 라벨은 "원문" 두 글자다. 옆의 아이콘이 이미 새 창으로 나간다는 뜻을
+    // 전하고 있어 "보기"는 자리만 차지했다.
+    expect(originalLink).toHaveTextContent("원문");
+    expect(originalLink.textContent).not.toMatch(/원문 보기/);
     const detailShareButton = hero.querySelector(".detail-share-button");
     expect(detailShareButton).not.toBeNull();
     expect(detailShareButton).not.toHaveTextContent("공유");
@@ -733,9 +979,27 @@ describe("공개 화면", () => {
       "aria-label",
       "공개 아티클 세부 페이지 공유",
     );
-    expect(hero.querySelector("#heroOriginalLink").nextElementSibling).toBe(
-      detailShareButton,
+    // 공유가 앞, 원문이 오른쪽 끝. 원문이 주 동작이라 손이 먼저 닿는
+    // 자리를 준다.
+    expect(detailShareButton.nextElementSibling).toBe(originalLink);
+
+    // 두 동작은 한 묶음 안에 있어야 좁은 화면에서 줄이 바뀔 때 공유 버튼만
+    // 홀로 떨어지지 않는다. 태그는 그 묶음 밖의 형제로 남아 같은 줄에 선다.
+    const actions = hero.querySelector(".detail-info-actions");
+    expect(actions).not.toBeNull();
+    expect(actions.contains(originalLink)).toBe(true);
+    expect(actions.contains(detailShareButton)).toBe(true);
+    expect(actions.parentElement).toBe(hero.querySelector(".detail-info-items"));
+    expect(hero.querySelector(".detail-tags").parentElement).toBe(
+      actions.parentElement,
     );
+
+    // 분류가 왼쪽, 누를 것이 오른쪽. CSS 로 순서를 뒤집지 않으므로
+    // 마크업 순서가 곧 화면 순서다.
+    expect(
+      [...actions.parentElement.children].map((node) => node.className),
+    ).toEqual(["detail-tags", "detail-info-actions"]);
+
     expect(hero.querySelectorAll(".detail-tags .article-tag")).toHaveLength(2);
 
     // 지운 정보는 사이드바 출처 카드가 계속 책임진다. 양쪽이 함께 사라지면
@@ -744,6 +1008,28 @@ describe("공개 화면", () => {
     expect(sourceCard.textContent).toMatch(/출처/);
     expect(sourceCard.textContent).toMatch(/원문 게시/);
     expect(sourceCard.querySelector("#sourceName").textContent).toBe("InfoQ");
+  });
+
+  test("상세 안내 문구 제목도 목록 화면과 같은 서체를 쓴다", async () => {
+    api.getTechArticle.mockResolvedValue({
+      id: "article-1",
+      title: "안내 서체 확인",
+      summaryMarkdown: "## 요약",
+      tags: [],
+      source: { name: "InfoQ", domain: "infoq.com" },
+    });
+
+    const TechArticleDetail = require("./TechArticleDetail").default;
+    const { container } = renderWithAuth(<TechArticleDetail />);
+
+    const heading = await waitFor(() => {
+      const found = container.querySelector(".source-notice h2");
+      expect(found).not.toBeNull();
+      return found;
+    });
+    // Orbitron 은 라틴 대문자용이라 한글 사이의 "AI"만 다른 글꼴로 튄다.
+    expect(heading).not.toHaveClass("orbitron");
+    expect(heading).toHaveTextContent("데이터 출처 및 AI 생성 정보 안내");
   });
 
   test("출처 카드는 원문 URL을 맨 앞에 두고 정해진 순서로 보여준다", async () => {
@@ -778,6 +1064,43 @@ describe("공개 화면", () => {
       "원문 게시",
       "TCP 수집",
     ]);
+
+    // 주소 자체가 이미 링크로 보이고 바로 아래 출처 이름도 링크다.
+    // 줄마다 아이콘이 붙으면 카드가 아이콘 목록처럼 읽힌다.
+    const originalUrl = container.querySelector("#sourceOriginalLink");
+    expect(originalUrl).toHaveAttribute("href", "https://infoq.com/article-1");
+    expect(originalUrl.querySelector("i")).toBeNull();
+    expect(container.querySelector("#sourceOriginalUrlText")).toHaveTextContent(
+      "infoq.com/article-1",
+    );
+
+    // 출처는 이름 한 줄만 두고, 그 이름이 매체 사이트로 가는 링크다.
+    // 도메인은 바로 위 "원문 URL" 줄이 이미 싣고 있다.
+    const siteLink = container.querySelector("#sourceSiteLink");
+    expect(siteLink).toHaveAttribute("href", "https://infoq.com");
+    expect(siteLink).toHaveAttribute("target", "_blank");
+    expect(siteLink).toHaveAttribute("rel", "noopener noreferrer");
+    expect(siteLink.querySelector("#sourceName")).toHaveTextContent("InfoQ");
+    expect(container.querySelector("#sourceDomain")).toBeNull();
+  });
+
+  test("출처 도메인을 모르면 이름을 링크로 감싸지 않는다", async () => {
+    api.getTechArticle.mockResolvedValueOnce({
+      id: "article-1",
+      title: "도메인 없는 아티클",
+      summaryMarkdown: "상세 요약",
+      tags: [],
+      source: { name: "사내 위키" },
+    });
+    const TechArticleDetail = require("./TechArticleDetail").default;
+    const { container } = renderWithAuth(<TechArticleDetail />);
+
+    await waitFor(() =>
+      expect(container.querySelector("#sourceName")).not.toBeNull(),
+    );
+    expect(container.querySelector("#sourceName")).toHaveTextContent("사내 위키");
+    // 갈 곳이 없는 링크를 만들면 눌러 봐야 아무 일도 일어나지 않는다.
+    expect(container.querySelector("#sourceSiteLink")).toBeNull();
   });
 
   test("로그인 상세는 공개 표시용 점수와 기여도만 보여준다", async () => {

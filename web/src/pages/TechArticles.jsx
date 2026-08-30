@@ -75,55 +75,9 @@ function readSources(searchParams) {
     .filter(Boolean);
 }
 
-// 소스는 남의 브랜드라 아이콘과 도메인을 함께 보여줍니다. 분야 태그와 모양이
-// 같으면 사용자가 같은 축으로 착각하는데, 이 둘은 서로 다른 질문에 답합니다.
-// (분야: 무엇에 관한 글인가 / 소스: 누가 쓴 글인가)
-//
-// 아이콘은 우리 서버에서만 가져옵니다. 외부 파비콘 서비스를 쓰면 방문자
-// 브라우저가 그 서비스에 직접 요청하게 되어, IP 와 "지금 보는 소스"가 제3자로
-// 전송됩니다. 개인정보처리방침이 "외부 전송을 하지 않는다"고 밝히고 있으므로
-// 그 약속과 어긋납니다.
-//
-// public/images/sources/{id}.png 를 두면 그 이미지를 쓰고, 없으면 이름 첫 글자로
-// 만든 표식으로 떨어집니다. 새 소스를 추가할 때 이미지를 안 넣어도 화면은
-// 깨지지 않습니다.
-const MONOGRAM_TONES = 6;
-
-// 글자 코드 합으로 색을 고릅니다. 이름 길이로 고르면 글자 수가 같은 소스끼리
-// 색이 겹칩니다 ("Cloudflare Blog" 와 "GitHub Trending" 이 둘 다 15자).
-function monogramTone(label) {
-  let sum = 0;
-  for (let i = 0; i < label.length; i += 1) sum += label.charCodeAt(i);
-  return sum % MONOGRAM_TONES;
-}
-
-function SourceIcon({ id, name, domain }) {
-  const [failed, setFailed] = useState(false);
-  const label = (name || domain || "?").trim();
-  if (!id || failed) {
-    // 같은 소스는 언제나 같은 색이 됩니다.
-    const tone = monogramTone(label);
-    return (
-      <span
-        className={`source-icon source-icon-monogram tone-${tone}`}
-        aria-hidden="true"
-      >
-        {label.slice(0, 1).toUpperCase()}
-      </span>
-    );
-  }
-  return (
-    <img
-      className="source-icon"
-      src={`/images/sources/${id}.png`}
-      alt=""
-      loading="lazy"
-      width="20"
-      height="20"
-      onError={() => setFailed(true)}
-    />
-  );
-}
+// 소스는 이름과 도메인으로만 구분합니다. 아이콘은 여섯 색 표식으로 떨어지는
+// 경우가 많았는데, 그 색은 소스를 뜻하지 않으면서 옆의 분야 태그와 같은
+// 색 언어를 써서 두 축이 섞여 보였습니다. 이름이 이미 하는 일입니다.
 
 // 소스가 늘어나도 견디도록 검색을 답니다. 목록을 눈으로 훑어 찾는 방식은
 // 스무 개를 넘어가면 무너집니다.
@@ -148,7 +102,17 @@ function SourcePickerDialog({
       )
     : sources;
   return (
-    <dialog className="source-dialog" ref={dialogRef} onClose={onClose}>
+    <dialog
+      className="source-dialog"
+      ref={dialogRef}
+      onClose={onClose}
+      // 바깥쪽을 누르면 닫습니다. 분야 선택 시트가 이미 같은 방식이라,
+      // 여기만 닫히지 않으면 같은 자리의 두 창이 서로 다르게 굽니다.
+      // 대화상자 자신이 대상일 때만 반응하므로 안쪽 클릭은 지나갑니다.
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
       <form method="dialog" className="source-dialog-inner">
         <header className="source-dialog-header">
           <h2>소스 선택</h2>
@@ -188,11 +152,6 @@ function SourcePickerDialog({
                     type="checkbox"
                     checked={checked}
                     onChange={() => onToggle(source.id)}
-                  />
-                  <SourceIcon
-                    id={source.id}
-                    name={source.name}
-                    domain={source.domain}
                   />
                   <span className="source-option-text">
                     <strong>{source.name}</strong>
@@ -426,13 +385,20 @@ function TechArticles() {
     if (!returnState) return;
 
     const listPath = `${location.pathname}${location.search || ""}`;
-    const shouldRestore =
-      navigationType === "POP" &&
-      returnState.listPath === listPath &&
-      returnState.listLocationKey === (location.key || "default");
 
-    // 화면 안의 "목록으로 돌아가기"나 헤더 링크는 새 목록 이동(PUSH)입니다.
-    // 이때는 기존 상단 이동 정책을 유지하고 남아 있던 복원 정보만 버립니다.
+    // 두 가지 경로로 복원합니다.
+    //   1) 브라우저 뒤로가기 — 같은 기록 항목으로 돌아오므로 기록 키까지 맞습니다.
+    //   2) 상세의 "아티클 목록으로 돌아가기" — 새 기록 항목(PUSH)이라 키는 다르지만,
+    //      그 링크가 저장해 둔 목록 주소를 그대로 요청하며 이 표시를 함께 보냅니다.
+    // 헤더의 메뉴처럼 표시가 없는 목록 이동은 지금처럼 목록 시작점으로 갑니다.
+    const requestedRestore = Boolean(location.state?.restoreListPosition);
+    const shouldRestore =
+      returnState.listPath === listPath &&
+      (requestedRestore ||
+        (navigationType === "POP" &&
+          returnState.listLocationKey === (location.key || "default")));
+
+    // 복원 대상이 아니면 기존 상단 이동 정책을 유지하고 남은 정보만 버립니다.
     if (!shouldRestore) {
       releaseArticleListReturn(returnState);
       return;
@@ -466,6 +432,7 @@ function TechArticles() {
     location.key,
     location.pathname,
     location.search,
+    location.state,
     navigationType,
   ]);
 
@@ -1240,9 +1207,13 @@ function TechArticles() {
             onToggle={toggleDraftTag}
             label="분야 선택 항목"
           />
+          {/* 소스 선택 대화상자와 같은 "초기화 / 적용" 두 동작만 둡니다.
+              취소 버튼은 지웁니다 — 오른쪽 위 닫기와 바깥쪽 누르기가 이미
+              같은 일을 하고, 소스 쪽에는 없어 두 창의 결이 어긋났습니다. */}
           <div className="sheet-actions">
             <button
               id="clearDraftTagsButton"
+              className="source-reset"
               type="button"
               onClick={() => {
                 setDraftTags([]);
@@ -1252,12 +1223,9 @@ function TechArticles() {
             >
               초기화
             </button>
-            <button type="button" onClick={() => setFilterOpen(false)}>
-              취소
-            </button>
             <button
               id="applyTagsButton"
-              className="cta-button"
+              className="source-apply"
               type="button"
               disabled={!tagsChanged}
               onClick={() => {
@@ -1265,7 +1233,7 @@ function TechArticles() {
                 applyConditions({ nextTags: draftTags, scroll: false });
               }}
             >
-              선택 조건으로 보기
+              적용
             </button>
           </div>
         </div>

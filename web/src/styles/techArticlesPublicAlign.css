@@ -77,9 +77,13 @@
  * 공용 Header 는 fixed + h-16(64px). 기존 공개 페이지는 첫 섹션에 pt-24(96px).
  * 목록 화면은 .page-hero 가 이미 96px 이라 그대로 맞음.
  * 상세 화면은 .detail-main 이 목업 sticky 헤더 높이 64px 만 가져 헤더에 붙음.
- * 같은 특정도이므로 나중에 로드되는 이 규칙이 적용됨. */
+ * 같은 특정도이므로 나중에 로드되는 이 규칙이 적용됨.
+ *
+ * 고정 헤더(64px) 아래 16px 만 비웁니다. 목록 화면(.page-hero, 32px)보다
+ * 좁은 것은 여기 첫 요소가 제목이 아니라 "아티클 목록으로 돌아가기" 한 줄
+ * 링크이기 때문입니다. 폭에 관계없이 같은 값을 씁니다. */
 .ta-public .detail-main {
-  padding-top: 6rem;
+  padding-top: 5rem;
 }
 
 /* ── 목록 첫 화면의 수직 리듬 ──────────────────────────────
@@ -122,8 +126,11 @@
   --article-tag-tone-11: #75aea4;
   --article-tag-tone-12: #579c8f;
   --article-tag-tone-13: #7ba672;
-  --article-tag-tone-14: #ab915d;
-  --article-tag-tone-15: #b8b077;
+  /* 14·15 는 올리브(40°)와 노랑(53°)이었습니다. NEW 배지가 같은 계열의
+     노랑(#fde68a, 48°)이라 목록에서 배지와 태그가 서로 신호를 다투었습니다.
+     배지 쪽이 훨씬 드물게 나타나는 신호라 태그를 차가운 쪽으로 옮깁니다. */
+  --article-tag-tone-14: #8ba0d6;
+  --article-tag-tone-15: #9dc3d8;
 }
 
 /* ── 목록·상세 태그 팔레트 ────────────────────────────────
@@ -240,6 +247,25 @@
   font-weight: 500;
 }
 
+/* 분야 선택 창의 면은 rgba(17, 24, 39, .72) 였습니다. 목록 섹션이
+   --gray-900(#111827) 쪽으로 흐르는 그라디언트라, 아래로 갈수록 면이
+   배경과 같아지고 위에서는 회색 얼룩처럼 떠 보였습니다. 그라디언트의
+   어느 지점에서도 같게 보이도록 불투명한 짙은 남색으로 고정합니다.
+   상세의 동작 버튼과 같은 계열이라 화면 전체의 결이 맞습니다.
+   값은 섹션 위쪽(#0a0a0a)과 거의 같은 밝기입니다. 아래로 갈수록 배경이
+   #111827 로 밝아지므로, 창은 그만큼 가라앉아 보입니다. */
+/* 창의 면과 테두리는 같은 값을 씁니다. 분야 선택 창·소스 선택 창·분야
+   시트가 한 벌로 읽혀야 하는데, 셋이 서로 다른 회색을 쓰고 있었습니다.
+   테두리는 옅은 파랑(rgba(147,197,253,.22) → 합성 #27354c)이라 면보다
+   1.57배 밝아 선만 떠 보였습니다. 같은 남색 계열의 1.17배로 낮춥니다.
+   창의 경계를 알아볼 수 있는 최소한만 남기는 값입니다. */
+.ta-public .category-filter-panel,
+.ta-public .source-dialog-inner,
+.ta-public .filter-sheet {
+  background: #080d1a;
+  border: 1px solid #171e33;
+}
+
 /* 건수와 정렬 기준은 목록을 훑기 전에 가장 먼저 확인하는 값인데, 옆의 큰
    제목에 눌려 부차 정보처럼 읽혔습니다. 한 단계만 키웁니다. 좁은 폭의
    13px 도 같은 폭만큼 올립니다(생성 파일의 479px 규칙을 덮어씁니다). */
@@ -327,23 +353,91 @@
   }
 
   /* 활성 버튼과 혼동되지 않도록 색과 동작 효과를 함께 낮춥니다. */
-  .ta-public .sheet-actions .cta-button:disabled,
-  .ta-public .sheet-actions .cta-button:disabled:hover {
-    color: #9ca3af;
-    background: #374151;
+  /* 생성 파일의 .cta-button 은 비활성에도 그라디언트와 그림자를 남깁니다.
+     시트의 적용 버튼은 이제 .source-apply 라 그 규칙에 걸리지 않습니다. */
+  .ta-public .sheet-actions .source-apply:disabled {
     box-shadow: none;
-    cursor: not-allowed;
     filter: none;
     opacity: 1;
     transform: none;
   }
 }
 
-/* 목록에서는 제거한 공유 동작을 모바일 상세의 원문 보기 옆에서만
-   제공합니다. 태그를 동작보다 먼저 배치하고, 데스크톱 버튼의 조밀한
-   치수를 가져와 두 동작이 과하게 퍼져 보이지 않도록 합니다. */
+/* 목록에서는 제거한 공유 동작을 상세 히어로에서 제공합니다. 아이콘만
+   두는 것은 옆의 "원문"이 주 동작이기 때문입니다. 글자를 붙이면 둘이
+   같은 무게로 읽혀 어느 쪽을 눌러야 할지 한 번 더 생각하게 됩니다. */
 .ta-public .detail-share-button {
-  display: none;
+  display: inline-flex;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* 공유와 원문은 한 덩어리로 움직입니다. auto 여백으로 오른쪽 끝에 붙여
+   왼쪽의 태그와 갈라 둡니다. 줄이 바뀌어도 각 줄에서 다시 오른쪽으로
+   붙으므로 폭이 좁아져도 배치가 흐트러지지 않습니다. */
+.ta-public .detail-info-actions {
+  display: inline-flex;
+  margin-left: auto;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── 좁은 화면 상세의 세로 리듬 ────────────────────────────
+ * 헤더 아래부터 본문까지가 안내와 여백으로만 채워져 있었습니다.
+ *
+ *   헤더(64px) ─32px─ [목록으로 돌아가기] … 제목 ─14px─ 태그 ─8px─ 원문 보기
+ *   … 히어로 아래 24px + 본문 위 28px = 52px ─ 아티클 본문
+ *
+ * 돌아가기 링크는 제목이 아니라 보조 조작이므로 헤더와의 거리를 좁힙니다.
+ * 제목과 분류·동작은 12px로 묶고, 실제 본문 섹션의 위쪽은 좌우 컨테이너와
+ * 같은 16px로 열어 카드가 세 방향에서 같은 여백을 갖게 합니다.
+ *
+ *   헤더(64px) ─16px─ [목록으로 돌아가기] … 제목 ─12px─ [태그 · 원문 · 공유]
+ *   ─25px(히어로 9px + 본문 위 16px)─ 아티클 본문
+ *
+ * 히어로 아래 경계선은 두 영역 사이를 계속 구분합니다. */
+@media (max-width: 767px) {
+  .ta-public .detail-hero {
+    padding-top: 8px;
+    padding-bottom: 9px;
+  }
+
+  .ta-public .detail-content-section {
+    padding-top: 16px;
+  }
+
+  .ta-public .detail-info-row {
+    margin-top: 12px;
+  }
+
+  /* 태그와 동작 묶음은 기본적으로 한 줄입니다. 열 간격은 그 둘 사이,
+     행 간격은 폭이 모자라 두 층으로 갈렸을 때의 간격입니다.
+
+     가로 배치는 아래 블록이 이미 되돌려 둡니다(생성 파일이 639px 아래에서
+     이 줄을 세로로 세웁니다). */
+  .ta-public .detail-info-items {
+    gap: 12px;
+  }
+
+  /* 상세의 태그는 제목 바로 아래에서 한 줄을 통째로 쓰는데, 목록 카드보다
+     크게 잡혀 있어 분류가 제목만큼 무겁게 읽혔습니다. 카드 태그(9px)와
+     데스크톱 상세(11px) 사이로 한 단계만 낮춥니다. */
+  .ta-public .detail-tags .article-tag {
+    min-height: 22px;
+    padding: 3px 7px;
+    font-size: 10px;
+  }
+
 }
 
 @media (max-width: 767px) {
@@ -354,34 +448,53 @@
 
   .ta-public .detail-share-button {
     display: inline-flex;
-    width: 34px;
-    min-width: 34px;
-    height: 34px;
-    min-height: 34px;
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+    min-height: 32px;
     padding: 0;
     align-items: center;
     justify-content: center;
     border-radius: 6px;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     line-height: 1;
   }
 
+  /* 누를 것을 먼저, 분류를 나중에 둡니다. 마크업 순서가 이미 원문 · 공유 ·
+     태그라 order 를 주지 않는 것이 곧 그 순서입니다.
+
+     flex 는 줄을 나눌지 먼저 정한 뒤에야 항목을 줄이므로, 셋이 들어가면
+     한 줄에 서고 폭이 모자랄 때만 "원문+공유 / 태그" 두 층으로 갈립니다.
+     동작 묶음은 줄이지 않아(flex: 0 0 auto) 버튼이 찌그러지지 않습니다. */
   .ta-public .detail-info-items .detail-tags {
-    order: -1;
-    flex-basis: 100%;
+    flex-basis: auto;
   }
 
+  .ta-public .detail-info-actions {
+    flex: 0 0 auto;
+    gap: 6px;
+  }
+
+  /* 태그 칩(10px / 22px)보다 충분히 크게 둡니다. 태그는 읽는 값이고 이
+     둘은 누르는 자리라, 같은 크기로 맞추면 손가락이 겨눌 표적이 사라집니다. */
   .ta-public .detail-original-link {
-    min-height: 34px;
-    padding: 7px 12px;
+    min-height: 32px;
+    padding: 6px 10px;
+    align-items: center;
+    gap: 5px;
     border-radius: 6px;
     font-size: 12px;
   }
 
-  /* 시각적인 버튼은 작게 유지하되, 위아래 실제 터치 영역은 44px로
-     확보합니다. 요소 사이 간격 안에서만 넓어져 서로 겹치지 않습니다. */
+  .ta-public .detail-original-link i,
+  .ta-public .detail-share-button i {
+    font-size: 11px;
+  }
+
+  /* 보이는 버튼은 32px 로 두되, 위아래 실제 터치 영역은 44px 로 확보합니다.
+     요소 사이 간격 안에서만 넓어져 서로 겹치지 않습니다. */
   .ta-public .detail-original-link,
   .ta-public .detail-share-button {
     position: relative;
@@ -390,7 +503,7 @@
   .ta-public .detail-original-link::after,
   .ta-public .detail-share-button::after {
     position: absolute;
-    inset: -5px 0;
+    inset: -6px 0;
     content: "";
   }
 }
@@ -399,17 +512,19 @@
    태그 칩보다도 납작하게 눌려 보였습니다. 상세 화면의 주 행동이므로
    모바일과 같은 34px 높이로 맞춥니다. */
 @media (min-width: 768px) {
-  .ta-public .detail-original-link {
-    min-height: 34px;
-    padding: 7px 12px;
+  /* 헤더 아래 16px + 여기 20px = 36px. 생성 파일의 36px 은 좁은 화면의
+     28px 과 함께 첫 요소가 제목이라는 가정에서 나온 값이었습니다. */
+  .ta-public .detail-hero {
+    padding-top: 20px;
   }
 
-  /* 넓은 화면에서는 자물쇠 아이콘 오른쪽에 폭이 남아 한 줄로 흘렀습니다.
-     "가치 점수는 / 회원 전용입니다."로 끊어 아이콘 높이와 균형을 맞춥니다.
-     좁은 화면은 폭이 알아서 접어 주므로 건드리지 않습니다. */
-  .ta-public .score-gate-card h3 span {
-    display: block;
+  .ta-public .detail-original-link {
+    min-height: 34px;
+    /* 라벨이 "원문" 두 글자라 12px 좌우 여백은 글자보다 여백이 넓어
+       보였습니다. 높이는 그대로 두고 폭만 조입니다. */
+    padding: 7px 10px;
   }
+
 }
 
 /* ── 터치 기기 조작 영역 ──────────────────────────────────
@@ -434,10 +549,19 @@
     min-width: 44px;
   }
 
-  /* 출처 카드의 원문 URL 링크가 19px 높이였습니다. */
+  /* 출처 카드의 링크만 44px 로 부풀어, 원문 URL 줄이 옆의 다른 항목보다
+     두 배 높아 보였습니다. 보이는 줄 높이는 다른 항목과 같게 두고 터치
+     영역만 위아래로 넓힙니다. 항목 사이 간격이 11px 이라 ±8px 까지는
+     이웃 줄의 글자를 덮지 않습니다. */
   .ta-public .source-card .source-details dd a {
-    min-height: 44px;
+    position: relative;
     align-items: center;
+  }
+
+  .ta-public .source-card .source-details dd a::after {
+    position: absolute;
+    inset: -8px 0;
+    content: "";
   }
 }
 
@@ -718,10 +842,9 @@
 /* ── 소스 선택 ────────────────────────────────────────────
  * 분야 태그와 다른 축입니다. 태그는 "무엇에 관한 글인가", 소스는 "누가 쓴
  * 글인가" — 같은 모양으로 나열하면 사용자가 하나의 축으로 읽습니다.
- * 그래서 필터 패널 밖, 목록 바로 위에 두고 아이콘과 도메인을 함께 씁니다.
+ * 그래서 필터 패널 밖, 목록 바로 위에 두고 이름과 도메인을 함께 씁니다.
  * 모서리도 다르게 둡니다(태그 pill 999px / 소스 8px). 모양 차이는 넷일 때만
- * 통하지만, 아이콘과 도메인은 소스가 수십 개가 되어도 유효한 구분 수단입니다.
- * 아이콘은 우리 서버에서만 가져옵니다 — images/sources/README.md 참고. */
+ * 통하지만, 이름과 도메인은 소스가 수십 개가 되어도 유효한 구분 수단입니다. */
 /* 소스 선택 버튼은 목록 머리글의 오른쪽 끝에 붙입니다. 버튼만 있는 줄을
    따로 두면 건수 줄과 목록 사이에 빈 띠가 생깁니다.
 
@@ -743,13 +866,13 @@
 }
 
 /* 건수는 테두리도 배경도 없는 글자라, 같은 줄의 소스 선택 버튼과
-   baseline 을 맞추면 버튼 상자 위쪽에 붙어 보입니다. 아래의 분야 선택
-   패널까지 함께 보면 혼자 떠 있는 인상이라, 글자 중심이 버튼 상자
-   가운데에 가깝도록 눈에만 보이는 만큼 내립니다(자리는 그대로). */
+   baseline 을 맞추면 버튼 상자 위쪽에 붙어 보입니다. 12px 로는 아래의 분야
+   선택 창까지 함께 볼 때 여전히 위로 떠 보여서, 두 조작 사이의 세로 가운데에
+   놓이도록 한 단계 더 내립니다. 눈에만 보이는 이동이라 자리는 그대로입니다. */
 @media (min-width: 768px) {
   .ta-public .article-list-heading .result-summary {
     position: relative;
-    top: 12px;
+    top: 20px;
   }
 }
 
@@ -893,8 +1016,12 @@
     font-size: 17px;
   }
 
+  /* 제목이 17px 로 내려온 만큼 배지도 함께 내립니다. 좁은 화면에서는
+     배지가 제목 첫 줄의 폭을 그대로 빼앗아 제목이 한 줄 더 접힙니다. */
   .ta-public .article-card .article-new-badge {
     margin-right: 10px;
+    padding: 3px 6px;
+    font-size: 9px;
   }
 
   /* 요약과 메타를 하나의 인라인 흐름으로 둡니다. 플렉스로 나란히 두면
@@ -1001,45 +1128,6 @@
   display: inline-flex;
 }
 
-.ta-public .source-icon {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  object-fit: contain;
-  flex: 0 0 auto;
-}
-
-/* 소스 이미지가 없을 때의 표식. 외부 파비콘 서비스를 부르지 않으므로
-   새 소스를 추가하면서 이미지를 안 넣어도 화면이 비지 않습니다. */
-.ta-public .source-icon-monogram {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #0b1220;
-  font-size: 10px;
-  font-weight: 800;
-  line-height: 1;
-}
-
-.ta-public .source-icon-monogram.tone-0 {
-  background: #a8c5e6;
-}
-.ta-public .source-icon-monogram.tone-1 {
-  background: #c5a8e6;
-}
-.ta-public .source-icon-monogram.tone-2 {
-  background: #86efac;
-}
-.ta-public .source-icon-monogram.tone-3 {
-  background: #fde68a;
-}
-.ta-public .source-icon-monogram.tone-4 {
-  background: #fca5a5;
-}
-.ta-public .source-icon-monogram.tone-5 {
-  background: #a5d8e6;
-}
-
 /* ── 소스 선택 대화상자 ───────────────────────────────────
  * 검색을 답니다. 목록을 눈으로 훑어 찾는 방식은 스무 개를 넘으면 무너집니다.
  *
@@ -1067,9 +1155,9 @@
   max-height: min(560px, calc(100vh - 32px));
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid var(--gray-700, #374151);
   border-radius: 12px;
-  background: var(--gray-900, #111827);
+  /* 면과 테두리는 세 창이 함께 쓰는 위쪽 규칙이 정합니다. 여기서 다시
+     적으면 이 파일 뒤쪽이라는 이유만으로 그 값을 덮습니다. */
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
   color: var(--gray-200, #e5e7eb);
 }
@@ -1143,10 +1231,12 @@
   list-style: none;
 }
 
+/* 아이콘을 걷어낸 뒤로는 이 간격이 곧 체크상자와 이름 사이입니다.
+   10px 은 체크상자에 이름이 붙어 한 덩어리처럼 보였습니다. */
 .ta-public .source-option {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
   padding: 9px 10px;
   border-radius: 8px;
   cursor: pointer;
@@ -1178,9 +1268,12 @@
   font-size: 11px;
 }
 
+/* 이 줄에서 유일하게 비교하며 읽는 값입니다. 12px 회색이라 소스 이름과
+   도메인 사이에 묻혀 있었습니다. 도메인(11px)보다 확실히 크게 둡니다. */
 .ta-public .source-option-count {
-  color: var(--gray-400, #9ca3af);
-  font-size: 12px;
+  color: #b6bec9;
+  font-size: 14px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1240,8 +1333,27 @@
 
 /* 시트의 주 동작 버튼도 같은 옅은 그라디언트 위에 흰 글자였습니다
    (1.78~2.08:1). 같은 이유로 어두운 글자로 바꿉니다. */
-.ta-public .sheet-actions .cta-button {
+/* 분야 시트도 소스 대화상자와 같은 "초기화 / 적용" 두 동작을 씁니다.
+   생성 파일이 세 칸 그리드를 잡아 두었으니 배치부터 되돌립니다. */
+.ta-public .sheet-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* 생성 파일의 .sheet-actions button 이 .source-apply 보다 구체적이라
+   시트 안에서만 적용 버튼의 면을 다시 올려 줍니다. 초기화는 그 규칙의
+   회색이 .source-reset 과 같은 값이라 따로 손대지 않습니다. */
+.ta-public .sheet-actions .source-apply {
   color: #0b1220;
+  background: var(--accent-blue, #3b82f6);
+}
+
+.ta-public .sheet-actions .source-apply:disabled,
+.ta-public .sheet-actions .source-apply:disabled:hover {
+  color: #9ca3af;
+  background: #374151;
+  cursor: not-allowed;
 }
 
 /* ── 좁은 화면의 대화상자 형태 통일 ───────────────────────
@@ -1258,53 +1370,76 @@
     padding: 0;
   }
 
-  .ta-public .source-dialog-inner {
+  /* 두 창은 같은 자리에서 같은 일을 합니다. 아래 네 묶음은 그래서 모두
+     두 선택자를 함께 적습니다 — 한쪽만 고치면 다시 어긋납니다.
+
+     ① 껍데기. 시트 자신이 여백을 갖고 통째로 스크롤하던 것을, 대화상자와
+     같이 여백 없는 세 층(머리글·본문·동작)으로 바꿉니다. 본문만 스크롤해야
+     목록이 길어져도 머리글과 버튼이 화면에 남습니다. */
+  .ta-public .source-dialog-inner,
+  .ta-public .filter-sheet {
+    display: flex;
     width: 100%;
     max-height: 82vh;
+    padding: 0;
+    flex-direction: column;
+    overflow: hidden;
     border-width: 1px 0 0;
     border-radius: 12px 12px 0 0;
   }
 
-  /* 두 시트의 동작 버튼 크기를 맞춥니다. 시트 버튼은 글자 크기를 따로
-     주지 않아 본문 16px 를 그대로 물려받고 있었습니다.
-
-     3등분 그리드도 문제였습니다. 360px 화면에서 한 칸이 101px 뿐이라
-     "선택 조건으로 보기"가 두 줄로 접히고, 그리드가 높이를 맞추면서
-     세 버튼이 모두 75px 로 커졌습니다. 보조 두 개는 글자 폭으로 두고
-     주 동작이 남은 자리를 갖게 합니다(소스 대화상자의 배치와 같은 결). */
-  .ta-public .sheet-actions {
-    margin-top: 18px;
-    grid-template-columns: auto auto 1fr;
-    gap: 8px;
+  /* ② 머리글. 제목이 16px/700 과 18px 로, 닫기 버튼의 세로 정렬이
+     center 와 start 로 서로 달랐습니다. */
+  .ta-public .source-dialog-header,
+  .ta-public .filter-sheet-heading {
+    display: flex;
+    margin: 0;
+    padding: 16px 18px 12px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
   }
 
-  .ta-public .sheet-actions button {
+  .ta-public .source-dialog-header h2,
+  .ta-public .filter-sheet-heading h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  /* ③ 본문. 소스 목록과 같은 좌우 여백을 쓰고 여기서만 스크롤합니다. */
+  .ta-public .filter-sheet .tag-filter-list {
+    padding: 0 18px 12px;
+    overflow-y: auto;
+  }
+
+  /* ④ 동작. 시트는 여백 없이 24px 아래에 떠 있고 버튼은 8px 10px,
+     대화상자는 경계선 위 12px 18px 16px 에 버튼 9px 18px 이었습니다. */
+  .ta-public .sheet-actions,
+  .ta-public .source-dialog-actions {
+    display: flex;
+    margin: 0;
+    padding: 12px 18px 16px;
+    justify-content: space-between;
+    gap: 10px;
+    border-top: 1px solid #171e33;
+  }
+
+  .ta-public .sheet-actions button,
+  .ta-public .source-dialog-actions button {
+    position: relative;
     min-height: 38px;
-    padding: 8px 10px;
+    padding: 9px 18px;
     font-size: 13px;
-    font-weight: 600;
   }
 
   /* 38px 는 손가락 기준 44px 에 6px 모자랍니다. 보이는 크기는 그대로
      두고 닿는 영역만 넓힙니다(목록 화면의 트리거와 같은 방식). */
-  .ta-public .sheet-actions button,
-  .ta-public .source-dialog-actions button {
-    position: relative;
-  }
-
   .ta-public .sheet-actions button::after,
   .ta-public .source-dialog-actions button::after {
     position: absolute;
     inset: -4px 0;
     content: "";
-  }
-
-  .ta-public .filter-sheet {
-    padding: 20px;
-  }
-
-  .ta-public .filter-sheet-heading h2 {
-    font-size: 18px;
   }
 }
 
@@ -1325,7 +1460,9 @@
   position: relative;
   top: -1px;
   display: inline-block;
-  margin-right: 18px;
+  /* 배지와 제목은 한 제목 줄을 이루는 한 덩어리입니다. 18px 은 둘을 다른
+     정보처럼 떼어 놓아서, 좁은 화면(10px)과 같은 리듬으로 좁힙니다. */
+  margin-right: 12px;
   padding: 4px 7px;
   border-radius: 4px;
   background: var(--warning, #fde68a);
@@ -1339,38 +1476,23 @@
 
 /* 비회원도 요약과 출처는 읽고, 가치 점수 카드 안에서만 로그인 안내를 봅니다. */
 .ta-public .score-gate-card {
-  margin-top: 18px;
-  padding: 20px;
+  margin-top: 14px;
+  padding: 16px;
   background: rgba(17, 24, 39, 0.72);
   border: 1px solid rgba(147, 197, 253, 0.2);
   border-radius: 10px;
 }
 
-.ta-public .score-gate-heading {
-  display: flex;
-  margin-bottom: 18px;
-  align-items: center;
-  gap: 12px;
-}
-
-.ta-public .score-gate-card .member-gate-icon {
-  display: grid;
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
-  place-content: center;
-  color: var(--accent-blue);
-  background: rgba(30, 58, 138, 0.34);
-  border: 1px solid rgba(147, 197, 253, 0.18);
-  border-radius: 11px;
-  font-size: 17px;
-}
-
-.ta-public .score-gate-card h3 {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 700;
-  line-height: 1.45;
+/* 로그인 동작에 앞서 가치 점수의 의미를 설명합니다. 넓은 화면은 본문의
+   읽기 방향에 맞춰 왼쪽, 좁은 화면은 버튼과 같은 가운데 축을 사용합니다.
+   한글은 어절 단위로 끊습니다. */
+.ta-public .score-gate-description {
+  margin: 0 0 14px;
+  color: #aeb6c2;
+  font-size: 14px;
+  line-height: 1.65;
+  text-align: left;
+  word-break: keep-all;
 }
 
 .ta-public .member-gate-actions {
@@ -1400,8 +1522,8 @@
    필요한 4.5:1 에 못 미쳤습니다. 회원가입으로 가는 유일한 안내라 한 단계
    밝히고(#9ca3af, 7.0:1) 크기도 한 단계 올립니다. */
 .ta-public .member-gate-footnote {
-  margin: 14px 0 0;
-  padding-top: 12px;
+  margin: 12px 0 0;
+  padding-top: 10px;
   color: var(--gray-400, #9ca3af);
   border-top: 1px solid rgba(148, 163, 184, 0.12);
   font-size: 12px;
@@ -1419,22 +1541,73 @@
   text-decoration: none;
 }
 
-/* ── 보조 동작 버튼 배색 ──────────────────────────────────
- * 원문 보기·공유 버튼은 진한 남색 면(rgba(30, 58, 138, 0.2))을 깔고
- * 있었습니다. 거의 검은 배경 위에서 이 면은 파란 얼룩처럼 떠 보이고,
- * 상세 화면에서 채도를 낮춰 둔 나머지 팔레트와도 계열이 어긋납니다.
- * 면을 걷어내고 글자와 같은 계열의 얇은 테두리만 남깁니다. 강조는
- * hover·focus 에서만 들어옵니다. */
+/* ── 좁은 화면의 가치 점수 잠금 카드 ──────────────────────
+ * 사이드바가 본문 폭을 그대로 쓰는 폭이라, 넓은 화면의 값을 그대로 두면
+ * 한 문장이 화면을 가로지르고 버튼이 끝에서 끝까지 늘어납니다.
+ *
+ * 선택자를 .score-gate-card 아래로 한 단계 좁혀 둡니다. 같은 특정도로
+ * 적으면 이 블록이 기본 규칙보다 앞에 놓이는 순간 조용히 밀립니다 —
+ * 실제로 한 번 그렇게 무효가 된 적이 있습니다. */
+@media (max-width: 767px) {
+  .ta-public .score-gate-card .score-gate-description {
+    font-size: 15px;
+    text-align: center;
+  }
+
+  /* 끊는 자리를 CSS 가 알 수 있도록 마크업이 의미 단위로 나눠 두었습니다. */
+  .ta-public .score-gate-card .score-gate-description span {
+    display: block;
+  }
+
+  .ta-public .score-gate-card .member-gate-actions {
+    justify-content: center;
+  }
+
+  .ta-public .score-gate-card .member-gate-primary {
+    width: auto;
+    padding: 10px 18px;
+    font-size: 14px;
+  }
+}
+
+/* ── 상세 히어로의 동작 버튼 배색 ─────────────────────────
+ * 테두리만 있는 투명 버튼이라 제목 아래에서 눌리는 자리로 읽히지 않고,
+ * 옆의 태그 칩(채워진 면)과도 형태가 어긋났습니다. 사이트의 강조색과 같은
+ * 계열인 짙은 남색 면을 깔고 글자와 아이콘을 밝은 청백색으로 둡니다.
+ * 순백(#fff)은 거의 검은 배경 위에서 눈이 부시고, 면도 #1e3a8a 는 주변보다
+ * 1.85배 밝아 버튼만 떠 보였습니다. 면을 1.09배까지 — 배경과 거의 같은
+ * 밝기까지 — 낮추고 글자는 흰색에서 한 단계 내립니다. 이 정도로 어두워지면
+ * 면이 아니라 테두리가 버튼의 윤곽을 맡지만, 상세 히어로에는 누를 것이 이
+ * 둘뿐이라 형태만으로 충분히 찾힙니다. 글자는 면 위 대비 12.5:1 입니다.
+ *
+ * 목록 카드의 .share-button 은 여기 넣지 않습니다. 그쪽은 카드에 손을
+ * 올렸을 때만 드러나는 보조 아이콘이라, 채운 면을 주면 카드마다 파란
+ * 점이 찍혀 제목보다 먼저 눈에 들어옵니다. */
 .ta-public .detail-original-link,
-.ta-public .detail-share-button,
+.ta-public .detail-share-button {
+  color: #cfdaf0;
+  background: #0f1830;
+  border: 1px solid rgba(147, 197, 253, 0.22);
+}
+
+.ta-public .detail-original-link i,
+.ta-public .detail-share-button i {
+  color: inherit;
+}
+
+.ta-public .detail-original-link:hover,
+.ta-public .detail-share-button:hover {
+  color: #eaf1ff;
+  background: #1a2c5c;
+  border-color: rgba(191, 219, 254, 0.4);
+}
+
 .ta-public .article-card .share-button {
   color: var(--accent-blue);
   background: transparent;
   border: 1px solid rgba(168, 197, 230, 0.26);
 }
 
-.ta-public .detail-original-link:hover,
-.ta-public .detail-share-button:hover,
 .ta-public .article-card .share-button:hover {
   color: #e3edf8;
   background: rgba(168, 197, 230, 0.12);
@@ -1478,11 +1651,6 @@
 .ta-public .score-card h2,
 .ta-public .source-card h2 {
   font-size: 18px;
-}
-
-.ta-public .score-card .scenario-eyebrow,
-.ta-public .source-card .scenario-eyebrow {
-  margin-bottom: 6px;
 }
 
 .ta-public .score-summary {
@@ -1549,7 +1717,6 @@
   --detail-title-text: #d9dee7;
   --detail-emphasis-text: #d8dee7;
   --detail-reading-text: #c8ced8;
-  --detail-muted-accent: #ad9cbd;
   --detail-score-accent: #80c69b;
 }
 
@@ -1585,8 +1752,7 @@
   color: var(--detail-emphasis-text);
 }
 
-.ta-public .detail-sidebar h2,
-.ta-public .score-gate-card h3 {
+.ta-public .detail-sidebar h2 {
   color: var(--detail-title-text);
 }
 
@@ -1600,10 +1766,6 @@
 
 .ta-public .detail-source-notice h2 {
   color: var(--detail-title-text);
-}
-
-.ta-public .detail-sidebar .scenario-eyebrow {
-  color: var(--detail-muted-accent);
 }
 
 /* 출처 정보는 보조 위계를 유지하되 비활성 문구처럼 흐려 보이지 않게 합니다. */
@@ -1621,8 +1783,10 @@
   color: #aeb6c2;
 }
 
+/* dd strong 규칙이 더 구체적이라, 이름을 링크로 감싸면 강조색을 잃습니다. */
 .ta-public .source-card .source-details dd a,
-.ta-public .source-card .source-details dd a span {
+.ta-public .source-card .source-details dd a span,
+.ta-public .source-card .source-details dd a strong {
   color: var(--accent-blue);
 }
 

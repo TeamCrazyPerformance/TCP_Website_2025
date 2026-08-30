@@ -51,6 +51,8 @@ DB 없이 화면을 확인할 때 씁니다. 로컬 로그인 화면에서는 �
 | `evaluationOf()` | 관리자 화면용 자기설명형 `score.axes`와 레거시 점수 호환 형태 |
 | `publicValueScoreOf()` | 공개 화면용 `overall`, `scale`, 표시명·기여도만 있는 `breakdown` |
 | 공개 상세의 헤더 분기 | NestJS Optional JWT 응답(`valueScore`는 회원 요청에만 포함) |
+| 아티클당 태그 개수 | 요약기의 `maximumTagCount`(`contracts/models.py` 기본값 3) |
+| `TAGS` | 요약기의 `ALLOWED_TAGS` 15개 |
 
 공개 목록·상세 목 응답도 운영 API와 같은 allowlist를 사용한다. 따라서 공개 목록의
 `source`에는 `name/domain`만, 상세에는 여기에 `path/articleUrl`만 추가되며 소스 ID·방식,
