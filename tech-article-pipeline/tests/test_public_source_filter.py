@@ -77,6 +77,7 @@ def test_public_catalog_carries_category_for_every_source():
 
 def test_known_source_ids_matches_catalog():
     assert known_source_ids() == {s["id"] for s in public_source_catalog()}
+    assert "apple-newsroom" not in known_source_ids()
 
 
 # ── 소스 필터 ─────────────────────────────────────────────

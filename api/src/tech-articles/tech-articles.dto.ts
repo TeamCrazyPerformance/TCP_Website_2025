@@ -240,8 +240,25 @@ export class PublicationPolicyDto {
 }
 
 export class CrawlSourceDto {
-  @IsIn(['cloudflare-blog', 'infoq', 'sdtimes', 'github-trending'])
-  sourceId: 'cloudflare-blog' | 'infoq' | 'sdtimes' | 'github-trending';
+  @IsIn([
+    'cloudflare-blog',
+    'infoq',
+    'sdtimes',
+    'github-trending',
+    'tailscale-blog',
+    'rust-blog',
+    'hugging-face-blog',
+    'deepmind-blog',
+  ])
+  sourceId:
+    | 'cloudflare-blog'
+    | 'infoq'
+    | 'sdtimes'
+    | 'github-trending'
+    | 'tailscale-blog'
+    | 'rust-blog'
+    | 'hugging-face-blog'
+    | 'deepmind-blog';
 
   @IsIn(['RSS', 'WEB_CRAWL', 'API'])
   sourceType: 'RSS' | 'WEB_CRAWL' | 'API';
@@ -306,7 +323,16 @@ export class CrawlRunQueryDto extends PageQueryDto {
   @IsOptional()
   status?: string;
 
-  @IsIn(['cloudflare-blog', 'infoq', 'sdtimes', 'github-trending'])
+  @IsIn([
+    'cloudflare-blog',
+    'infoq',
+    'sdtimes',
+    'github-trending',
+    'tailscale-blog',
+    'rust-blog',
+    'hugging-face-blog',
+    'deepmind-blog',
+  ])
   @IsOptional()
   sourceId?: string;
 

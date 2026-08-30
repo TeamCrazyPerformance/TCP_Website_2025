@@ -65,8 +65,9 @@ file and affected service configuration if readiness fails.
 
 Automatic crawling is disabled by default. When enabled, the NestJS scheduler
 checks the current KST calendar day every ten minutes and idempotently queues
-five profiles: Cloudflare Blog RSS, InfoQ News RSS, InfoQ Articles RSS, SD Times
-RSS, and GitHub Trending Daily web crawl.
+nine profiles: Cloudflare Blog RSS, InfoQ News RSS, InfoQ Articles RSS, SD Times
+RSS, GitHub Trending Daily web crawl, Tailscale Blog RSS, Rust Blog Atom,
+Hugging Face Blog RSS, and DeepMind Blog RSS.
 The normal run starts at 00:00 KST. Each profile checks at most 10 articles from
 the previous 48 hours unless the corresponding root environment tuning values
 are changed. GitHub is the exception: it always selects exactly the daily Top
@@ -79,6 +80,10 @@ A profile that fails to enqueue is retried on a later check without repeating
 profiles that already succeeded. Enabling the setting can create new articles
 and, under the `IMMEDIATE` publication policy, expose eligible articles
 publicly.
+
+DeepMind entries may redirect from `deepmind.google` to `blog.google`. That target
+is allowed only for entries discovered through the official DeepMind RSS feed, and
+the crawler loads and enforces `blog.google/robots.txt` before following the redirect.
 
 GitHub README requests are deliberately unauthenticated, so no token or new
 secret is configured. Before enabling unattended crawling, operators must

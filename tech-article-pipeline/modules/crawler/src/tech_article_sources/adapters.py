@@ -2,9 +2,17 @@ from __future__ import annotations
 
 import asyncio
 import threading
+from collections.abc import Callable
 from datetime import datetime
 from typing import Any, Protocol
 
+from feed_article_pipeline import (
+    FEED_SOURCE_PROFILES,
+    FeedArticlePipeline,
+    FeedFetchError,
+    FeedHttpClient,
+    FeedSourceProfile,
+)
 from github_trending_pipeline import (
     CrawlOptions as GitHubTrendingCrawlOptions,
 )
@@ -317,6 +325,42 @@ class GitHubTrendingSourceAdapter:
         )
 
 
+class FeedArticleSourceAdapter:
+    """Runs a fixed-host RSS/Atom source through the shared feed pipeline."""
+
+    def __init__(
+        self,
+        profile: FeedSourceProfile,
+        *,
+        user_agent: str,
+        http_factory: Callable[..., FeedHttpClient] = FeedHttpClient,
+    ) -> None:
+        self.profile = profile
+        self.user_agent = user_agent
+        self.http_factory = http_factory
+
+    def run(self, crawl_run_id: str, request: dict[str, Any]) -> CrawlBatch:
+        options = _options(request)
+        http = self.http_factory(
+            self.profile,
+            user_agent=self.user_agent,
+            timeout_seconds=options["requestTimeoutMs"] / 1000,
+        )
+        try:
+            result = FeedArticlePipeline(self.profile, http).run(crawl_run_id, request)
+        except FeedFetchError as exc:
+            raise SourceAdapterError(exc.code, str(exc), retryable=exc.retryable) from exc
+        except (KeyError, TypeError, ValueError) as exc:
+            raise SourceAdapterError(
+                "SOURCE_REQUEST_INVALID", str(exc), retryable=False
+            ) from exc
+        return CrawlBatch(
+            completion=result.crawl_run_completed,
+            crawl_items=result.crawl_items,
+            normalized_articles=result.normalized_articles,
+        )
+
+
 class SourceAdapterRegistry:
     def __init__(self, adapters: dict[str, SourceAdapter]) -> None:
         self._adapters = dict(adapters)
@@ -329,21 +373,28 @@ class SourceAdapterRegistry:
         user_agent = "TCP-Tech-Article-Pipeline/0.2"
         if public_url and contact:
             user_agent = f"TCP-Tech-Article-Pipeline/0.2 (+{public_url}; contact={contact})"
-        return cls(
+        adapters: dict[str, SourceAdapter] = {
+            "cloudflare-blog": CloudflareSourceAdapter(
+                public_url=public_url, contact=contact
+            ),
+            "infoq": InfoQSourceAdapter(user_agent=user_agent),
+            "sdtimes": SDTimesSourceAdapter(
+                crawler=SDTimesCrawler(user_agent=user_agent)
+            ),
+            "github-trending": GitHubTrendingSourceAdapter(
+                public_url=public_url,
+                contact=contact,
+            ),
+        }
+        adapters.update(
             {
-                "cloudflare-blog": CloudflareSourceAdapter(
-                    public_url=public_url, contact=contact
-                ),
-                "infoq": InfoQSourceAdapter(user_agent=user_agent),
-                "sdtimes": SDTimesSourceAdapter(
-                    crawler=SDTimesCrawler(user_agent=user_agent)
-                ),
-                "github-trending": GitHubTrendingSourceAdapter(
-                    public_url=public_url,
-                    contact=contact,
-                ),
+                source_id: FeedArticleSourceAdapter(
+                    profile, user_agent=user_agent
+                )
+                for source_id, profile in FEED_SOURCE_PROFILES.items()
             }
         )
+        return cls(adapters)
 
     @property
     def source_ids(self) -> tuple[str, ...]:

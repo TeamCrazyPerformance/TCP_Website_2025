@@ -400,6 +400,10 @@ export class TechArticlesService {
       ],
       sdtimes: ['RSS:NEWS', 'WEB_CRAWL:NEWS', 'API:NEWS'],
       'github-trending': ['WEB_CRAWL:REPOSITORIES'],
+      'tailscale-blog': ['RSS:BLOG'],
+      'rust-blog': ['RSS:BLOG'],
+      'hugging-face-blog': ['RSS:BLOG'],
+      'deepmind-blog': ['RSS:BLOG'],
     };
     const capability = `${dto.source.sourceType}:${dto.source.sectionKey}`;
     if (!allowed[dto.source.sourceId].includes(capability)) {

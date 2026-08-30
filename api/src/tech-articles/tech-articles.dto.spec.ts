@@ -52,4 +52,29 @@ describe('tech article DTO validation', () => {
 
     expect(await validate(dto)).toHaveLength(0);
   });
+
+  it.each([
+    ['tailscale-blog', 'BLOG'],
+    ['rust-blog', 'BLOG'],
+    ['hugging-face-blog', 'BLOG'],
+    ['deepmind-blog', 'BLOG'],
+  ])('accepts the new RSS source literal %s', async (sourceId, sectionKey) => {
+    const dto = plainToInstance(CrawlRunDto, {
+      source: { sourceId, sourceType: 'RSS', sectionKey },
+    });
+
+    expect(await validate(dto)).toHaveLength(0);
+  });
+
+  it('rejects Apple Newsroom as a crawl source', async () => {
+    const dto = plainToInstance(CrawlRunDto, {
+      source: {
+        sourceId: 'apple-newsroom',
+        sourceType: 'RSS',
+        sectionKey: 'NEWS',
+      },
+    });
+
+    expect(await validate(dto)).not.toHaveLength(0);
+  });
 });
