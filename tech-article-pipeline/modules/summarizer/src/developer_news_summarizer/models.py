@@ -70,26 +70,14 @@ class DeveloperNewsInput(ContractModel):
     generation_options: GenerationOptions = Field(alias="generationOptions")
 
 
-class GeneratedSummaryPoint(ContractModel):
-    label: str
-    detail: str
-
-
-class GeneratedDeveloperNote(GeneratedSummaryPoint):
-    note_type: Literal[
-        "impact", "application", "constraint", "risk", "migration"
-    ] = Field(alias="type")
-
-
 class GeneratedEnrichmentPayload(ContractModel):
     """Structured Gemini response before it is rendered to public Markdown."""
 
     localized_title: str | None = Field(alias="localizedTitle")
     tags: list[str]
     one_line_summary: str = Field(alias="oneLineSummary")
-    summary_context: str = Field(alias="summaryContext")
-    key_points: list[GeneratedSummaryPoint] = Field(alias="keyPoints")
-    developer_notes: list[GeneratedDeveloperNote] = Field(alias="developerNotes")
+    key_points: list[str] = Field(alias="keyPoints")
+    check_points: list[str] = Field(alias="checkPoints")
     localized_content: str | None = Field(alias="localizedContent")
 
     @field_validator("tags")

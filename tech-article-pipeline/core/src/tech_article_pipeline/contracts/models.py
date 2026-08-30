@@ -207,7 +207,7 @@ class QualityPolicy(ContractModel):
 
 class GenerationOptions(ContractModel):
     output_language: str = Field(alias="outputLanguage", default="ko", pattern=r"^[A-Za-z]{2}$")
-    maximum_summary_length: int = Field(alias="maximumSummaryLength", default=750, ge=1)
+    maximum_summary_length: int = Field(alias="maximumSummaryLength", default=600, ge=1)
     maximum_one_line_summary_length: int = Field(
         alias="maximumOneLineSummaryLength", default=100, ge=1
     )
