@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * TCP 기술 아티클 — 프론트엔드 전용 목(mock) API 서버
+ * TCP 웹사이트 — 프론트엔드 전용 목(mock) API 서버
  *
- * 목적: MySQL / Python 파이프라인 / NestJS 없이 React 화면만 더미 데이터로 확인하기.
+ * 목적: MySQL / Python 파이프라인 / NestJS 없이 React 화면을 더미 데이터로 확인하기.
  * 의존성 없음(Node 18+ 내장 모듈만 사용). 데이터는 메모리에만 있고 재시작하면 초기화됩니다.
  *
  *   node mock-tech-articles-api.mjs            # 기본 포트 3000
@@ -1024,6 +1024,353 @@ const countBy = (rows, key) =>
   );
 
 /* ------------------------------------------------------------------ *
+ * 사이트 공용 화면 더미 데이터
+ * ------------------------------------------------------------------ */
+const demoAnnouncements = [
+  {
+    id: 1,
+    title: "2026년 2학기 TCP 신입 회원 모집 안내",
+    summary: "지원 일정과 면접 진행 방식, 오리엔테이션 일정을 안내합니다.",
+    contents: `## 신입 회원 모집을 시작합니다
+
+TCP와 함께 프로젝트와 스터디에 참여할 신입 회원을 기다립니다.
+
+- 지원 기간: 2026년 9월 1일 ~ 9월 12일
+- 면접 기간: 2026년 9월 15일 ~ 9월 18일
+- 오리엔테이션: 2026년 9월 21일
+
+개발 경험보다 배우고 협업하려는 태도를 중요하게 봅니다.`,
+    author: { name: "TCP 운영진" },
+    publishAt: "2026-08-30T09:00:00+09:00",
+    createdAt: "2026-08-29T18:00:00+09:00",
+    views: 284,
+  },
+  {
+    id: 2,
+    title: "하반기 프로젝트 데모데이 참가팀 모집",
+    summary: "12월 데모데이에서 결과물을 발표할 프로젝트 팀을 모집합니다.",
+    contents: `## TCP Demo Day 2026
+
+한 학기 동안 만든 결과물을 공유하고 피드백을 받는 자리입니다.
+
+웹, 앱, AI, 게임 등 분야에 관계없이 참가할 수 있습니다.`,
+    author: { name: "프로젝트 운영팀" },
+    publishAt: "2026-08-26T14:00:00+09:00",
+    createdAt: "2026-08-26T11:30:00+09:00",
+    views: 167,
+  },
+  {
+    id: 3,
+    title: "9월 정기 세미나: 운영 환경에서의 관측 가능성",
+    summary:
+      "로그, 메트릭, 트레이싱을 활용한 장애 대응 사례를 함께 살펴봅니다.",
+    contents: `## 9월 정기 세미나
+
+실제 서비스 운영 사례를 중심으로 관측 가능성 도구를 선택하고 적용하는 과정을 소개합니다.
+
+세미나 후에는 자유로운 네트워킹 시간이 준비되어 있습니다.`,
+    author: { name: "세미나 운영팀" },
+    publishAt: "2026-08-22T17:00:00+09:00",
+    createdAt: "2026-08-22T13:00:00+09:00",
+    views: 132,
+  },
+  {
+    id: 4,
+    title: "여름방학 해커톤 결과 및 수상팀 발표",
+    summary: "48시간 동안 진행된 교내 해커톤의 수상 결과를 공개합니다.",
+    contents: `## 해커톤을 마쳤습니다
+
+참가한 모든 팀의 열정과 완성도 높은 결과물에 감사드립니다.
+
+수상작은 다음 정기 세미나에서 다시 만나볼 수 있습니다.`,
+    author: { name: "해커톤 준비위원회" },
+    publishAt: "2026-08-18T12:00:00+09:00",
+    createdAt: "2026-08-18T10:00:00+09:00",
+    views: 219,
+  },
+  {
+    id: 5,
+    title: "GitHub Organization 저장소 운영 가이드",
+    summary: "브랜치, 리뷰, 보안 설정에 관한 공통 규칙을 정리했습니다.",
+    contents: `## 저장소 운영 원칙
+
+작은 단위의 변경과 명확한 리뷰 설명을 권장합니다.
+
+민감한 값은 저장소에 올리지 말고 프로젝트별 환경 변수로 관리해주세요.`,
+    author: { name: "기술지원팀" },
+    publishAt: "2026-08-12T09:30:00+09:00",
+    createdAt: "2026-08-11T20:00:00+09:00",
+    views: 96,
+  },
+  {
+    id: 6,
+    title: "동아리방 이용 시간 및 장비 대여 안내",
+    summary: "개강 후 동아리방 운영 시간과 공용 장비 대여 절차를 안내합니다.",
+    contents: `## 동아리방 이용 안내
+
+평일 운영 시간은 오전 9시부터 오후 9시까지입니다.
+
+공용 장비는 사용 전 운영진에게 대여 기록을 남겨주세요.`,
+    author: { name: "TCP 운영진" },
+    publishAt: "2026-08-05T10:00:00+09:00",
+    createdAt: "2026-08-05T09:00:00+09:00",
+    views: 141,
+  },
+];
+
+const demoStudies = [
+  {
+    id: 1,
+    study_name: "React & TypeScript 실전 스터디",
+    start_year: 2026,
+    study_description:
+      "컴포넌트 설계부터 테스트와 배포까지 작은 서비스를 함께 완성합니다.",
+    tag: "React,TypeScript,프론트엔드",
+    recruit_count: 8,
+    period: "2026.09 ~ 2026.11",
+    apply_deadline: "2026-09-10T23:59:59+09:00",
+    place: "미래관 312호",
+    way: "매주 수요일 오후 7시",
+    cycle: "주 1회",
+    is_public: true,
+    leader: { user_id: "demo-leader-1", name: "김민준" },
+    members: [
+      { user_id: "demo-leader-1", name: "김민준", role: "LEADER" },
+      { user_id: "demo-member-1", name: "이서연", role: "MEMBER" },
+    ],
+  },
+  {
+    id: 2,
+    study_name: "NestJS 백엔드 아키텍처",
+    start_year: 2026,
+    study_description:
+      "인증, 데이터 모델링, 테스트를 중심으로 확장 가능한 API를 설계합니다.",
+    tag: "백엔드,NestJS,데이터베이스",
+    recruit_count: 6,
+    period: "2026.09 ~ 2026.12",
+    apply_deadline: "2026-09-08T23:59:59+09:00",
+    place: "온라인",
+    way: "매주 토요일 오후 2시",
+    cycle: "주 1회",
+    is_public: true,
+    leader: { user_id: "demo-leader-2", name: "박지훈" },
+    members: [
+      { user_id: "demo-leader-2", name: "박지훈", role: "LEADER" },
+      { user_id: "demo-member-2", name: "최예원", role: "MEMBER" },
+    ],
+  },
+  {
+    id: 3,
+    study_name: "생성형 AI 논문 읽기",
+    start_year: 2026,
+    study_description:
+      "매주 한 편의 논문을 읽고 핵심 아이디어와 재현 경험을 공유합니다.",
+    tag: "AI,머신러닝,파이썬",
+    recruit_count: 10,
+    period: "2026.03 ~ 2026.06",
+    apply_deadline: "2026-03-05T23:59:59+09:00",
+    place: "미래관 세미나실",
+    way: "매주 목요일 오후 6시",
+    cycle: "주 1회",
+    is_public: true,
+    leader: { user_id: "demo-leader-3", name: "한동민" },
+    members: [{ user_id: "demo-leader-3", name: "한동민", role: "LEADER" }],
+  },
+  {
+    id: 4,
+    study_name: "알고리즘 문제 해결 입문",
+    start_year: 2025,
+    study_description:
+      "자료구조 기초부터 코딩 테스트 유형별 풀이 전략까지 차근차근 학습합니다.",
+    tag: "알고리즘,자료구조,입문",
+    recruit_count: 12,
+    period: "2025.09 ~ 2025.11",
+    apply_deadline: "2025-09-05T23:59:59+09:00",
+    place: "온라인",
+    way: "매주 월요일 오후 8시",
+    cycle: "주 1회",
+    is_public: true,
+    leader: { user_id: "demo-leader-4", name: "정수현" },
+    members: [{ user_id: "demo-leader-4", name: "정수현", role: "LEADER" }],
+  },
+];
+
+const demoMembers = [
+  [
+    "김민준",
+    "재학",
+    "프론트엔드 개발과 디자인 시스템에 관심이 있습니다.",
+    ["React", "TypeScript", "Node.js"],
+  ],
+  [
+    "이서연",
+    "재학",
+    "사용자 문제를 데이터와 AI로 해결하는 것을 좋아합니다.",
+    ["Python", "AI/ML", "Django"],
+  ],
+  [
+    "박지훈",
+    "휴학",
+    "안정적인 서버와 데이터 모델을 설계합니다.",
+    ["Java", "Spring", "MySQL"],
+  ],
+  [
+    "최예원",
+    "재학",
+    "모바일에서 자연스러운 사용자 경험을 만듭니다.",
+    ["Swift", "Flutter", "Kotlin"],
+  ],
+  [
+    "정수현",
+    "재학",
+    "접근성 높은 인터페이스와 웹 성능을 연구합니다.",
+    ["Vue.js", "JavaScript", "CSS"],
+  ],
+  [
+    "한동민",
+    "휴학",
+    "딥러닝 모델을 실제 서비스에 적용하고 있습니다.",
+    ["Python", "PyTorch", "AI/ML"],
+  ],
+  [
+    "김명수",
+    "졸업",
+    "제품 중심의 프론트엔드 개발자입니다.",
+    ["React", "TypeScript", "AWS"],
+  ],
+  [
+    "박은지",
+    "졸업",
+    "분산 시스템과 플랫폼 엔지니어링을 다룹니다.",
+    ["Java", "Spring", "Kubernetes"],
+  ],
+].map(([name, education_status, self_description, tech_stack], index) => ({
+  id: `demo-member-${index + 1}`,
+  name,
+  education_status,
+  self_description,
+  tech_stack,
+  profile_image: "/images/default_profile.webp",
+  github_username: `tcp-demo-${index + 1}`,
+  portfolio_link: null,
+  current_company:
+    education_status === "졸업"
+      ? index % 2 === 0
+        ? "네이버"
+        : "카카오"
+      : null,
+}));
+
+const demoTeams = [
+  {
+    id: 1,
+    title: "2026 AI Creativity Hackathon",
+    category: "해커톤",
+    status: "open",
+    periodStart: "2026-09-14",
+    periodEnd: "2026-09-18",
+    deadline: "2026-09-08",
+    description: "AI로 캠퍼스 생활의 불편을 해결할 팀원을 찾습니다.",
+    techStack: "Python, FastAPI, React",
+    tag: "AI, 해커톤, 초보환영",
+    executionType: "hybrid",
+    selectionProc: "지원서 검토 후 온라인 미팅",
+    contact: "TCP Discord #team-building",
+    goals: "프로토타입 완성, 데모데이 발표",
+    projectImage: "/tcplogo512.png",
+    link: "",
+    createdAt: "2026-08-28T09:00:00+09:00",
+    leader: {
+      id: "demo-leader-1",
+      name: "김민준",
+      profile_image: "/images/default_profile.webp",
+    },
+    roles: [
+      { roleName: "프론트엔드", recruitCount: 1 },
+      { roleName: "백엔드", recruitCount: 1 },
+    ],
+  },
+  {
+    id: 2,
+    title: "캠퍼스 생활 통합 앱 프로젝트",
+    category: "프로젝트",
+    status: "open",
+    periodStart: "2026-09-21",
+    periodEnd: "2026-12-18",
+    deadline: "2026-09-12",
+    description: "학내 공지와 일정을 한곳에서 보는 모바일 앱을 만듭니다.",
+    techStack: "React Native, Supabase, Figma",
+    tag: "프론트엔드, 백엔드, 초보환영",
+    executionType: "offline",
+    selectionProc: "포트폴리오 검토 후 인터뷰",
+    contact: "TCP Discord #mobile-app",
+    goals: "MVP 출시, 교내 사용자 테스트",
+    projectImage: "/tcplogo512.png",
+    link: "",
+    createdAt: "2026-08-24T14:30:00+09:00",
+    leader: {
+      id: "demo-leader-2",
+      name: "최예원",
+      profile_image: "/images/default_profile.webp",
+    },
+    roles: [
+      { roleName: "모바일", recruitCount: 2 },
+      { roleName: "디자인", recruitCount: 1 },
+    ],
+  },
+  {
+    id: 3,
+    title: "오픈소스 기여 첫걸음",
+    category: "스터디",
+    status: "open",
+    periodStart: "2026-09-07",
+    periodEnd: "2026-11-30",
+    deadline: "2026-09-06",
+    description: "이슈 탐색부터 첫 Pull Request까지 함께 경험합니다.",
+    techStack: "Git, GitHub, JavaScript",
+    tag: "오픈소스, 초보환영, 프로젝트",
+    executionType: "online",
+    selectionProc: "선착순 안내",
+    contact: "TCP Discord #opensource",
+    goals: "개인별 오픈소스 기여 1회",
+    projectImage: "/tcplogo512.png",
+    link: "",
+    createdAt: "2026-08-20T19:00:00+09:00",
+    leader: {
+      id: "demo-leader-3",
+      name: "정수현",
+      profile_image: "/images/default_profile.webp",
+    },
+    roles: [{ roleName: "참여자", recruitCount: 6 }],
+  },
+  {
+    id: 4,
+    title: "ICPC 예선 대비 팀",
+    category: "공모전",
+    status: "closed",
+    periodStart: "2026-03-10",
+    periodEnd: "2026-05-30",
+    deadline: "2026-03-05",
+    description: "주 2회 문제 풀이와 코드 리뷰를 진행한 알고리즘 팀입니다.",
+    techStack: "C++, Python",
+    tag: "알고리즘, 공모전",
+    executionType: "online",
+    selectionProc: "간단한 코딩 테스트",
+    contact: "모집 종료",
+    goals: "ICPC 예선 통과",
+    projectImage: "/tcplogo512.png",
+    link: "",
+    createdAt: "2026-02-20T18:00:00+09:00",
+    leader: {
+      id: "demo-leader-4",
+      name: "박지훈",
+      profile_image: "/images/default_profile.webp",
+    },
+    roles: [{ roleName: "알고리즘", recruitCount: 2 }],
+  },
+];
+
+/* ------------------------------------------------------------------ *
  * 라우팅
  * ------------------------------------------------------------------ */
 const PUBLIC_BASE = "/api/v1/tech-articles";
@@ -1055,9 +1402,48 @@ function handle(method, pathname, query, body, headers = {}) {
     ];
   }
 
-  /* ---------- 기술 아티클과 무관하지만 홈/헤더가 호출하는 경로들 ----------
-   * 이 서버의 목적은 기술 아티클 화면이지만, 홈 화면(/)이 마운트되면서
-   * 아래 두 경로를 부르기 때문에 콘솔이 404로 시끄러워집니다. 최소한만 흉내 냅니다.
+  /* ---------- 사이트 공용 공개 화면 ---------- */
+  if (method === "GET" && pathname === "/api/v1/announcements") {
+    return [200, demoAnnouncements];
+  }
+  if (method === "GET" && /^\/api\/v1\/announcements\/\d+$/.test(pathname)) {
+    const id = Number(pathname.split("/").at(-1));
+    const announcement = demoAnnouncements.find((item) => item.id === id);
+    return announcement
+      ? [200, announcement]
+      : [404, { statusCode: 404, message: "공지사항을 찾을 수 없습니다." }];
+  }
+  if (method === "GET" && pathname === "/api/v1/study") {
+    const year = query.get("year");
+    return [
+      200,
+      year
+        ? demoStudies.filter((study) => String(study.start_year) === year)
+        : demoStudies,
+    ];
+  }
+  if (method === "GET" && /^\/api\/v1\/study\/\d+$/.test(pathname)) {
+    const id = Number(pathname.split("/").at(-1));
+    const study = demoStudies.find((item) => item.id === id);
+    return study
+      ? [200, study]
+      : [404, { statusCode: 404, message: "스터디를 찾을 수 없습니다." }];
+  }
+  if (method === "GET" && pathname === "/api/v1/members") {
+    return [200, demoMembers];
+  }
+  if (method === "GET" && pathname === "/api/v1/teams") {
+    return [200, demoTeams];
+  }
+  if (
+    method === "GET" &&
+    /^\/api\/v1\/teams\/\d+\/application-status$/.test(pathname)
+  ) {
+    return [200, { hasApplied: false, applicationInfo: null }];
+  }
+
+  /* ---------- 홈/헤더가 호출하는 경로들 ----------
+   * 홈 화면이 실제 데이터가 있는 상태로 보이도록 최소 계약을 흉내 냅니다.
    */
   if (method === "GET" && pathname === "/api/v1/main/statistics") {
     return [
@@ -1081,7 +1467,18 @@ function handle(method, pathname, query, body, headers = {}) {
     ];
   }
   if (method === "GET" && pathname === "/api/v1/recruitment/status") {
-    return [200, { isRecruiting: false, status: "CLOSED" }];
+    return [
+      200,
+      {
+        is_application_enabled: true,
+        start_date: "2026-08-01T00:00:00.000Z",
+        end_date: "2026-09-30T23:59:59.999Z",
+      },
+    ];
+  }
+
+  if (method === "POST" && pathname === "/api/v1/recruitment") {
+    return [201, { message: "목업 지원서가 접수되었습니다." }];
   }
 
   const page = Number(query.get("page") || 1);
@@ -1483,7 +1880,7 @@ function handle(method, pathname, query, body, headers = {}) {
     404,
     {
       statusCode: 404,
-      message: `이 목 서버는 기술 아티클 화면만 흉내 냅니다. 구현되지 않은 경로: ${method} ${pathname}`,
+      message: `목업 서버에 구현되지 않은 경로입니다: ${method} ${pathname}`,
     },
   ];
 }
@@ -1579,7 +1976,7 @@ const server = createServer((req, res) => {
     );
     if (status === 404 && !url.pathname.includes("tech-articles")) {
       console.log(
-        `   ↑ 기술 아티클 화면과 무관한 경로라 목을 만들지 않았습니다. 무시해도 됩니다.`,
+        `   ↑ 아직 목업 응답을 만들지 않은 경로입니다. 필요한 화면만 추가해 사용하세요.`,
       );
     }
 
@@ -1595,10 +1992,11 @@ server.listen(PORT, HOST, () => {
   console.log(
     [
       "",
-      "  TCP 기술 아티클 목(mock) API 서버",
+      "  TCP 프론트엔드 목(mock) API 서버",
       "  ─────────────────────────────────────────────",
       `  주소        http://${HOST}:${PORT}`,
       `  더미 아티클  ${articles.length}건 (공개 ${publicCount}건)`,
+      `  공용 화면     공지 ${demoAnnouncements.length} · 스터디 ${demoStudies.length} · 멤버 ${demoMembers.length} · 팀 ${demoTeams.length}`,
       `  검수 큐      중복 ${duplicateCases.length} · 품질 ${qualityCases.length} · 공개 ${publicationQueue().length}`,
       "",
       "  프론트엔드는 다른 터미널에서:",

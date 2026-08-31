@@ -7,6 +7,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../members/entities/user.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { ACCESS_TOKEN_EXPIRES_IN } from './auth.constants';
 
 @Module({
   imports: [
@@ -16,7 +17,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({
         secret: config.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: '1d' },
+        signOptions: { expiresIn: ACCESS_TOKEN_EXPIRES_IN },
       }),
       inject: [ConfigService],
     }),

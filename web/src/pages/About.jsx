@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import logo from '../logo.svg';
 import { stats as staticStats } from '../data/stats';
+import ActivityHighlights from '../components/ActivityHighlights';
+import { useKonamiCode } from '../hooks/useKonamiCode';
 
 function useCountUp(target, duration = 1200, enabled = true) {
   const [value, setValue] = useState(0);
@@ -36,6 +38,9 @@ function useCountUp(target, duration = 1200, enabled = true) {
 }
 
 function About() {
+  const navigate = useNavigate();
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [isFadingOut, setIsFadingOut] = useState(false);
   // 여러 연도의 활동 기록을 동시에 펼쳐 비교할 수 있도록 열린 인덱스를 각각 관리합니다.
   const [openAccordions, setOpenAccordions] = useState(() => new Set([0]));
   const [mainStats, setMainStats] = useState({
@@ -52,6 +57,11 @@ function About() {
   const animatedProjects = useCountUp(mainStats.projects, 1200, isStatsVisible);
   const animatedAwards = useCountUp(mainStats.awards, 1200, isStatsVisible);
   const animatedEmploymentRate = useCountUp(mainStats.employmentRate, 1200, isStatsVisible);
+
+  useKonamiCode(() => {
+    setIsFadingOut(true);
+    window.setTimeout(() => navigate('/easter-egg'), 2000);
+  });
 
   // 연도별 활동 히스토리 데이터
   const historyData = [
@@ -289,6 +299,14 @@ function About() {
     };
   }, []); // 빈 배열을 의존성으로 설정하여 컴포넌트가 마운트될 때만 실행
 
+  useEffect(() => {
+    const shouldShow = sessionStorage.getItem('showWelcomeModal');
+    if (shouldShow === 'true') {
+      setShowWelcomeModal(true);
+      sessionStorage.removeItem('showWelcomeModal');
+    }
+  }, []);
+
   // 아코디언 토글 함수 (React State를 활용)
   const toggleAccordion = (index) => {
     setOpenAccordions((current) => {
@@ -302,8 +320,81 @@ function About() {
     });
   };
 
+  const goToMyPage = () => {
+    setShowWelcomeModal(false);
+    navigate('/mypage');
+  };
+
   return (
     <>
+      {showWelcomeModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          onClick={() => setShowWelcomeModal(false)}
+          role="presentation"
+        >
+          <div
+            className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl max-w-lg w-full border border-purple-500/30 shadow-2xl shadow-purple-500/20"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="welcome-dialog-title"
+          >
+            <div className="p-8 text-center">
+              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+                <i className="fas fa-user-check text-3xl text-white" aria-hidden="true"></i>
+              </div>
+              <h2
+                id="welcome-dialog-title"
+                className="orbitron text-2xl md:text-3xl font-bold text-white mb-4"
+              >
+                TCP에 오신 것을 환영합니다! 🎉
+              </h2>
+              <p className="text-gray-300 mb-6 leading-relaxed">
+                회원가입이 완료되었습니다.
+              </p>
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6 text-left">
+                <div className="flex items-start gap-3">
+                  <i className="fas fa-exclamation-triangle text-yellow-400 mt-1" aria-hidden="true"></i>
+                  <div>
+                    <p className="text-yellow-200 font-semibold mb-1">
+                      추가 정보 입력 안내
+                    </p>
+                    <p className="text-gray-300 text-sm leading-relaxed">
+                      회원가입 시 추가 정보를 입력하지 않으신 분들은<br />
+                      <span className="orbitron text-yellow-300 font-medium">
+                        (서울과학기술대 학생 및 TCP 부원은 필수!!)
+                      </span>
+                      <br />
+                      원활한 활동을 위해{' '}
+                      <span className="text-purple-400 font-medium">마이페이지</span>에서
+                      회원 정보를 추가로 입력해주세요.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button
+                  type="button"
+                  onClick={goToMyPage}
+                  className="px-6 py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg font-semibold hover:from-purple-600 hover:to-blue-600 transition-all"
+                >
+                  <i className="fas fa-user-edit mr-2" aria-hidden="true"></i>
+                  마이페이지로 이동
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowWelcomeModal(false)}
+                  className="px-6 py-3 bg-gray-700 text-gray-300 rounded-lg font-semibold hover:bg-gray-600 transition-all"
+                >
+                  나중에 할게요
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <section className="pt-24 pb-16 min-h-screen flex items-center">
         <div className="container site-content-container mx-auto px-4">
           <div className="text-center">
@@ -477,6 +568,8 @@ function About() {
         </div>
       </section>
 
+      <ActivityHighlights />
+
       <section className="py-12">
         <div className="container site-content-container mx-auto px-4">
           <div className="text-center mb-12">
@@ -616,6 +709,12 @@ function About() {
           </div>
         </div>
       </section>
+
+      <div
+        className="fixed inset-0 z-[9999] bg-black pointer-events-none transition-opacity duration-2000 ease-in-out"
+        style={{ opacity: isFadingOut ? 1 : 0 }}
+        aria-hidden="true"
+      />
     </>
   );
 }
