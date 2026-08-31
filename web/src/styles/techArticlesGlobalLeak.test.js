@@ -1,11 +1,4 @@
-/* 전역 CSS(index.css, App.css)가 Tech Articles 스코프로 새어드는지 검증합니다.
- *
- * v9 목업과 기존 사이트가 같은 클래스명을 서로 다른 의미로 쓰는 지점에서,
- * 전역 규칙이 v9 가 선언하지 않은 속성만 골라 적용되는 문제가 생깁니다.
- * 실제로 index.css 의 .article-meta { background; border } 가
- * 아티클 카드에 의도하지 않은 테두리를 그렸습니다.
- *
- * 새 누출이 잡히면 techArticlesReset.css 에 초기값 복원 규칙을 추가해 주세요. */
+
 const fs = require("fs");
 const path = require("path");
 
@@ -72,7 +65,6 @@ function declaredProps(body) {
     .filter(Boolean);
 }
 
-// 전역 CSS 단일 클래스 규칙 수집. 스코프 안으로 새어드는 대상.
 function globalSingleClassRules(files) {
   const map = new Map();
   for (const file of files) {
@@ -89,7 +81,6 @@ function globalSingleClassRules(files) {
   return map;
 }
 
-// className 리터럴 토큰만 수집 (템플릿 리터럴 ${...} 제외)
 function usedClasses(files) {
   const used = new Set();
   for (const file of files) {
@@ -106,7 +97,6 @@ function usedClasses(files) {
   return used;
 }
 
-// 스코프 CSS 가 `<scope> .<cls>` 로 선언하는 속성 수집
 function scopedProps(files, scope) {
   const map = new Map();
   for (const file of files) {
@@ -130,7 +120,6 @@ describe("전역 CSS의 Tech Articles 스코프 침입", () => {
 
   test("분석 전제가 성립한다 (전역 단일 클래스 규칙이 실제로 존재)", () => {
     expect(globals.size).toBeGreaterThan(10);
-    // 이 버그를 처음 일으킨 규칙. 사라지면 전제 재확인 필요.
     expect(globals.has("article-meta")).toBe(true);
   });
 
@@ -149,7 +138,6 @@ describe("전역 CSS의 Tech Articles 스코프 침입", () => {
         if (leaked.length) leaks[cls] = leaked;
       }
 
-      // 실패 시 막아야 할 클래스·속성이 그대로 출력됨
       expect(leaks).toEqual({});
     },
   );

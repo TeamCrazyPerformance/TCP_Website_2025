@@ -1,10 +1,3 @@
-/* Tech Articles 공개·관리 화면의 렌더 스모크 테스트입니다.
- *
- * 셸 통합과 Shadow DOM 제거 과정에서 생기는 배선 오류는 빌드를 통과하고
- * 런타임에서만 드러납니다. 실제로 이 테스트로 사문이 된 <V9PublicFooter /> 와
- * shadowRoot 조회 잔재를 찾아냈습니다.
- *
- * API 는 모킹하며, 엔드포인트 정합성은 백엔드 라우트 대조로 따로 확인합니다. */
 import React from "react";
 import {
   act,
@@ -128,7 +121,6 @@ function renderWithAuth(ui) {
   return render(<AuthProvider>{ui}</AuthProvider>);
 }
 
-// AdminLayout 이 인증 경계 담당. 단독 렌더에는 세션만 주입.
 function asAdmin() {
   localStorage.setItem("access_token", "test-token");
   localStorage.setItem(
@@ -168,7 +160,6 @@ describe("공개 화면", () => {
     await waitFor(() => expect(api.getTechArticles).toHaveBeenCalled());
 
     expect(container.querySelector(".ta-public")).not.toBeNull();
-    // 목업 사이트 헤더·푸터 -> 공용 Header/Footer
     expect(container.querySelector(".site-header")).toBeNull();
     expect(container.querySelector(".site-footer")).toBeNull();
     expect(container.querySelector("[class*='v9-shadow-host']")).toBeNull();
@@ -190,8 +181,6 @@ describe("공개 화면", () => {
     ).toHaveClass("fa-xmark");
     expect(screen.queryByText("모든 소스")).not.toBeInTheDocument();
     expect(screen.queryByText("소스 고르기")).not.toBeInTheDocument();
-    // 좁은 화면의 개행 지점을 고정하려고 의미 단위로 나눠 두었으므로
-    // 한 덩어리 문자열이 아니라 문단 전체로 확인한다.
     expect(
       container.querySelector(".hero-lead").textContent.replace(/\s+/g, " "),
     ).toBe("TCP가 한데 모은 여러 개발·기술 뉴스를 이곳에서 만나보세요.");
@@ -226,20 +215,17 @@ describe("공개 화면", () => {
     expect(row.querySelector("#resetSearchDraftTagsButton")).not.toBeNull();
     expect(row.querySelector("#applySearchTagsButton")).not.toBeNull();
 
-    // 폼 안에 있어 type 을 빼면 submit 으로 새어 검색이 실행된다.
     expect(container.querySelector("#applySearchTagsButton")).toHaveAttribute(
       "type",
       "button",
     );
 
-    // 태그 목록과 버튼 줄이 한 그리드의 형제여야 위쪽 패널과 배치가 같다.
     expect(
       container.querySelector(
         ".search-category-filter .desktop-filter > .filter-apply-row",
       ),
     ).not.toBeNull();
 
-    // 고른 태그는 검색 버튼이 아니라 적용으로 반영된다.
     const panel = container.querySelector("#searchTagFilters");
     fireEvent.click(within(panel).getByRole("button", { name: "AI" }));
     fireEvent.click(container.querySelector("#applySearchTagsButton"));
@@ -249,13 +235,9 @@ describe("공개 화면", () => {
       ),
     );
 
-    // 목록이 짧아지면 아래쪽 패널이 화면 밖으로 밀립니다. 목록 머리글이
-    // 아니라 방금 조작한 검색 패널로 돌아와야 자리를 잃지 않습니다.
     await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
     const target = scrollIntoView.mock.instances.at(-1);
     expect(target).toBe(container.querySelector("#article-filters"));
-    // 위쪽 끝에 붙이면 패널이 화면 맨 위로 올라붙어 어색합니다. 가운데로
-    // 옮겨야 방금 누른 버튼이 시야에 남습니다.
     expect(scrollIntoView).toHaveBeenLastCalledWith({
       behavior: "auto",
       block: "center",
@@ -269,7 +251,6 @@ describe("공개 화면", () => {
       expect(container.querySelector(".source-option input")).not.toBeNull(),
     );
 
-    // 분야 선택과 같게, 바꾼 것이 없으면 적용할 것도 없다.
     expect(container.querySelector(".source-apply")).toBeDisabled();
 
     fireEvent.click(container.querySelector(".source-option input"));
@@ -294,11 +275,10 @@ describe("공개 화면", () => {
       expect(container.querySelector(".result-sort")).not.toBeNull(),
     );
 
-    // Orbitron 은 라틴 대문자용이라 한글 사이의 "AI"만 다른 글꼴로 튄다.
     expect(container.querySelector(".source-notice h2")).not.toHaveClass(
       "orbitron",
     );
-    // 정렬 표기는 화면 폭과 무관하게 짧은 형태 하나만 쓴다.
+    expect(container.querySelector(".source-notice > i")).toBeNull();
     expect(container.querySelector(".result-sort")).toHaveTextContent("최신순");
     expect(container.querySelector(".result-sort").textContent).not.toMatch(
       /원문 게시일/,
@@ -312,7 +292,6 @@ describe("공개 화면", () => {
       expect(container.querySelector(".last-collected")).not.toBeNull(),
     );
 
-    // 시계 그림은 바로 뒤 문장이 이미 말하는 내용을 되풀이할 뿐입니다.
     expect(container.querySelector(".last-collected i")).toBeNull();
   });
 
@@ -332,7 +311,6 @@ describe("공개 화면", () => {
       expect(container.querySelector(".pagination-status")).not.toBeNull(),
     );
 
-    // 바로 위 번호 버튼이 현재 쪽을 이미 보여 준다.
     expect(container.querySelector(".pagination-status")).toHaveTextContent(
       "전체 2페이지",
     );
@@ -374,7 +352,6 @@ describe("공개 화면", () => {
         expect.objectContaining({ tags: ["AI"] }),
       ),
     );
-    // 조건을 바꿨다고 목록 머리글로 끌고 가지 않는다.
     expect(scrollIntoView).not.toHaveBeenCalled();
     const mobileReset = container.querySelector("#mobileResetAllButton");
     expect(mobileReset).not.toBeNull();
@@ -385,7 +362,6 @@ describe("공개 화면", () => {
     expect(screen.queryByText("적용 중")).not.toBeInTheDocument();
     expect(container.querySelector(".active-filter-summary")).toBeNull();
 
-    // 데스크톱 초기화는 따로 적용을 누르지 않아도 그 자리에서 반영된다.
     fireEvent.click(container.querySelector("#resetDraftTagsButton"));
     await waitFor(() =>
       expect(api.getTechArticles).toHaveBeenLastCalledWith(
@@ -405,7 +381,9 @@ describe("공개 화면", () => {
     const TechArticles = require("./TechArticles").default;
     const { container } = renderWithAuth(<TechArticles />);
     await waitFor(() =>
-      expect(container.querySelector("#filterDialog .sheet-actions")).not.toBeNull(),
+      expect(
+        container.querySelector("#filterDialog .sheet-actions"),
+      ).not.toBeNull(),
     );
 
     const sheetButtons = [
@@ -415,7 +393,6 @@ describe("공개 화면", () => {
       "초기화",
       "적용",
     ]);
-    // 형태까지 같아야 두 창이 같은 결로 읽힌다.
     const dialogButtons = [
       ...container.querySelectorAll(".source-dialog-actions button"),
     ];
@@ -423,12 +400,12 @@ describe("공개 화면", () => {
       dialogButtons.map((button) => button.className),
     );
 
-    // 취소는 지웠다. 오른쪽 위 닫기와 바깥쪽 누르기가 이미 같은 일을 하고,
-    // 소스 대화상자에도 없어 두 창의 결이 어긋났다.
     expect(
       container.querySelector("#filterDialog .sheet-actions").textContent,
     ).not.toMatch(/취소/);
-    expect(container.querySelector("#filterDialog .sheet-close")).not.toBeNull();
+    expect(
+      container.querySelector("#filterDialog .sheet-close"),
+    ).not.toBeNull();
   });
 
   test("비로그인 상세는 점수 안내 다음에 로그인 동작을 보여 준다", async () => {
@@ -457,13 +434,19 @@ describe("공개 화면", () => {
     expect(description.textContent.replace(/\s+/g, " ").trim()).toBe(
       "Tech Articles에서는 AI를 활용해 아티클을 분석하고, 가치 점수를 산정하여 제공하고 있어요.",
     );
-    // 개행 자리는 CSS 가 정한다. 문장을 한 덩어리로 두면 폭에 따라
-    // 아무 데서나 접힌다.
-    expect(description.querySelectorAll("span")).toHaveLength(2);
+    const descriptionLines = description.querySelectorAll("span");
+    expect(descriptionLines).toHaveLength(3);
+    expect([...descriptionLines].map((line) => line.textContent)).toEqual([
+      "Tech Articles에서는",
+      "AI를 활용해 아티클을 분석하고,",
+      "가치 점수를 산정하여 제공하고 있어요.",
+    ]);
     expect(container.querySelector(".score-gate-card h3")).toBeNull();
     expect(container.querySelector(".member-gate-icon")).toBeNull();
     expect(container.querySelector(".score-card .scenario-eyebrow")).toBeNull();
-    expect(container.querySelector(".source-card .scenario-eyebrow")).toBeNull();
+    expect(
+      container.querySelector(".source-card .scenario-eyebrow"),
+    ).toBeNull();
     expect(container).not.toHaveTextContent("가치 점수는 회원 전용입니다.");
   });
 
@@ -475,14 +458,12 @@ describe("공개 화면", () => {
     );
 
     const option = container.querySelector(".source-option");
-    // 여섯 색 표식은 소스를 뜻하지 않으면서 옆의 분야 태그와 같은 색
-    // 언어를 써서 두 축이 섞여 보였다.
     expect(option.querySelector(".source-icon")).toBeNull();
     expect(option.querySelector("img")).toBeNull();
 
-    expect(option.querySelector(".source-option-text strong")).toHaveTextContent(
-      "InfoQ",
-    );
+    expect(
+      option.querySelector(".source-option-text strong"),
+    ).toHaveTextContent("InfoQ");
     expect(option.querySelector(".source-option-text small")).toHaveTextContent(
       "infoq.com",
     );
@@ -504,15 +485,12 @@ describe("공개 화면", () => {
     );
     await waitFor(() => expect(sourceDialog.open).toBe(true));
 
-    // 대화상자 자신이 대상일 때만 닫는다. 안쪽을 눌러도 닫히면 소스를
-    // 고르는 도중에 창이 사라진다.
     fireEvent.click(container.querySelector(".source-dialog-inner"));
     expect(sourceDialog.open).toBe(true);
 
     fireEvent.click(sourceDialog);
     await waitFor(() => expect(sourceDialog.open).toBe(false));
 
-    // 같은 자리의 분야 시트와 같은 동작이어야 한다.
     fireEvent.click(
       container.querySelector(".article-list-heading .mobile-filter-button"),
     );
@@ -545,13 +523,10 @@ describe("공개 화면", () => {
       expect(container.querySelector(".source-trigger")).not.toBeNull(),
     );
 
-    // 건수와 같은 머리글 안에 있어야 한다. 밖으로 나가면 버튼만 있는 줄이
-    // 생기면서 건수와 목록 사이에 빈 띠가 다시 만들어진다.
     expect(
       container.querySelector(".article-list-heading .source-trigger"),
     ).not.toBeNull();
 
-    // 고른 소스가 없으면 칩 줄 자체가 렌더되지 않는다.
     expect(container.querySelector(".source-bar")).toBeNull();
 
     fireEvent.click(container.querySelector(".source-option input"));
@@ -592,7 +567,6 @@ describe("공개 화면", () => {
       expect(container.querySelector(".source-trigger")).not.toBeNull(),
     );
 
-    // fieldset 밖 머리글 안에 있어야 소스 선택과 같은 줄을 나눠 쓸 수 있다.
     const trigger = container.querySelector(
       ".article-list-heading #openFilterButton",
     );
@@ -601,11 +575,9 @@ describe("공개 화면", () => {
       container.querySelector("#categoryFieldset #openFilterButton"),
     ).toBeNull();
 
-    // 소스 선택과 같은 방식으로 개수를 글자로 알린다(배지 없음).
     expect(trigger).toHaveTextContent("분야 선택");
     expect(container.querySelector("#mobileFilterCount")).toBeNull();
 
-    // fieldset 이 주던 disabled 를 직접 넘겨받았는지 확인한다.
     expect(trigger).not.toBeDisabled();
   });
 
@@ -627,7 +599,6 @@ describe("공개 화면", () => {
     await waitFor(() =>
       expect(chip().getAttribute("aria-pressed")).toBe("true"),
     );
-    // 체크 아이콘이 끼어들면 칩 내용 폭이 그때그때 달라져 필터 줄이 밀린다.
     expect(container.querySelector(".tag-button i")).toBeNull();
     expect(chip().textContent).toBe(before);
   });
@@ -762,7 +733,6 @@ describe("공개 화면", () => {
   });
 
   test("상세의 목록으로 돌아가기는 보던 목록 주소와 카드 위치로 되돌린다", async () => {
-    // 목록 첫 화면이 아니라 조건이 걸린 2차 화면에서 들어간 상황입니다.
     mockLocation = {
       pathname: "/tech-articles",
       search: "?q=react",
@@ -825,11 +795,8 @@ describe("공개 화면", () => {
     fireEvent.click(articleLink.closest("article"));
     listRender.unmount();
 
-    // 상세는 아티클 흐름을 벗어날 때만 복귀 정보를 버립니다. jsdom 의 기본
-    // 주소는 "/" 라, 실제 이동처럼 아티클 경로를 먼저 맞춰 둡니다.
     window.history.replaceState(null, "", "/tech-articles/article-1");
 
-    // 상세의 링크는 목록 첫 화면이 아니라 조건이 걸린 그 주소를 가리킨다.
     const TechArticleDetail = require("./TechArticleDetail").default;
     const detailRender = renderWithAuth(<TechArticleDetail />);
     const backLink = await waitFor(() => {
@@ -840,8 +807,6 @@ describe("공개 화면", () => {
     expect(backLink).toHaveTextContent("아티클 목록으로 돌아가기");
     detailRender.unmount();
 
-    // 링크를 따라가면 뒤로가기가 아닌 새 이동(PUSH)이지만, 링크가 함께 보낸
-    // 표시 덕분에 읽던 카드가 화면의 같은 자리로 돌아온다.
     mockNavigationType = "PUSH";
     mockLocation = {
       pathname: "/tech-articles",
@@ -856,7 +821,6 @@ describe("공개 화면", () => {
     await waitFor(() =>
       expect(scrollTo).toHaveBeenCalledWith({ top: 660, behavior: "auto" }),
     );
-    // 한 번 쓰고 나면 복귀 정보는 즉시 비운다.
     expect(sessionStorage.length).toBe(0);
 
     Object.defineProperty(Element.prototype, "getBoundingClientRect", {
@@ -924,16 +888,13 @@ describe("공개 화면", () => {
     ).toBeInTheDocument();
     expect(document.querySelector(".score-gate-card h3")).toBeNull();
     expect(document.querySelector(".member-gate-icon")).toBeNull();
-    expect(document.body).not.toHaveTextContent(
-      "가치 점수는 회원 전용입니다.",
-    );
+    expect(document.body).not.toHaveTextContent("가치 점수는 회원 전용입니다.");
     expect(screen.queryByText(/가중치를 확인/)).not.toBeInTheDocument();
     expect(screen.queryByRole("meter")).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /로그인하고 점수 보기/ }),
     ).toBeInTheDocument();
-    // 안내는 한 문장으로 끊고 회원가입만 링크로 남깁니다.
     expect(document.querySelector(".member-gate-footnote")).toHaveTextContent(
       "아직 회원이 아니라면, 회원가입",
     );
@@ -967,8 +928,6 @@ describe("공개 화면", () => {
     expect(hero.textContent).not.toMatch(/원문 게시/);
     const originalLink = hero.querySelector("#heroOriginalLink");
     expect(originalLink).not.toBeNull();
-    // 라벨은 "원문" 두 글자다. 옆의 아이콘이 이미 새 창으로 나간다는 뜻을
-    // 전하고 있어 "보기"는 자리만 차지했다.
     expect(originalLink).toHaveTextContent("원문");
     expect(originalLink.textContent).not.toMatch(/원문 보기/);
     const detailShareButton = hero.querySelector(".detail-share-button");
@@ -979,31 +938,25 @@ describe("공개 화면", () => {
       "aria-label",
       "공개 아티클 세부 페이지 공유",
     );
-    // 공유가 앞, 원문이 오른쪽 끝. 원문이 주 동작이라 손이 먼저 닿는
-    // 자리를 준다.
     expect(detailShareButton.nextElementSibling).toBe(originalLink);
 
-    // 두 동작은 한 묶음 안에 있어야 좁은 화면에서 줄이 바뀔 때 공유 버튼만
-    // 홀로 떨어지지 않는다. 태그는 그 묶음 밖의 형제로 남아 같은 줄에 선다.
     const actions = hero.querySelector(".detail-info-actions");
     expect(actions).not.toBeNull();
     expect(actions.contains(originalLink)).toBe(true);
     expect(actions.contains(detailShareButton)).toBe(true);
-    expect(actions.parentElement).toBe(hero.querySelector(".detail-info-items"));
+    expect(actions.parentElement).toBe(
+      hero.querySelector(".detail-info-items"),
+    );
     expect(hero.querySelector(".detail-tags").parentElement).toBe(
       actions.parentElement,
     );
 
-    // 분류가 왼쪽, 누를 것이 오른쪽. CSS 로 순서를 뒤집지 않으므로
-    // 마크업 순서가 곧 화면 순서다.
     expect(
       [...actions.parentElement.children].map((node) => node.className),
     ).toEqual(["detail-tags", "detail-info-actions"]);
 
     expect(hero.querySelectorAll(".detail-tags .article-tag")).toHaveLength(2);
 
-    // 지운 정보는 사이드바 출처 카드가 계속 책임진다. 양쪽이 함께 사라지면
-    // 중복 제거가 아니라 정보 유실이다.
     const sourceCard = container.querySelector(".source-card");
     expect(sourceCard.textContent).toMatch(/출처/);
     expect(sourceCard.textContent).toMatch(/원문 게시/);
@@ -1027,9 +980,11 @@ describe("공개 화면", () => {
       expect(found).not.toBeNull();
       return found;
     });
-    // Orbitron 은 라틴 대문자용이라 한글 사이의 "AI"만 다른 글꼴로 튄다.
     expect(heading).not.toHaveClass("orbitron");
     expect(heading).toHaveTextContent("데이터 출처 및 AI 생성 정보 안내");
+    expect(
+      heading.closest(".source-notice").querySelector(":scope > i"),
+    ).toBeNull();
   });
 
   test("출처 카드는 원문 URL을 맨 앞에 두고 정해진 순서로 보여준다", async () => {
@@ -1065,8 +1020,6 @@ describe("공개 화면", () => {
       "TCP 수집",
     ]);
 
-    // 주소 자체가 이미 링크로 보이고 바로 아래 출처 이름도 링크다.
-    // 줄마다 아이콘이 붙으면 카드가 아이콘 목록처럼 읽힌다.
     const originalUrl = container.querySelector("#sourceOriginalLink");
     expect(originalUrl).toHaveAttribute("href", "https://infoq.com/article-1");
     expect(originalUrl.querySelector("i")).toBeNull();
@@ -1074,8 +1027,6 @@ describe("공개 화면", () => {
       "infoq.com/article-1",
     );
 
-    // 출처는 이름 한 줄만 두고, 그 이름이 매체 사이트로 가는 링크다.
-    // 도메인은 바로 위 "원문 URL" 줄이 이미 싣고 있다.
     const siteLink = container.querySelector("#sourceSiteLink");
     expect(siteLink).toHaveAttribute("href", "https://infoq.com");
     expect(siteLink).toHaveAttribute("target", "_blank");
@@ -1098,8 +1049,9 @@ describe("공개 화면", () => {
     await waitFor(() =>
       expect(container.querySelector("#sourceName")).not.toBeNull(),
     );
-    expect(container.querySelector("#sourceName")).toHaveTextContent("사내 위키");
-    // 갈 곳이 없는 링크를 만들면 눌러 봐야 아무 일도 일어나지 않는다.
+    expect(container.querySelector("#sourceName")).toHaveTextContent(
+      "사내 위키",
+    );
     expect(container.querySelector("#sourceSiteLink")).toBeNull();
   });
 
@@ -1163,9 +1115,7 @@ describe("관리자 화면", () => {
 
     const scope = container.querySelector(".ta-admin");
     expect(scope).not.toBeNull();
-    // 본문 폭: 기존 관리자 페이지와 같은 컨테이너 클래스
     expect(scope.querySelector(".container.mx-auto.max-w-7xl")).not.toBeNull();
-    // 목업 관리자 셸 -> AdminLayout + AdminSidebar
     expect(container.querySelector(".admin-sidebar")).toBeNull();
     expect(container.querySelector(".admin-topbar")).toBeNull();
   });
@@ -1198,7 +1148,6 @@ describe("관리자 화면", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText("크롤링 실행 이력")).toBeInTheDocument();
 
-    // 토글 없이 바로 떠 있어야 합니다.
     const runner = container.querySelector("#asyncCrawlRunner");
     expect(runner).not.toBeNull();
     expect(
@@ -1209,7 +1158,6 @@ describe("관리자 화면", () => {
       screen.queryByRole("button", { name: /실행 설정 닫기/ }),
     ).not.toBeInTheDocument();
 
-    // 순서는 이력 -> 실행 폼입니다.
     const history = screen.getByText("크롤링 실행 이력").closest("section");
     expect(
       history.compareDocumentPosition(runner) &
@@ -1234,7 +1182,6 @@ describe("관리자 화면", () => {
       const Reviews = require("./admin/AdminTechArticleReviews").default;
       renderWithAuth(<Reviews kind={kind} />);
 
-      // 검토 화면: 품질/공개 두 탭
       await waitFor(() =>
         expect(api.getQualityReviews).toHaveBeenCalledWith(
           kind,

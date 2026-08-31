@@ -1,7 +1,3 @@
-// src/components/tech-articles/ArticleQualityPanel.jsx
-//
-// 아티클 상세에서 원문 링크와 품질 평가 근거를 보여줍니다.
-// 전체 아티클 화면과 검토 큐 화면이 같은 형식으로 쓰도록 여기에 모았습니다.
 import React from "react";
 import {
   scoreTone,
@@ -10,8 +6,6 @@ import {
   statusTone,
 } from "./techArticleStatus";
 
-// 점수와 무관하게 판정을 뒤집는 강제 정책 신호(evaluator.py 의 hard_rejections).
-// 원본 키를 그대로 늘어놓으면 읽히지 않아 라벨과 표기를 붙입니다.
 const SIGNAL_LABEL = {
   contentLength: ["본문 길이", (v) => `${Number(v).toLocaleString()}자`],
   language: ["언어", (v) => String(v)],
@@ -20,7 +14,6 @@ const SIGNAL_LABEL = {
   advertisementSuspected: ["광고 의심", (v) => (v ? "있음" : "없음")],
 };
 
-// true 면 판정에 불리한 신호. 눈에 띄어야 합니다.
 const ADVERSE_WHEN_TRUE = ["spamSuspected", "advertisementSuspected"];
 
 const finiteNumber = (value) =>
@@ -57,7 +50,6 @@ function axisPresentation(axis, scale) {
   return { minimum, maximum, percent, contribution, detail };
 }
 
-/** 서버가 평가 당시 저장한 축 순서와 표시 정보를 그대로 사용합니다. */
 export function QualityScoreAxes({ score }) {
   const axes = scoreAxes(score);
   if (!axes.length) return null;
@@ -123,7 +115,6 @@ export function OriginalSourceLink({ url, label = "원문 링크" }) {
   );
 }
 
-// 점수만 보여주면 관리자가 판정을 납득할 수 없어 축별 기여도까지 펼칩니다.
 export function QualityEvaluationPanel({
   evaluation,
   fallbackScore,
@@ -136,8 +127,7 @@ export function QualityEvaluationPanel({
   return (
     <section className="admin-detail-section">
       <h4>품질 평가</h4>
-      {/* 블록 간격을 개별 margin 이 아니라 flex gap 으로 잡습니다.
-          문단의 반행간이 위아래로 더해져 margin 만으로는 눈에 같아 보이지 않습니다. */}
+
       <div className="quality-body">
         <div className="quality-overall">
           <span

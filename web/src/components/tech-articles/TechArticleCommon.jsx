@@ -2,8 +2,6 @@ import React, { useMemo } from "react";
 import DOMPurify from "dompurify";
 import MarkdownIt from "markdown-it";
 
-// "2026-08-22 14:32 KST" 는 지금 시각과 빼기를 시켜야 읽힙니다.
-// "12분 전" 은 그냥 읽힙니다. 정확한 시각은 title 로 함께 보여 주세요.
 export function formatRelativeFromNow(value, now = Date.now()) {
   if (!value) return null;
   const target = new Date(value).getTime();
@@ -15,7 +13,7 @@ export function formatRelativeFromNow(value, now = Date.now()) {
   if (hours < 24) return `${hours}시간 전`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}일 전`;
-  return null; // 일주일이 넘으면 상대 표현이 오히려 모호합니다.
+  return null;
 }
 
 export function formatTechArticleDate(value, withTime = false) {
@@ -31,9 +29,6 @@ export function formatTechArticleDate(value, withTime = false) {
   }).format(date);
 }
 
-// 카드 클릭을 상세 이동으로 가로채도 되는지 판단합니다.
-// 제목은 <Link> 로 남겨 키보드 이동, 새 탭으로 열기 같은 앵커 기본 동작을 유지합니다.
-// 예외: 카드 안 인터랙티브 요소(공유 버튼 등), 텍스트 선택 중, 수정키 조합.
 export function shouldOpenFromCardClick(event) {
   if (!event || event.defaultPrevented) return false;
   if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
@@ -41,7 +36,7 @@ export function shouldOpenFromCardClick(event) {
   if (typeof event.button === "number" && event.button !== 0) return false;
   if (event.target?.closest?.("a, button, input, select, textarea, [role]"))
     return false;
-  if (window.getSelection?.()?.toString()) return false; // 드래그 선택 중
+  if (window.getSelection?.()?.toString()) return false;
   return true;
 }
 

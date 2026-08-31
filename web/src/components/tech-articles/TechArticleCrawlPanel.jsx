@@ -1,8 +1,3 @@
-// src/components/tech-articles/TechArticleCrawlPanel.jsx
-//
-// 기술 아티클의 비동기 수집 실행 패널입니다.
-// 별도 "크롤링 관리" 화면에서 수동 실행과 전체 실행 이력을 함께 관리합니다.
-// 서버가 허용한 소스와 옵션만 선택할 수 있으며, 임의 URL 입력은 제공하지 않습니다.
 import React, {
   useCallback,
   useEffect,
@@ -146,8 +141,6 @@ function TechArticleCrawlPanel() {
   const [sourceId, setSourceId] = useState("");
   const [capabilityIndex, setCapabilityIndex] = useState(0);
   const [options, setOptions] = useState({});
-  // 실행 상세는 이력 행의 "상세" 버튼으로만 엽니다. 목록에 이미 있는 값으로
-  // 먼저 그리고 getCrawlRun 응답이 오면 같은 팝업 안에서 교체합니다.
   const [detailRun, setDetailRun] = useState(null);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [runs, setRuns] = useState([]);
@@ -231,8 +224,6 @@ function TechArticleCrawlPanel() {
         }
         setRuns(items);
         setRunsPagination(data?.pagination || null);
-        // 팝업이 열려 있는 동안에만 같은 실행을 최신 목록 값으로 갱신합니다.
-        // 필터나 페이지가 바뀌어 목록에서 사라져도 팝업을 닫지 않습니다.
         setDetailRun((current) => {
           if (!current) return null;
           const updated = items.find(
@@ -312,7 +303,6 @@ function TechArticleCrawlPanel() {
     setIdempotencyKey("");
   }, [canFollowPagination, capabilityIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 네이티브 dialog 를 쓰면 ESC 와 포커스 트랩을 브라우저가 처리합니다.
   useEffect(() => {
     const dialog = detailDialogRef.current;
     if (!dialog) return;
@@ -330,7 +320,6 @@ function TechArticleCrawlPanel() {
     if (!crawlRunId) return;
     if (!quiet) setIsRefreshing(true);
     try {
-      // 빈 응답으로 상세를 지우면 열려 있던 팝업이 닫힙니다.
       const detail = await getCrawlRun(crawlRunId);
       if (detail) setDetailRun(detail);
     } catch (error) {
@@ -406,7 +395,6 @@ function TechArticleCrawlPanel() {
     Object.prototype.hasOwnProperty.call(statistics || {}, key),
   );
 
-  // 목록 행의 값으로 즉시 열고, 상세 응답이 오면 같은 팝업에서 교체합니다.
   const openDetail = async (selected) => {
     setDetailRun(selected);
     setIsDetailLoading(true);
@@ -432,7 +420,6 @@ function TechArticleCrawlPanel() {
     setRunFilters((current) => ({ ...current, [key]: value }));
     setRunsPage(1);
   };
-
 
   const runner = isLoadingSources ? (
     <section className="widget-card crawl-loading-v9">

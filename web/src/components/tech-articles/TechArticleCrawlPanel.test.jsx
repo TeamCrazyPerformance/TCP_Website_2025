@@ -23,7 +23,6 @@ jest.mock("../../api/techArticles", () => ({
 }));
 
 describe("TechArticleCrawlPanel", () => {
-  // dialog 의 showModal/close 폴리필은 src/setupTests.js 에 있습니다.
   beforeEach(() => {
     jest.clearAllMocks();
     getCrawlSources.mockResolvedValue({
@@ -104,7 +103,6 @@ describe("TechArticleCrawlPanel", () => {
     expect(
       screen.queryByRole("button", { name: "실행 설정 닫기" }),
     ).not.toBeInTheDocument();
-    // 상세는 팝업으로만 열리므로 처음에는 실행 정보가 그려지지 않습니다.
     expect(screen.queryByText("실행 ID")).not.toBeInTheDocument();
   });
 

@@ -513,7 +513,6 @@ function AdminTechArticleReviews({ kind }) {
   const matchedArticle = (item) =>
     item.matched || item.candidates?.[0]?.article || item.candidates?.[0];
 
-  // 응답에 따라 articleUrl 이 항목에 직접 오기도 하고 source 안에 오기도 합니다.
   const matchedUrl = (item) => {
     const matched = matchedArticle(item);
     return matched?.articleUrl || matched?.source?.articleUrl || null;

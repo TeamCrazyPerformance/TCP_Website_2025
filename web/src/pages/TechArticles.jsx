@@ -75,12 +75,6 @@ function readSources(searchParams) {
     .filter(Boolean);
 }
 
-// 소스는 이름과 도메인으로만 구분합니다. 아이콘은 여섯 색 표식으로 떨어지는
-// 경우가 많았는데, 그 색은 소스를 뜻하지 않으면서 옆의 분야 태그와 같은
-// 색 언어를 써서 두 축이 섞여 보였습니다. 이름이 이미 하는 일입니다.
-
-// 소스가 늘어나도 견디도록 검색을 답니다. 목록을 눈으로 훑어 찾는 방식은
-// 스무 개를 넘어가면 무너집니다.
 function SourcePickerDialog({
   dialogRef,
   sources,
@@ -106,9 +100,6 @@ function SourcePickerDialog({
       className="source-dialog"
       ref={dialogRef}
       onClose={onClose}
-      // 바깥쪽을 누르면 닫습니다. 분야 선택 시트가 이미 같은 방식이라,
-      // 여기만 닫히지 않으면 같은 자리의 두 창이 서로 다르게 굽니다.
-      // 대화상자 자신이 대상일 때만 반응하므로 안쪽 클릭은 지나갑니다.
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -189,9 +180,6 @@ function sameValues(left, right) {
   return leftSorted.every((value, index) => value === rightSorted[index]);
 }
 
-// 목록을 새로 받은 뒤 어디로 시선을 옮길지는 누른 버튼마다 다릅니다.
-// 목록 위쪽 조작은 목록 머리글로, 페이지 아래 검색 패널의 조작은 그
-// 패널로 돌아와야 사용자가 보던 자리를 잃지 않습니다.
 function moveTo(id, block = "start") {
   document.getElementById(id)?.scrollIntoView({ behavior: "auto", block });
 }
@@ -347,7 +335,6 @@ function TechArticles() {
         if (active) setSources(Array.isArray(data?.items) ? data.items : []);
       })
       .catch(() => {
-        // 소스 목록을 못 받아도 아티클 목록은 그대로 보여야 합니다.
         if (active) setSources([]);
       });
     return () => {
@@ -386,11 +373,6 @@ function TechArticles() {
 
     const listPath = `${location.pathname}${location.search || ""}`;
 
-    // 두 가지 경로로 복원합니다.
-    //   1) 브라우저 뒤로가기 — 같은 기록 항목으로 돌아오므로 기록 키까지 맞습니다.
-    //   2) 상세의 "아티클 목록으로 돌아가기" — 새 기록 항목(PUSH)이라 키는 다르지만,
-    //      그 링크가 저장해 둔 목록 주소를 그대로 요청하며 이 표시를 함께 보냅니다.
-    // 헤더의 메뉴처럼 표시가 없는 목록 이동은 지금처럼 목록 시작점으로 갑니다.
     const requestedRestore = Boolean(location.state?.restoreListPosition);
     const shouldRestore =
       returnState.listPath === listPath &&
@@ -398,14 +380,11 @@ function TechArticles() {
         (navigationType === "POP" &&
           returnState.listLocationKey === (location.key || "default")));
 
-    // 복원 대상이 아니면 기존 상단 이동 정책을 유지하고 남은 정보만 버립니다.
     if (!shouldRestore) {
       releaseArticleListReturn(returnState);
       return;
     }
 
-    // 네 개의 스켈레톤 높이를 기준으로 복원하면 실제 카드가 들어올 때 위치가
-    // 다시 밀립니다. 목록 요청이 끝난 뒤 실제 아티클 ID를 앵커로 사용합니다.
     if (isLoading) return;
 
     const card = Array.from(
@@ -422,7 +401,6 @@ function TechArticles() {
         behavior: "auto",
       });
     } else {
-      // 글이 삭제되거나 필터 결과에서 사라졌다면 예측 가능한 목록 시작점으로 갑니다.
       moveToResults();
     }
 
@@ -476,8 +454,6 @@ function TechArticles() {
     } finally {
       if (requestId.current === currentRequest) setIsLoading(false);
     }
-    // selectedTags / selectedSources 는 매 렌더 새 배열이라 그대로 넣으면
-    // 무한 조회가 됩니다. 문자열로 접은 ...Key 를 대신 씁니다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     keyword,
@@ -493,7 +469,6 @@ function TechArticles() {
     loadArticles();
   }, [loadArticles]);
 
-  // "14:32 KST" 는 지금 시각과 빼기를 시켜야 읽힙니다. 상대 시각은 그냥 읽힙니다.
   const lastCheckedRelative = useMemo(
     () => formatRelativeFromNow(response?.lastCrawledAt),
     [response],
@@ -501,7 +476,6 @@ function TechArticles() {
   const lastCheckedAbsolute = response?.lastCrawledAt
     ? `${formatTechArticleDate(response.lastCrawledAt, true)} KST`
     : undefined;
-  // 배지가 붙은 개수와 같은 값이라, 두 표시가 서로를 설명해 줍니다.
   const newCount = useMemo(
     () => (response?.items || []).filter((item) => item.isNew).length,
     [response],
@@ -513,8 +487,6 @@ function TechArticles() {
     nextPage = 1,
     scroll = true,
     scrollTarget = "resultsStart",
-    // 목록 머리글은 위쪽 끝을 맞추는 편이 자연스럽지만, 페이지 중간의
-    // 검색 패널은 화면 가운데로 와야 방금 누른 버튼이 눈에 남습니다.
     scrollBlock = "start",
   } = {}) => {
     const conditionsChanged =
@@ -550,7 +522,6 @@ function TechArticles() {
     setSearchParams(new URLSearchParams());
   };
 
-  // 카드 전체를 상세 이동 영역으로 사용. 예외 규칙은 shouldOpenFromCardClick 참고
   const openArticleFromCard = (event, articleId) => {
     if (!shouldOpenFromCardClick(event)) return;
     rememberArticleListReturn({
@@ -610,7 +581,6 @@ function TechArticles() {
   const hasConditions = Boolean(
     keyword || selectedTags.length || selectedSources.length,
   );
-  // 분야 선택과 같게, 고른 소스가 실제로 달라졌을 때만 적용을 켭니다.
   const sourcesChanged = useMemo(
     () => !sameValues(draftSources, selectedSources),
     [draftSources, selectedSources],
@@ -630,15 +600,12 @@ function TechArticles() {
               <i className="fas fa-newspaper"></i>
             </div>
             <h1 className="orbitron gradient-text">Tech Articles</h1>
-            {/* 한글에는 Orbitron 을 쓰지 않습니다. 라틴 제목에만 남깁니다. */}
-            {/* 좁은 화면에서 "…뉴스를 이곳에서 / 만나보세요."로 끊기지
-                않도록 의미 단위로 나눠 둡니다. */}
+
             <p className="hero-lead">
               <span>TCP가 한데 모은 여러 개발·기술 뉴스를</span>{" "}
               <span>이곳에서 만나보세요.</span>
             </p>
             <p className="last-collected">
-              {/* 새 글이 없을 때 "업데이트"라고 하면 사실이 아니게 됩니다. */}
               <span title={lastCheckedAbsolute}>
                 {lastCheckedRelative
                   ? newCount > 0
@@ -659,9 +626,6 @@ function TechArticles() {
               className="section-heading article-list-heading"
               tabIndex="-1"
             >
-              {/* 화면에는 두지 않습니다. 바로 아래가 목록이라 제목이
-                  한 줄을 더 쓰는 값을 하지 못합니다. 다만 섹션 제목을 통째로
-                  빼면 보조 기술의 문서 구조가 끊기므로 남겨 둡니다. */}
               <h2 className="sr-only">아티클 목록</h2>
               <div className="result-summary">
                 <p id="resultCount">
@@ -670,9 +634,7 @@ function TechArticles() {
                     : pagination?.totalCount
                       ? hasConditions
                         ? `총 ${pagination.totalCount}건 중 ${start}–${end}건`
-                        : // 정렬 기준은 좁은 화면에서 버튼과 한 줄을 나눠
-                          // 쓸 자리가 없어 따로 감싸 두고 CSS 로 덜어냅니다.
-                          [
+                        : [
                             `전체 ${pagination.totalCount}건`,
                             <span className="result-sort" key="sort">
                               {" ⋅ 최신순"}
@@ -693,13 +655,7 @@ function TechArticles() {
                 )}
               </div>
 
-              {/* 좁은 화면에서는 두 트리거가 제목 줄 아래 한 줄을 함께
-                  씁니다. 래퍼가 없으면 건수 길이에 따라 소스 선택만 제목
-                  줄에 붙는 날이 생겨 줄 구성이 들쭉날쭉해집니다. */}
               <div className="list-filter-row">
-                {/* 소스는 분야 태그와 다른 축이라 필터 패널이 아니라 목록
-                    머리글에 둡니다. 건수와 같은 줄 오른쪽 끝에 붙여, 버튼만
-                    있는 줄이 건수와 목록 사이에 빈 띠를 만들지 않게 합니다. */}
                 <button
                   type="button"
                   className={`filter-trigger source-trigger ${selectedSources.length ? "is-active" : ""}`}
@@ -713,10 +669,6 @@ function TechArticles() {
                     : "소스 선택"}
                 </button>
 
-                {/* 분야 선택은 데스크톱에서 패널 안 태그 목록으로 펼쳐지지만,
-                    모바일에서는 소스 선택과 나란히 놓이는 같은 성격의 트리거라
-                    머리글로 함께 올립니다. fieldset 밖으로 나오면서 disabled 가
-                    더는 상속되지 않으므로 같은 조건을 직접 넘깁니다. */}
                 <button
                   id="openFilterButton"
                   className={`filter-trigger mobile-filter-button ${selectedTags.length ? "is-active" : ""}`}
@@ -735,10 +687,6 @@ function TechArticles() {
                     : "분야 선택"}
                 </button>
 
-                {/* 모바일에서는 선택 조건을 아래에 다시 나열하지 않습니다.
-                    조건이 하나라도 있으면 같은 행 오른쪽 끝에 덜 강조된
-                    텍스트 동작으로 초기화를 제공합니다. 버튼 요소는 키보드와
-                    스크린 리더 동작을 위해 유지하고 외형만 텍스트로 만듭니다. */}
                 {hasConditions && (
                   <button
                     id="mobileResetAllButton"
@@ -854,11 +802,6 @@ function TechArticles() {
                           rememberReturnFromTitle(event, article.id)
                         }
                       >
-                        {/* 목록이 원문 게시일 순이라 새로 들어온 글이 위로
-                            오지 않습니다. 배지가 없으면 찾을 방법이 없습니다.
-                            제목 링크 안에 두어야 글자 흐름을 타고 첫 줄과
-                            정렬이 맞습니다. 바깥에 두면 카드 헤딩이 flex 라
-                            제목 첫 줄과 어긋납니다. */}
                         {article.isNew && (
                           <span className="article-new-badge">NEW</span>
                         )}
@@ -975,9 +918,6 @@ function TechArticles() {
               aria-labelledby="exploreHeading"
             >
               <div className="explore-heading">
-                {/* 화면에는 두지 않습니다. 아래에 분야 버튼과 검색창만
-                    남기면 무엇을 하는 자리인지 그 자체로 읽힙니다. 섹션
-                    이름은 aria-labelledby 가 참조하므로 남겨 둡니다. */}
                 <h2 id="exploreHeading" className="sr-only">
                   아티클 검색하기
                 </h2>
@@ -1006,9 +946,6 @@ function TechArticles() {
                   }}
                 >
                   <div className="search-category-filter">
-                    {/* 위쪽 분야 패널과 같은 배치(태그 왼쪽 · 버튼 오른쪽
-                        한 줄)를 쓰려면 태그 목록과 버튼 줄이 같은 그리드의
-                        형제여야 합니다. */}
                     <div className="desktop-filter">
                       <V9TagButtons
                         id="searchTagFilters"
@@ -1082,9 +1019,6 @@ function TechArticles() {
                         value={searchInput}
                         onChange={(event) => setSearchInput(event.target.value)}
                         placeholder="검색어"
-                        // 눈에 보이는 라벨을 뺐으므로 이름은 여기서 답니다.
-                        // placeholder 는 값을 입력하면 사라져 이름이 될 수
-                        // 없습니다.
                         aria-label="검색어"
                       />
                       <button
@@ -1119,10 +1053,7 @@ function TechArticles() {
             </section>
 
             <aside className="source-notice">
-              <i className="fas fa-circle-info" aria-hidden="true"></i>
               <div>
-                {/* 안내 문구 제목이라 브랜드 서체(Orbitron)를 쓰지 않습니다.
-                    한글 사이에 섞인 "AI"만 다른 글꼴로 튀어 보입니다. */}
                 <h2>데이터 출처 및 AI 생성 정보 안내</h2>
                 <p>
                   TCP는 기술 블로그, 개발자 뉴스·커뮤니티 및 공개 저장소 등 외부
@@ -1162,8 +1093,6 @@ function TechArticles() {
           setSourceOpen(false);
           applyConditions({ nextSources: draftSources, scroll: false });
         }}
-        // 초기화는 "고른 것을 지운다"가 아니라 "조건 없는 목록으로 돌아간다"
-        // 입니다. 따로 적용을 누르게 하면 한 번 더 확인받는 셈이 됩니다.
         onReset={() => {
           setDraftSources([]);
           setSourceOpen(false);
@@ -1171,7 +1100,6 @@ function TechArticles() {
         }}
         onClose={() => {
           setSourceOpen(false);
-          // 적용하지 않고 닫으면 선택을 되돌립니다.
           setDraftSources(selectedSources);
         }}
       />
@@ -1207,9 +1135,7 @@ function TechArticles() {
             onToggle={toggleDraftTag}
             label="분야 선택 항목"
           />
-          {/* 소스 선택 대화상자와 같은 "초기화 / 적용" 두 동작만 둡니다.
-              취소 버튼은 지웁니다 — 오른쪽 위 닫기와 바깥쪽 누르기가 이미
-              같은 일을 하고, 소스 쪽에는 없어 두 창의 결이 어긋났습니다. */}
+
           <div className="sheet-actions">
             <button
               id="clearDraftTagsButton"

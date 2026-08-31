@@ -99,7 +99,6 @@ function StatusBadge({ status }) {
   );
 }
 
-// 세 축을 접은 파이프라인 단계. 표시 오류는 단계를 가리지 않고 옆에 덧붙입니다.
 function StageBadge({ article, withHint = false }) {
   const meta = stageMeta(resolveStage(article));
   return (
@@ -121,18 +120,13 @@ function StageBadge({ article, withHint = false }) {
   );
 }
 
-// 상세를 연 횟수. 공개 상세에 인증이 걸려 있어 비회원은 401 로 막히는데,
-// 그 시도까지 세기 때문에 인증을 통과하지 못한 봇 요청도 함께 잡힙니다.
-// 두 숫자를 붙여 쓰면(예: "42 +5") 뒤엣것이 무엇인지 알 수 없으므로, 이 표가
-// 이미 쓰는 라벨+값 방식(admin-date-cell)을 따라 각각 이름을 답니다.
 function ViewCountCell({ counts }) {
   const member = counts?.member ?? 0;
   const guest = counts?.guest ?? 0;
   return (
-    /* td 에 직접 grid 를 걸면 그 칸이 표의 셀에서 빠져 행 구분선이 끊깁니다.
-       칸은 그대로 두고 안쪽 상자에 격자를 겁니다. */
+
     <div className="admin-view-grid">
-      {/* 전체가 이 열의 대표값입니다. 내역은 그 아래에 붙입니다. */}
+
       <strong className="admin-view-total">{member + guest}</strong>
       <span>회원</span>
       <strong>{member}</strong>
@@ -142,11 +136,9 @@ function ViewCountCell({ counts }) {
   );
 }
 
-// 표 뷰와 모바일 카드 뷰가 함께 씁니다.
 function PublishControl({ article, isMutating, onToggle }) {
   const published = article.publicationStatus === "PUBLISHED";
   const blockReason = publishBlockReason(article);
-  // 공개로 켜는 것만 막습니다. 내리는 길까지 막으면 잘못 공개된 건을 되돌릴 수 없습니다.
   const blocked = !published && Boolean(blockReason);
   return (
     <div className="publish-control-group">
@@ -178,13 +170,9 @@ function PublishControl({ article, isMutating, onToggle }) {
   );
 }
 
-// 목록 표 바로 위 툴바. 불러온 행을 좁히는 도구라 표에 붙여 둡니다.
-// 검색·공개 상태·정렬은 서버 필터라 위쪽 "검색 및 필터" 카드에 있습니다.
-// 범위가 다르므로 같은 카드에 두지 않습니다.
 function StageToolbar({ total, summary, mismatchCount, value, onChange }) {
   const toggle = (next) => onChange(value === next ? "" : next);
   const selected = summary.find((entry) => entry.stage === value);
-  // 종착지에서는 오래 머무는 게 정상이라 시간을 말하지 않습니다.
   const waiting =
     selected && STAGE_WAITING.includes(selected.stage)
       ? formatWaiting(selected.oldest)
@@ -230,7 +218,7 @@ function StageToolbar({ total, summary, mismatchCount, value, onChange }) {
         >
           전체<strong>{total}</strong>
         </button>
-        {/* 진행 단계는 왼쪽에서 오른쪽으로 흐릅니다. 배경 띠가 그 흐름을 묶습니다. */}
+
         <div
           className="stage-group is-flow"
           role="group"
@@ -240,7 +228,7 @@ function StageToolbar({ total, summary, mismatchCount, value, onChange }) {
             .filter(Boolean)
             .map(chip)}
         </div>
-        {/* 종료 상태는 흐름에서 빠져나온 것이라 서로 순서가 없습니다. */}
+
         <div
           className="stage-group is-exit"
           role="group"
@@ -343,7 +331,6 @@ function AdminTechArticles() {
         pageSize: PAGE_SIZE,
         keyword: keyword || undefined,
         publicationStatus: publicationStatus || undefined,
-        // 단계와 표시 오류는 별개 축이라 서버에서 각각 거릅니다.
         stage:
           stageFilter && stageFilter !== MISMATCH_FILTER
             ? stageFilter
@@ -371,7 +358,6 @@ function AdminTechArticles() {
   }, [keyword, page, publicationStatus, sort, stageFilter]);
 
   const loadOverview = useCallback(async () => {
-    // 칩 숫자를 목록과 같은 조건으로 셉니다. 검색 중에는 칩도 함께 좁혀집니다.
     const [statsResult, policyResult] = await Promise.allSettled([
       getAdminTechArticleStats({
         keyword: keyword || undefined,
@@ -392,12 +378,9 @@ function AdminTechArticles() {
   useEffect(() => {
     loadOverview();
   }, [loadOverview]);
-  // 페이지를 넘겨도 단계 필터는 유지됩니다. 서버가 걸러 주므로 다른 페이지에서
-  // 빈 목록이 되지 않습니다.
   useEffect(() => {
     setSelected({});
   }, [page]);
-  // 조회 조건이 바뀌면 결과 집합이 달라지므로 첫 페이지로 되돌립니다.
   useEffect(() => {
     setPage(1);
   }, [stageFilter, keyword, publicationStatus, sort]);
@@ -416,10 +399,7 @@ function AdminTechArticles() {
   }, [notice]);
 
   const selectedRecords = useMemo(() => Object.values(selected), [selected]);
-  // 매 렌더마다 새 배열이 되면 아래 useMemo 가 무의미해집니다.
-  // 서버가 stage 로 이미 걸러 보냅니다. 화면은 받은 그대로 그립니다.
   const pageItems = useMemo(() => response?.items || [], [response]);
-  // 칩 숫자는 전체 아티클 기준 집계에서 옵니다. 목록 총계와 같은 모집단입니다.
   const stageSummary = useMemo(
     () =>
       STAGE_ORDER.map((stage) => ({
@@ -431,7 +411,6 @@ function AdminTechArticles() {
     [stats],
   );
   const mismatchCount = stats?.statusMismatch ?? 0;
-  // 서버가 stage / statusMismatch 로 걸러 센 값입니다. 칩 숫자와 같은 모집단입니다.
   const totalCount = response?.pagination?.totalCount ?? 0;
   const allPageSelected =
     pageItems.length > 0 && pageItems.every((item) => selected[item.articleId]);
@@ -472,7 +451,6 @@ function AdminTechArticles() {
   };
 
   const runSingleAction = async (article, action) => {
-    // 토글과 중복이지만, 호출 경로가 늘어도 규칙이 유지되도록 둡니다.
     if (action === "PUBLISH" && !canPublishArticle(article)) {
       setNotice({ type: "error", message: publishBlockReason(article) });
       return;
@@ -948,9 +926,7 @@ function AdminTechArticles() {
 
         <div className="widget-card article-table-card">
           <div className="article-table-wrap">
-            {/* admin-articles-table 은 이 목록 표에만 붙습니다. 중복 검토 화면
-                (AdminTechArticleReviews)이 같은 article-table 클래스를 쓰기
-                때문에, 열 폭 규칙을 그쪽까지 끌고 가지 않으려는 표식입니다. */}
+
             <table className="article-table admin-v9-table admin-articles-table">
               <caption className="sr-only">아티클 목록 및 관리 작업</caption>
               <thead>
@@ -964,9 +940,7 @@ function AdminTechArticles() {
                       aria-label="현재 페이지 전체 선택"
                     />
                   </th>
-                  {/* 표가 table-layout: fixed 라 열 폭은 이 머리글이 정합니다.
-                      아티클만 폭을 주지 않아 남는 자리를 모두 가져갑니다.
-                      폭 값은 techArticlesAdminAlign.css 에 있습니다. */}
+
                   <th scope="col">아티클</th>
                   <th className="admin-source-col" scope="col">
                     출처 · 언어
@@ -977,7 +951,7 @@ function AdminTechArticles() {
                   <th className="admin-view-col" scope="col">
                     조회수
                   </th>
-                  {/* 칸 안의 "원문 게시 / 수집 완료" 라벨이 뜻을 이미 밝힙니다. */}
+
                   <th className="admin-date-col" scope="col">
                     게시 · 수집
                   </th>
@@ -1036,9 +1010,7 @@ function AdminTechArticles() {
                           <p className="admin-article-title">
                             {article.title || "제목 없음"}
                           </p>
-                          {/* 한 줄 요약은 상세 패널에서만 봅니다. 목록에서는
-                              행마다 두 줄을 더 차지하면서 정작 먼저 읽혀야 할
-                              파이프라인 단계를 밀어냅니다. */}
+
                           <ArticleTags tags={article.tags} />
                         </td>
                         <td className="admin-source-cell">
@@ -1310,8 +1282,7 @@ function AdminTechArticles() {
                   </section>
                   <section className="admin-detail-section">
                     <h4>조회수</h4>
-                    {/* 목록에서는 합쳐 보여주지만 여기서는 실제 회원·비회원
-                        열람을 나눠 운영자가 공개 전환 효과를 볼 수 있게 합니다. */}
+
                     <div className="admin-detail-grid">
                       <DetailFact
                         label="전체 조회"

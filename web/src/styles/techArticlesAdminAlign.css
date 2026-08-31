@@ -1,16 +1,5 @@
-/* Tech Articles 관리 화면의 정렬 레이어입니다.
- *
- * 자동 생성 파일인 techArticlesAdmin.css 다음에 로드되며,
- * 생성 파일을 직접 고치지 않고 모든 조정을 이 파일에 모아 둡니다.
- * 목업에 없던 스타일을 새로 추가할 때도 이 파일에 작성해 주세요. */
 
-/* ── Tailwind preflight 상쇄 ──────────────────────────────
- * v9 CSS는 브라우저 기본 스타일을 전제로 작성됨. preflight가 초기화하는
- * 텍스트 흐름 요소를 스코프 안에서만 되돌린다.
- * 특정도 (0,1,1) — preflight(0,0,1)는 이기고 v9의 `.클래스 요소`(0,2,1)에는 짐.
- * 값을 올리면 v9 스타일을 덮으므로 그대로 둘 것. */
 
-/* preflight: h1~h6 { font-size: inherit }. 클래스 없는 제목이 본문 크기로 무너짐 */
 .ta-admin h1 {
   margin: 0.67em 0;
   font-size: 2em;
@@ -47,7 +36,6 @@
   font-weight: 700;
 }
 
-/* preflight: p, pre, blockquote { margin: 0 } */
 .ta-admin p,
 .ta-admin pre {
   margin: 1em 0;
@@ -57,7 +45,6 @@
   margin: 1em 40px;
 }
 
-/* preflight: ol, ul { list-style: none }. SafeMarkdown 이 렌더하는 불릿 복원 */
 .ta-admin ul,
 .ta-admin ol {
   margin: 1em 0;
@@ -72,21 +59,12 @@
   list-style: decimal outside;
 }
 
-/* preflight: * { border-width: 0 } 로 hr 이 사라짐 */
 .ta-admin hr {
   margin: 1em 0;
   border: 0;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-/* ── 기존 관리자 화면 컨벤션 정렬 ─────────────────────────
- * 기준: AdminLayout <main class="p-3 sm:p-6"> +
- *      기존 페이지의 "orbitron text-3xl gradient-text" 제목, "widget-card rounded-xl" 카드
- *
- * 본문 폭은 CSS로 잡지 않는다. AdminTechArticleContent 가 기존 페이지와 같은
- * `container mx-auto max-w-7xl` 을 직접 써서 브레이크포인트 거동까지 일치시킴. */
-
-/* 페이지 제목: v9 clamp(27~38px) -> 기존 text-3xl(1.875rem) */
 .ta-admin .admin-intro h2 {
   margin: 0;
   font-size: 1.875rem;
@@ -102,7 +80,6 @@
   margin: 0.25rem 0 0;
 }
 
-/* 카드 표면을 index.css .widget-card 와 동일하게 (radius 는 rounded-xl 기준) */
 .ta-admin .widget-card {
   background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -113,7 +90,6 @@
   border-radius: 0.75rem;
 }
 
-/* ── 크롤링 관리 화면 ──────────────────────────────────── */
 .ta-admin .admin-intro-actions {
   display: flex;
   align-items: center;
@@ -156,7 +132,6 @@
   font-size: 0.8125rem;
 }
 
-/* 부모 화면이 떠 있는 toast 를 쓰므로 겹치지 않게 패널 안쪽 알림 */
 .ta-admin .crawl-panel-notice-v9 {
   display: flex;
   margin: 1rem 0 0;
@@ -188,7 +163,6 @@
   }
 }
 
-/* 카드 안 섹션 제목: v9가 크기를 지정하지 않은 것만 기존 text-xl 로 */
 .ta-admin .filter-card > h3,
 .ta-admin .filter-card > .list-heading-row h3,
 .ta-admin .policy-card > h3,
@@ -198,11 +172,6 @@
   font-weight: 700;
 }
 
-/* ── v9 목업에 없던 수집 화면 스타일 ──────────────────────
- * 목업에는 수집 실행 화면이 없어 이 프로젝트에서 새로 작성했습니다.
- * 목업 원본(docs/tech-articles-v9-mockup/)은 수정하지 않고 이곳에 둡니다. */
-/* 실행 폼은 이력 아래에 항상 펼쳐져 있습니다. 상세는 팝업으로 빠졌으므로
- * 예전의 2단(폼 + 사이드) 그리드는 더 이상 쓰지 않습니다. */
 .ta-admin .crawl-runner-v9 {
   width: 100%;
 }
@@ -323,7 +292,7 @@
 .ta-admin .crawl-idempotency-v9 code {
   color: var(--gray-300);
 }
-/* 폼이 화면 전체 폭이 되면서 버튼까지 늘리면 과합니다. 폭만 제한합니다. */
+
 .ta-admin .crawl-submit-v9 {
   min-width: 220px;
   margin-top: 18px;
@@ -610,8 +579,6 @@
   }
 }
 
-/* ── 공개 가능 여부 표시 ─────────────────────────────────── */
-
 .ta-admin .publish-control-group {
   display: flex;
   min-width: 132px;
@@ -645,21 +612,12 @@
   color: var(--warning);
 }
 
-/* v9 번들에 없는 실패 계열 배지 */
 .ta-admin .status-failed {
   color: var(--danger);
   background: var(--danger-bg);
   border-color: rgba(252, 165, 165, 0.16);
 }
 
-/* ── 파이프라인 단계 ───────────────────────────────────────
- * processing / review / publication 세 축을 접은 단일 배지와
- * 그 집계 칩입니다. 목록은 이 배지만 쓰고 원본 세 축은 상세에서 봅니다. */
-
-/* ── 배지 글자 ────────────────────────────────────────────
- * 생성 파일은 .status-badge 를 10px / weight 800 으로 둡니다. 표 머리글과 같은
- * 문제로, 10px 한글에 800 은 속공간이 메워져 자획이 뭉갭니다. 크기를 올리고
- * 굵기를 낮춥니다. */
 .ta-admin .status-badge {
   font-size: 11px;
   font-weight: 700;
@@ -673,8 +631,6 @@
   gap: 5px;
 }
 
-/* 목록에서 가장 먼저 읽혀야 하는 값이라 다른 배지보다 한 단계 큽니다.
-   한 줄 요약을 뺀 자리를 이 배지가 대신합니다. */
 .ta-admin .stage-badge {
   min-height: 30px;
   padding: 5px 11px;
@@ -693,13 +649,6 @@
   line-height: 1.4;
 }
 
-/* ── 검수 큐 상단 카운터 ──────────────────────────────────
- * 관리자가 이 화면에서 가장 먼저 읽는 값입니다. "할 일이 있나"를 한눈에
- * 답해야 하는데, 생성 파일은 27px 에 라벨 11px / 보조설명 10px --gray-500
- * (대비 3:1 대)이라 숫자가 카드 안에서 묻힙니다.
- *
- * 서체는 아래 "숫자 표시" 절에서 본문 서체와 tabular-nums 로 되돌립니다.
- * 여기서는 크기만 다룹니다. */
 .ta-admin .queue-stat-card p {
   color: var(--gray-300);
   font-size: 12px;
@@ -716,20 +665,6 @@
   font-size: 11px;
 }
 
-/* ── 목록 표 머리글 ───────────────────────────────────────
- * 생성 파일은 10px / weight 800 / --gray-400 입니다. 본문 셀이 12px /
- * --gray-300 이라 머리글이 본문보다 작고 어두웠습니다. 어느 열인지 알려주는
- * 글자가 정작 데이터보다 읽기 어려우면 스캔이 안 됩니다.
- *
- * 크기를 본문과 같게 올리고, 굵기는 오히려 낮춥니다. 10px 한글에 weight 800 은
- * 속공간이 메워져 자획이 뭉갭니다. 한글은 같은 크기에서 라틴 문자보다 획이
- * 촘촘해 작고 굵을수록 불리합니다.
- *
- * 머리글이라는 신호는 thead 배경 띠와 굵기가 이미 충분히 줍니다. 색까지
- * 낮출 필요가 없습니다. 너무 도드라져 보이면 color 만 --gray-400 으로
- * 되돌리세요 — 크기가 12px 이면 그 색으로도 지금보다 훨씬 잘 읽힙니다.
- *
- * 특정도는 생성 파일과 같은 (0,2,1). 나중에 로드되므로 이깁니다. */
 .ta-admin .article-table th {
   color: var(--gray-300);
   font-size: 12px;
@@ -737,12 +672,6 @@
   letter-spacing: 0.02em;
 }
 
-/* ── 파이프라인 단계 툴바 ─────────────────────────────────
- * 목록 표 바로 위. 불러온 행을 좁히는 도구라 표에 붙입니다.
- * 위쪽 "검색 및 필터" 카드는 서버 필터라 범위가 다릅니다. */
-
-/* 위 간격은 .list-heading-row 의 margin-bottom(12px)이 만듭니다.
- * 아래도 같은 값을 써서 칩이 제목과 표 사이 가운데에 놓이게 합니다. */
 .ta-admin .stage-toolbar {
   display: flex;
   flex-direction: column;
@@ -763,8 +692,6 @@
   gap: 10px;
 }
 
-/* 진행 단계와 종료 상태를 두 묶음으로 나눕니다.
-   한 줄에 늘어놓으면 "품질 미달"이 "처리 완료" 다음 단계처럼 읽힙니다. */
 .ta-admin .stage-group {
   display: inline-flex;
   flex-wrap: wrap;
@@ -772,9 +699,6 @@
   gap: 6px;
 }
 
-/* 진행 묶음: 옅은 배경 띠가 다섯 단계를 하나의 흐름으로 묶습니다.
-   왼→오른쪽으로 짙어지는 그라디언트가 방향을 암시합니다. 칩 사이에 화살표를
-   넣으면 줄바꿈될 때 허공을 가리키므로 배경으로 처리합니다. */
 .ta-admin .stage-group.is-flow {
   padding: 4px 10px;
   border-radius: 999px;
@@ -785,7 +709,6 @@
   );
 }
 
-/* 종료 묶음: 배경 없이 구분선 뒤에 두어 흐름에서 떨어져 나온 것으로 읽히게 합니다. */
 .ta-admin .stage-group.is-exit {
   padding-left: 12px;
   border-left: 1px solid var(--line);
@@ -823,7 +746,6 @@
   white-space: nowrap;
 }
 
-/* 라벨과 건수를 붙여 두면 어느 칩의 숫자인지 읽기 어렵습니다. */
 .ta-admin .stage-chip strong {
   padding-left: 2px;
   color: #fff;
@@ -840,8 +762,6 @@
   box-shadow: inset 0 0 0 1px currentColor;
 }
 
-/* 0 건인 단계. 칩을 감추면 0 건인지 이 페이지에 없는 건지 구분되지 않으므로
-   자리를 지키되 눌리지 않게 둡니다. */
 .ta-admin .stage-chip.is-empty {
   opacity: 0.45;
   cursor: default;
@@ -856,7 +776,6 @@
   outline-offset: 2px;
 }
 
-/* 표시 오류 표식. 단계 배지와 구분되도록 테두리만 있는 형태 */
 .ta-admin .stage-flag {
   display: inline-flex;
   align-items: center;
@@ -872,7 +791,6 @@
   border-color: rgba(253, 230, 138, 0.24);
 }
 
-/* 파이프라인 동작에는 영향이 없으므로 경고가 아닌 안내 톤 */
 .ta-admin .stage-summary-note {
   display: flex;
   align-items: flex-start;
@@ -896,8 +814,6 @@
   color: var(--warning);
 }
 
-/* ── 상세: 상태 3축과 품질 평가 ──────────────────────────── */
-
 .ta-admin .admin-detail-axes {
   display: grid;
   gap: 10px;
@@ -918,8 +834,6 @@
   text-transform: uppercase;
 }
 
-/* 품질 평가 섹션은 블록 간격을 flex gap 하나로 관리합니다.
- * 개별 margin 을 쓰면 문단의 반행간이 더해져 위아래 간격이 달라 보입니다. */
 .ta-admin .quality-body {
   display: flex;
   flex-direction: column;
@@ -996,7 +910,6 @@
   }
 }
 
-/* 강제 정책 신호. 점수와 무관하게 판정을 뒤집는 항목이라 함께 보여줍니다. */
 .ta-admin .quality-signal-list h5 {
   margin: 0 0 8px;
   color: var(--gray-400);
@@ -1044,13 +957,6 @@
   color: var(--danger);
 }
 
-/* ── 숫자 표시 ────────────────────────────────────────────
- * v9 는 숫자에도 Orbitron 을 씁니다. 정사각 기하 디스플레이 서체라
- * 0/8, 1, 6/9 판별이 어렵고 tabular 자릿수도 없습니다.
- * 제목과 섹션 눈썹(라틴 대문자)의 Orbitron 은 브랜드 요소라 두고,
- * 숫자는 예외 없이 본문 서체로 되돌립니다.
- *
- * 새로 숫자를 표시하는 자리를 만들면 이 목록에 추가해 주세요. */
 .ta-admin .admin-score,
 .ta-admin .jaccard-score,
 .ta-admin .total-article-count,
@@ -1070,9 +976,6 @@
   letter-spacing: 0.01em;
 }
 
-/* ── 가치 점수 구간 배색 ──────────────────────────────────
- * v9 의 .admin-score 는 색이 초록으로 고정이라 41점도 통과처럼 보입니다.
- * 색은 보조 신호입니다. 숫자가 배지 안에 함께 있고 title 로 판정명을 답니다. */
 .ta-admin .admin-score.score-pass {
   color: var(--success);
   background: var(--success-bg);
@@ -1097,14 +1000,6 @@
   border-color: rgba(203, 213, 225, 0.16);
 }
 
-/* ── 조회수 ───────────────────────────────────────────────
- * 공개 상세에 인증이 걸려 있어 비회원은 401 로 막히는데, 그 시도까지 세기
- * 때문에 인증을 통과하지 못한 봇 요청도 함께 잡힙니다. 두 숫자를 붙여 쓰면
- * 뒤엣것이 무엇인지 알 수 없으므로 각각 이름을 답니다.
- *
- * 그리드를 쓰는 이유 — "회원"과 "비회원"은 글자 폭이 달라서, 라벨을 그냥
- * 나열하면 두 숫자가 세로로 어긋납니다. 라벨 열과 숫자 열을 나누면 라벨이
- * 가장 긴 것에 맞춰지고 숫자는 오른쪽으로 정렬되어 자릿수끼리 맞습니다. */
 .ta-admin .admin-view-cell {
   min-width: 72px;
   color: var(--gray-500);
@@ -1112,8 +1007,6 @@
   line-height: 1.6;
 }
 
-/* 격자는 칸(td)이 아니라 안쪽 상자에 겁니다. td 자체의 display 를 바꾸면
- * 그 칸이 표의 셀 취급을 받지 못해 행 구분선이 그 자리에서 끊깁니다. */
 .ta-admin .admin-view-grid {
   display: inline-grid;
   grid-template-columns: auto auto;
@@ -1128,7 +1021,6 @@
   justify-self: end;
 }
 
-/* 이 열의 대표값. 두 줄을 합친 수라 눈이 먼저 닿아야 합니다. */
 .ta-admin .admin-view-grid .admin-view-total {
   grid-column: 1 / -1;
   justify-self: start;
@@ -1138,23 +1030,6 @@
   font-weight: 700;
 }
 
-/* ── 타이포 스케일 정렬 ────────────────────────────────
- * v9 목업은 9~13px 중심의 조밀한 관리자 타이포를 쓰지만, 나머지 관리자
- * 화면은 Tailwind 기준(text-xs 12px / text-sm 14px)이라 같은 레이아웃 안에서
- * 본문만 작아 보입니다. 사이드바와 상단바는 AdminLayout 을 공유해 14px 이라
- * 대비가 더 두드러집니다.
- *
- * 아래 규칙은 12px 을 바닥선으로 잡고 한 단계씩 올려 두 체계의 수준을 맞춥니다.
- *   9·10·11px -> 12px | 12px -> 13px | 13px -> 14px | 17px -> 20px(섹션 제목)
- * 14px 과 페이지 제목 clamp() 는 이미 기존 화면과 같아 건드리지 않습니다.
- *
- * 생성 파일(techArticlesAdmin.css)은 tools/scope_v9.py 가 목업에서 다시 만들므로
- * 상향은 반드시 이 파일에만 둡니다. 셀렉터는 생성 파일과 같고 이 파일이 뒤에
- * 로드되므로 특정도 동률에서 순서로 이깁니다.
- *
- * 되돌리려면 이 블록만 지우면 됩니다. */
-
-/* 9 · 10 · 11px -> 12px  (배지 · 캡션 · 테이블 헤더 · 폼 라벨) */
 .ta-admin .policy-option-content small,
 .ta-admin .admin-article-id,
 .ta-admin .admin-article-summary,
@@ -1230,7 +1105,6 @@
   font-size: 12px;
 }
 
-/* 12px -> 13px  (테이블 본문 · 보조 문단) */
 .ta-admin .tag-button, .ta-admin .article-tag,
 .ta-admin .policy-description,
 .ta-admin .admin-source-cell strong,
@@ -1257,9 +1131,6 @@
   font-size: 13px;
 }
 
-/* ── 등록 아티클 집계 카드 ─────────────────────────────────
- * 부연 문구 없이 카드 제목을 아이콘과 한 줄로 맞추고, 공개 여부는
- * 별도 배지 없이 한 줄의 담백한 집계로 보여 줍니다. */
 .ta-admin .total-card .overview-card-title,
 .ta-admin .queue-stat-card .queue-stat-title {
   margin: 0;
@@ -1288,12 +1159,10 @@
   font-weight: 400;
 }
 
-/* 정책 제목과 선택 영역이 한 덩어리로 붙어 보이지 않을 정도의 작은 간격만 둡니다. */
 .ta-admin .policy-card .policy-form {
   margin-top: 12px;
 }
 
-/* 13px -> 14px  (버튼 · 본문) */
 .ta-admin .policy-option-content strong,
 .ta-admin .admin-score,
 .ta-admin .overview-card-heading p,
@@ -1310,31 +1179,24 @@
   font-size: 14px;
 }
 
-/* 17px -> 20px  (섹션 제목) */
 .ta-admin .admin-empty-state h3,
 .ta-admin .section-heading-row h3, .ta-admin .list-heading-row h3 {
   font-size: 20px;
 }
 
-/* 좁은 폭 축소값도 같은 비율로 올립니다. 이 파일이 뒤에 로드되므로
- * 같은 미디어쿼리로 다시 선언하지 않으면 위 평문 규칙이 덮어씁니다. */
 @media (max-width: 767px) {
-  /* 9 · 10 · 11px -> 12px  (배지 · 캡션 · 테이블 헤더 · 폼 라벨) */
+
   .ta-admin .admin-mobile-card-summary,
   .ta-admin .admin-mobile-meta span,
   .ta-admin .admin-mobile-meta strong {
     font-size: 12px;
   }
-  /* 13px -> 14px  (버튼 · 본문) */
+
   .ta-admin .admin-intro > div > p:last-child {
     font-size: 14px;
   }
 }
 
-/* ── 실행 상세 팝업 ───────────────────────────────────────
- * 사이드 카드로 붙어 있던 "선택 실행 상세"를 이력 행의 "상세" 버튼으로
- * 여는 팝업으로 옮겼습니다. 네이티브 dialog 라 ESC·포커스 트랩·백드롭은
- * 브라우저가 처리하고, 껍데기는 아티클 상세 팝업과 같은 클래스를 씁니다. */
 .ta-admin .crawl-detail-button-v9 {
   gap: 6px;
   white-space: nowrap;
@@ -1347,7 +1209,7 @@
 .ta-admin .crawl-detail-dialog-v9 .detail-dialog-content {
   padding: 20px 22px;
 }
-/* 팝업은 사이드 카드보다 넓으므로 사실 목록을 2열로 폅니다. */
+
 .ta-admin .crawl-detail-dialog-v9 .crawl-run-facts-v9 {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -1362,37 +1224,11 @@
   }
 }
 
-
-/* ── 아티클 목록 표: 한 화면에 담기 ─────────────────────────
- * 열이 9 개까지 늘면서 가로 스크롤이 생겼습니다. 스크롤이 생기면
- * "공개 설정"과 "작업"이 화면 밖으로 밀려, 정작 손을 대야 할 열이
- * 가장 안 보입니다.
- *
- * 원인은 두 가지였습니다.
- *   1) 칸마다 좌우 14px 여백 → 9 열이면 여백만 252px.
- *   2) 각 칸에 붙은 min-width 가 실제 내용보다 훨씬 컸습니다.
- *      (아티클 330 / 출처 150 / 날짜 142 / 단계·공개 132 / 작업 174)
- *      내용이 필요로 한 폭은 그보다 200px 가까이 작았습니다.
- *
- * 그래서 table-layout: fixed 로 바꾸고 열 폭을 여기서 못 박습니다.
- * 폭을 주지 않은 "아티클" 열이 남는 자리를 전부 가져갑니다 —
- * 화면이 넓어지면 제목이 길게 보이고, 좁아지면 제목만 줄어듭니다.
- *
- * 계산 근거 (사이드바 260 + main 좌우 여백 48 을 뺀 값):
- *   화면 1440 → 표에 1129px, 1280 → 969px.
- *   폭을 고정한 8 개 열의 합이 813px 이므로 아티클 열에 최소 156px 를
- *   남겨 min-width 를 969px 로 둡니다. 1280 에서도 들어갑니다.
- *   화면이 가장 좁을 때 줄어드는 것은 제목 하나뿐이고, 제목은 두 줄에서
- *   말줄임으로 끊깁니다. 나머지 열은 어느 폭에서도 그대로입니다.
- *
- * 열을 더 추가한다면 이 합계를 다시 맞춰 주세요. 그냥 붙이면
- * 969px 를 넘겨 다시 스크롤이 생깁니다. */
 .ta-admin .article-table.admin-articles-table {
   table-layout: fixed;
   min-width: 969px;
 }
 
-/* 여백 14 → 11. 9 열이면 이것만으로 54px 가 돌아옵니다. */
 .ta-admin .admin-articles-table th {
   padding: 13px 11px;
 }
@@ -1400,8 +1236,6 @@
   padding: 15px 11px;
 }
 
-/* fixed 레이아웃에서는 첫 행(머리글)의 폭만 반영됩니다.
- * 값은 머리글 글자 폭과 칸 내용 중 넓은 쪽에 맞췄습니다. */
 .ta-admin .admin-articles-table .selection-column {
   width: 40px;
   min-width: 40px;
@@ -1415,26 +1249,22 @@
 .ta-admin .admin-articles-table .admin-view-col {
   width: 92px;
 }
-/* 날짜 "2026-08-20" 이 62px 입니다. 88px 로는 글자가 칸 벽에 붙었습니다. */
+
 .ta-admin .admin-articles-table .admin-date-col {
   width: 108px;
 }
-/* 가장 긴 단계 이름 "관리자 품질 검토 필요" 배지가 161px 입니다.
- * 칸 여백 22px 을 더한 값이라 아홉 단계 어느 것도 넘치지 않습니다.
- * 여기를 줄이면 배지가 옆 "공개 설정" 칸을 파고듭니다. */
+
 .ta-admin .admin-articles-table .admin-stage-col {
   width: 183px;
 }
 .ta-admin .admin-articles-table .admin-publish-col {
   width: 104px;
 }
-/* 버튼을 세로로 쌓아도 84px 에서는 글자와 테두리 사이가 눌렸습니다. */
+
 .ta-admin .admin-articles-table .admin-actions-col {
   width: 108px;
 }
 
-/* 위에서 폭을 정했으므로 칸마다 붙은 min-width 는 이제 방해만 됩니다.
- * 남겨 두면 fixed 레이아웃이 지정한 폭을 도로 밀어냅니다. */
 .ta-admin .admin-articles-table .admin-article-cell,
 .ta-admin .admin-articles-table .admin-source-cell,
 .ta-admin .admin-articles-table .admin-date-cell,
@@ -1446,27 +1276,15 @@
   min-width: 0;
 }
 
-/* 단계 이름이 나중에 더 길어져도 옆 칸을 덮지 않게 합니다.
- * 배지의 nowrap 은 fixed 레이아웃에서 줄바꿈 대신 넘침으로 이어집니다.
- * 지금 폭(183px)에서는 아홉 단계 모두 한 줄에 들어가므로 이 규칙이
- * 실제로 작동할 일은 없고, 새 단계가 추가됐을 때의 안전망입니다. */
 .ta-admin .admin-articles-table .stage-badge {
   white-space: normal;
   text-align: center;
 }
 
-/* 출처 이름은 길이를 통제할 수 없습니다. 칸을 넘기지 말고 접습니다. */
 .ta-admin .admin-articles-table .admin-source-cell strong {
   overflow-wrap: anywhere;
 }
 
-/* 작업 버튼 둘을 가로로 두면 열에 130px 이 필요합니다. 세로로 쌓으면
- * 그보다 훨씬 좁게 끝나고, 행 높이는 이미 조회수·날짜 칸이 두 줄이라
- * 그대로입니다.
- *
- * 버튼은 칸 폭을 채우지 않습니다(stretch 아님). 칸에 여유를 주는 것과
- * 버튼을 키우는 것은 다른 이야기라, 버튼은 글자에 맞는 크기로 두고
- * 머리글 "작업"과 같은 선에서 왼쪽으로 맞춥니다. */
 .ta-admin .admin-articles-table .row-actions {
   flex-direction: column;
   align-items: flex-start;

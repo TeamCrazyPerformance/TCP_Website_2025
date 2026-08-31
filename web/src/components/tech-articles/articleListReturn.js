@@ -22,7 +22,6 @@ function setScrollRestoration(value) {
   try {
     window.history.scrollRestoration = value;
   } catch {
-    // 일부 사생활 보호 모드에서는 브라우저 기록 설정 변경이 막힐 수 있습니다.
   }
 }
 
@@ -75,8 +74,6 @@ export function rememberArticleListReturn({ articleId, location, card }) {
     return;
   }
 
-  // 상세를 보는 동안 브라우저가 먼저 임의의 위치를 복원하지 않게 합니다.
-  // 목록 데이터가 렌더된 뒤 아래의 앵커 기반 복원이 한 번만 실행됩니다.
   setScrollRestoration("manual");
 }
 
@@ -92,7 +89,6 @@ export function releaseArticleListReturn(value = readArticleListReturn()) {
   try {
     window.sessionStorage.removeItem(ARTICLE_LIST_RETURN_KEY);
   } catch {
-    // 저장소 접근이 막혀도 브라우저의 기본 스크롤 정책은 복구합니다.
   }
 
   setScrollRestoration(value?.previousScrollRestoration || "auto");
