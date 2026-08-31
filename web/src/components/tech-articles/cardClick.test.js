@@ -1,10 +1,6 @@
-/* 아티클 카드의 전체 영역 클릭 규칙을 검증합니다.
- *
- * 공유 버튼을 제외한 카드 어디를 눌러도 상세로 이동해야 하고,
- * 동시에 제목 <Link> 의 앵커 기본 동작(새 탭으로 열기 등)도 유지해야 합니다. */
+
 import { shouldOpenFromCardClick } from "./TechArticleCommon";
 
-// 실제 카드 구조로 event.target 재현
 function buildCard() {
   const card = document.createElement("article");
   card.className = "article-card";

@@ -60,6 +60,38 @@ const SCHEDULED_CRAWL_PROFILES: readonly ScheduledCrawlProfile[] = [
       sectionKey: 'REPOSITORIES',
     },
   },
+  {
+    id: 'tailscale-blog-rss-blog',
+    source: {
+      sourceId: 'tailscale-blog',
+      sourceType: 'RSS',
+      sectionKey: 'BLOG',
+    },
+  },
+  {
+    id: 'rust-blog-rss-blog',
+    source: {
+      sourceId: 'rust-blog',
+      sourceType: 'RSS',
+      sectionKey: 'BLOG',
+    },
+  },
+  {
+    id: 'hugging-face-blog-rss-blog',
+    source: {
+      sourceId: 'hugging-face-blog',
+      sourceType: 'RSS',
+      sectionKey: 'BLOG',
+    },
+  },
+  {
+    id: 'deepmind-blog-rss-blog',
+    source: {
+      sourceId: 'deepmind-blog',
+      sourceType: 'RSS',
+      sectionKey: 'BLOG',
+    },
+  },
 ];
 
 @Injectable()

@@ -19,9 +19,7 @@ class Article(ContractModel):
     content: str = Field(min_length=1)
     language: str = Field(min_length=2, max_length=16)
     authors: list[str] = Field(default_factory=list)
-    original_published_at: datetime | None = Field(
-        alias="originalPublishedAt", default=None
-    )
+    original_published_at: datetime | None = Field(alias="originalPublishedAt", default=None)
 
     @field_validator("language")
     @classmethod
@@ -40,22 +38,17 @@ class Article(ContractModel):
 
 class QualityPolicy(ContractModel):
     policy_version: str = Field(alias="policyVersion", default="quality-policy-v1")
-    minimum_evaluation_score: int = Field(
-        alias="minimumEvaluationScore", default=70, ge=0, le=100
-    )
+    minimum_evaluation_score: int = Field(alias="minimumEvaluationScore", default=70, ge=0, le=100)
     review_lower_bound: int = Field(alias="reviewLowerBound", default=45, ge=0, le=100)
-    minimum_content_length: int = Field(
-        alias="minimumContentLength", default=200, ge=1
-    )
-    maximum_content_length: int = Field(
-        alias="maximumContentLength", default=2_000_000, ge=1
-    )
+    minimum_content_length: int = Field(alias="minimumContentLength", default=200, ge=1)
+    maximum_content_length: int = Field(alias="maximumContentLength", default=2_000_000, ge=1)
     allowed_languages: list[str] = Field(
         alias="allowedLanguages", default_factory=lambda: ["ko", "en"]
     )
     reject_spam: bool = Field(alias="rejectSpam", default=True)
     reject_advertisements: bool = Field(alias="rejectAdvertisements", default=True)
     require_admin_review: bool = Field(alias="requireAdminReview", default=False)
+    llm_api_key: str | None = Field(alias="llmApiKey", default=None)
 
     @field_validator("allowed_languages")
     @classmethod
@@ -79,6 +72,7 @@ class QualityEvaluationRequest(ContractModel):
     source: Source
     article: Article
     quality_policy: QualityPolicy = Field(alias="qualityPolicy")
+    llm_api_key: str | None = Field(alias="llmApiKey", default=None)
 
 
 class ErrorPayload(ContractModel):
@@ -98,16 +92,33 @@ class Signals(ContractModel):
 
 class Dimensions(ContractModel):
     relevance: int = Field(ge=0, le=100)
+    technical_depth: int = Field(alias="technicalDepth", default=50, ge=0, le=100)
     timeliness: int = Field(ge=0, le=100)
-    source_reliability: int = Field(alias="sourceReliability", ge=0, le=100)
+    article_quality: int = Field(alias="articleQuality", default=100, ge=0, le=100)
+
+
+class ScoreScale(ContractModel):
+    minimum: int = Field(alias="min", default=0)
+    maximum: int = Field(alias="max", default=100)
+
+
+class ScoreAxis(ContractModel):
+    key: str = Field(min_length=1, max_length=64)
+    label: str = Field(min_length=1, max_length=100)
+    value: int = Field(ge=0, le=100)
+    weight: float | None = Field(default=None, ge=0, le=1)
+    contribution: float | None = None
 
 
 class Score(ContractModel):
     overall: int = Field(ge=0, le=100)
     dimensions: Dimensions
+    scale: ScoreScale = Field(default_factory=ScoreScale)
+    axes: list[ScoreAxis] = Field(default_factory=list, max_length=20)
 
 
 class Evaluation(ContractModel):
+    schema_version: str = Field(alias="schemaVersion", default="2.0")
     status: Literal["SUCCESS", "FAILED"]
     decision: Literal["PASS", "REJECT", "REVIEW_REQUIRED"] | None
     evaluated_at: datetime = Field(alias="evaluatedAt")

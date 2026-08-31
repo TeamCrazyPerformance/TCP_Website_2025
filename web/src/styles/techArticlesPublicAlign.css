@@ -1,12 +1,3 @@
-/* Tech Articles 공개 화면의 정렬 레이어입니다.
- *
- * 자동 생성 파일인 techArticlesPublic.css 다음에 로드되며,
- * 생성 파일을 직접 고치지 않고 모든 조정을 이 파일에 모아 둡니다. */
-
-/* ── Tailwind preflight 상쇄 ──────────────────────────────
- * 관리자(techArticlesAdminAlign.css)와 같은 이유·같은 특정도 설계.
- * (0,1,1) — preflight(0,0,1)는 이기고 v9의 `.클래스 요소`(0,2,1)에는 짐. */
-
 .ta-public h1 {
   margin: 0.67em 0;
   font-size: 2em;
@@ -52,7 +43,6 @@
   margin: 1em 40px;
 }
 
-/* 상세 화면 요약 본문의 마크다운 불릿 복원 */
 .ta-public ul,
 .ta-public ol {
   margin: 1em 0;
@@ -73,42 +63,788 @@
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-/* ── 공용 Header/Footer 전환에 따른 정렬 ──────────────────
- * 공용 Header 는 fixed + h-16(64px). 기존 공개 페이지는 첫 섹션에 pt-24(96px).
- * 목록 화면은 .page-hero 가 이미 96px 이라 그대로 맞음.
- * 상세 화면은 .detail-main 이 목업 sticky 헤더 높이 64px 만 가져 헤더에 붙음.
- * 같은 특정도이므로 나중에 로드되는 이 규칙이 적용됨. */
 .ta-public .detail-main {
-  padding-top: 6rem;
+  padding-top: 5rem;
 }
 
-/* 목업 셸이 body 에 주던 배경을 스코프 루트가 대신 담당 */
+.ta-public .page-hero {
+  padding-top: 112px;
+  padding-bottom: 32px;
+}
+
+.ta-public .articles-section {
+  padding-top: 32px;
+}
+
+@media (max-width: 767px) {
+  .ta-public .page-hero {
+    padding-top: 96px;
+    padding-bottom: 24px;
+  }
+
+  .ta-public .articles-section {
+    padding-top: 24px;
+  }
+}
+
 .ta-public {
   background: var(--primary-black);
+  --article-tag-foreground: #111827;
+  --article-tag-tone-01: #c978a9;
+  --article-tag-tone-02: #a99fb4;
+  --article-tag-tone-03: #d9cde5;
+  --article-tag-tone-04: #9b89a8;
+  --article-tag-tone-05: #a684a7;
+  --article-tag-tone-06: #a181af;
+  --article-tag-tone-07: #a17eba;
+  --article-tag-tone-08: #758f9f;
+  --article-tag-tone-09: #6fb8aa;
+  --article-tag-tone-10: #808b89;
+  --article-tag-tone-11: #75aea4;
+  --article-tag-tone-12: #579c8f;
+  --article-tag-tone-13: #7ba672;
+
+  --article-tag-tone-14: #8ba0d6;
+  --article-tag-tone-15: #9dc3d8;
 }
 
-/* ── 소스 선택 ────────────────────────────────────────────
- * 분야 태그와 다른 축입니다. 태그는 "무엇에 관한 글인가", 소스는 "누가 쓴
- * 글인가" — 같은 모양으로 나열하면 사용자가 하나의 축으로 읽습니다.
- * 그래서 필터 패널 밖, 목록 바로 위에 두고 아이콘과 도메인을 함께 씁니다.
- * 모서리도 다르게 둡니다(태그 pill 999px / 소스 8px). 모양 차이는 넷일 때만
- * 통하지만, 아이콘과 도메인은 소스가 수십 개가 되어도 유효한 구분 수단입니다.
- * 아이콘은 우리 서버에서만 가져옵니다 — images/sources/README.md 참고. */
-.ta-public .source-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 14px;
+.ta-public .tag-button,
+.ta-public .article-tag {
+  color: var(--article-tag-foreground);
+  background: var(--article-tag-background);
+  font-size: 11px;
+  font-weight: 600;
 }
 
-.ta-public .source-trigger {
+.ta-public .tag-ai-ml {
+  --article-tag-background: var(--article-tag-tone-01);
+}
+
+.ta-public .tag-frontend {
+  --article-tag-background: var(--article-tag-tone-02);
+}
+
+.ta-public .tag-mobile {
+  --article-tag-background: var(--article-tag-tone-03);
+}
+
+.ta-public .tag-language-framework {
+  --article-tag-background: var(--article-tag-tone-04);
+}
+
+.ta-public .tag-data-db {
+  --article-tag-background: var(--article-tag-tone-05);
+}
+
+.ta-public .tag-cloud {
+  --article-tag-background: var(--article-tag-tone-06);
+}
+
+.ta-public .tag-devops {
+  --article-tag-background: var(--article-tag-tone-07);
+}
+
+.ta-public .tag-security {
+  --article-tag-background: var(--article-tag-tone-08);
+}
+
+.ta-public .tag-backend {
+  --article-tag-background: var(--article-tag-tone-09);
+}
+
+.ta-public .tag-architecture {
+  --article-tag-background: var(--article-tag-tone-10);
+}
+
+.ta-public .tag-developer-tools {
+  --article-tag-background: var(--article-tag-tone-11);
+}
+
+.ta-public .tag-software-quality {
+  --article-tag-background: var(--article-tag-tone-12);
+}
+
+.ta-public .tag-open-source {
+  --article-tag-background: var(--article-tag-tone-13);
+}
+
+.ta-public .tag-development-organization {
+  --article-tag-background: var(--article-tag-tone-14);
+}
+
+.ta-public .tag-industry-trends {
+  --article-tag-background: var(--article-tag-tone-15);
+}
+
+.ta-public .tag-more {
+  --article-tag-background: var(--article-tag-tone-08);
+}
+
+.ta-public .tag-button[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px rgba(248, 250, 252, 0.9);
+}
+
+.ta-public .article-card {
+  --article-card-edge-space: 15px;
+  padding-top: var(--article-card-edge-space);
+  padding-bottom: var(--article-card-edge-space);
+}
+
+.ta-public .article-title {
+  font-weight: 500;
+}
+
+.ta-public .search-submit {
+  color: #0b1220;
+}
+
+.ta-public
+  .search-input-wrap
+  input[type="search"]::-webkit-search-cancel-button {
+  display: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.ta-public .category-filter-panel legend,
+.ta-public .article-list-heading #resultCount {
+  font-weight: 500;
+}
+
+.ta-public .category-filter-panel,
+.ta-public .source-dialog-inner,
+.ta-public .filter-sheet {
+  background: #080d1a;
+  border: 1px solid #171e33;
+}
+
+.ta-public .article-list-heading #resultCount {
+  font-size: 15px;
+}
+
+@media (max-width: 479px) {
+  .ta-public .article-list-heading #resultCount {
+    font-size: 14px;
+  }
+}
+
+.ta-public .article-card-bottom {
+  margin-top: 6px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.ta-public .article-meta-mobile {
+  display: none;
+}
+
+.ta-public .articles-section > .container,
+.ta-public .detail-hero > .container,
+.ta-public .detail-content-section > .container {
+  max-width: 1120px;
+}
+
+.ta-public .article-card .share-button {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition:
+    opacity 0.16s ease,
+    color 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+@media (min-width: 768px) and (hover: hover) and (pointer: fine) {
+  .ta-public .article-card .share-button {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .ta-public .article-card:hover .share-button,
+  .ta-public .article-card:focus-within .share-button,
+  .ta-public .article-card .share-button:focus-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+@media (min-width: 768px) {
+  .ta-public .article-card-bottom {
+    align-items: flex-end;
+  }
+}
+
+@media (max-width: 767px) {
+  .ta-public .article-card .share-button {
+    display: none;
+  }
+
+  .ta-public .mobile-filter-button strong {
+    flex: 0 0 auto;
+  }
+
+  .ta-public .sheet-actions .source-apply:disabled {
+    box-shadow: none;
+    filter: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.ta-public .detail-share-button {
   display: inline-flex;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.ta-public .detail-info-actions {
+  display: inline-flex;
+  margin-left: auto;
+  align-items: center;
+  gap: 10px;
+}
+
+@media (max-width: 767px) {
+  .ta-public .detail-hero {
+    padding-top: 8px;
+    padding-bottom: 9px;
+  }
+
+  .ta-public .detail-content-section {
+    padding-top: 16px;
+  }
+
+  .ta-public .detail-info-row {
+    margin-top: 12px;
+  }
+
+  .ta-public .detail-info-items {
+    gap: 12px;
+  }
+
+  .ta-public .detail-tags .article-tag {
+    min-height: 22px;
+    padding: 3px 7px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 767px) {
+  .ta-public .detail-info-items {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .ta-public .detail-share-button {
+    display: inline-flex;
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+    min-height: 32px;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .ta-public .detail-info-items .detail-tags {
+    flex-basis: auto;
+  }
+
+  .ta-public .detail-info-actions {
+    flex: 0 0 auto;
+    gap: 6px;
+  }
+
+  .ta-public .detail-original-link {
+    min-height: 32px;
+    padding: 6px 10px;
+    align-items: center;
+    gap: 5px;
+    border-radius: 6px;
+    font-size: 12px;
+  }
+
+  .ta-public .detail-original-link i,
+  .ta-public .detail-share-button i {
+    font-size: 11px;
+  }
+
+  .ta-public .detail-original-link,
+  .ta-public .detail-share-button {
+    position: relative;
+  }
+
+  .ta-public .detail-original-link::after,
+  .ta-public .detail-share-button::after {
+    position: absolute;
+    inset: -6px 0;
+    content: "";
+  }
+}
+
+@media (min-width: 768px) {
+  .ta-public .detail-main {
+    padding-top: 64px;
+  }
+
+  .ta-public .detail-hero {
+    padding-top: 16px;
+  }
+
+  .ta-public .detail-breadcrumb {
+    margin-bottom: 16px;
+  }
+
+  .ta-public .detail-original-link {
+    min-height: 34px;
+
+    padding: 7px 10px;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .ta-public .page-button,
+  .ta-public .detail-breadcrumb .back-to-list-link,
+  .ta-public .category-filter-panel .mobile-filter-button {
+    min-height: 44px;
+  }
+
+  .ta-public .page-button {
+    min-width: 44px;
+  }
+
+  .ta-public .source-card .source-details dd a {
+    position: relative;
+    align-items: center;
+  }
+
+  .ta-public .source-card .source-details dd a::after {
+    position: absolute;
+    inset: -8px 0;
+    content: "";
+  }
+}
+
+@media (max-width: 479px) {
+  .ta-public .page-hero {
+    padding-bottom: 16px;
+  }
+
+  .ta-public .articles-section {
+    padding-top: 20px;
+  }
+}
+
+.ta-public .article-list {
+  gap: 12px;
+}
+
+.ta-public .article-card {
+  padding-inline: 20px;
+}
+
+@media (max-width: 767px) {
+  .ta-public .article-card {
+    padding-inline: 16px;
+  }
+}
+
+.ta-public .page-hero {
+  padding-bottom: 24px;
+}
+
+.ta-public .articles-section {
+  padding-top: 20px;
+}
+
+@media (max-width: 767px) {
+  .ta-public .page-hero {
+    padding-bottom: 16px;
+  }
+
+  .ta-public .articles-section {
+    padding-top: 16px;
+  }
+}
+
+@media (max-width: 767px) {
+  .ta-public .hero-lead span {
+    display: block;
+  }
+}
+
+@media (max-width: 767px) {
+  .ta-public .search-mobile-filter-button {
+    width: auto;
+    margin: 0;
+    justify-content: normal;
+  }
+
+  .ta-public .search-submit {
+    display: none;
+  }
+
+  .ta-public .search-category-filter {
+    margin-bottom: 12px;
+  }
+}
+
+.ta-public .pagination-status {
+  margin-top: 8px;
+  color: var(--gray-400, #9ca3af);
+  font-size: 14px;
+}
+
+.ta-public .category-filter-panel {
+  margin-bottom: 12px;
+}
+
+@media (max-width: 767px) {
+  .ta-public .pagination-v3 .page-button {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    min-height: 32px;
+    padding: 5px 10px;
+    font-size: 13px;
+  }
+
+  .ta-public .pagination-v3 .page-button::after {
+    position: absolute;
+    inset: -6px 0;
+    content: "";
+  }
+
+  .ta-public .page-number-list .page-button[aria-current="page"] + .page-button,
+  .ta-public
+    .page-number-list
+    .page-button:has(+ .page-button[aria-current="page"]),
+  .ta-public
+    .page-number-list
+    .page-button[aria-current="page"]:first-child
+    + .page-button
+    + .page-button,
+  .ta-public
+    .page-number-list
+    .page-button:has(
+      + .page-button + .page-button[aria-current="page"]:last-child
+    ) {
+    display: inline-flex;
+  }
+
+  .ta-public .explore-heading .back-to-list-link {
+    font-size: 13px;
+  }
+
+  .ta-public .pagination-status {
+    font-size: 13px;
+  }
+
+  .ta-public .source-notice {
+    margin-top: 32px;
+  }
+
+  .ta-public .explore-section {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .ta-public .explore-heading,
+  .ta-public #searchFieldset,
+  .ta-public #searchForm {
+    display: contents;
+  }
+
+  .ta-public .search-category-filter {
+    order: 1;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .ta-public .explore-heading .back-to-list-link {
+    order: 2;
+    margin-left: auto;
+  }
+
+  .ta-public .search-row {
+    order: 3;
+    flex-basis: 100%;
+  }
+}
+
+.ta-public .article-card .article-meta i {
+  display: none;
+}
+
+.ta-public .article-card .article-source-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.ta-public .article-card .article-meta {
+  gap: 0;
+}
+
+.ta-public .article-card .article-meta .meta-divider {
+  display: inline;
+  margin: 0 7px;
+  color: var(--gray-500, #6b7280);
+  font-size: 0;
+}
+
+.ta-public .article-card .article-meta .meta-divider::after {
+  content: "|";
+  font-size: 12px;
+}
+
+@media (min-width: 768px) {
+  .ta-public .article-card .article-meta .meta-divider::after {
+    position: relative;
+    top: 1.3px;
+  }
+}
+
+.ta-public .search-category-filter .desktop-filter {
+  display: grid;
+  margin-top: 3px;
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+}
+
+.ta-public .search-category-filter .filter-apply-row {
+  margin: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.ta-public .search-category-filter .apply-filter-button {
+  min-height: 32px;
+  padding: 5px 12px;
+}
+
+.ta-public .search-category-filter .tag-button {
+  min-height: 26px;
+  padding: 3px 10px;
+}
+
+.ta-public .explore-section {
+  scroll-margin-top: 88px;
+}
+
+.ta-public .article-list-heading .list-filter-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+
+  order: -1;
+}
+
+.ta-public .article-list-heading .result-summary {
+  margin-left: auto;
+}
+
+@media (min-width: 768px) {
+  .ta-public .article-list-heading .result-summary {
+    position: relative;
+    top: 20px;
+  }
+}
+
+.ta-public .mobile-reset-button {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .ta-public .category-filter-panel {
+    display: none;
+  }
+
+  .ta-public .article-list-heading {
+    gap: 8px 10px;
+  }
+
+  .ta-public .article-list-heading .mobile-filter-button {
+    width: auto;
+    margin: 0;
+    justify-content: normal;
+  }
+
+  .ta-public .filter-trigger {
+    position: relative;
+    min-height: 0;
+
+    padding: 8px 10px;
+    gap: 6px;
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  .ta-public .filter-trigger i {
+    width: 1em;
+    text-align: center;
+  }
+
+  .ta-public .filter-trigger::after {
+    position: absolute;
+    inset: -8px 0;
+    content: "";
+  }
+
+  .ta-public .article-card .article-tag {
+    padding: 2px 6px;
+    font-size: 9px;
+  }
+
+  .ta-public .article-card {
+    --article-card-edge-space: 12px;
+  }
+
+  .ta-public .article-list-heading .list-filter-row {
+    margin-left: 0;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .ta-public .article-list-heading .source-trigger,
+  .ta-public .article-list-heading .mobile-filter-button {
+    flex: 0 0 auto;
+    align-self: auto;
+    margin-left: 0;
+  }
+
+  .ta-public .article-list-heading .mobile-reset-button {
+    display: inline-flex;
+    margin-left: auto;
+    padding: 4px 2px;
+    align-items: center;
+    align-self: center;
+    justify-content: center;
+    color: var(--gray-400, #9ca3af);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 16px;
+  }
+
+  .ta-public .article-list-heading .mobile-reset-button:hover {
+    color: var(--gray-300, #d1d5db);
+  }
+
+  .ta-public .article-list-heading .mobile-reset-button:focus-visible {
+    outline: 1px solid rgba(156, 163, 175, 0.75);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  .ta-public .search-category-filter .desktop-filter {
+    display: none;
+  }
+
+  .ta-public .article-card .article-card-info {
+    width: 100%;
+  }
+
+  .ta-public .article-card .article-title {
+    font-size: 17px;
+  }
+
+  .ta-public .article-card .article-new-badge {
+    margin-right: 10px;
+    padding: 3px 6px;
+    font-size: 9px;
+  }
+
+  .ta-public .article-card .article-summary-row {
+    display: block;
+    margin-top: 9px;
+  }
+
+  .ta-public .article-card .article-summary-row .article-summary {
+    display: -webkit-box;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .ta-public .article-card .article-meta-desktop {
+    display: none;
+  }
+
+  .ta-public .article-card .article-meta-mobile {
+    display: block;
+    margin: 6px 0 0;
+    padding: 0;
+    border: 0;
+    font-size: 11px;
+    line-height: 1.4;
+
+    white-space: nowrap;
+  }
+
+  .ta-public .article-card .article-meta span {
+    gap: 0;
+  }
+}
+
+@media (max-width: 479px) {
+  .ta-public .article-list-heading {
+    align-items: baseline;
+    flex-direction: row;
+  }
+
+  .ta-public .article-list-heading h2 {
+    font-size: 24px;
+  }
+
+  .ta-public .article-list-heading #resultCount {
+    font-size: 13px;
+    white-space: nowrap;
+  }
+}
+
+.ta-public .filter-trigger {
   align-items: center;
   gap: 8px;
   padding: 8px 14px;
   border: 1px solid var(--gray-700, #374151);
-  border-radius: 8px; /* 태그 pill(999px)과 다른 모서리 */
+  border-radius: 8px;
   background: transparent;
   color: var(--gray-200, #e5e7eb);
   cursor: pointer;
@@ -116,91 +852,24 @@
   font-weight: 600;
 }
 
-.ta-public .source-trigger:hover {
+.ta-public .filter-trigger i {
+  margin: 0;
+}
+
+.ta-public .filter-trigger:hover {
   border-color: var(--gray-500, #6b7280);
 }
 
-.ta-public .source-trigger.is-active {
+.ta-public .filter-trigger.is-active {
   border-color: var(--accent-blue, #3b82f6);
   color: #fff;
 }
 
-.ta-public .source-chip-list {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ta-public .source-chip {
+.ta-public .source-trigger {
   display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
-  border: 1px solid var(--gray-700, #374151);
-  border-radius: 8px;
-  background: rgba(148, 163, 184, 0.1);
-  color: var(--gray-200, #e5e7eb);
-  cursor: pointer;
-  font-size: 12px;
 }
 
-.ta-public .source-chip:hover {
-  border-color: var(--danger, #ef4444);
-}
-
-.ta-public .source-icon {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  object-fit: contain;
-  flex: 0 0 auto;
-}
-
-/* 소스 이미지가 없을 때의 표식. 외부 파비콘 서비스를 부르지 않으므로
-   새 소스를 추가하면서 이미지를 안 넣어도 화면이 비지 않습니다. */
-.ta-public .source-icon-monogram {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #0b1220;
-  font-size: 10px;
-  font-weight: 800;
-  line-height: 1;
-}
-
-.ta-public .source-icon-monogram.tone-0 {
-  background: #a8c5e6;
-}
-.ta-public .source-icon-monogram.tone-1 {
-  background: #c5a8e6;
-}
-.ta-public .source-icon-monogram.tone-2 {
-  background: #86efac;
-}
-.ta-public .source-icon-monogram.tone-3 {
-  background: #fde68a;
-}
-.ta-public .source-icon-monogram.tone-4 {
-  background: #fca5a5;
-}
-.ta-public .source-icon-monogram.tone-5 {
-  background: #a5d8e6;
-}
-
-/* ── 소스 선택 대화상자 ───────────────────────────────────
- * 검색을 답니다. 목록을 눈으로 훑어 찾는 방식은 스무 개를 넘으면 무너집니다.
- *
- * v9 는 `.ta-public dialog` 를 width/height 100% 로 두고, 다이얼로그 자체를
- * 화면을 덮는 정렬 컨테이너로 씁니다. 실제 패널은 그 안쪽 요소입니다
- * (.filter-dialog / .filter-sheet 가 같은 구조). 이 패턴을 따르지 않으면
- * 패널이 위아래로 꽉 차고 가운데로도 오지 않습니다. */
 .ta-public .source-dialog {
-  /* 기본 규칙(.ta-public dialog)이 준 100% 위에 여백을 얹으므로
-     border-box 가 아니면 넘칩니다. */
   box-sizing: border-box;
   align-items: center;
   justify-content: center;
@@ -214,13 +883,12 @@
 .ta-public .source-dialog-inner {
   display: flex;
   width: min(420px, 100%);
-  /* 화면이 짧아도 목록이 잘리지 않도록 뷰포트를 따라갑니다. */
+
   max-height: min(560px, calc(100vh - 32px));
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid var(--gray-700, #374151);
   border-radius: 12px;
-  background: var(--gray-900, #111827);
+
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
   color: var(--gray-200, #e5e7eb);
 }
@@ -238,12 +906,34 @@
   font-weight: 700;
 }
 
-.ta-public .source-dialog-close {
-  border: none;
+.ta-public .source-dialog-close,
+.ta-public .sheet-close {
+  position: relative;
+  display: inline-flex;
+  width: auto;
+  height: auto;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0;
   background: none;
   color: var(--gray-400, #9ca3af);
   cursor: pointer;
   font-size: 16px;
+  line-height: 1;
+}
+
+.ta-public .source-dialog-close::after,
+.ta-public .sheet-close::after {
+  position: absolute;
+  inset: -12px;
+  content: "";
+}
+
+.ta-public .source-dialog-close:hover,
+.ta-public .sheet-close:hover {
+  color: var(--gray-200, #e5e7eb);
 }
 
 .ta-public .source-search {
@@ -275,7 +965,7 @@
 .ta-public .source-option {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
   padding: 9px 10px;
   border-radius: 8px;
   cursor: pointer;
@@ -301,15 +991,15 @@
   font-weight: 600;
 }
 
-/* 도메인은 소스가 늘어나도 이름이 비슷할 때 구분해 주는 단서입니다. */
 .ta-public .source-option-text small {
   color: var(--gray-500, #6b7280);
   font-size: 11px;
 }
 
 .ta-public .source-option-count {
-  color: var(--gray-400, #9ca3af);
-  font-size: 12px;
+  color: #b6bec9;
+  font-size: 14px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
@@ -333,38 +1023,123 @@
   border: none;
   border-radius: 8px;
   background: var(--accent-blue, #3b82f6);
-  color: #fff;
+  color: #0b1220;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ta-public .source-reset {
+  padding: 9px 18px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--gray-700, #374151);
+  color: var(--gray-300, #d1d5db);
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
 }
 
-.ta-public .source-reset {
-  border: none;
-  background: none;
-  color: var(--gray-400, #9ca3af);
-  cursor: pointer;
-  font-size: 13px;
+.ta-public .source-reset:hover {
+  background: var(--gray-600, #4b5563);
 }
 
-/* ── NEW 배지 ─────────────────────────────────────────────
- * 목록이 원문 게시일 순이라 새로 수집된 글이 위로 오지 않습니다.
- * 색만으로 구분하면 색약 사용자에게 정보가 가지 않으므로 글자를 씁니다.
- *
- * 배색 — 노란 계열을 채우고 글자를 어둡게 합니다. 테두리만 두른 파란 배지는
- * 제목(#93c5fd)과 같은 계열이라 묻혔습니다.
- *
- * 위아래 정렬 — line-height 를 1 로 두고 위아래 padding 을 같게 주어 배지
- * 상자가 제 중심을 갖게 한 뒤, vertical-align: middle 로 제목 글자의 중심선에
- * 맞춥니다. 여기까지 하면 기하학적으로는 0.7px 안쪽으로 맞지만, 한글은 받침
- * 없는 글자가 많아 잉크가 위로 쏠려 배지가 1px 아래로 보입니다. 실제 렌더를
- * 픽셀로 재어 나온 값이 1px 이라 그만큼 올립니다. position 은 배치를 바꾸지
- * 않고 그리기만 옮기므로 간격 계산에 영향을 주지 않습니다. */
+.ta-public .source-apply:disabled {
+  color: #9ca3af;
+  background: #374151;
+  cursor: not-allowed;
+}
+
+.ta-public .sheet-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ta-public .sheet-actions .source-apply {
+  color: #0b1220;
+  background: var(--accent-blue, #3b82f6);
+}
+
+.ta-public .sheet-actions .source-apply:disabled,
+.ta-public .sheet-actions .source-apply:disabled:hover {
+  color: #9ca3af;
+  background: #374151;
+  cursor: not-allowed;
+}
+
+@media (max-width: 767px) {
+  .ta-public .source-dialog {
+    align-items: end;
+    padding: 0;
+  }
+
+  .ta-public .source-dialog-inner,
+  .ta-public .filter-sheet {
+    display: flex;
+    width: 100%;
+    max-height: 82vh;
+    padding: 0;
+    flex-direction: column;
+    overflow: hidden;
+    border-width: 1px 0 0;
+    border-radius: 12px 12px 0 0;
+  }
+
+  .ta-public .source-dialog-header,
+  .ta-public .filter-sheet-heading {
+    display: flex;
+    margin: 0;
+    padding: 16px 18px 12px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .ta-public .source-dialog-header h2,
+  .ta-public .filter-sheet-heading h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .ta-public .filter-sheet .tag-filter-list {
+    padding: 0 18px 12px;
+    overflow-y: auto;
+  }
+
+  .ta-public .sheet-actions,
+  .ta-public .source-dialog-actions {
+    display: flex;
+    margin: 0;
+    padding: 12px 18px 16px;
+    justify-content: space-between;
+    gap: 10px;
+    border-top: 1px solid #171e33;
+  }
+
+  .ta-public .sheet-actions button,
+  .ta-public .source-dialog-actions button {
+    position: relative;
+    min-height: 38px;
+    padding: 9px 18px;
+    font-size: 13px;
+  }
+
+  .ta-public .sheet-actions button::after,
+  .ta-public .source-dialog-actions button::after {
+    position: absolute;
+    inset: -4px 0;
+    content: "";
+  }
+}
+
 .ta-public .article-new-badge {
   position: relative;
   top: -1px;
   display: inline-block;
-  margin-right: 18px;
+
+  margin-right: 12px;
   padding: 4px 7px;
   border-radius: 4px;
   background: var(--warning, #fde68a);
@@ -374,4 +1149,299 @@
   letter-spacing: 0.06em;
   line-height: 1;
   vertical-align: middle;
+}
+
+.ta-public .score-gate-card {
+  margin-top: 14px;
+  padding: 16px;
+  background: rgba(17, 24, 39, 0.72);
+  border: 1px solid rgba(147, 197, 253, 0.2);
+  border-radius: 10px;
+}
+
+.ta-public .score-gate-description {
+  margin: 0 0 14px;
+  color: #aeb6c2;
+  font-size: 14px;
+  line-height: 1.65;
+  text-align: left;
+  word-break: keep-all;
+}
+
+.ta-public .member-gate-actions {
+  display: flex;
+}
+
+.ta-public .member-gate-primary {
+  display: inline-flex;
+  width: 100%;
+  padding: 10px 14px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #0b1220;
+  background: var(--accent-blue);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ta-public .member-gate-primary:hover {
+  filter: brightness(1.08);
+}
+
+.ta-public .member-gate-footnote {
+  margin: 12px 0 0;
+  padding-top: 10px;
+  color: var(--gray-400, #9ca3af);
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.ta-public .score-gate-card a {
+  color: var(--accent-blue);
+  text-decoration: underline;
+}
+
+.ta-public .score-gate-card .member-gate-primary {
+  color: #0b1220;
+  text-decoration: none;
+}
+
+@media (max-width: 767px) {
+  .ta-public .score-gate-card .score-gate-description {
+    font-size: 15px;
+    text-align: center;
+  }
+
+  .ta-public .score-gate-card .score-gate-description span {
+    display: block;
+  }
+
+  .ta-public .score-gate-card .member-gate-actions {
+    justify-content: center;
+  }
+
+  .ta-public .score-gate-card .member-gate-primary {
+    width: auto;
+    padding: 10px 18px;
+    font-size: 14px;
+  }
+}
+
+.ta-public .detail-original-link,
+.ta-public .detail-share-button {
+  color: #cfdaf0;
+  background: #0f1830;
+  border: 1px solid rgba(147, 197, 253, 0.22);
+}
+
+.ta-public .detail-original-link i,
+.ta-public .detail-share-button i {
+  color: inherit;
+}
+
+.ta-public .detail-original-link:hover,
+.ta-public .detail-share-button:hover {
+  color: #eaf1ff;
+  background: #1a2c5c;
+  border-color: rgba(191, 219, 254, 0.4);
+}
+
+.ta-public .article-card .share-button {
+  color: var(--accent-blue);
+  background: transparent;
+  border: 1px solid rgba(168, 197, 230, 0.26);
+}
+
+.ta-public .article-card .share-button:hover {
+  color: #e3edf8;
+  background: rgba(168, 197, 230, 0.12);
+  border-color: rgba(168, 197, 230, 0.55);
+}
+
+.ta-public .detail-original-link:focus-visible,
+.ta-public .detail-share-button:focus-visible,
+.ta-public .article-card .share-button:focus-visible {
+  outline: 2px solid rgba(168, 197, 230, 0.9);
+  outline-offset: 3px;
+}
+
+@media (min-width: 1101px) {
+  .ta-public .detail-layout {
+    grid-template-columns: minmax(0, 1fr) 272px;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1100px) {
+  .ta-public .detail-layout {
+    grid-template-columns: minmax(0, 1fr) 252px;
+  }
+}
+
+.ta-public .score-card,
+.ta-public .source-card {
+  padding: 16px;
+}
+
+.ta-public .score-card h2,
+.ta-public .source-card h2 {
+  font-size: 18px;
+}
+
+.ta-public .score-summary {
+  margin-top: 14px;
+}
+
+.ta-public .score-summary strong {
+  font-size: 40px;
+}
+
+.ta-public .score-meter {
+  margin-top: 12px;
+}
+
+.ta-public .source-details {
+  margin-top: 14px;
+  gap: 11px;
+}
+
+.ta-public .score-breakdown {
+  margin-top: 14px;
+  padding-top: 14px;
+  grid-template-columns: 1fr;
+  gap: 2px;
+}
+
+.ta-public .score-breakdown > div {
+  display: flex;
+  padding: 4px 2px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.ta-public .score-breakdown dt {
+  min-width: 0;
+  color: var(--gray-300);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.ta-public .score-breakdown dd {
+  margin: 0;
+  color: var(--accent-green);
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.45;
+}
+
+.ta-public {
+  --detail-title-text: #d9dee7;
+  --detail-emphasis-text: #d8dee7;
+  --detail-reading-text: #c8ced8;
+  --detail-score-accent: #80c69b;
+}
+
+.ta-public .detail-title {
+  color: var(--detail-title-text);
+  font-weight: 500;
+}
+
+.ta-public .summary-card::before {
+  display: none;
+  content: none;
+}
+
+.ta-public .detail-one-line-summary {
+  color: var(--detail-emphasis-text);
+  background: rgba(49, 67, 110, 0.14);
+  border-left: 0;
+  border-radius: 9px;
+  font-weight: 500;
+}
+
+@media (max-width: 767px) {
+  .ta-public .detail-one-line-summary {
+    display: -webkit-box;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+}
+
+.ta-public .summary-body,
+.ta-public .summary-body-v9 > p:first-child,
+.ta-public .summary-body li {
+  color: var(--detail-reading-text);
+}
+
+.ta-public .summary-body strong,
+.ta-public .summary-body h3,
+.ta-public .summary-body h4,
+.ta-public .summary-body h5,
+.ta-public .summary-body h6 {
+  color: var(--detail-emphasis-text);
+}
+
+.ta-public .detail-sidebar h2 {
+  color: var(--detail-title-text);
+}
+
+.ta-public .detail-sidebar h2 {
+  font-weight: 500;
+}
+
+.ta-public .source-notice {
+  display: block;
+}
+
+.ta-public .source-notice h2 {
+  font-weight: 500;
+}
+
+.ta-public .detail-source-notice h2 {
+  color: var(--detail-title-text);
+}
+
+.ta-public .source-card .source-details dt {
+  color: #aeb6c2;
+}
+
+.ta-public .source-card .source-details dd,
+.ta-public .source-card .source-details dd strong {
+  color: #d0d5de;
+}
+
+.ta-public .source-card .source-details dd span,
+.ta-public .source-card .source-language-value span {
+  color: #aeb6c2;
+}
+
+.ta-public .source-card .source-details dd a,
+.ta-public .source-card .source-details dd a span,
+.ta-public .source-card .source-details dd a strong {
+  color: var(--accent-blue);
+}
+
+.ta-public .score-summary strong,
+.ta-public .score-breakdown dd {
+  color: var(--detail-score-accent);
+}
+
+.ta-public .score-meter::-webkit-meter-optimum-value {
+  background: linear-gradient(90deg, #7f9bb8, var(--detail-score-accent));
+}
+
+.ta-public .score-meter::-moz-meter-bar {
+  background: linear-gradient(90deg, #7f9bb8, var(--detail-score-accent));
 }

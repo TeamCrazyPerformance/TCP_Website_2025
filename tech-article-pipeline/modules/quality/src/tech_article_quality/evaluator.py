@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
 import math
+import os
 import re
+import urllib.request
 from collections import Counter
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
@@ -16,26 +19,194 @@ from .models import (
     Evaluation,
     QualityEvaluationRequest,
     QualityEvaluationResult,
+    QualityPolicy,
     Score,
+    ScoreAxis,
     Signals,
 )
 
 Clock = Callable[[], datetime]
-EVALUATOR_VERSION = "1.0.0"
+EVALUATOR_VERSION = "2.2.6"
+
+# 개편된 4대 평가 축 정의 (개발 관련성 35%, 기술적 깊이 30%, 최신성 25%, 기사 품질 10%)
+QUALITY_AXES = (
+    {"key": "relevance", "label": "개발 관련성", "weight": 0.35},
+    {"key": "technicalDepth", "label": "기술적 깊이", "weight": 0.30},
+    {"key": "timeliness", "label": "최신성", "weight": 0.25},
+    {"key": "articleQuality", "label": "기사 품질", "weight": 0.10},
+)
 
 DEVELOPER_KEYWORDS = frozenset(
     {
-        "python", "java", "javascript", "typescript", "golang", "rust", "kotlin",
-        "swift", "react", "vue", "next.js", "angular", "svelte", "docker",
-        "kubernetes", "aws", "gcp", "azure", "terraform", "ci/cd", "github actions",
-        "postgresql", "mysql", "redis", "mongodb", "elasticsearch", "kafka", "ai",
-        "llm", "openai", "machine learning", "deep learning", "transformer", "api",
-        "graphql", "grpc", "microservice", "architecture", "refactoring", "security",
-        "oauth", "performance", "concurrency", "pytest", "jest", "개발", "개발자",
-        "프로그래밍", "파이썬", "자바", "자바스크립트", "타입스크립트", "리액트",
-        "데이터베이스", "클라우드", "컨테이너", "쿠버네티스", "도커", "인공지능",
-        "머신러닝", "딥러닝", "보안", "네트워크", "아키텍처", "오픈소스", "배포",
-        "테스트", "성능", "서버", "프론트엔드", "백엔드", "모바일", "운영체제",
+        "python",
+        "java",
+        "javascript",
+        "typescript",
+        "golang",
+        "rust",
+        "kotlin",
+        "swift",
+        "php",
+        "ruby",
+        "scala",
+        "dart",
+        "elixir",
+        "zig",
+        "lua",
+        "haskell",
+        "clojure",
+        "react",
+        "vue",
+        "next.js",
+        "nuxt",
+        "angular",
+        "svelte",
+        "tailwind",
+        "webpack",
+        "vite",
+        "redux",
+        "zustand",
+        "webassembly",
+        "three.js",
+        "webgl",
+        "docker",
+        "kubernetes",
+        "k8s",
+        "aws",
+        "gcp",
+        "azure",
+        "terraform",
+        "ansible",
+        "ci/cd",
+        "jenkins",
+        "github actions",
+        "nginx",
+        "istio",
+        "serverless",
+        "helm",
+        "prometheus",
+        "grafana",
+        "postgresql",
+        "mysql",
+        "redis",
+        "mongodb",
+        "elasticsearch",
+        "kafka",
+        "rabbitmq",
+        "sqlite",
+        "spark",
+        "airflow",
+        "vector db",
+        "milvus",
+        "pinecone",
+        "cassandra",
+        "dynamodb",
+        "clickhouse",
+        "duckdb",
+        "ai",
+        "llm",
+        "deepmind",
+        "openai",
+        "gpt",
+        "langchain",
+        "rag",
+        "pytorch",
+        "tensorflow",
+        "huggingface",
+        "machine learning",
+        "deep learning",
+        "neural network",
+        "fine-tuning",
+        "transformer",
+        "ollama",
+        "architecture",
+        "refactoring",
+        "clean code",
+        "design pattern",
+        "domain driven design",
+        "ddd",
+        "test driven development",
+        "tdd",
+        "code review",
+        "security",
+        "oauth",
+        "performance tuning",
+        "memory leak",
+        "profiling",
+        "concurrency",
+        "async",
+        "multithreading",
+        "pytest",
+        "junit",
+        "jest",
+        "cypress",
+        "playwright",
+        # [QA 피드백 반영] 대폭 확장된 로우레벨 시스템 / 네트워크 / 성능 최적화 키워드
+        "dns",
+        "cache",
+        "memory",
+        "optimization",
+        "socket",
+        "bpf",
+        "ebpf",
+        "kernel",
+        "linux",
+        "buffer",
+        "allocation",
+        "latency",
+        "throughput",
+        "tcp",
+        "udp",
+        "packet",
+        "network",
+        "process",
+        "thread",
+        "pointer",
+        "struct",
+        "algorithm",
+        "hash table",
+        "lru",
+        "trie",
+        "system",
+        "benchmark",
+        "profiling",
+        "garbage collection",
+        "gc",
+        "cpu",
+        "concurrency",
+        "io",
+        "non-blocking",
+        "event loop",
+        "epoll",
+        "kqueue",
+        "개발",
+        "개발자",
+        "프로그래밍",
+        "파이썬",
+        "자바",
+        "자바스크립트",
+        "타입스크립트",
+        "리액트",
+        "데이터베이스",
+        "클라우드",
+        "컨테이너",
+        "쿠버네티스",
+        "도커",
+        "인공지능",
+        "머신러닝",
+        "딥러닝",
+        "보안",
+        "네트워크",
+        "아키텍처",
+        "오픈소스",
+        "배포",
+        "테스트",
+        "성능",
+        "서버",
+        "프론트엔드",
+        "백엔드",
+        "모바일",
+        "운영체제",
     }
 )
 
@@ -55,7 +226,7 @@ def _utcnow() -> datetime:
 
 
 class QualityEvaluator:
-    """Deterministic implementation of the supplied 45/30/25 scoring policy."""
+    """Deterministic implementation of the updated 35/30/25/10 scoring policy with LLM depth and 48h half-life."""
 
     def __init__(self, *, clock: Clock = _utcnow) -> None:
         self._clock = clock
@@ -81,9 +252,7 @@ class QualityEvaluator:
         article = request.article
         content_length = len(article.content)
         spam = self._spam_suspected(article.content)
-        advertisement = bool(
-            ADVERTISEMENT_PATTERN.search(f"{article.title} {article.content}")
-        )
+        advertisement = bool(ADVERTISEMENT_PATTERN.search(f"{article.title} {article.content}"))
         hard_rejections: list[str] = []
         if content_length < policy.minimum_content_length:
             hard_rejections.append("CONTENT_TOO_SHORT")
@@ -96,11 +265,33 @@ class QualityEvaluator:
         if policy.reject_advertisements and advertisement:
             hard_rejections.append("ADVERTISEMENT_SUSPECTED")
 
+        # 4대 평가 축 채점
+        effective_api_key = request.llm_api_key or policy.llm_api_key
         relevance = self.evaluate_developer_relevance(article)
+        technical_depth = self.evaluate_technical_depth_llm(article, api_key=effective_api_key)
         timeliness = self.evaluate_timeliness(article.original_published_at, now)
-        source_reliability = self.evaluate_source_reliability(request)
-        overall = round(relevance * 0.45 + timeliness * 0.30 + source_reliability * 0.25)
+        article_quality = self.evaluate_article_quality(request)
+
+        dimension_values = {
+            "relevance": relevance,
+            "technicalDepth": technical_depth,
+            "timeliness": timeliness,
+            "articleQuality": article_quality,
+        }
+        overall = round(
+            sum(dimension_values[axis["key"]] * float(axis["weight"]) for axis in QUALITY_AXES)
+        )
         overall = max(0, min(100, overall))
+        axes = [
+            ScoreAxis(
+                key=str(axis["key"]),
+                label=str(axis["label"]),
+                value=dimension_values[str(axis["key"])],
+                weight=float(axis["weight"]),
+                contribution=round(dimension_values[str(axis["key"])] * float(axis["weight"]), 2),
+            )
+            for axis in QUALITY_AXES
+        ]
 
         rejection_codes = list(hard_rejections)
         if relevance < 30:
@@ -144,9 +335,11 @@ class QualityEvaluator:
                     overall=overall,
                     dimensions=Dimensions(
                         relevance=relevance,
+                        technicalDepth=technical_depth,
                         timeliness=timeliness,
-                        sourceReliability=source_reliability,
+                        articleQuality=article_quality,
                     ),
+                    axes=axes,
                 ),
                 reason=reason,
                 rejectionCodes=list(dict.fromkeys(rejection_codes)),
@@ -157,7 +350,10 @@ class QualityEvaluator:
 
     @staticmethod
     def evaluate_developer_relevance(article: Article) -> int:
+        """TF-IDF Sigmoid (math.tanh) 키워드 밀도 알고리즘 (가중치 35%)"""
         if NON_ARTICLE_PATTERN.search(article.title):
+            return 0
+        if len(article.content.strip()) < 200:
             return 0
         text = f"{article.title} {article.content}".lower()
         tokens = TOKEN_PATTERN.findall(text)
@@ -168,26 +364,122 @@ class QualityEvaluator:
             count = text.count(keyword)
             if count:
                 tf_sum += 1.0 + math.log(count)
-        return round(100.0 * math.tanh(55.0 * (tf_sum / len(tokens))))
+        return round(100.0 * math.tanh(75.0 * (tf_sum / len(tokens))))
+
+    @staticmethod
+    def evaluate_technical_depth_llm(article: Article, api_key: str | None = None) -> int:
+        """LLM API 연동 기술적 깊이 분석 (Gemini 및 OpenAI 모두 지원, 미설정/실패 시 Fallback 50점)"""
+        effective_key = (
+            api_key
+            or os.environ.get("GEMINI_API_KEY")
+            or os.environ.get("LLM_API_KEY")
+            or os.environ.get("OPENAI_API_KEY")
+        )
+        if not effective_key:
+            return 50
+
+        # Gemini API 키 (AIza, AQ 또는 GEMINI/LLM 키)
+        if effective_key:
+            try:
+                model_name = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={effective_key}"
+                prompt = (
+                    "Evaluate the technical depth of this engineering article on a scale of 0 to 100 based on these 4 rubrics:\n"
+                    "1. Code & Command Precision (0-30 pts): Contains code snippets, shell commands, or config schemas.\n"
+                    "2. Systems & Architectural Insight (0-30 pts): Discusses low-level internals, memory, protocols, or architecture.\n"
+                    "3. Production Problem-Solving (0-30 pts): Explains root cause analysis, performance tuning, benchmarks, or scalability.\n"
+                    "4. Professional Specificity (0-10 pts): Uses precise domain-specific engineering vocabulary instead of marketing hype.\n\n"
+                    f"Title: {article.title}\n"
+                    f"Content: {article.content[:1500]}\n\n"
+                    f'Return JSON only: {{"depth_score": number, "reasoning": "brief explanation"}}'
+                )
+                payload = {
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {"response_mime_type": "application/json"},
+                }
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                )
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    res_data = json.loads(response.read().decode("utf-8"))
+                    res_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
+                    parsed = json.loads(res_text)
+                    score = int(parsed.get("depth_score", 50))
+                    return max(0, min(100, score))
+            except Exception:
+                pass
+
+        # OpenAI API 호출 (Fallback)
+        try:
+            url = "https://api.openai.com/v1/chat/completions"
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {effective_key}",
+            }
+            prompt = (
+                "Evaluate the technical depth of this engineering article on a scale of 0 to 100 based on these 4 rubrics:\n"
+                "1. Code & Command Precision (0-30 pts): Contains code snippets, shell commands, or config schemas.\n"
+                "2. Systems & Architectural Insight (0-30 pts): Discusses low-level internals, memory, protocols, or architecture.\n"
+                "3. Production Problem-Solving (0-30 pts): Explains root cause analysis, performance tuning, benchmarks, or scalability.\n"
+                "4. Professional Specificity (0-10 pts): Uses precise domain-specific engineering vocabulary instead of marketing hype.\n\n"
+                f"Title: {article.title}\n"
+                f"Content: {article.content[:1500]}\n\n"
+                f'Return JSON only: {{"depth_score": number, "reasoning": "brief explanation"}}'
+            )
+            payload = {
+                "model": "gpt-4o-mini",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.1,
+                "response_format": {"type": "json_object"},
+            }
+            req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
+            with urllib.request.urlopen(req, timeout=5) as response:
+                res_data = json.loads(response.read().decode("utf-8"))
+                res_text = res_data["choices"][0]["message"]["content"]
+                parsed = json.loads(res_text)
+                score = int(parsed.get("depth_score", 50))
+                return max(0, min(100, score))
+        except Exception:
+            return 50
 
     @staticmethod
     def evaluate_timeliness(published_at: datetime | None, evaluated_at: datetime) -> int:
+        """48시간 반감기(Half-Life) 지수 곡선 수식 적용 (가중치 25%)"""
         if published_at is None:
             return 50
         published = published_at.astimezone(UTC)
         hours = (evaluated_at - published).total_seconds() / 3600
         if hours <= 0:
             return 100
-        if hours >= 24:
-            return 0
-        return round(100 - hours / 24 * 100)
+        return round(100.0 * (0.5 ** (hours / 48.0)))
 
     @staticmethod
-    def evaluate_source_reliability(request: QualityEvaluationRequest) -> int:
-        score = 35 if request.source.source_id.strip() else 15
-        score += 30 if any(author.strip() for author in request.article.authors) else 10
-        score += 35 if request.article.original_published_at is not None else 10
-        return min(100, score)
+    def evaluate_article_quality(request: QualityEvaluationRequest) -> int:
+        """기본 메타데이터 충실도 및 본문 분량 충실도 평가 (가중치 10%)"""
+        source_id = request.source.source_id.strip()
+        authors = request.article.authors
+        published_at = request.article.original_published_at
+        content_length = len(request.article.content.strip())
+        min_length = request.quality_policy.minimum_content_length
+        max_length = request.quality_policy.maximum_content_length
+
+        meta_score = 0
+        if source_id:
+            meta_score += 20
+        if authors and any(a.strip() for a in authors):
+            meta_score += 15
+        if published_at is not None:
+            meta_score += 15
+
+        length_score = 0
+        if min_length <= content_length <= max_length:
+            length_score = 50
+        elif content_length > 0:
+            length_score = 25
+
+        return min(100, meta_score + length_score)
 
     @staticmethod
     def _spam_suspected(content: str) -> bool:

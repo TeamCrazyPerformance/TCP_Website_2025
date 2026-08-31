@@ -42,6 +42,7 @@ packages = [
   "modules/quality/src/tech_article_quality",
   "modules/summarizer/src/developer_news_summarizer",
   "modules/crawler/src/tech_article_sources",
+  "modules/crawler/src/feed_article_pipeline",
   "modules/crawler/src/tech_articles_ingestion",
   "modules/crawler/src/technical_news_pipeline",
   "modules/crawler/src/sdtimes_crawler",

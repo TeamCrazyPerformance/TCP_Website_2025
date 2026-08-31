@@ -117,11 +117,18 @@ class MySQLPipelineRepository:
         try:
             cursor = connection.cursor(dictionary=True)
             try:
+                # 005 를 넣는 이유 — 아티클 목록 질의가 article_view_counts 를
+                # LEFT JOIN 합니다. 005 없이 뜨면 준비 완료로 보고된 뒤 공개·관리자
+                # 목록이 모두 실패합니다. 조회 경로가 기대는 마이그레이션은
+                # 여기에 반드시 함께 올려 주세요.
+                required = {"001", "002", "003", "004", "005"}
+                placeholders = ", ".join(["%s"] * len(required))
                 cursor.execute(
-                    "SELECT version FROM pipeline_migration_history "
-                    "WHERE version IN ('001', '002', '003', '004')"
+                    f"SELECT version FROM pipeline_migration_history "
+                    f"WHERE version IN ({placeholders})",
+                    tuple(sorted(required)),
                 )
-                if {row["version"] for row in cursor.fetchall()} != {"001", "002", "003", "004"}:
+                if {row["version"] for row in cursor.fetchall()} != required:
                     raise RuntimeError("required pipeline migrations have not been applied")
                 cursor.execute("SELECT 1 AS ready")
                 cursor.fetchone()
@@ -1253,7 +1260,12 @@ class MySQLPipelineRepository:
         where, params = self._article_conditions(
             public_only=True, keyword=keyword, tags=tags, sources=sources
         )
-        return self._list_articles(where, params, limit=limit, offset=offset, sort="NEWEST")
+        return self._list_public_article_summaries(
+            where,
+            params,
+            limit=limit,
+            offset=offset,
+        )
 
     def count_public_articles(
         self,
@@ -1301,15 +1313,30 @@ class MySQLPipelineRepository:
             connection.close()
 
     def get_public_article(self, article_id: str) -> dict[str, Any] | None:
-        rows = self._list_articles(
-            "a.article_id = %s AND a.processing_status = 'ENRICHED' "
-            "AND a.publication_status = 'PUBLISHED'",
-            (article_id,),
-            limit=1,
-            offset=0,
-            sort="NEWEST",
-        )
-        return rows[0] if rows else None
+        connection = self._pool.get_connection()
+        try:
+            cursor = connection.cursor(dictionary=True)
+            try:
+                cursor.execute(
+                    "SELECT a.article_id, a.source_id, a.title, a.language, "
+                    "a.original_published_at, a.canonical_url, a.quality_score, "
+                    "a.localized_title, a.tags, a.one_line_summary, a.summary, "
+                    "ci.produced_at AS collected_at, "
+                    "JSON_EXTRACT(ps.quality_result, "
+                    "'$.qualityEvaluation.score') AS score_payload "
+                    "FROM articles a "
+                    "LEFT JOIN pipeline_submissions ps ON ps.article_id = a.article_id "
+                    "LEFT JOIN crawl_items ci ON ci.crawl_item_id = a.crawl_item_id "
+                    "WHERE a.article_id = %s AND a.processing_status = 'ENRICHED' "
+                    "AND a.publication_status = 'PUBLISHED' LIMIT 1",
+                    (article_id,),
+                )
+                row = cursor.fetchone()
+                return None if row is None else self._public_detail_projection(row)
+            finally:
+                cursor.close()
+        finally:
+            connection.close()
 
     def list_articles(
         self,
@@ -1366,6 +1393,61 @@ class MySQLPipelineRepository:
         finally:
             connection.close()
 
+    def _list_public_article_summaries(
+        self,
+        where: str,
+        params: tuple[Any, ...],
+        *,
+        limit: int,
+        offset: int,
+    ) -> list[dict[str, Any]]:
+        connection = self._pool.get_connection()
+        try:
+            cursor = connection.cursor(dictionary=True)
+            try:
+                cursor.execute(
+                    "SELECT a.article_id, a.source_id, a.title, "
+                    "a.original_published_at, a.canonical_url, a.localized_title, "
+                    "a.tags, a.one_line_summary, ci.produced_at AS collected_at "
+                    "FROM articles a "
+                    "LEFT JOIN crawl_items ci ON ci.crawl_item_id = a.crawl_item_id "
+                    f"WHERE {where} "
+                    "ORDER BY COALESCE(a.original_published_at, a.created_at) DESC, "
+                    "a.article_id DESC LIMIT %s OFFSET %s",
+                    (*params, limit, offset),
+                )
+                return [self._public_list_projection(row) for row in cursor.fetchall()]
+            finally:
+                cursor.close()
+        finally:
+            connection.close()
+
+    @staticmethod
+    def _public_list_projection(row: dict[str, Any]) -> dict[str, Any]:
+        collected_at = _utc(row.get("collected_at"))
+        return {
+            "articleId": row["article_id"],
+            "title": row.get("title"),
+            "localizedTitle": row.get("localized_title"),
+            "oneLineSummary": row.get("one_line_summary"),
+            "tags": _decode(row.get("tags")) or [],
+            "sourceId": row.get("source_id"),
+            "canonicalUrl": row.get("canonical_url"),
+            "originalPublishedAt": _utc(row.get("original_published_at")),
+            "isNew": _is_new(collected_at),
+        }
+
+    @staticmethod
+    def _public_detail_projection(row: dict[str, Any]) -> dict[str, Any]:
+        return {
+            **MySQLPipelineRepository._public_list_projection(row),
+            "summaryMarkdown": row.get("summary"),
+            "language": row.get("language"),
+            "collectedAt": _utc(row.get("collected_at")),
+            "qualityScore": row.get("quality_score"),
+            "score": _decode(row.get("score_payload")),
+        }
+
     def _list_articles(
         self,
         where: str,
@@ -1395,10 +1477,14 @@ class MySQLPipelineRepository:
                     "a.published_at, a.record_version, a.created_at, a.updated_at, "
                     f"{STAGE_CASE} AS stage, "
                     "ps.payload AS submission_payload, ps.quality_result, "
-                    "ci.item_payload AS crawl_item_payload, ci.produced_at AS collected_at "
+                    "ci.item_payload AS crawl_item_payload, ci.produced_at AS collected_at, "
+                    "COALESCE(vc.member_views, 0) AS member_views, "
+                    "COALESCE(vc.guest_attempts, 0) AS guest_attempts, "
+                    "vc.last_viewed_at "
                     "FROM articles a "
                     "LEFT JOIN pipeline_submissions ps ON ps.article_id = a.article_id "
                     "LEFT JOIN crawl_items ci ON ci.crawl_item_id = a.crawl_item_id "
+                    "LEFT JOIN article_view_counts vc ON vc.article_id = a.article_id "
                     f"WHERE {where} ORDER BY {order_by} LIMIT %s OFFSET %s",
                     (*params, limit, offset),
                 )
@@ -1429,6 +1515,12 @@ class MySQLPipelineRepository:
             ),
             "collectedAt": _utc(row.get("collected_at")),
             "isNew": _is_new(_utc(row.get("collected_at"))),
+            # 운영 판단용 집계. 공개 응답에는 싣지 않습니다(publicItem 참고).
+            "viewCounts": {
+                "member": int(row.get("member_views") or 0),
+                "guest": int(row.get("guest_attempts") or 0),
+                "lastViewedAt": _utc(row.get("last_viewed_at")),
+            },
             "normalizedAt": (submission.get("normalization") or {}).get("normalizedAt"),
             "qualityScore": row["quality_score"],
             "valueScore": row["quality_score"],
@@ -1450,6 +1542,40 @@ class MySQLPipelineRepository:
             "createdAt": _utc(row.get("created_at")),
             "updatedAt": _utc(row.get("updated_at")),
         }
+
+    def record_article_view(self, article_id: str, *, member: bool) -> None:
+        """조회수를 1 올립니다. 사용자별 이력은 남기지 않습니다.
+
+        모르는 article_id 는 articles 를 훑는 SELECT 가 0 행을 내어 아무 일도
+        일어나지 않습니다. 외래키에 맡기면 요청마다 무결성 오류가 나고 그때마다
+        스택 트레이스가 로그에 쌓입니다 — 조회수 경로는 인증 없이도 닿을 수
+        있으므로, 아무 문자열이나 넣어 로그를 부풀릴 수 있게 됩니다.
+
+        조회 기록은 부가 기능이라 실패해도 아티클 조회를 막지 않아야 합니다.
+        """
+        column = "member_views" if member else "guest_attempts"
+        member_delta, guest_delta = (1, 0) if member else (0, 1)
+        connection = self._connection()
+        try:
+            cursor = connection.cursor()
+            try:
+                cursor.execute(
+                    "INSERT INTO article_view_counts "
+                    "(article_id, member_views, guest_attempts, last_viewed_at) "
+                    "SELECT a.article_id, %s, %s, UTC_TIMESTAMP(6) "
+                    "FROM articles a WHERE a.article_id = %s "
+                    "ON DUPLICATE KEY UPDATE "
+                    f"{column} = {column} + 1, last_viewed_at = UTC_TIMESTAMP(6)",
+                    (member_delta, guest_delta, article_id),
+                )
+                connection.commit()
+            finally:
+                cursor.close()
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
 
     def article_stats(
         self, *, keyword: str | None = None, publication_status: str | None = None

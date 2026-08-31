@@ -77,6 +77,7 @@ def test_public_catalog_carries_category_for_every_source():
 
 def test_known_source_ids_matches_catalog():
     assert known_source_ids() == {s["id"] for s in public_source_catalog()}
+    assert "apple-newsroom" not in known_source_ids()
 
 
 # ── 소스 필터 ─────────────────────────────────────────────
@@ -103,7 +104,7 @@ def test_filter_count_matches_the_list(sources, expected):
     items = repo.list_public_articles(limit=50, offset=0, sources=sources)
     assert len(items) == expected
     if sources:
-        assert {item["source"]["id"] for item in items} <= set(sources)
+        assert {item["sourceId"] for item in items} <= set(sources)
 
 
 def test_source_counts_agree_with_the_filter():
@@ -153,8 +154,7 @@ def test_new_flag_marks_recently_collected_articles():
         if value is not None
     }
     flags = {
-        item["articleId"]: item["isNew"]
-        for item in repo.list_public_articles(limit=50, offset=0)
+        item["articleId"]: item["isNew"] for item in repo.list_public_articles(limit=50, offset=0)
     }
     assert flags == {"fresh": True, "edge": True, "old": False, "unknown": False}
 

@@ -23,6 +23,10 @@ pytestmark = pytest.mark.skipif(
         ("infoq", "RSS", "NEWS"),
         ("sdtimes", "RSS", "NEWS"),
         ("github-trending", "WEB_CRAWL", "REPOSITORIES"),
+        ("tailscale-blog", "RSS", "BLOG"),
+        ("rust-blog", "RSS", "BLOG"),
+        ("hugging-face-blog", "RSS", "BLOG"),
+        ("deepmind-blog", "RSS", "BLOG"),
     ],
 )
 def test_live_source_adapter_reaches_core_submission(

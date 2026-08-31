@@ -513,7 +513,6 @@ function AdminTechArticleReviews({ kind }) {
   const matchedArticle = (item) =>
     item.matched || item.candidates?.[0]?.article || item.candidates?.[0];
 
-  // 응답에 따라 articleUrl 이 항목에 직접 오기도 하고 source 안에 오기도 합니다.
   const matchedUrl = (item) => {
     const matched = matchedArticle(item);
     return matched?.articleUrl || matched?.source?.articleUrl || null;
@@ -548,7 +547,7 @@ function AdminTechArticleReviews({ kind }) {
               <i className="fas fa-code-compare"></i>
             </span>
             <div>
-              <p>판정 대기</p>
+              <p className="queue-stat-title">판정 대기</p>
               <strong>{currentCount}</strong>
               <small>POSSIBLE_DUPLICATE</small>
             </div>
@@ -565,7 +564,7 @@ function AdminTechArticleReviews({ kind }) {
                 <i className="fas fa-scale-balanced"></i>
               </span>
               <div>
-                <p>품질 검토</p>
+                <p className="queue-stat-title">품질 검토</p>
                 <strong>
                   {qualityCount ?? (kind === "quality" ? currentCount : "—")}
                 </strong>
@@ -577,7 +576,7 @@ function AdminTechArticleReviews({ kind }) {
                 <i className="fas fa-eye"></i>
               </span>
               <div>
-                <p>공개 검토</p>
+                <p className="queue-stat-title">공개 검토</p>
                 <strong>
                   {publicationCount ??
                     (kind === "publication" ? currentCount : "—")}

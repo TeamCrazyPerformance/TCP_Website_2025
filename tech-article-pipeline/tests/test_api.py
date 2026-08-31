@@ -65,9 +65,27 @@ def test_api_auth_submission_replay_and_public_filter(normalized_payload):
         assert public.json()["lastCrawledAt"] is None
 
         article = public.json()["items"][0]
-        assert article["source"]["id"] == "example"
-        assert article["originalLanguage"] == {"code": "ko", "label": "한국어"}
-        assert article["evaluation"]["score"]["overall"] == 88
+        assert list(article) == [
+            "articleId",
+            "title",
+            "localizedTitle",
+            "oneLineSummary",
+            "tags",
+            "source",
+            "originalPublishedAt",
+            "isNew",
+        ]
+        assert article["source"] == {"name": "example", "domain": "example.com"}
+
+        detail = client.get(
+            f"/internal/v1/public/articles/{article['articleId']}",
+            headers={"Authorization": "Bearer test-service-token"},
+        )
+        assert detail.status_code == 200
+        assert detail.json()["originalLanguage"] == {"code": "ko", "label": "한국어"}
+        assert detail.json()["valueScore"]["overall"] == 88
+        assert set(detail.json()["valueScore"]) == {"overall", "scale", "breakdown"}
+        assert "evaluation" not in detail.json()
 
         tags = client.get(
             "/internal/v1/public/tags",
@@ -105,22 +123,24 @@ def test_api_auth_submission_replay_and_public_filter(normalized_payload):
         )
         assert stats.json()["publication"]["PUBLISHED"] == 1
 
+        admin_article = admin.json()["items"][0]
+
         hidden = client.post(
             f"/internal/v1/admin/articles/{article['articleId']}/publication",
             headers={"Authorization": "Bearer test-service-token"},
             json={
                 "action": "HIDE",
-                "expectedRecordVersion": article["recordVersion"],
+                "expectedRecordVersion": admin_article["recordVersion"],
                 "administratorId": "admin-1",
                 "reason": "test",
             },
         )
         assert hidden.status_code == 200
-        detail = client.get(
+        hidden_detail = client.get(
             f"/internal/v1/public/articles/{article['articleId']}",
             headers={"Authorization": "Bearer test-service-token"},
         )
-        assert detail.status_code == 404
+        assert hidden_detail.status_code == 404
 
 
 def test_api_rejects_idempotency_key_with_different_body(normalized_payload):
@@ -139,13 +159,14 @@ def test_api_rejects_idempotency_key_with_different_body(normalized_payload):
     app = create_app(settings=settings, runtime=runtime, start_worker=False)
     headers = {"Authorization": "Bearer token", "Idempotency-Key": "same"}
     with TestClient(app) as client:
-        assert client.post(
-            "/internal/v1/normalized-articles", json=normalized_payload, headers=headers
-        ).status_code == 202
+        assert (
+            client.post(
+                "/internal/v1/normalized-articles", json=normalized_payload, headers=headers
+            ).status_code
+            == 202
+        )
         changed = dict(normalized_payload)
         changed["crawlItemId"] = "other-item"
-        response = client.post(
-            "/internal/v1/normalized-articles", json=changed, headers=headers
-        )
+        response = client.post("/internal/v1/normalized-articles", json=changed, headers=headers)
         assert response.status_code == 409
         assert response.json()["detail"]["code"] == "IDEMPOTENCY_KEY_REUSE"

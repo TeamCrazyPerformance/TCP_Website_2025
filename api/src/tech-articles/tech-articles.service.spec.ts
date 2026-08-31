@@ -43,11 +43,91 @@ describe('TechArticlesService', () => {
       sources: [],
     });
 
-    expect(result.items[0]).toEqual(
-      expect.objectContaining({ id: 'article-1', title: '제목', score: 90 }),
-    );
+    expect(result.items[0]).toEqual({
+      id: 'article-1',
+      title: '제목',
+      oneLineSummary: '한 줄',
+      tags: ['AI'],
+      source: { name: null, domain: null },
+      originalPublishedAt: null,
+      isNew: false,
+    });
+    expect(result.items[0]).not.toHaveProperty('score');
     expect(result.items[0]).not.toHaveProperty('content');
     expect(result.items[0]).not.toHaveProperty('localizedContent');
+  });
+
+  it('returns article content without evaluation to a guest', async () => {
+    pipeline.get.mockResolvedValue({
+      articleId: 'article-1',
+      localizedTitle: '공개 제목',
+      summaryMarkdown: '## 공개 요약',
+      qualityScore: 88,
+      evaluation: {
+        decision: 'PASS',
+        score: { overall: 88 },
+      },
+    });
+
+    const result = await service.publicDetail('article-1', false);
+
+    expect(result).toEqual({
+      id: 'article-1',
+      title: '공개 제목',
+      oneLineSummary: null,
+      summaryMarkdown: '## 공개 요약',
+      tags: [],
+      source: {
+        name: null,
+        domain: null,
+        path: null,
+        articleUrl: null,
+      },
+      originalLanguage: null,
+      originalPublishedAt: null,
+      collectedAt: null,
+    });
+    expect(result).not.toHaveProperty('evaluation');
+  });
+
+  it('returns only display-safe score fields to a member', async () => {
+    pipeline.get.mockResolvedValue({
+      articleId: 'article-1',
+      title: 'title',
+      qualityScore: 88,
+      evaluation: {
+        schemaVersion: '2.0',
+        decision: 'PASS',
+        score: {
+          overall: 88,
+          axes: [
+            {
+              key: 'usefulness',
+              label: '실무 활용성',
+              value: 92,
+              weight: 0.4,
+              contribution: 36.8,
+            },
+          ],
+        },
+      },
+    });
+
+    const result = await service.publicDetail('article-1', true);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        valueScore: {
+          overall: 88,
+          scale: { min: 0, max: 100 },
+          breakdown: [{ label: '실무 활용성', contribution: 36.8 }],
+        },
+      }),
+    );
+    expect(result).not.toHaveProperty('evaluation');
+    expect(JSON.stringify(result)).not.toMatch(
+      /schemaVersion|decision|usefulness|weight|"value":/,
+    );
   });
 
   it('keeps bulk output ordered and reports item failures', async () => {

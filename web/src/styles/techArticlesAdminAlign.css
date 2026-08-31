@@ -1,16 +1,5 @@
-/* Tech Articles 관리 화면의 정렬 레이어입니다.
- *
- * 자동 생성 파일인 techArticlesAdmin.css 다음에 로드되며,
- * 생성 파일을 직접 고치지 않고 모든 조정을 이 파일에 모아 둡니다.
- * 목업에 없던 스타일을 새로 추가할 때도 이 파일에 작성해 주세요. */
 
-/* ── Tailwind preflight 상쇄 ──────────────────────────────
- * v9 CSS는 브라우저 기본 스타일을 전제로 작성됨. preflight가 초기화하는
- * 텍스트 흐름 요소를 스코프 안에서만 되돌린다.
- * 특정도 (0,1,1) — preflight(0,0,1)는 이기고 v9의 `.클래스 요소`(0,2,1)에는 짐.
- * 값을 올리면 v9 스타일을 덮으므로 그대로 둘 것. */
 
-/* preflight: h1~h6 { font-size: inherit }. 클래스 없는 제목이 본문 크기로 무너짐 */
 .ta-admin h1 {
   margin: 0.67em 0;
   font-size: 2em;
@@ -47,7 +36,6 @@
   font-weight: 700;
 }
 
-/* preflight: p, pre, blockquote { margin: 0 } */
 .ta-admin p,
 .ta-admin pre {
   margin: 1em 0;
@@ -57,7 +45,6 @@
   margin: 1em 40px;
 }
 
-/* preflight: ol, ul { list-style: none }. SafeMarkdown 이 렌더하는 불릿 복원 */
 .ta-admin ul,
 .ta-admin ol {
   margin: 1em 0;
@@ -72,21 +59,12 @@
   list-style: decimal outside;
 }
 
-/* preflight: * { border-width: 0 } 로 hr 이 사라짐 */
 .ta-admin hr {
   margin: 1em 0;
   border: 0;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-/* ── 기존 관리자 화면 컨벤션 정렬 ─────────────────────────
- * 기준: AdminLayout <main class="p-3 sm:p-6"> +
- *      기존 페이지의 "orbitron text-3xl gradient-text" 제목, "widget-card rounded-xl" 카드
- *
- * 본문 폭은 CSS로 잡지 않는다. AdminTechArticleContent 가 기존 페이지와 같은
- * `container mx-auto max-w-7xl` 을 직접 써서 브레이크포인트 거동까지 일치시킴. */
-
-/* 페이지 제목: v9 clamp(27~38px) -> 기존 text-3xl(1.875rem) */
 .ta-admin .admin-intro h2 {
   margin: 0;
   font-size: 1.875rem;
@@ -102,7 +80,6 @@
   margin: 0.25rem 0 0;
 }
 
-/* 카드 표면을 index.css .widget-card 와 동일하게 (radius 는 rounded-xl 기준) */
 .ta-admin .widget-card {
   background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -113,7 +90,6 @@
   border-radius: 0.75rem;
 }
 
-/* ── 크롤링 관리 화면 ──────────────────────────────────── */
 .ta-admin .admin-intro-actions {
   display: flex;
   align-items: center;
@@ -139,21 +115,9 @@
   margin-top: 0;
 }
 
-.ta-admin .crawl-operations-panel-v9 > .crawl-layout-v9,
+.ta-admin .crawl-operations-panel-v9 > .crawl-runner-v9,
 .ta-admin .crawl-operations-panel-v9 > .crawl-loading-v9 {
   margin-top: 16px;
-}
-
-.ta-admin .crawl-runner-toggle-v9 {
-  display: flex;
-  margin-top: 16px;
-  padding-top: 16px;
-  justify-content: flex-end;
-  border-top: 1px solid var(--gray-800);
-}
-
-.ta-admin .crawl-runner-toggle-v9 .btn-secondary {
-  gap: 8px;
 }
 
 .ta-admin .crawl-panel-heading-v9 h3 {
@@ -168,7 +132,6 @@
   font-size: 0.8125rem;
 }
 
-/* 부모 화면이 떠 있는 toast 를 쓰므로 겹치지 않게 패널 안쪽 알림 */
 .ta-admin .crawl-panel-notice-v9 {
   display: flex;
   margin: 1rem 0 0;
@@ -200,7 +163,6 @@
   }
 }
 
-/* 카드 안 섹션 제목: v9가 크기를 지정하지 않은 것만 기존 text-xl 로 */
 .ta-admin .filter-card > h3,
 .ta-admin .filter-card > .list-heading-row h3,
 .ta-admin .policy-card > h3,
@@ -210,20 +172,8 @@
   font-weight: 700;
 }
 
-/* ── v9 목업에 없던 수집 화면 스타일 ──────────────────────
- * 목업에는 수집 실행 화면이 없어 이 프로젝트에서 새로 작성했습니다.
- * 목업 원본(docs/tech-articles-v9-mockup/)은 수정하지 않고 이곳에 둡니다. */
-.ta-admin .crawl-layout-v9 {
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
-  align-items: start;
-  gap: 16px;
-}
-.ta-admin .crawl-layout-v9.is-detail-only {
-  grid-template-columns: 1fr;
-}
-.ta-admin .crawl-layout-v9.is-detail-only .crawl-status-v9 {
-  position: static;
+.ta-admin .crawl-runner-v9 {
+  width: 100%;
 }
 .ta-admin .crawl-card-v9 {
   padding: 22px;
@@ -291,7 +241,7 @@
 .ta-admin .crawl-options-v9 {
   display: grid;
   margin-top: 20px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 12px;
 }
 .ta-admin .crawl-follow-v9 {
@@ -342,20 +292,11 @@
 .ta-admin .crawl-idempotency-v9 code {
   color: var(--gray-300);
 }
+
 .ta-admin .crawl-submit-v9 {
-  width: 100%;
+  min-width: 220px;
   margin-top: 18px;
-}
-.ta-admin .crawl-status-v9 {
-  position: sticky;
-  top: 80px;
-}
-.ta-admin .crawl-empty-v9 {
-  display: grid;
-  min-height: 250px;
-  place-content: center;
-  color: var(--gray-500);
-  text-align: center;
+  justify-content: center;
 }
 .ta-admin .crawl-loading-v9 {
   display: grid;
@@ -364,7 +305,7 @@
   color: var(--gray-500);
   text-align: center;
 }
-.ta-admin .crawl-empty-v9 i {
+.ta-admin .crawl-loading-v9 i {
   margin: 0 auto 12px;
   color: var(--accent-purple);
   font-size: 27px;
@@ -373,12 +314,6 @@
   margin: 0 auto 12px;
   color: var(--accent-purple);
   font-size: 27px;
-}
-.ta-admin .crawl-empty-v9 p {
-  max-width: 250px;
-  margin: 0;
-  font-size: 11px;
-  line-height: 1.6;
 }
 .ta-admin .crawl-loading-v9 p {
   max-width: 250px;
@@ -566,23 +501,13 @@
   vertical-align: middle;
 }
 .ta-admin .crawl-history-table-v9 tbody tr {
-  cursor: pointer;
   transition: background 0.16s ease;
 }
 .ta-admin .crawl-history-table-v9 tbody tr:hover {
   background: rgba(59, 130, 246, 0.07);
 }
-.ta-admin .crawl-history-table-v9 tbody tr.is-selected {
-  background: rgba(59, 130, 246, 0.12);
-  box-shadow: inset 3px 0 var(--accent-blue);
-}
-.ta-admin .crawl-history-table-v9 td button {
+.ta-admin .crawl-history-source-v9 {
   display: grid;
-  padding: 0;
-  color: inherit;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
   gap: 3px;
   text-align: left;
 }
@@ -632,15 +557,6 @@
   color: var(--gray-500);
   font-size: 9px;
 }
-@media (max-width: 900px) {
-  .ta-admin .crawl-layout-v9 {
-    grid-template-columns: 1fr;
-  }
-  .ta-admin .crawl-status-v9 {
-    position: static;
-  }
-}
-
 @media (max-width: 600px) {
   .ta-admin .crawl-options-v9 {
     grid-template-columns: 1fr;
@@ -657,9 +573,11 @@
   .ta-admin .crawl-history-pagination-v9 {
     flex-wrap: wrap;
   }
+  .ta-admin .crawl-submit-v9 {
+    width: 100%;
+    min-width: 0;
+  }
 }
-
-/* ── 공개 가능 여부 표시 ─────────────────────────────────── */
 
 .ta-admin .publish-control-group {
   display: flex;
@@ -694,21 +612,12 @@
   color: var(--warning);
 }
 
-/* v9 번들에 없는 실패 계열 배지 */
 .ta-admin .status-failed {
   color: var(--danger);
   background: var(--danger-bg);
   border-color: rgba(252, 165, 165, 0.16);
 }
 
-/* ── 파이프라인 단계 ───────────────────────────────────────
- * processing / review / publication 세 축을 접은 단일 배지와
- * 그 집계 칩입니다. 목록은 이 배지만 쓰고 원본 세 축은 상세에서 봅니다. */
-
-/* ── 배지 글자 ────────────────────────────────────────────
- * 생성 파일은 .status-badge 를 10px / weight 800 으로 둡니다. 표 머리글과 같은
- * 문제로, 10px 한글에 800 은 속공간이 메워져 자획이 뭉갭니다. 크기를 올리고
- * 굵기를 낮춥니다. */
 .ta-admin .status-badge {
   font-size: 11px;
   font-weight: 700;
@@ -722,8 +631,6 @@
   gap: 5px;
 }
 
-/* 목록에서 가장 먼저 읽혀야 하는 값이라 다른 배지보다 한 단계 큽니다.
-   한 줄 요약을 뺀 자리를 이 배지가 대신합니다. */
 .ta-admin .stage-badge {
   min-height: 30px;
   padding: 5px 11px;
@@ -742,13 +649,6 @@
   line-height: 1.4;
 }
 
-/* ── 검수 큐 상단 카운터 ──────────────────────────────────
- * 관리자가 이 화면에서 가장 먼저 읽는 값입니다. "할 일이 있나"를 한눈에
- * 답해야 하는데, 생성 파일은 27px 에 라벨 11px / 보조설명 10px --gray-500
- * (대비 3:1 대)이라 숫자가 카드 안에서 묻힙니다.
- *
- * 서체는 아래 "숫자 표시" 절에서 본문 서체와 tabular-nums 로 되돌립니다.
- * 여기서는 크기만 다룹니다. */
 .ta-admin .queue-stat-card p {
   color: var(--gray-300);
   font-size: 12px;
@@ -765,20 +665,6 @@
   font-size: 11px;
 }
 
-/* ── 목록 표 머리글 ───────────────────────────────────────
- * 생성 파일은 10px / weight 800 / --gray-400 입니다. 본문 셀이 12px /
- * --gray-300 이라 머리글이 본문보다 작고 어두웠습니다. 어느 열인지 알려주는
- * 글자가 정작 데이터보다 읽기 어려우면 스캔이 안 됩니다.
- *
- * 크기를 본문과 같게 올리고, 굵기는 오히려 낮춥니다. 10px 한글에 weight 800 은
- * 속공간이 메워져 자획이 뭉갭니다. 한글은 같은 크기에서 라틴 문자보다 획이
- * 촘촘해 작고 굵을수록 불리합니다.
- *
- * 머리글이라는 신호는 thead 배경 띠와 굵기가 이미 충분히 줍니다. 색까지
- * 낮출 필요가 없습니다. 너무 도드라져 보이면 color 만 --gray-400 으로
- * 되돌리세요 — 크기가 12px 이면 그 색으로도 지금보다 훨씬 잘 읽힙니다.
- *
- * 특정도는 생성 파일과 같은 (0,2,1). 나중에 로드되므로 이깁니다. */
 .ta-admin .article-table th {
   color: var(--gray-300);
   font-size: 12px;
@@ -786,12 +672,6 @@
   letter-spacing: 0.02em;
 }
 
-/* ── 파이프라인 단계 툴바 ─────────────────────────────────
- * 목록 표 바로 위. 불러온 행을 좁히는 도구라 표에 붙입니다.
- * 위쪽 "검색 및 필터" 카드는 서버 필터라 범위가 다릅니다. */
-
-/* 위 간격은 .list-heading-row 의 margin-bottom(12px)이 만듭니다.
- * 아래도 같은 값을 써서 칩이 제목과 표 사이 가운데에 놓이게 합니다. */
 .ta-admin .stage-toolbar {
   display: flex;
   flex-direction: column;
@@ -812,8 +692,6 @@
   gap: 10px;
 }
 
-/* 진행 단계와 종료 상태를 두 묶음으로 나눕니다.
-   한 줄에 늘어놓으면 "품질 미달"이 "처리 완료" 다음 단계처럼 읽힙니다. */
 .ta-admin .stage-group {
   display: inline-flex;
   flex-wrap: wrap;
@@ -821,9 +699,6 @@
   gap: 6px;
 }
 
-/* 진행 묶음: 옅은 배경 띠가 다섯 단계를 하나의 흐름으로 묶습니다.
-   왼→오른쪽으로 짙어지는 그라디언트가 방향을 암시합니다. 칩 사이에 화살표를
-   넣으면 줄바꿈될 때 허공을 가리키므로 배경으로 처리합니다. */
 .ta-admin .stage-group.is-flow {
   padding: 4px 10px;
   border-radius: 999px;
@@ -834,7 +709,6 @@
   );
 }
 
-/* 종료 묶음: 배경 없이 구분선 뒤에 두어 흐름에서 떨어져 나온 것으로 읽히게 합니다. */
 .ta-admin .stage-group.is-exit {
   padding-left: 12px;
   border-left: 1px solid var(--line);
@@ -872,7 +746,6 @@
   white-space: nowrap;
 }
 
-/* 라벨과 건수를 붙여 두면 어느 칩의 숫자인지 읽기 어렵습니다. */
 .ta-admin .stage-chip strong {
   padding-left: 2px;
   color: #fff;
@@ -889,8 +762,6 @@
   box-shadow: inset 0 0 0 1px currentColor;
 }
 
-/* 0 건인 단계. 칩을 감추면 0 건인지 이 페이지에 없는 건지 구분되지 않으므로
-   자리를 지키되 눌리지 않게 둡니다. */
 .ta-admin .stage-chip.is-empty {
   opacity: 0.45;
   cursor: default;
@@ -905,7 +776,6 @@
   outline-offset: 2px;
 }
 
-/* 표시 오류 표식. 단계 배지와 구분되도록 테두리만 있는 형태 */
 .ta-admin .stage-flag {
   display: inline-flex;
   align-items: center;
@@ -921,7 +791,6 @@
   border-color: rgba(253, 230, 138, 0.24);
 }
 
-/* 파이프라인 동작에는 영향이 없으므로 경고가 아닌 안내 톤 */
 .ta-admin .stage-summary-note {
   display: flex;
   align-items: flex-start;
@@ -945,8 +814,6 @@
   color: var(--warning);
 }
 
-/* ── 상세: 상태 3축과 품질 평가 ──────────────────────────── */
-
 .ta-admin .admin-detail-axes {
   display: grid;
   gap: 10px;
@@ -967,8 +834,6 @@
   text-transform: uppercase;
 }
 
-/* 품질 평가 섹션은 블록 간격을 flex gap 하나로 관리합니다.
- * 개별 margin 을 쓰면 문단의 반행간이 더해져 위아래 간격이 달라 보입니다. */
 .ta-admin .quality-body {
   display: flex;
   flex-direction: column;
@@ -1045,7 +910,6 @@
   }
 }
 
-/* 강제 정책 신호. 점수와 무관하게 판정을 뒤집는 항목이라 함께 보여줍니다. */
 .ta-admin .quality-signal-list h5 {
   margin: 0 0 8px;
   color: var(--gray-400);
@@ -1093,13 +957,6 @@
   color: var(--danger);
 }
 
-/* ── 숫자 표시 ────────────────────────────────────────────
- * v9 는 숫자에도 Orbitron 을 씁니다. 정사각 기하 디스플레이 서체라
- * 0/8, 1, 6/9 판별이 어렵고 tabular 자릿수도 없습니다.
- * 제목과 섹션 눈썹(라틴 대문자)의 Orbitron 은 브랜드 요소라 두고,
- * 숫자는 예외 없이 본문 서체로 되돌립니다.
- *
- * 새로 숫자를 표시하는 자리를 만들면 이 목록에 추가해 주세요. */
 .ta-admin .admin-score,
 .ta-admin .jaccard-score,
 .ta-admin .total-article-count,
@@ -1108,7 +965,8 @@
 .ta-admin .quality-dimension-value,
 .ta-admin .quality-signal-list strong,
 .ta-admin .comparison-score strong,
-.ta-admin .queue-metric strong {
+.ta-admin .queue-metric strong,
+.ta-admin .review-tab span {
   font-family:
     "Spoqa Han Sans Neo",
     system-ui,
@@ -1118,9 +976,6 @@
   letter-spacing: 0.01em;
 }
 
-/* ── 가치 점수 구간 배색 ──────────────────────────────────
- * v9 의 .admin-score 는 색이 초록으로 고정이라 41점도 통과처럼 보입니다.
- * 색은 보조 신호입니다. 숫자가 배지 안에 함께 있고 title 로 판정명을 답니다. */
 .ta-admin .admin-score.score-pass {
   color: var(--success);
   background: var(--success-bg);
@@ -1143,4 +998,299 @@
   color: var(--gray-400);
   background: rgba(148, 163, 184, 0.12);
   border-color: rgba(203, 213, 225, 0.16);
+}
+
+.ta-admin .admin-view-cell {
+  min-width: 72px;
+  color: var(--gray-500);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.ta-admin .admin-view-grid {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  gap: 1px 8px;
+}
+
+.ta-admin .admin-view-cell strong {
+  color: var(--gray-300);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  justify-self: end;
+}
+
+.ta-admin .admin-view-grid .admin-view-total {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin-bottom: 1px;
+  color: var(--gray-200);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.ta-admin .policy-option-content small,
+.ta-admin .admin-article-id,
+.ta-admin .admin-article-summary,
+.ta-admin .admin-article-tags .article-tag,
+.ta-admin .admin-source-cell a,
+.ta-admin .admin-date-cell strong,
+.ta-admin .status-badge,
+.ta-admin .publish-control > span,
+.ta-admin .row-action,
+.ta-admin .admin-page-button,
+.ta-admin .section-eyebrow,
+.ta-admin .overview-card-heading .overview-caption,
+.ta-admin .policy-scope-badge,
+.ta-admin .btn-small,
+.ta-admin .form-field label,
+.ta-admin .admin-detail-fact span,
+.ta-admin .queue-stat-inline,
+.ta-admin .queue-stat-card small,
+.ta-admin .review-tab span,
+.ta-admin .review-tab-help,
+.ta-admin .selection-action-bar > div:first-child span,
+.ta-admin .bulk-action-button, .ta-admin .bulk-clear-button,
+.ta-admin .source-language,
+.ta-admin .duplicate-match-cell small,
+.ta-admin .duplicate-method-badge,
+.ta-admin .review-reason-cell p,
+.ta-admin .canonical-url-block span,
+.ta-admin .canonical-url-block a,
+.ta-admin .case-id-row,
+.ta-admin .comparison-label,
+.ta-admin .comparison-card dt, .ta-admin .comparison-card dd,
+.ta-admin .comparison-card a,
+.ta-admin .comparison-score span,
+.ta-admin .comparison-score small,
+.ta-admin .decision-guidance,
+.ta-admin .crawl-capabilities-v9 legend,
+.ta-admin .crawl-capabilities-v9 strong,
+.ta-admin .crawl-capabilities-v9 small,
+.ta-admin .crawl-follow-v9 strong,
+.ta-admin .crawl-follow-v9 small,
+.ta-admin .crawl-idempotency-v9,
+.ta-admin .crawl-loading-v9 p,
+.ta-admin .crawl-run-heading-v9 small,
+.ta-admin .crawl-run-facts-v9 dt,
+.ta-admin .crawl-statistics-v9 span,
+.ta-admin .crawl-run-facts-v9 dd,
+.ta-admin .crawl-statistics-v9 strong,
+.ta-admin .crawl-statistics-v9 h4,
+.ta-admin .crawl-error-v9,
+.ta-admin .crawl-error-v9 > strong,
+.ta-admin .crawl-refresh-v9,
+.ta-admin .crawl-history-total-v9,
+.ta-admin .crawl-history-heading-v9 p:last-child,
+.ta-admin .crawl-history-table-v9 th,
+.ta-admin .crawl-history-table-v9 td,
+.ta-admin .crawl-history-table-v9 td strong,
+.ta-admin .crawl-history-table-v9 td small,
+.ta-admin .crawl-history-empty-v9,
+.ta-admin .crawl-history-pagination-v9,
+.ta-admin .crawl-history-page-v9 small,
+.ta-admin .publish-blocked-reason,
+.ta-admin .stage-hint,
+.ta-admin .stage-toolbar-scope,
+.ta-admin .stage-group-label,
+.ta-admin .stage-chip,
+.ta-admin .stage-flag,
+.ta-admin .admin-detail-axes span,
+.ta-admin .quality-dimension-label,
+.ta-admin .quality-dimension-value small,
+.ta-admin .quality-signal-list h5,
+.ta-admin .quality-signal-list span,
+.ta-admin .admin-view-cell {
+  font-size: 12px;
+}
+
+.ta-admin .tag-button, .ta-admin .article-tag,
+.ta-admin .policy-description,
+.ta-admin .admin-source-cell strong,
+.ta-admin .admin-empty-state p,
+.ta-admin .public-page-link,
+.ta-admin .result-count,
+.ta-admin .article-table,
+.ta-admin .article-table th,
+.ta-admin .admin-detail-fact strong,
+.ta-admin .queue-stat-card p,
+.ta-admin .review-tab,
+.ta-admin .duplicate-match-cell strong,
+.ta-admin .jaccard-score,
+.ta-admin .quality-review-reason h4,
+.ta-admin .crawl-history-page-v9 strong,
+.ta-admin .admin-detail-mismatch,
+.ta-admin .stage-badge,
+.ta-admin .stage-chip strong,
+.ta-admin .stage-summary-note,
+.ta-admin .quality-dimension-value,
+.ta-admin .quality-reason,
+.ta-admin .quality-signal-list strong,
+.ta-admin .admin-view-cell strong {
+  font-size: 13px;
+}
+
+.ta-admin .total-card .overview-card-title,
+.ta-admin .queue-stat-card .queue-stat-title {
+  margin: 0;
+  color: #e5e7eb;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.ta-admin .total-card .queue-stat-inline {
+  display: flex;
+  position: relative;
+  z-index: 1;
+  margin: 16px 0 0;
+  align-items: center;
+  gap: 10px;
+  color: #f3f4f6;
+  font-size: 15px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+}
+
+.ta-admin .total-card .queue-stat-divider {
+  color: var(--gray-500);
+  font-weight: 400;
+}
+
+.ta-admin .policy-card .policy-form {
+  margin-top: 12px;
+}
+
+.ta-admin .policy-option-content strong,
+.ta-admin .admin-score,
+.ta-admin .overview-card-heading p,
+.ta-admin .btn-primary, .ta-admin .btn-secondary, .ta-admin .btn-success, .ta-admin .btn-danger,
+.ta-admin .confirm-dialog p,
+.ta-admin .admin-detail-section h3,
+.ta-admin .admin-detail-section p,
+.ta-admin .selection-action-bar > div:first-child strong,
+.ta-admin .admin-markdown-body,
+.ta-admin .detail-score-tags h4, .ta-admin .admin-detail-section h4,
+.ta-admin .quality-review-reason p,
+.ta-admin .crawl-panel-heading-v9 > p:last-child,
+.ta-admin .crawl-panel-notice-v9 {
+  font-size: 14px;
+}
+
+.ta-admin .admin-empty-state h3,
+.ta-admin .section-heading-row h3, .ta-admin .list-heading-row h3 {
+  font-size: 20px;
+}
+
+@media (max-width: 767px) {
+
+  .ta-admin .admin-mobile-card-summary,
+  .ta-admin .admin-mobile-meta span,
+  .ta-admin .admin-mobile-meta strong {
+    font-size: 12px;
+  }
+
+  .ta-admin .admin-intro > div > p:last-child {
+    font-size: 14px;
+  }
+}
+
+.ta-admin .crawl-detail-button-v9 {
+  gap: 6px;
+  white-space: nowrap;
+}
+.ta-admin .crawl-detail-actions-v9 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ta-admin .crawl-detail-dialog-v9 .detail-dialog-content {
+  padding: 20px 22px;
+}
+
+.ta-admin .crawl-detail-dialog-v9 .crawl-run-facts-v9 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  column-gap: 20px;
+}
+.ta-admin .crawl-detail-dialog-v9 .crawl-statistics-v9 {
+  margin-top: 18px;
+}
+@media (max-width: 600px) {
+  .ta-admin .crawl-detail-dialog-v9 .crawl-run-facts-v9 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ta-admin .article-table.admin-articles-table {
+  table-layout: fixed;
+  min-width: 969px;
+}
+
+.ta-admin .admin-articles-table th {
+  padding: 13px 11px;
+}
+.ta-admin .admin-articles-table td {
+  padding: 15px 11px;
+}
+
+.ta-admin .admin-articles-table .selection-column {
+  width: 40px;
+  min-width: 40px;
+}
+.ta-admin .admin-articles-table .admin-source-col {
+  width: 100px;
+}
+.ta-admin .admin-articles-table .admin-score-col {
+  width: 78px;
+}
+.ta-admin .admin-articles-table .admin-view-col {
+  width: 92px;
+}
+
+.ta-admin .admin-articles-table .admin-date-col {
+  width: 108px;
+}
+
+.ta-admin .admin-articles-table .admin-stage-col {
+  width: 183px;
+}
+.ta-admin .admin-articles-table .admin-publish-col {
+  width: 104px;
+}
+
+.ta-admin .admin-articles-table .admin-actions-col {
+  width: 108px;
+}
+
+.ta-admin .admin-articles-table .admin-article-cell,
+.ta-admin .admin-articles-table .admin-source-cell,
+.ta-admin .admin-articles-table .admin-date-cell,
+.ta-admin .admin-articles-table .admin-view-cell,
+.ta-admin .admin-articles-table .stage-cell,
+.ta-admin .admin-articles-table .publish-control,
+.ta-admin .admin-articles-table .publish-control-group,
+.ta-admin .admin-articles-table .row-actions {
+  min-width: 0;
+}
+
+.ta-admin .admin-articles-table .stage-badge {
+  white-space: normal;
+  text-align: center;
+}
+
+.ta-admin .admin-articles-table .admin-source-cell strong {
+  overflow-wrap: anywhere;
+}
+
+.ta-admin .admin-articles-table .row-actions {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+.ta-admin .admin-articles-table .row-action {
+  padding: 5px 9px;
+  justify-content: center;
 }

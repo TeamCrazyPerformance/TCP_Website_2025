@@ -25,6 +25,14 @@ The submission body is the admission module's normalized article contract plus
 generation policy, while `duplicatePolicy` is explicit because it affects the
 atomic admission decision.
 
+Successful quality results are self-describing. `qualityEvaluation.score.axes`
+stores the ordered axis key, display label, numeric value, optional weight, and
+server-calculated contribution used by that evaluation. `score.scale` declares
+the numeric range. The legacy `score.dimensions` object remains temporarily for
+rolling-deployment compatibility, but clients should consume `axes`. Because the
+metadata is stored with each result, historical articles keep the policy that
+actually produced their score when a later evaluator changes its axes.
+
 The crawl request does not accept URLs. This prevents the internal endpoint from
 becoming an SSRF proxy; entry points are selected from the registered source:
 
@@ -78,8 +86,14 @@ through less than 92%.
 ## Reads and administration
 
 - `GET /public/articles` — keeps `limit|offset` and adds `keyword`, repeated
-  canonical `tags`, `totalCount`, and `lastCrawledAt`.
-- `GET /public/tags` and `GET /public/articles/{articleId}`
+  canonical `tags`, `totalCount`, and `lastCrawledAt`. Each item is a dedicated
+  list projection containing only identity/display title, one-line summary, tags,
+  source name/domain, publication time, and `isNew`.
+- `GET /public/tags` and `GET /public/articles/{articleId}`. Detail uses a separate
+  projection with summary Markdown, source path/article URL, language, collection
+  time, and a minimal `valueScore`. The score contains only `overall`, `scale`, and
+  ordered `breakdown[{label, contribution}]`; evaluator/policy versions, decision,
+  reason, signals, axis keys, raw axis values, and weights do not cross this boundary.
 - `GET /public/articles` — also supports `sources` (repeatable). Unknown ids return
   422 `INVALID_ARTICLE_SOURCE`. Every item carries `isNew`, true when the article was
   collected within `NEW_ARTICLE_WINDOW_HOURS` (24). The public list is ordered by the
@@ -87,6 +101,11 @@ through less than 92%.
   normally; GitHub Trending uses its UTC crawl observation time because that source
   has no original publication timestamp. The `isNew` flag remains based on collection
   time rather than this source-specific fallback.
+- `POST /public/articles/{articleId}/view?member=true|false` — bumps the per-article
+  counter. Operations-only aggregate; no per-user history is stored, so it is not
+  personal data. Unknown ids match no row in `articles`, so the insert affects nothing
+  and raises nothing — the path is reachable without auth, so a foreign-key error per
+  request would let anyone flood the log with stack traces. Callers do not await it.
 - `GET /public/sources` — id, name, domain, category and published `count` per source.
   Sources keep growing, so this is a separate call rather than a field on the list
   response, mirroring `GET /public/tags`.
@@ -125,6 +144,13 @@ scores remain available in the persisted quality result and admin projections.
 
 The publication policy setting is `IMMEDIATE|REVIEW`, defaults to `IMMEDIATE`,
 and uses an optional expected version on PATCH for optimistic concurrency.
+
+Public list SQL selects neither article bodies nor authors, quality payloads,
+workflow states, crawl payloads, or view counts. Public detail selects the score JSON
+subdocument instead of the full quality evaluation. The API then constructs a fresh
+allowlisted object, so repository row widening cannot automatically widen the service
+response. Stored axes are preferred; pre-axes three-axis and four-axis dimensions are
+restored with their respective historical labels and weights.
 
 Review queues accept `limit`, `offset`, `keyword`, `filter`, and a queue-specific
 `sort` value and return `totalCount`. Article and review projections combine the
