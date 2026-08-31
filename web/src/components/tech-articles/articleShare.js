@@ -7,7 +7,6 @@ export async function copyTextToClipboard(
       await navigatorObject.clipboard.writeText(text);
       return true;
     } catch {
-      // HTTP and denied-permission environments use the synchronous fallback.
     }
   }
 

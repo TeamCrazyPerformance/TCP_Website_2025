@@ -58,7 +58,14 @@ class Source(ContractModel):
 
 class CrawlSource(ContractModel):
     source_id: Literal[
-        "cloudflare-blog", "infoq", "sdtimes", "github-trending"
+        "cloudflare-blog",
+        "infoq",
+        "sdtimes",
+        "github-trending",
+        "tailscale-blog",
+        "rust-blog",
+        "hugging-face-blog",
+        "deepmind-blog",
     ] = Field(alias="sourceId")
     source_type: Literal["WEB_CRAWL", "RSS", "API"] = Field(alias="sourceType")
     section_key: Literal["BLOG", "NEWS", "ENGINEERING", "REPOSITORIES"] = Field(
@@ -73,6 +80,10 @@ class CrawlSource(ContractModel):
                       ("WEB_CRAWL", "NEWS"), ("WEB_CRAWL", "ENGINEERING")},
             "sdtimes": {("WEB_CRAWL", "NEWS"), ("RSS", "NEWS"), ("API", "NEWS")},
             "github-trending": {("WEB_CRAWL", "REPOSITORIES")},
+            "tailscale-blog": {("RSS", "BLOG")},
+            "rust-blog": {("RSS", "BLOG")},
+            "hugging-face-blog": {("RSS", "BLOG")},
+            "deepmind-blog": {("RSS", "BLOG")},
         }
         if (self.source_type, self.section_key) not in allowed[self.source_id]:
             raise ValueError(
@@ -196,7 +207,7 @@ class QualityPolicy(ContractModel):
 
 class GenerationOptions(ContractModel):
     output_language: str = Field(alias="outputLanguage", default="ko", pattern=r"^[A-Za-z]{2}$")
-    maximum_summary_length: int = Field(alias="maximumSummaryLength", default=800, ge=1)
+    maximum_summary_length: int = Field(alias="maximumSummaryLength", default=600, ge=1)
     maximum_one_line_summary_length: int = Field(
         alias="maximumOneLineSummaryLength", default=100, ge=1
     )

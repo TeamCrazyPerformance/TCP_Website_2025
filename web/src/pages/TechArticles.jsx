@@ -1,11 +1,18 @@
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useNavigationType,
+  useSearchParams,
+} from "react-router-dom";
 import {
   getTechArticles,
   getTechArticleSources,
@@ -18,6 +25,11 @@ import {
   shouldOpenFromCardClick,
 } from "../components/tech-articles/TechArticleCommon";
 import { shareArticle } from "../components/tech-articles/articleShare";
+import {
+  readArticleListReturn,
+  releaseArticleListReturn,
+  rememberArticleListReturn,
+} from "../components/tech-articles/articleListReturn";
 import { getPageTokens } from "../components/tech-articles/TechArticlePagination";
 import TechArticlePublicContent from "../components/tech-articles/TechArticlePublicContent";
 
@@ -28,16 +40,16 @@ const TAG_CLASS_NAMES = {
   모바일: "tag-mobile",
   "프로그래밍 언어": "tag-language-framework",
   데이터: "tag-data-db",
-  클라우드: "tag-cloud-devops",
-  DevOps: "tag-cloud-devops",
+  클라우드: "tag-cloud",
+  DevOps: "tag-devops",
   보안: "tag-security",
   네트워크: "tag-backend",
   "소프트웨어 아키텍처": "tag-architecture",
-  "개발자 도구": "tag-language-framework",
-  "소프트웨어 품질": "tag-industry-career",
+  "개발자 도구": "tag-developer-tools",
+  "소프트웨어 품질": "tag-software-quality",
   오픈소스: "tag-open-source",
-  "개발 조직": "tag-industry-career",
-  "산업 동향": "tag-blockchain-web3",
+  "개발 조직": "tag-development-organization",
+  "산업 동향": "tag-industry-trends",
 };
 
 export function v9TagClassName(tag) {
@@ -63,64 +75,13 @@ function readSources(searchParams) {
     .filter(Boolean);
 }
 
-// 소스는 남의 브랜드라 아이콘과 도메인을 함께 보여줍니다. 분야 태그와 모양이
-// 같으면 사용자가 같은 축으로 착각하는데, 이 둘은 서로 다른 질문에 답합니다.
-// (분야: 무엇에 관한 글인가 / 소스: 누가 쓴 글인가)
-//
-// 아이콘은 우리 서버에서만 가져옵니다. 외부 파비콘 서비스를 쓰면 방문자
-// 브라우저가 그 서비스에 직접 요청하게 되어, IP 와 "지금 보는 소스"가 제3자로
-// 전송됩니다. 개인정보처리방침이 "외부 전송을 하지 않는다"고 밝히고 있으므로
-// 그 약속과 어긋납니다.
-//
-// public/images/sources/{id}.png 를 두면 그 이미지를 쓰고, 없으면 이름 첫 글자로
-// 만든 표식으로 떨어집니다. 새 소스를 추가할 때 이미지를 안 넣어도 화면은
-// 깨지지 않습니다.
-const MONOGRAM_TONES = 6;
-
-// 글자 코드 합으로 색을 고릅니다. 이름 길이로 고르면 글자 수가 같은 소스끼리
-// 색이 겹칩니다 ("Cloudflare Blog" 와 "GitHub Trending" 이 둘 다 15자).
-function monogramTone(label) {
-  let sum = 0;
-  for (let i = 0; i < label.length; i += 1) sum += label.charCodeAt(i);
-  return sum % MONOGRAM_TONES;
-}
-
-function SourceIcon({ id, name, domain }) {
-  const [failed, setFailed] = useState(false);
-  const label = (name || domain || "?").trim();
-  if (!id || failed) {
-    // 같은 소스는 언제나 같은 색이 됩니다.
-    const tone = monogramTone(label);
-    return (
-      <span
-        className={`source-icon source-icon-monogram tone-${tone}`}
-        aria-hidden="true"
-      >
-        {label.slice(0, 1).toUpperCase()}
-      </span>
-    );
-  }
-  return (
-    <img
-      className="source-icon"
-      src={`/images/sources/${id}.png`}
-      alt=""
-      loading="lazy"
-      width="20"
-      height="20"
-      onError={() => setFailed(true)}
-    />
-  );
-}
-
-// 소스가 늘어나도 견디도록 검색을 답니다. 목록을 눈으로 훑어 찾는 방식은
-// 스무 개를 넘어가면 무너집니다.
 function SourcePickerDialog({
   dialogRef,
   sources,
   draft,
   onToggle,
   onApply,
+  applyDisabled,
   onReset,
   onClose,
 }) {
@@ -135,10 +96,17 @@ function SourcePickerDialog({
       )
     : sources;
   return (
-    <dialog className="source-dialog" ref={dialogRef} onClose={onClose}>
+    <dialog
+      className="source-dialog"
+      ref={dialogRef}
+      onClose={onClose}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
       <form method="dialog" className="source-dialog-inner">
         <header className="source-dialog-header">
-          <h2>소스 고르기</h2>
+          <h2>소스 선택</h2>
           <button
             className="source-dialog-close"
             type="button"
@@ -176,11 +144,6 @@ function SourcePickerDialog({
                     checked={checked}
                     onChange={() => onToggle(source.id)}
                   />
-                  <SourceIcon
-                    id={source.id}
-                    name={source.name}
-                    domain={source.domain}
-                  />
                   <span className="source-option-text">
                     <strong>{source.name}</strong>
                     <small>{source.domain}</small>
@@ -194,9 +157,14 @@ function SourcePickerDialog({
 
         <footer className="source-dialog-actions">
           <button type="button" className="source-reset" onClick={onReset}>
-            전체 해제
+            초기화
           </button>
-          <button type="button" className="source-apply" onClick={onApply}>
+          <button
+            type="button"
+            className="source-apply"
+            onClick={onApply}
+            disabled={applyDisabled}
+          >
             적용
           </button>
         </footer>
@@ -210,6 +178,14 @@ function sameValues(left, right) {
   const leftSorted = [...left].sort();
   const rightSorted = [...right].sort();
   return leftSorted.every((value, index) => value === rightSorted[index]);
+}
+
+function moveTo(id, block = "start") {
+  document.getElementById(id)?.scrollIntoView({ behavior: "auto", block });
+}
+
+function moveToResults() {
+  moveTo("resultsStart");
 }
 
 function V9TagButtons({
@@ -232,7 +208,6 @@ function V9TagButtons({
             aria-pressed={selected}
             onClick={() => onToggle(tag)}
           >
-            <i className="fas fa-check" aria-hidden="true"></i>
             {tag}
           </button>
         );
@@ -263,8 +238,33 @@ export function V9ArticleTags({
   );
 }
 
+function ArticleMeta({ article, className = "" }) {
+  return (
+    <div className={`article-meta ${className}`.trim()}>
+      <span>
+        <i className="fas fa-building text-blue" aria-hidden="true"></i>
+        <span className="article-source-label">원출처</span>{" "}
+        <strong>
+          {article.source?.name || article.source?.domain || "확인되지 않음"}
+        </strong>
+      </span>
+      <span className="meta-divider" aria-hidden="true">
+        ·
+      </span>
+      <span>
+        <i className="fas fa-calendar-day" aria-hidden="true"></i>
+        <time dateTime={article.originalPublishedAt}>
+          {formatTechArticleDate(article.originalPublishedAt)}
+        </time>
+      </span>
+    </div>
+  );
+}
+
 function TechArticles() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const navigationType = useNavigationType();
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Math.max(
     1,
@@ -292,7 +292,10 @@ function TechArticles() {
   const [isLoading, setIsLoading] = useState(true);
   const [filterOpen, setFilterOpen] = useState(false);
   const [toast, setToast] = useState("");
+  const [listScrollRevision, setListScrollRevision] = useState(0);
   const requestId = useRef(0);
+  const pendingListScroll = useRef(null);
+  const listScrollTarget = useRef({ id: "resultsStart", block: "start" });
   const filterDialogRef = useRef(null);
   const sourceDialogRef = useRef(null);
 
@@ -332,7 +335,6 @@ function TechArticles() {
         if (active) setSources(Array.isArray(data?.items) ? data.items : []);
       })
       .catch(() => {
-        // 소스 목록을 못 받아도 아티클 목록은 그대로 보여야 합니다.
         if (active) setSources([]);
       });
     return () => {
@@ -360,6 +362,65 @@ function TechArticles() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
+  useLayoutEffect(() => {
+    if (listScrollRevision === 0) return;
+    moveTo(listScrollTarget.current.id, listScrollTarget.current.block);
+  }, [listScrollRevision]);
+
+  useLayoutEffect(() => {
+    const returnState = readArticleListReturn();
+    if (!returnState) return;
+
+    const listPath = `${location.pathname}${location.search || ""}`;
+
+    const requestedRestore = Boolean(location.state?.restoreListPosition);
+    const shouldRestore =
+      returnState.listPath === listPath &&
+      (requestedRestore ||
+        (navigationType === "POP" &&
+          returnState.listLocationKey === (location.key || "default")));
+
+    if (!shouldRestore) {
+      releaseArticleListReturn(returnState);
+      return;
+    }
+
+    if (isLoading) return;
+
+    const card = Array.from(
+      document.querySelectorAll(".article-card[data-article-id]"),
+    ).find((element) => element.dataset.articleId === returnState.articleId);
+
+    if (card) {
+      const currentCardTop = card.getBoundingClientRect().top + window.scrollY;
+      const viewportOffset = Number.isFinite(returnState.viewportOffset)
+        ? returnState.viewportOffset
+        : 0;
+      window.scrollTo({
+        top: Math.max(0, currentCardTop - viewportOffset),
+        behavior: "auto",
+      });
+    } else {
+      moveToResults();
+    }
+
+    releaseArticleListReturn(returnState);
+  }, [
+    isLoading,
+    location.key,
+    location.pathname,
+    location.search,
+    location.state,
+    navigationType,
+  ]);
+
+  const completePendingListScroll = useCallback(() => {
+    if (!pendingListScroll.current) return;
+    listScrollTarget.current = pendingListScroll.current;
+    pendingListScroll.current = null;
+    setListScrollRevision((current) => current + 1);
+  }, []);
+
   const loadArticles = useCallback(async () => {
     const currentRequest = ++requestId.current;
     setIsLoading(true);
@@ -374,6 +435,7 @@ function TechArticles() {
       });
       if (requestId.current !== currentRequest) return;
       setResponse(data);
+      completePendingListScroll();
       if (data?.pagination?.totalPages && page > data.pagination.totalPages) {
         const next = new URLSearchParams(searchParams);
         next.set("page", String(data.pagination.totalPages));
@@ -387,12 +449,11 @@ function TechArticles() {
             "아티클 목록을 불러오지 못했습니다.",
           ),
         );
+        completePendingListScroll();
       }
     } finally {
       if (requestId.current === currentRequest) setIsLoading(false);
     }
-    // selectedTags / selectedSources 는 매 렌더 새 배열이라 그대로 넣으면
-    // 무한 조회가 됩니다. 문자열로 접은 ...Key 를 대신 씁니다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     keyword,
@@ -400,6 +461,7 @@ function TechArticles() {
     searchParams,
     selectedTagKey,
     selectedSourceKey,
+    completePendingListScroll,
     setSearchParams,
   ]);
 
@@ -407,7 +469,6 @@ function TechArticles() {
     loadArticles();
   }, [loadArticles]);
 
-  // "14:32 KST" 는 지금 시각과 빼기를 시켜야 읽힙니다. 상대 시각은 그냥 읽힙니다.
   const lastCheckedRelative = useMemo(
     () => formatRelativeFromNow(response?.lastCrawledAt),
     [response],
@@ -415,36 +476,35 @@ function TechArticles() {
   const lastCheckedAbsolute = response?.lastCrawledAt
     ? `${formatTechArticleDate(response.lastCrawledAt, true)} KST`
     : undefined;
-  // 배지가 붙은 개수와 같은 값이라, 두 표시가 서로를 설명해 줍니다.
   const newCount = useMemo(
     () => (response?.items || []).filter((item) => item.isNew).length,
     [response],
   );
-  const sourceById = useMemo(
-    () => Object.fromEntries(sources.map((source) => [source.id, source])),
-    [sources],
-  );
-
   const applyConditions = ({
     nextKeyword = keyword,
     nextTags = selectedTags,
     nextSources = selectedSources,
     nextPage = 1,
     scroll = true,
+    scrollTarget = "resultsStart",
+    scrollBlock = "start",
   } = {}) => {
+    const conditionsChanged =
+      nextKeyword.trim() !== keyword ||
+      !sameValues(nextTags, selectedTags) ||
+      !sameValues(nextSources, selectedSources) ||
+      nextPage !== page;
     const next = new URLSearchParams();
     if (nextKeyword.trim()) next.set("q", nextKeyword.trim());
     if (nextTags.length) next.set("tags", nextTags.join(","));
     if (nextSources.length) next.set("sources", nextSources.join(","));
     if (nextPage > 1) next.set("page", String(nextPage));
-    setSearchParams(next);
     if (scroll) {
-      window.setTimeout(() => {
-        document
-          .getElementById("resultsStart")
-          ?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 0);
+      if (conditionsChanged)
+        pendingListScroll.current = { id: scrollTarget, block: scrollBlock };
+      else moveTo(scrollTarget, scrollBlock);
     }
+    setSearchParams(next);
   };
 
   const toggleDraftTag = (tag) => {
@@ -457,25 +517,38 @@ function TechArticles() {
 
   const resetAll = () => {
     setDraftTags([]);
+    setDraftSources([]);
     setSearchInput("");
     setSearchParams(new URLSearchParams());
   };
 
-  const removeFilter = (filter) => {
-    if (filter === "query") {
-      setSearchInput("");
-      applyConditions({ nextKeyword: "", nextTags: selectedTags });
-      return;
-    }
-    const nextTags = selectedTags.filter((tag) => tag !== filter);
-    setDraftTags(nextTags);
-    applyConditions({ nextTags });
-  };
-
-  // 카드 전체를 상세 이동 영역으로 사용. 예외 규칙은 shouldOpenFromCardClick 참고
   const openArticleFromCard = (event, articleId) => {
     if (!shouldOpenFromCardClick(event)) return;
+    rememberArticleListReturn({
+      articleId,
+      location,
+      card: event.currentTarget,
+    });
     navigate(`/tech-articles/${encodeURIComponent(articleId)}`);
+  };
+
+  const rememberReturnFromTitle = (event, articleId) => {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+
+    rememberArticleListReturn({
+      articleId,
+      location,
+      card: event.currentTarget.closest(".article-card"),
+    });
   };
 
   const handleShare = async (article) => {
@@ -505,7 +578,14 @@ function TechArticles() {
         pagination.totalCount,
       )
     : 0;
-  const hasConditions = Boolean(keyword || selectedTags.length);
+  const hasConditions = Boolean(
+    keyword || selectedTags.length || selectedSources.length,
+  );
+  const sourcesChanged = useMemo(
+    () => !sameValues(draftSources, selectedSources),
+    [draftSources, selectedSources],
+  );
+
   const tagsChanged = useMemo(
     () => !sameValues(draftTags, selectedTags),
     [draftTags, selectedTags],
@@ -520,16 +600,12 @@ function TechArticles() {
               <i className="fas fa-newspaper"></i>
             </div>
             <h1 className="orbitron gradient-text">Tech Articles</h1>
-            {/* 한글에는 Orbitron 을 쓰지 않습니다. 라틴 제목에만 남깁니다. */}
+
             <p className="hero-lead">
-              여러 개발·기술 뉴스를 한 곳에서 만나보세요
-            </p>
-            <p className="hero-description">
-              TCP가 한데 모은 여러 소식을 이곳에서 확인할 수 있어요.
+              <span>TCP가 한데 모은 여러 개발·기술 뉴스를</span>{" "}
+              <span>이곳에서 만나보세요.</span>
             </p>
             <p className="last-collected">
-              <i className="fas fa-clock" aria-hidden="true"></i>
-              {/* 새 글이 없을 때 "업데이트"라고 하면 사실이 아니게 됩니다. */}
               <span title={lastCheckedAbsolute}>
                 {lastCheckedRelative
                   ? newCount > 0
@@ -550,7 +626,7 @@ function TechArticles() {
               className="section-heading article-list-heading"
               tabIndex="-1"
             >
-              <h2 className="orbitron gradient-text">아티클 목록</h2>
+              <h2 className="sr-only">아티클 목록</h2>
               <div className="result-summary">
                 <p id="resultCount">
                   {isLoading && !response
@@ -558,7 +634,12 @@ function TechArticles() {
                     : pagination?.totalCount
                       ? hasConditions
                         ? `총 ${pagination.totalCount}건 중 ${start}–${end}건`
-                        : `전체 ${pagination.totalCount}건 ⋅ 원문 게시일 최신순`
+                        : [
+                            `전체 ${pagination.totalCount}건`,
+                            <span className="result-sort" key="sort">
+                              {" ⋅ 최신순"}
+                            </span>,
+                          ]
                       : error
                         ? "목록을 표시할 수 없습니다."
                         : "검색 결과 0건"}
@@ -573,65 +654,50 @@ function TechArticles() {
                   </span>
                 )}
               </div>
-            </div>
 
-            {/* 소스는 분야 태그와 다른 축이라 필터 패널 밖, 목록 바로 위에
-                따로 둡니다. 한 줄에 섞으면 같은 종류로 읽힙니다. */}
-            <div className="source-bar">
-              <button
-                type="button"
-                className={`source-trigger ${selectedSources.length ? "is-active" : ""}`}
-                onClick={() => setSourceOpen(true)}
-                aria-haspopup="dialog"
-                aria-expanded={sourceOpen}
-              >
-                <i className="fas fa-rss" aria-hidden="true"></i>
-                {selectedSources.length
-                  ? `소스 ${selectedSources.length}곳`
-                  : "모든 소스"}
-                <i className="fas fa-chevron-down" aria-hidden="true"></i>
-              </button>
+              <div className="list-filter-row">
+                <button
+                  type="button"
+                  className={`filter-trigger source-trigger ${selectedSources.length ? "is-active" : ""}`}
+                  onClick={() => setSourceOpen(true)}
+                  aria-haspopup="dialog"
+                  aria-expanded={sourceOpen}
+                >
+                  <i className="fas fa-rss" aria-hidden="true"></i>
+                  {selectedSources.length
+                    ? `소스 ${selectedSources.length}곳`
+                    : "소스 선택"}
+                </button>
 
-              {selectedSources.length > 0 && (
-                <ul className="source-chip-list" aria-label="선택한 소스">
-                  {selectedSources.map((id) => {
-                    const source = sourceById[id];
-                    return (
-                      <li key={id}>
-                        <button
-                          type="button"
-                          className="source-chip"
-                          onClick={() =>
-                            applyConditions({
-                              nextSources: selectedSources.filter(
-                                (value) => value !== id,
-                              ),
-                            })
-                          }
-                          aria-label={`${source?.name || id} 해제`}
-                        >
-                          <SourceIcon
-                            id={source?.id}
-                            name={source?.name || id}
-                            domain={source?.domain}
-                          />
-                          {source?.name || id}
-                          <i className="fas fa-xmark" aria-hidden="true"></i>
-                        </button>
-                      </li>
-                    );
-                  })}
-                  <li>
-                    <button
-                      type="button"
-                      className="text-button source-clear"
-                      onClick={() => applyConditions({ nextSources: [] })}
-                    >
-                      모두 해제
-                    </button>
-                  </li>
-                </ul>
-              )}
+                <button
+                  id="openFilterButton"
+                  className={`filter-trigger mobile-filter-button ${selectedTags.length ? "is-active" : ""}`}
+                  type="button"
+                  aria-haspopup="dialog"
+                  aria-expanded={filterOpen}
+                  disabled={isLoading || Boolean(tagError)}
+                  onClick={() => {
+                    setDraftTags(selectedTags);
+                    setFilterOpen(true);
+                  }}
+                >
+                  <i className="fas fa-sliders-h" aria-hidden="true"></i>
+                  {selectedTags.length
+                    ? `분야 ${selectedTags.length}개`
+                    : "분야 선택"}
+                </button>
+
+                {hasConditions && (
+                  <button
+                    id="mobileResetAllButton"
+                    className="mobile-reset-button"
+                    type="button"
+                    onClick={resetAll}
+                  >
+                    전체 초기화
+                  </button>
+                )}
+              </div>
             </div>
 
             <fieldset
@@ -653,7 +719,10 @@ function TechArticles() {
                     id="resetDraftTagsButton"
                     className="text-button"
                     type="button"
-                    onClick={() => setDraftTags([])}
+                    onClick={() => {
+                      setDraftTags([]);
+                      applyConditions({ nextTags: [], scroll: false });
+                    }}
                     disabled={!draftTags.length}
                   >
                     초기화
@@ -663,72 +732,17 @@ function TechArticles() {
                     className="apply-filter-button"
                     type="button"
                     disabled={!tagsChanged}
-                    onClick={() => applyConditions({ nextTags: draftTags })}
+                    onClick={() =>
+                      applyConditions({ nextTags: draftTags, scroll: false })
+                    }
                   >
                     적용
                   </button>
                 </div>
               </div>
-              <button
-                id="openFilterButton"
-                className="mobile-filter-button"
-                type="button"
-                aria-haspopup="dialog"
-                aria-expanded={filterOpen}
-                onClick={() => {
-                  setDraftTags(selectedTags);
-                  setFilterOpen(true);
-                }}
-              >
-                <span>
-                  <i className="fas fa-sliders-h" aria-hidden="true"></i>
-                  분야 선택
-                </span>
-                <strong id="mobileFilterCount">{selectedTags.length}</strong>
-              </button>
             </fieldset>
 
             {tagError && <p className="detail-data-error">{tagError}</p>}
-
-            {hasConditions && (
-              <div className="active-filters">
-                <span>적용 중</span>
-                <div className="filter-chips">
-                  {keyword && (
-                    <span className="filter-chip">
-                      검색어: {keyword}
-                      <button
-                        type="button"
-                        onClick={() => removeFilter("query")}
-                        aria-label={`검색어 ${keyword} 조건 해제`}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  )}
-                  {selectedTags.map((tag) => (
-                    <span className="filter-chip" key={tag}>
-                      {tag}
-                      <button
-                        type="button"
-                        onClick={() => removeFilter(tag)}
-                        aria-label={`${tag} 조건 해제`}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-                <button
-                  className="text-button"
-                  type="button"
-                  onClick={resetAll}
-                >
-                  <i className="fas fa-rotate-left" aria-hidden="true"></i>
-                  전체 초기화
-                </button>
-              </div>
-            )}
 
             <p className="sr-only" aria-live="polite">
               {pagination?.totalCount
@@ -784,63 +798,43 @@ function TechArticles() {
                       <Link
                         className="article-title"
                         to={`/tech-articles/${encodeURIComponent(article.id)}`}
+                        onClick={(event) =>
+                          rememberReturnFromTitle(event, article.id)
+                        }
                       >
-                        {/* 목록이 원문 게시일 순이라 새로 들어온 글이 위로
-                            오지 않습니다. 배지가 없으면 찾을 방법이 없습니다.
-                            제목 링크 안에 두어야 글자 흐름을 타고 첫 줄과
-                            정렬이 맞습니다. 바깥에 두면 카드 헤딩이 flex 라
-                            제목 첫 줄과 어긋납니다. */}
                         {article.isNew && (
                           <span className="article-new-badge">NEW</span>
                         )}
                         {article.title || "제목 없음"}
                       </Link>
                     </div>
-                    <p
-                      className="article-summary"
-                      title={article.oneLineSummary}
-                    >
-                      {article.oneLineSummary || "한 줄 요약이 없습니다."}
-                    </p>
+                    <div className="article-summary-row">
+                      <p
+                        className="article-summary"
+                        title={article.oneLineSummary}
+                      >
+                        {article.oneLineSummary || "한 줄 요약이 없습니다."}
+                      </p>
+                      <ArticleMeta
+                        article={article}
+                        className="article-meta-mobile"
+                      />
+                    </div>
                     <div className="article-card-bottom">
                       <div className="article-card-info">
                         <V9ArticleTags tags={article.tags} />
-                        <div className="article-meta">
-                          <span>
-                            <i
-                              className="fas fa-building text-blue"
-                              aria-hidden="true"
-                            ></i>
-                            원출처{" "}
-                            <strong>
-                              {article.source?.name ||
-                                article.source?.domain ||
-                                "확인되지 않음"}
-                            </strong>
-                          </span>
-                          <span className="meta-divider" aria-hidden="true">
-                            ·
-                          </span>
-                          <span>
-                            <i
-                              className="fas fa-calendar-day"
-                              aria-hidden="true"
-                            ></i>
-                            <time dateTime={article.originalPublishedAt}>
-                              {formatTechArticleDate(
-                                article.originalPublishedAt,
-                              )}
-                            </time>
-                          </span>
-                        </div>
+                        <ArticleMeta
+                          article={article}
+                          className="article-meta-desktop"
+                        />
                       </div>
                       <button
                         className="share-button"
                         type="button"
                         onClick={() => handleShare(article)}
                         aria-label={`${article.title} 세부 페이지 공유`}
+                        title="공유"
                       >
-                        공유{" "}
                         <i
                           className="fas fa-share-nodes"
                           aria-hidden="true"
@@ -913,7 +907,7 @@ function TechArticles() {
                   다음
                 </button>
                 <span className="pagination-status">
-                  현재 {pagination.currentPage} / {pagination.totalPages}페이지
+                  전체 {pagination.totalPages}페이지
                 </span>
               </nav>
             )}
@@ -924,14 +918,9 @@ function TechArticles() {
               aria-labelledby="exploreHeading"
             >
               <div className="explore-heading">
-                <div>
-                  <p className="orbitron explore-eyebrow">SEARCH</p>
-                  <h2 id="exploreHeading">필요한 아티클 검색하기</h2>
-                  <p>
-                    전체 아티클의 제목과 한 줄 요약에서 원하는 내용을 검색할 수
-                    있습니다.
-                  </p>
-                </div>
+                <h2 id="exploreHeading" className="sr-only">
+                  아티클 검색하기
+                </h2>
                 <a className="back-to-list-link" href="#resultsStart">
                   목록으로 돌아가기{" "}
                   <i className="fas fa-arrow-up" aria-hidden="true"></i>
@@ -957,29 +946,54 @@ function TechArticles() {
                   }}
                 >
                   <div className="search-category-filter">
-                    <div className="search-category-heading">
-                      <span>분야 선택</span>
-                      <button
-                        id="resetSearchDraftTagsButton"
-                        className="text-button search-tag-reset"
-                        type="button"
-                        onClick={() => setDraftTags([])}
-                        disabled={!draftTags.length}
-                      >
-                        초기화
-                      </button>
+                    <div className="desktop-filter">
+                      <V9TagButtons
+                        id="searchTagFilters"
+                        className="tag-filter-list search-desktop-filter"
+                        tags={tags}
+                        selectedTags={draftTags}
+                        onToggle={toggleDraftTag}
+                        label="검색할 분야 선택 항목"
+                      />
+                      <div className="filter-apply-row">
+                        <button
+                          id="resetSearchDraftTagsButton"
+                          className="text-button"
+                          type="button"
+                          onClick={() => {
+                            setDraftTags([]);
+                            applyConditions({
+                              nextTags: [],
+                              scrollTarget: "article-filters",
+                              scrollBlock: "center",
+                            });
+                          }}
+                          disabled={!draftTags.length}
+                        >
+                          초기화
+                        </button>
+                        <button
+                          id="applySearchTagsButton"
+                          className="apply-filter-button"
+                          type="button"
+                          disabled={!tagsChanged}
+                          onClick={() =>
+                            applyConditions({
+                              nextTags: draftTags,
+                              scrollTarget: "article-filters",
+                              scrollBlock: "center",
+                            })
+                          }
+                        >
+                          적용
+                        </button>
+                      </div>
                     </div>
-                    <V9TagButtons
-                      id="searchTagFilters"
-                      className="tag-filter-list search-desktop-filter"
-                      tags={tags}
-                      selectedTags={draftTags}
-                      onToggle={toggleDraftTag}
-                      label="검색할 분야 선택 항목"
-                    />
                     <button
                       id="openSearchFilterButton"
-                      className="mobile-filter-button search-mobile-filter-button"
+                      className={`filter-trigger mobile-filter-button search-mobile-filter-button ${
+                        selectedTags.length ? "is-active" : ""
+                      }`}
                       type="button"
                       aria-haspopup="dialog"
                       aria-expanded={filterOpen}
@@ -988,16 +1002,12 @@ function TechArticles() {
                         setFilterOpen(true);
                       }}
                     >
-                      <span>
-                        <i className="fas fa-sliders-h" aria-hidden="true"></i>
-                        분야 선택
-                      </span>
-                      <strong id="searchMobileFilterCount">
-                        {selectedTags.length}
-                      </strong>
+                      <i className="fas fa-sliders-h" aria-hidden="true"></i>
+                      {selectedTags.length
+                        ? `분야 ${selectedTags.length}개`
+                        : "분야 선택"}
                     </button>
                   </div>
-                  <label htmlFor="searchInput">검색</label>
                   <div className="search-row">
                     <div className="search-input-wrap">
                       <input
@@ -1008,7 +1018,8 @@ function TechArticles() {
                         maxLength={100}
                         value={searchInput}
                         onChange={(event) => setSearchInput(event.target.value)}
-                        placeholder="제목과 요약에서 아티클을 검색하세요."
+                        placeholder="검색어"
+                        aria-label="검색어"
                       />
                       <button
                         id="clearSearchButton"
@@ -1042,17 +1053,23 @@ function TechArticles() {
             </section>
 
             <aside className="source-notice">
-              <i className="fas fa-circle-info" aria-hidden="true"></i>
               <div>
-                <h2 className="orbitron">데이터 출처 및 AI 요약 안내</h2>
+                <h2>데이터 출처 및 AI 생성 정보 안내</h2>
                 <p>
-                  공식 기술 블로그와 개발자 커뮤니티 등에서 수집한 자료 중 원문
-                  게시일과 출처가 확인되고 AI 요약이 완료된 아티클만 제공합니다.
+                  TCP는 기술 블로그, 개발자 뉴스·커뮤니티 및 공개 저장소 등 외부
+                  출처의 콘텐츠를 수집, 제공합니다. 원문 주소와 출처 정보는 각
+                  아티클에서 확인할 수 있습니다. 원문 콘텐츠의 모든 권리는 원문
+                  발행처 또는 작성자에게 있습니다.
                 </p>
                 <p>
-                  모든 한 줄 요약은 AI로 생성되며 원문의 전체 맥락을 대체하지
-                  않습니다. 표시되는 건수와 페이지는 서버의 최신 응답을 기준으로
-                  갱신됩니다.
+                  번역 제목, 한 줄 요약, 상세 요약과 분야 태그는 원문을 바탕으로
+                  AI가 생성합니다. AI는 실수를 할 수 있으므로, 중요한 내용은
+                  반드시 원문을 확인해 주세요.
+                </p>
+                <p>
+                  가치 점수는 TCP 내부 기준을 통해 산정한 참고 지표입니다. 이
+                  점수는 글의 정확성을 의미하지 않으며, 개별 아티클에 대한
+                  절대적인 품질 또한 보증하지 않습니다.
                 </p>
               </div>
             </aside>
@@ -1071,14 +1088,18 @@ function TechArticles() {
               : [...current, id],
           )
         }
+        applyDisabled={!sourcesChanged}
         onApply={() => {
           setSourceOpen(false);
-          applyConditions({ nextSources: draftSources });
+          applyConditions({ nextSources: draftSources, scroll: false });
         }}
-        onReset={() => setDraftSources([])}
+        onReset={() => {
+          setDraftSources([]);
+          setSourceOpen(false);
+          applyConditions({ nextSources: [], scroll: false });
+        }}
         onClose={() => {
           setSourceOpen(false);
-          // 적용하지 않고 닫으면 선택을 되돌립니다.
           setDraftSources(selectedSources);
         }}
       />
@@ -1097,17 +1118,14 @@ function TechArticles() {
       >
         <div className="filter-sheet">
           <div className="filter-sheet-heading">
-            <div>
-              <p className="orbitron">FILTER</p>
-              <h2>분야 선택</h2>
-            </div>
+            <h2>분야 선택</h2>
             <button
               className="sheet-close"
               type="button"
               onClick={() => setFilterOpen(false)}
-              aria-label="필터 닫기"
+              aria-label="닫기"
             >
-              <i className="fas fa-times" aria-hidden="true"></i>
+              <i className="fas fa-xmark" aria-hidden="true"></i>
             </button>
           </div>
           <V9TagButtons
@@ -1117,28 +1135,31 @@ function TechArticles() {
             onToggle={toggleDraftTag}
             label="분야 선택 항목"
           />
+
           <div className="sheet-actions">
             <button
               id="clearDraftTagsButton"
+              className="source-reset"
               type="button"
-              onClick={() => setDraftTags([])}
+              onClick={() => {
+                setDraftTags([]);
+                setFilterOpen(false);
+                applyConditions({ nextTags: [], scroll: false });
+              }}
             >
               초기화
             </button>
-            <button type="button" onClick={() => setFilterOpen(false)}>
-              취소
-            </button>
             <button
               id="applyTagsButton"
-              className="cta-button"
+              className="source-apply"
               type="button"
               disabled={!tagsChanged}
               onClick={() => {
                 setFilterOpen(false);
-                applyConditions({ nextTags: draftTags });
+                applyConditions({ nextTags: draftTags, scroll: false });
               }}
             >
-              선택 조건으로 보기
+              적용
             </button>
           </div>
         </div>

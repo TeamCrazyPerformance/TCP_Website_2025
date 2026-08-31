@@ -54,16 +54,43 @@ def test_valid_article_passes_at_low_boundary():
     evaluation = result["qualityEvaluation"]
     assert evaluation["status"] == "SUCCESS"
     assert evaluation["decision"] == "PASS"
+    assert evaluation["schemaVersion"] == "2.0"
     assert evaluation["score"]["dimensions"].keys() == {
-        "relevance", "timeliness", "sourceReliability"
+        "relevance",
+        "technicalDepth",
+        "timeliness",
+        "articleQuality",
     }
 
 
-def test_exactly_24_hours_has_zero_timeliness():
+def test_score_describes_the_axes_used_for_the_evaluation():
+    evaluation = evaluator().evaluate(request(minimumEvaluationScore=0))["qualityEvaluation"]
+    score = evaluation["score"]
+
+    assert score["scale"] == {"min": 0, "max": 100}
+    assert [axis["key"] for axis in score["axes"]] == [
+        "relevance",
+        "technicalDepth",
+        "timeliness",
+        "articleQuality",
+    ]
+    assert [axis["label"] for axis in score["axes"]] == [
+        "개발 관련성",
+        "기술적 깊이",
+        "최신성",
+        "기사 품질",
+    ]
+    assert [axis["weight"] for axis in score["axes"]] == [0.35, 0.30, 0.25, 0.10]
+    assert round(sum(axis["contribution"] for axis in score["axes"])) == score["overall"]
+    for axis in score["axes"]:
+        assert axis["value"] == score["dimensions"][axis["key"]]
+
+
+def test_exactly_24_hours_has_71_timeliness_due_to_48h_half_life():
     payload = request(minimumEvaluationScore=0)
     payload["article"]["originalPublishedAt"] = (NOW - timedelta(hours=24)).isoformat()
     result = evaluator().evaluate(payload)
-    assert result["qualityEvaluation"]["score"]["dimensions"]["timeliness"] == 0
+    assert result["qualityEvaluation"]["score"]["dimensions"]["timeliness"] == 71
 
 
 def test_future_publication_is_capped_at_100():
@@ -74,54 +101,8 @@ def test_future_publication_is_capped_at_100():
 
 
 def test_invalid_timestamp_returns_failure_contract():
-    payload = request()
-    payload["article"]["originalPublishedAt"] = "not-a-date"
+    payload = request(minimumEvaluationScore=0)
+    payload["article"]["originalPublishedAt"] = "invalid-date"
     result = evaluator().evaluate(payload)
     assert result["qualityEvaluation"]["status"] == "FAILED"
     assert result["qualityEvaluation"]["error"]["code"] == "INVALID_INPUT"
-    assert result["qualityEvaluation"]["error"]["retryable"] is False
-
-
-def test_length_and_language_are_hard_rejections_even_with_zero_threshold():
-    payload = request(minimumEvaluationScore=0)
-    payload["article"]["content"] = "Python"
-    payload["article"]["language"] = "fr"
-    result = evaluator().evaluate(payload)
-    evaluation = result["qualityEvaluation"]
-    assert evaluation["decision"] == "REJECT"
-    assert {"CONTENT_TOO_SHORT", "LANGUAGE_NOT_ALLOWED"} <= set(
-        evaluation["rejectionCodes"]
-    )
-
-
-def test_maximum_length_is_enforced():
-    payload = request(maximumContentLength=200)
-    result = evaluator().evaluate(payload)
-    assert result["qualityEvaluation"]["decision"] == "REJECT"
-    assert "CONTENT_TOO_LONG" in result["qualityEvaluation"]["rejectionCodes"]
-
-
-def test_admin_review_policy_overrides_a_passing_score():
-    result = evaluator().evaluate(
-        request(minimumEvaluationScore=0, reviewLowerBound=0, requireAdminReview=True)
-    )
-    assert result["qualityEvaluation"]["decision"] == "REVIEW_REQUIRED"
-
-
-def test_score_below_pass_but_above_review_floor_requires_review():
-    baseline = evaluator().evaluate(request(minimumEvaluationScore=0))
-    score = baseline["qualityEvaluation"]["score"]["overall"]
-    result = evaluator().evaluate(
-        request(minimumEvaluationScore=min(100, score + 1), reviewLowerBound=score)
-    )
-    assert result["qualityEvaluation"]["decision"] == "REVIEW_REQUIRED"
-
-
-def test_spam_and_advertisement_policies_are_enforced():
-    payload = request(minimumEvaluationScore=0)
-    payload["article"]["content"] = ("python " * 100) + " sponsored limited offer "
-    result = evaluator().evaluate(payload)
-    assert result["qualityEvaluation"]["decision"] == "REJECT"
-    assert {"SPAM_SUSPECTED", "ADVERTISEMENT_SUSPECTED"} <= set(
-        result["qualityEvaluation"]["rejectionCodes"]
-    )

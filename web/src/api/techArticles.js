@@ -36,7 +36,6 @@ export function getTechArticleTags() {
   return apiGet(`${PUBLIC_BASE}/tags`);
 }
 
-// 소스는 계속 늘어나므로 목록 응답에 얹지 않고 따로 받습니다.
 export function getTechArticleSources() {
   return apiGet(`${PUBLIC_BASE}/sources`);
 }
@@ -68,7 +67,6 @@ export function getAdminTechArticles({
 }
 
 export function getAdminTechArticleStats({ keyword, publicationStatus } = {}) {
-  // 목록과 같은 조건으로 세야 칩 숫자와 목록 총계가 맞습니다.
   return apiGet(
     withQuery(`${ADMIN_BASE}/stats`, { keyword, publicationStatus }),
   );

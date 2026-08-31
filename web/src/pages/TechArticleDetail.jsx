@@ -6,29 +6,37 @@ import {
   formatTechArticleDate,
 } from "../components/tech-articles/TechArticleCommon";
 import TechArticlePublicContent from "../components/tech-articles/TechArticlePublicContent";
+import PublicValueScoreBreakdown from "../components/tech-articles/PublicValueScoreBreakdown";
+import {
+  holdArticleListReturn,
+  releaseArticleListReturn,
+} from "../components/tech-articles/articleListReturn";
+import { shareArticle } from "../components/tech-articles/articleShare";
 import { V9ArticleTags } from "./TechArticles";
 import { useAuth } from "../context/AuthContext";
-
-function scoreLabel(value) {
-  return Number.isFinite(value) ? `${value} / 100` : "— / 100";
-}
 
 function TechArticleDetail() {
   const { articleId } = useParams();
   const location = useLocation();
   const { isAuthenticated } = useAuth();
   const [article, setArticle] = useState(null);
-  const [isLoading, setIsLoading] = useState(isAuthenticated);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
+  const [toast, setToast] = useState("");
+  const [listReturn, setListReturn] = useState(null);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      setIsLoading(false);
-      setArticle(null);
-      return undefined;
-    }
+    const returnState = holdArticleListReturn(articleId);
+    setListReturn(returnState);
+    return () => {
+      if (!window.location.pathname.startsWith("/tech-articles")) {
+        releaseArticleListReturn(returnState);
+      }
+    };
+  }, [articleId]);
 
+  useEffect(() => {
     let active = true;
     setIsLoading(true);
     setError("");
@@ -65,11 +73,47 @@ function TechArticleDetail() {
     };
   }, [article?.title]);
 
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = window.setTimeout(() => setToast(""), 3000);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
   const sourceName =
     article?.source?.name || article?.source?.domain || "확인 중";
   const sourceUrl = article?.source?.articleUrl;
-  const overall = article?.evaluation?.score?.overall;
-  const score = Number.isFinite(overall) ? overall : article?.score;
+  const sourceSiteUrl = article?.source?.domain
+    ? `https://${article.source.domain}`
+    : "";
+  const scoreData = article?.valueScore;
+  const score = scoreData?.overall;
+  const scoreMinimum = Number.isFinite(scoreData?.scale?.min)
+    ? scoreData.scale.min
+    : 0;
+  const scoreMaximum = Number.isFinite(scoreData?.scale?.max)
+    ? scoreData.scale.max
+    : 100;
+  const isScoreLocked = Boolean(
+    article && !Object.prototype.hasOwnProperty.call(article, "valueScore"),
+  );
+
+  const handleShare = async () => {
+    if (!article) return;
+    const url = `${window.location.origin}/tech-articles/${encodeURIComponent(article.id)}`;
+    const result = await shareArticle({
+      title: article.title,
+      text: article.oneLineSummary,
+      url,
+    });
+
+    if (result === "shared") {
+      setToast("세부 페이지를 공유했습니다.");
+    } else if (result === "copied") {
+      setToast("세부 페이지 주소를 복사했습니다.");
+    } else if (result === "failed") {
+      setToast("세부 페이지 주소를 복사하지 못했습니다.");
+    }
+  };
 
   return (
     <TechArticlePublicContent>
@@ -81,7 +125,11 @@ function TechArticleDetail() {
         >
           <div className="container">
             <nav className="detail-breadcrumb" aria-label="현재 위치">
-              <Link className="back-to-list-link" to="/tech-articles">
+              <Link
+                className="back-to-list-link"
+                to={listReturn?.listPath || "/tech-articles"}
+                state={listReturn ? { restoreListPosition: true } : undefined}
+              >
                 <i className="fas fa-arrow-left" aria-hidden="true"></i>
                 아티클 목록으로 돌아가기
               </Link>
@@ -92,22 +140,34 @@ function TechArticleDetail() {
                 {article?.title ||
                   (isLoading
                     ? "아티클을 불러오는 중입니다."
-                    : !isAuthenticated
-                      ? "로그인이 필요한 아티클입니다."
-                      : "아티클을 표시할 수 없습니다.")}
+                    : "아티클을 표시할 수 없습니다.")}
               </h1>
-              {article && (
+
+              {article && (sourceUrl || article.tags?.length > 0) && (
                 <div
                   className="detail-info-row"
-                  aria-label="아티클 출처, 게시 시각, 태그와 원문 링크"
+                  aria-label="원문 링크와 분야 태그"
                 >
                   <div className="detail-info-items">
-                    <span className="detail-info-item detail-source-item">
-                      <span className="detail-info-label">
-                        <i className="fas fa-building" aria-hidden="true"></i>
-                        원출처 <strong id="heroSourceName">{sourceName}</strong>
-                      </span>
-                      {sourceUrl && (
+                    <V9ArticleTags
+                      tags={article.tags}
+                      id="detailTags"
+                      className="detail-tags"
+                      limit={Infinity}
+                    />
+                    {sourceUrl && (
+                      <div className="detail-info-actions">
+                        <button
+                          className="detail-share-button"
+                          type="button"
+                          onClick={handleShare}
+                          aria-label={`${article.title} 세부 페이지 공유`}
+                        >
+                          <i
+                            className="fas fa-share-nodes"
+                            aria-hidden="true"
+                          ></i>
+                        </button>
                         <a
                           className="detail-original-link"
                           id="heroOriginalLink"
@@ -115,34 +175,14 @@ function TechArticleDetail() {
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          원문 보기
+                          원문
                           <i
                             className="fas fa-arrow-up-right-from-square"
                             aria-hidden="true"
                           ></i>
                         </a>
-                      )}
-                    </span>
-                    <span className="detail-info-item">
-                      <i className="fas fa-calendar-day" aria-hidden="true"></i>
-                      원문 게시{" "}
-                      <time
-                        id="heroPublishedAt"
-                        dateTime={article.originalPublishedAt}
-                      >
-                        {formatTechArticleDate(
-                          article.originalPublishedAt,
-                          true,
-                        )}{" "}
-                        KST
-                      </time>
-                    </span>
-                    <V9ArticleTags
-                      tags={article.tags}
-                      id="detailTags"
-                      className="detail-tags"
-                      limit={Infinity}
-                    />
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -155,14 +195,6 @@ function TechArticleDetail() {
           aria-label="아티클 상세 정보"
         >
           <div className="container">
-            {!isAuthenticated && (
-              <p className="detail-data-error" role="status">
-                상세 요약은 로그인 회원에게 제공됩니다.{" "}
-                <Link to="/login" state={{ from: location.pathname }}>
-                  로그인하기
-                </Link>
-              </p>
-            )}
             {error && (
               <p className="detail-data-error" role="alert">
                 {error}{" "}
@@ -180,14 +212,14 @@ function TechArticleDetail() {
               <div className="detail-primary">
                 <article
                   className="summary-card"
-                  aria-labelledby="summaryHeading"
+                  aria-label="한 줄 요약과 주요 내용"
                 >
-                  <header className="summary-heading">
-                    <h2 id="summaryHeading">핵심 요약</h2>
-                  </header>
-
                   {article?.oneLineSummary && (
-                    <p id="oneLineSummary" className="detail-one-line-summary">
+                    <p
+                      id="oneLineSummary"
+                      className="detail-one-line-summary"
+                      title={article.oneLineSummary}
+                    >
                       {article.oneLineSummary}
                     </p>
                   )}
@@ -203,11 +235,7 @@ function TechArticleDetail() {
                     />
                   ) : (
                     <div className="summary-body summary-body-v9">
-                      <p>
-                        {isAuthenticated
-                          ? "표시할 상세 요약이 없습니다."
-                          : "로그인 후 AI 상세 요약을 확인할 수 있습니다."}
-                      </p>
+                      <p>표시할 상세 요약이 없습니다.</p>
                     </div>
                   )}
                 </article>
@@ -215,79 +243,69 @@ function TechArticleDetail() {
 
               <aside className="detail-sidebar" aria-label="아티클 부가 정보">
                 <section className="score-card" aria-labelledby="scoreHeading">
-                  <p className="orbitron scenario-eyebrow">VALUE SCORE</p>
                   <h2 id="scoreHeading">가치 점수</h2>
-                  <div className="score-summary">
-                    <strong id="scoreValue">
-                      {Number.isFinite(score) ? score : "—"}
-                    </strong>
-                    <span>/ 100점</span>
-                  </div>
-                  <meter
-                    id="scoreMeter"
-                    className="score-meter"
-                    min="0"
-                    max="100"
-                    value={Number.isFinite(score) ? score : 0}
-                    aria-label={
-                      Number.isFinite(score)
-                        ? `가치 점수 100점 만점에 ${score}점`
-                        : "가치 점수를 확인할 수 없음"
-                    }
-                  >
-                    {Number.isFinite(score) ? `${score}점` : "0점"}
-                  </meter>
-                  <dl className="score-breakdown">
-                    <div>
-                      <dt>관련성</dt>
-                      <dd id="scoreRelevance">
-                        {scoreLabel(article?.evaluation?.score?.relevance)}
-                      </dd>
+                  {isScoreLocked ? (
+                    <div className="score-gate-card" role="note">
+                      <p className="score-gate-description">
+                        <span>Tech Articles에서는</span>{" "}
+                        <span>AI를 활용해 아티클을 분석하고,</span>{" "}
+                        <span>가치 점수를 산정하여 제공하고 있어요.</span>
+                      </p>
+                      <div className="member-gate-actions">
+                        <Link
+                          className="member-gate-primary"
+                          to="/login"
+                          state={{ from: location.pathname }}
+                        >
+                          <i
+                            className="fas fa-right-to-bracket"
+                            aria-hidden="true"
+                          ></i>
+                          로그인하고 점수 보기
+                        </Link>
+                      </div>
+                      <p className="member-gate-footnote">
+                        아직 회원이 아니라면,{" "}
+                        <Link to="/register">회원가입</Link>
+                      </p>
                     </div>
-                    <div>
-                      <dt>최신성</dt>
-                      <dd id="scoreFreshness">
-                        {scoreLabel(article?.evaluation?.score?.timeliness)}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>출처 신뢰도</dt>
-                      <dd id="scoreSourceTrust">
-                        {scoreLabel(
-                          article?.evaluation?.score?.sourceReliability,
-                        )}
-                      </dd>
-                    </div>
-                  </dl>
+                  ) : (
+                    <>
+                      <div className="score-summary">
+                        <strong id="scoreValue">
+                          {Number.isFinite(score) ? score : "—"}
+                        </strong>
+                        <span>/ {scoreMaximum}점</span>
+                      </div>
+                      <meter
+                        id="scoreMeter"
+                        className="score-meter"
+                        min={scoreMinimum}
+                        max={scoreMaximum}
+                        value={Number.isFinite(score) ? score : scoreMinimum}
+                        aria-label={
+                          Number.isFinite(score)
+                            ? `가치 점수 ${scoreMaximum}점 만점에 ${score}점`
+                            : "가치 점수를 확인할 수 없음"
+                        }
+                      >
+                        {Number.isFinite(score)
+                          ? `${score}점`
+                          : `${scoreMinimum}점`}
+                      </meter>
+                      <PublicValueScoreBreakdown
+                        breakdown={scoreData?.breakdown}
+                      />
+                    </>
+                  )}
                 </section>
 
                 <section
                   className="source-card"
                   aria-labelledby="sourceHeading"
                 >
-                  <p className="orbitron scenario-eyebrow">SOURCE</p>
                   <h2 id="sourceHeading">원문 및 출처 정보</h2>
                   <dl className="source-details">
-                    <div>
-                      <dt>출처</dt>
-                      <dd>
-                        <strong id="sourceName">{sourceName}</strong>
-                        <span id="sourceDomain">
-                          {article?.source?.domain || ""}
-                        </span>
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>원문 언어</dt>
-                      <dd id="sourceLanguage" className="source-language-value">
-                        <strong>
-                          {article?.originalLanguage?.label || "확인 중"}
-                        </strong>
-                        {article?.originalLanguage?.code && (
-                          <span>({article.originalLanguage.code})</span>
-                        )}
-                      </dd>
-                    </div>
                     <div>
                       <dt>원문 URL</dt>
                       <dd>
@@ -302,13 +320,37 @@ function TechArticleDetail() {
                               {article.source?.domain}
                               {article.source?.path}
                             </span>
-                            <i
-                              className="fas fa-arrow-up-right-from-square"
-                              aria-hidden="true"
-                            ></i>
                           </a>
                         ) : (
                           "원문 주소 확인 중"
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>출처</dt>
+                      <dd>
+                        {sourceSiteUrl ? (
+                          <a
+                            id="sourceSiteLink"
+                            href={sourceSiteUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <strong id="sourceName">{sourceName}</strong>
+                          </a>
+                        ) : (
+                          <strong id="sourceName">{sourceName}</strong>
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>원문 언어</dt>
+                      <dd id="sourceLanguage" className="source-language-value">
+                        <strong>
+                          {article?.originalLanguage?.label || "확인 중"}
+                        </strong>
+                        {article?.originalLanguage?.code && (
+                          <span>({article.originalLanguage.code})</span>
                         )}
                       </dd>
                     </div>
@@ -347,26 +389,38 @@ function TechArticleDetail() {
               className="source-notice detail-source-notice"
               aria-labelledby="sourceNoticeHeading"
             >
-              <i className="fas fa-circle-info" aria-hidden="true"></i>
               <div>
-                <h2 id="sourceNoticeHeading" className="orbitron">
-                  데이터 출처 및 AI 요약 안내
+                <h2 id="sourceNoticeHeading">
+                  데이터 출처 및 AI 생성 정보 안내
                 </h2>
                 <p>
-                  TCP는 공식 기술 블로그와 개발자 커뮤니티 등에서 수집한 원문의
-                  제목, 출처, 게시 시각을 정규화해 제공합니다. 콘텐츠의 권리와
-                  최종 내용은 원문 발행처에 있습니다.
+                  TCP는 기술 블로그, 개발자 뉴스·커뮤니티 및 공개 저장소 등 외부
+                  출처의 콘텐츠를 수집, 제공합니다. 원문 주소와 출처 정보는 각
+                  아티클에서 확인할 수 있습니다. 원문 콘텐츠의 모든 권리는 원문
+                  발행처 또는 작성자에게 있습니다.
                 </p>
                 <p>
-                  AI 요약과 가치 점수는 탐색을 돕기 위한 참고 정보이며 원문의
-                  전체 맥락이나 작성자의 의도를 대체하지 않습니다. 상세 요약과
-                  가치 점수는 서버의 최신 응답을 기준으로 표시됩니다.
+                  번역 제목, 한 줄 요약, 상세 요약과 분야 태그는 원문을 바탕으로
+                  AI가 생성합니다. AI는 실수를 할 수 있으므로, 중요한 내용은
+                  반드시 원문을 확인해 주세요.
+                </p>
+                <p>
+                  가치 점수는 TCP 내부 기준을 통해 산정한 참고 지표입니다. 이
+                  점수는 글의 정확성을 의미하지 않으며, 개별 아티클에 대한
+                  절대적인 품질 또한 보증하지 않습니다.
                 </p>
               </div>
             </aside>
           </div>
         </section>
       </main>
+
+      {toast && (
+        <div className="toast" role="status" aria-live="polite">
+          <i className="fas fa-circle-info" aria-hidden="true"></i>
+          <p>{toast}</p>
+        </div>
+      )}
     </TechArticlePublicContent>
   );
 }

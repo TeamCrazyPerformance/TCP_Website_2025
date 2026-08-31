@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useRef, useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import logo from "../logo.svg";
 import { useAuth } from "../context/AuthContext";
@@ -8,6 +8,8 @@ function Header({ isScrolled }) {
   const { isAuthenticated, logout, user } = useAuth();
   const [imgError, setImgError] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileNavVisible, setIsMobileNavVisible] = useState(true);
+  const lastScrollYRef = useRef(0);
 
   useEffect(() => {
     setImgError(false);
@@ -16,6 +18,34 @@ function Header({ isScrolled }) {
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [isAuthenticated, user?.profile_image]);
+
+  useEffect(() => {
+    lastScrollYRef.current = Math.max(window.scrollY, 0);
+
+    const handleMobileNavVisibility = () => {
+      const currentScrollY = Math.max(window.scrollY, 0);
+
+      if (window.innerWidth >= 1024) {
+        setIsMobileNavVisible(true);
+      } else if (isMobileMenuOpen || currentScrollY <= 8) {
+        setIsMobileNavVisible(true);
+      } else if (currentScrollY < lastScrollYRef.current) {
+        setIsMobileNavVisible(true);
+      } else if (currentScrollY > lastScrollYRef.current && currentScrollY > 56) {
+        setIsMobileNavVisible(false);
+      }
+
+      lastScrollYRef.current = currentScrollY;
+    };
+
+    window.addEventListener("scroll", handleMobileNavVisibility, { passive: true });
+    window.addEventListener("resize", handleMobileNavVisibility);
+
+    return () => {
+      window.removeEventListener("scroll", handleMobileNavVisibility);
+      window.removeEventListener("resize", handleMobileNavVisibility);
+    };
+  }, [isMobileMenuOpen]);
 
   const displayName = useMemo(
     () => user?.name || user?.username || "사용자",
@@ -28,19 +58,13 @@ function Header({ isScrolled }) {
       isActive ? "active" : "text-gray-300"
     } hover:text-white`;
 
+  // 크기와 색은 App.css 의 .nav-auth-link 계열이 담당합니다. Tailwind 는 CDN 의
+  // 2.2.19 프리빌드라 text-[11px] 같은 임의값 클래스가 존재하지 않습니다.
   const getLoginLinkClass = ({ isActive }) =>
-    `px-1.5 max-[420px]:px-1 sm:px-4 py-1.5 sm:py-2 text-[11px] max-[420px]:text-[10px] sm:text-sm border whitespace-nowrap inline-flex items-center justify-center ${
-      isActive
-        ? "border-gray-500 text-white bg-white/5"
-        : "border-gray-700 text-gray-200 bg-transparent"
-    } rounded-xl hover:border-gray-500 hover:bg-white/5 transition-colors`;
+    `nav-auth-link nav-auth-login ${isActive ? "is-active" : ""}`;
 
   const getRegisterLinkClass = ({ isActive }) =>
-    `px-1.5 max-[420px]:px-1 sm:px-5 py-1.5 sm:py-2 text-[11px] max-[420px]:text-[10px] sm:text-sm whitespace-nowrap inline-flex items-center justify-center rounded-xl transition-colors ${
-      isActive
-        ? "bg-gradient-to-r from-indigo-500 to-violet-500"
-        : "bg-gradient-to-r from-blue-500 to-indigo-500"
-    } hover:from-indigo-500 hover:to-violet-500 text-white shadow-lg shadow-indigo-500/20`;
+    `nav-auth-link nav-auth-register ${isActive ? "is-active" : ""}`;
 
   const logoutButtonClass =
     "px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-600 text-gray-300 rounded-lg hover:border-gray-400 transition-colors";
@@ -57,19 +81,17 @@ function Header({ isScrolled }) {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 ${
-        isScrolled ? "bg-black" : "bg-black"
-      } backdrop-blur-md border-b border-gray-800 transition-colors duration-300`}
+      className={`site-nav ${isScrolled ? "is-scrolled" : ""} ${isMobileNavVisible ? "" : "is-mobile-hidden"}`}
     >
       <div className="container mx-auto px-2.5 sm:px-4">
-        <div className="flex items-center justify-between h-16">
+        <div className="site-nav-row flex items-center justify-between h-16">
           {/* Logo and Title */}
-          <div className="flex-1 lg:flex-none min-w-0">
+          <div className="flex-1 xl:flex-none min-w-0">
             <NavLink
               to="/"
               className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0"
             >
-              <div className="w-9 h-9 sm:w-10 sm:h-10">
+              <div className="site-nav-logo w-9 h-9 sm:w-10 sm:h-10">
                 <img
                   src={logo}
                   alt="TCP 로고"
@@ -88,7 +110,10 @@ function Header({ isScrolled }) {
           </div>
 
           {/* Navigation */}
-          <nav className="hidden lg:flex flex-1 items-center justify-center space-x-3 xl:space-x-6 px-3">
+          <nav
+            className="hidden xl:flex flex-1 items-center justify-center space-x-6 px-3"
+            aria-label="주요 메뉴"
+          >
             <NavLink to="/about" className={getNavLinkClass}>
               About
             </NavLink>
@@ -112,7 +137,7 @@ function Header({ isScrolled }) {
             </NavLink>
           </nav>
 
-          <div className="flex flex-1 lg:flex-none items-center justify-end gap-1 sm:gap-2">
+          <div className="flex flex-1 xl:flex-none items-center justify-end gap-1 sm:gap-2">
             {/* Login/Sign Up Links */}
             <div className="flex items-center gap-1 sm:gap-3">
               {isAuthenticated ? (
@@ -148,16 +173,12 @@ function Header({ isScrolled }) {
               ) : (
                 <>
                   <NavLink to="/login" className={getLoginLinkClass}>
-                    <span className="inline-flex items-center gap-2">
-                      <i className="fas fa-sign-in-alt text-xs hidden sm:inline-block"></i>
-                      로그인
-                    </span>
+                    <i className="fas fa-sign-in-alt text-xs hidden sm:inline-block"></i>
+                    로그인
                   </NavLink>
                   <NavLink to="/register" className={getRegisterLinkClass}>
-                    <span className="inline-flex items-center gap-2">
-                      <i className="fas fa-user-plus text-xs hidden sm:inline-block"></i>
-                      회원가입
-                    </span>
+                    <i className="fas fa-user-plus text-xs hidden sm:inline-block"></i>
+                    회원가입
                   </NavLink>
                 </>
               )}
@@ -166,8 +187,11 @@ function Header({ isScrolled }) {
             {/* Mobile Menu Button */}
             <button
               type="button"
-              className="lg:hidden w-9 h-9 sm:w-10 sm:h-10 rounded-lg border border-gray-700 text-white hover:border-gray-500 transition-colors flex items-center justify-center shrink-0 relative z-20 ml-0.5"
-              onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+              className="xl:hidden w-9 h-9 sm:w-10 sm:h-10 rounded-lg text-white hover:bg-gray-800 transition-colors flex items-center justify-center shrink-0 relative z-20 ml-0.5"
+              onClick={() => {
+                setIsMobileNavVisible(true);
+                setIsMobileMenuOpen((prev) => !prev);
+              }}
               aria-label="모바일 메뉴 열기"
               aria-expanded={isMobileMenuOpen}
             >
@@ -179,7 +203,7 @@ function Header({ isScrolled }) {
         </div>
 
         {isMobileMenuOpen && (
-          <div className="lg:hidden border-t border-gray-800 py-3">
+          <div className="site-nav-mobile xl:hidden border-t border-gray-800 py-3">
             <nav className="flex flex-col gap-1 mb-3">
               <NavLink
                 to="/about"

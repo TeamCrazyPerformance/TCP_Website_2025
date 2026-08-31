@@ -580,6 +580,7 @@ def test_crawl_history_lists_manual_and_scheduled_runs(normalized_payload):
         {"sourceId": "cloudflare-blog", "sourceType": "WEB_CRAWL", "sectionKey": "BLOG"},
         {"sourceId": "infoq", "sourceType": "API", "sectionKey": "NEWS"},
         {"sourceId": "sdtimes", "sourceType": "RSS", "sectionKey": "ENGINEERING"},
+        {"sourceId": "apple-newsroom", "sourceType": "RSS", "sectionKey": "NEWS"},
     ],
 )
 def test_crawl_contract_rejects_unsupported_source_combinations(source):
@@ -605,6 +606,30 @@ def test_crawl_contract_accepts_github_trending_top_three():
 
     assert command.source.source_id == "github-trending"
     assert command.crawl_options.maximum_article_count == 3
+
+
+@pytest.mark.parametrize(
+    ("source_id", "section_key"),
+    [
+        ("tailscale-blog", "BLOG"),
+        ("rust-blog", "BLOG"),
+        ("hugging-face-blog", "BLOG"),
+        ("deepmind-blog", "BLOG"),
+    ],
+)
+def test_crawl_contract_accepts_new_feed_sources(source_id, section_key):
+    command = CrawlRequested.model_validate(
+        {
+            "source": {
+                "sourceId": source_id,
+                "sourceType": "RSS",
+                "sectionKey": section_key,
+            }
+        }
+    )
+
+    assert command.source.source_id == source_id
+    assert command.source.section_key == section_key
 
 
 def test_crawl_contract_defaults_github_trending_to_top_three():

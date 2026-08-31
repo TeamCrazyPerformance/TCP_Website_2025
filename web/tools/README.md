@@ -48,6 +48,15 @@ DB 없이 화면을 확인할 때 씁니다. 로컬 로그인 화면에서는 �
 | `publicationQueue()` | `persistence/mysql.py` 의 `_review_conditions("publication")` |
 | `applyPublication()` | `persistence/mysql.py` 의 `apply_publication_action` |
 | `demoCrawlRuns` | crawl run/job 상태와 종료 시점의 공식 `CrawlRunCompleted.statistics` |
+| `evaluationOf()` | 관리자 화면용 자기설명형 `score.axes`와 레거시 점수 호환 형태 |
+| `publicValueScoreOf()` | 공개 화면용 `overall`, `scale`, 표시명·기여도만 있는 `breakdown` |
+| 공개 상세의 헤더 분기 | NestJS Optional JWT 응답(`valueScore`는 회원 요청에만 포함) |
+| 아티클당 태그 개수 | 요약기의 `maximumTagCount`(`contracts/models.py` 기본값 3) |
+| `TAGS` | 요약기의 `ALLOWED_TAGS` 15개 |
+
+공개 목록·상세 목 응답도 운영 API와 같은 allowlist를 사용한다. 따라서 공개 목록의
+`source`에는 `name/domain`만, 상세에는 여기에 `path/articleUrl`만 추가되며 소스 ID·방식,
+작성자, 내부 평가 버전·판정·근거·신호는 목 서버에서도 내려주지 않는다.
 
 `applyPublication()` 의 `reviewStatus = "APPROVED"` 승격은 **알려진 서버 결함을 그대로 재현한
 것**입니다. 서버에서 이 승격에 처리 단계 조건이 붙으면 이 줄도 함께 고쳐야 합니다.

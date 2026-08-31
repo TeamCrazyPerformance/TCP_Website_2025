@@ -5,7 +5,7 @@ import logo from '../logo.svg'; // src 폴더에 있는 logo.svg를 상대 경�
 function Footer() {
   return (
     <footer className="bg-black border-t border-gray-800 py-12">
-      <div className="container mx-auto px-4">
+      <div className="container site-content-container mx-auto px-4">
         <div className="grid md:grid-cols-4 gap-8">
           {/* Club Info Column */}
           <div className="text-left">

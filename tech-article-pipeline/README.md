@@ -1,10 +1,11 @@
 # TCP technical article pipeline
 
 This directory is the canonical, independently deployable Python 3.12 pipeline
-for Cloudflare Blog, InfoQ, SD Times, and GitHub Trending collection and
-normalization, normalized article admission, deterministic quality evaluation,
-Gemini enrichment, review, and publication. The source fragment directories one level
-above are retained only for provenance.
+for Cloudflare Blog, InfoQ, SD Times, GitHub Trending, Tailscale, Rust,
+Hugging Face, and Google DeepMind collection and normalization,
+normalized article admission, deterministic quality evaluation, Gemini enrichment,
+review, and publication. The source fragment directories one level above are retained
+only for provenance.
 
 ## Local development
 
@@ -32,6 +33,12 @@ article submissions. Set `CRAWLER_PUBLIC_URL` and `CRAWLER_CONTACT` to an actual
 service URL and operational address before running the Cloudflare or GitHub
 crawler. GitHub Trending uses the public daily listing and unauthenticated README
 API; no GitHub token is read by the pipeline.
+
+The newer official-site sources use one shared RSS/Atom pipeline with fixed-host
+profiles. Rust uses the article body included in its Atom feed; Tailscale, Hugging
+Face, and DeepMind use source-specific article-body selectors after robots checks.
+DeepMind feed entries may follow an approved `blog.google` redirect only after that
+host's robots policy is checked. All four sources use the common quality policy.
 
 GitHub rank and counters stay in internal crawl/discovery records. The UTC crawl
 observation time is also projected to `originalPublishedAt` because Trending has

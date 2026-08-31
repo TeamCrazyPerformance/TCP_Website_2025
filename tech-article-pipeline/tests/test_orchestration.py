@@ -97,9 +97,7 @@ class ContractValidatingSummarizer(FakeSummarizer):
 
 
 def digest(payload):
-    return hashlib.sha256(
-        json.dumps(payload, sort_keys=True, ensure_ascii=False).encode()
-    ).digest()
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False).encode()).digest()
 
 
 def runtime(normalized_payload, *, decision="PASS", summarizer=None, attempts=3):
@@ -132,14 +130,15 @@ def test_unique_pass_enrichment_immediately_publishes(normalized_payload):
     assert job["status"] == "SUCCEEDED"
     public = repository.list_public_articles(limit=10, offset=0)
     assert len(public) == 1
-    assert public[0]["processingStatus"] == "ENRICHED"
-    assert public[0]["publicationStatus"] == "PUBLISHED"
+    assert public[0]["articleId"]
+    assert "processingStatus" not in public[0]
+    assert "publicationStatus" not in public[0]
 
 
 def test_real_admission_and_quality_modules_connect_to_core(normalized_payload):
-    normalized_payload = NormalizedArticleCandidate.model_validate(
-        normalized_payload
-    ).model_dump(by_alias=True, mode="json")
+    normalized_payload = NormalizedArticleCandidate.model_validate(normalized_payload).model_dump(
+        by_alias=True, mode="json"
+    )
     repository = MemoryPipelineRepository()
     summarizer = ContractValidatingSummarizer()
     orchestrator = PipelineOrchestrator(
@@ -163,6 +162,14 @@ def test_real_admission_and_quality_modules_connect_to_core(normalized_payload):
         "ADMISSION",
         "QUALITY",
         "ENRICHMENT",
+    ]
+    stored = repository.get_submission(submission["submissionId"])
+    score = stored["quality_result"]["qualityEvaluation"]["score"]
+    assert [axis["key"] for axis in score["axes"]] == [
+        "relevance",
+        "technicalDepth",
+        "timeliness",
+        "articleQuality",
     ]
     assert summarizer.last_input is not None
     assert set(summarizer.last_input["qualityEvaluation"]["score"]) == {"overall"}
@@ -233,15 +240,11 @@ def test_unapproved_quality_review_cannot_run_enrichment(normalized_payload):
 
 def test_retryable_ai_failure_becomes_dead_after_max_attempts(normalized_payload):
     summarizer = FakeSummarizer(failures=10, retryable=True)
-    repository, worker, _ = runtime(
-        normalized_payload, summarizer=summarizer, attempts=2
-    )
+    repository, worker, _ = runtime(normalized_payload, summarizer=summarizer, attempts=2)
     worker.process_once()
     worker.process_once()
     worker.process_once()
-    enrichment_job = next(
-        job for job in repository.jobs.values() if job["stage"] == "ENRICHMENT"
-    )
+    enrichment_job = next(job for job in repository.jobs.values() if job["stage"] == "ENRICHMENT")
     assert enrichment_job["status"] == "RETRY"
     enrichment_job["available_at"] = datetime.now(UTC) - timedelta(seconds=1)
     worker.process_once()
@@ -249,9 +252,7 @@ def test_retryable_ai_failure_becomes_dead_after_max_attempts(normalized_payload
 
 
 def test_rate_limited_ai_failure_waits_beyond_one_minute(normalized_payload):
-    summarizer = FakeSummarizer(
-        failures=1, retryable=True, error_code="RATE_LIMITED"
-    )
+    summarizer = FakeSummarizer(failures=1, retryable=True, error_code="RATE_LIMITED")
     repository, worker, _ = runtime(normalized_payload, summarizer=summarizer)
     worker.process_once()
     worker.process_once()
@@ -259,9 +260,7 @@ def test_rate_limited_ai_failure_waits_beyond_one_minute(normalized_payload):
 
     worker.process_once()
 
-    enrichment_job = next(
-        job for job in repository.jobs.values() if job["stage"] == "ENRICHMENT"
-    )
+    enrichment_job = next(job for job in repository.jobs.values() if job["stage"] == "ENRICHMENT")
     assert enrichment_job["status"] == "RETRY"
     assert enrichment_job["available_at"] >= before_failure + timedelta(seconds=64)
 
@@ -289,9 +288,7 @@ def test_expired_final_lease_becomes_dead(normalized_payload):
     repository, _, submission = runtime(normalized_payload, attempts=1)
     claimed = repository.claim_job(lease_seconds=5)
     assert claimed is not None
-    repository.jobs[claimed.job_id]["lease_expires_at"] = datetime.now(UTC) - timedelta(
-        seconds=1
-    )
+    repository.jobs[claimed.job_id]["lease_expires_at"] = datetime.now(UTC) - timedelta(seconds=1)
     assert repository.claim_job(lease_seconds=5) is None
     job = repository.get_job(claimed.job_id)
     assert job["status"] == "DEAD"

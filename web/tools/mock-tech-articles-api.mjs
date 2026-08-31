@@ -239,7 +239,9 @@ const articles = Array.from({ length: ARTICLE_COUNT }, (_, index) => {
     ),
     oneLineSummary: pick(SUMMARIES),
     summaryMarkdown: markdown(originalTitle),
-    tags: pickN(TAGS, intBetween(2, 4)),
+    // 요약기의 maximumTagCount 기본값이 3 입니다(contracts/models.py).
+    // 4개짜리 목 데이터는 실제로 나올 수 없는 화면을 만들어 냅니다.
+    tags: pickN(TAGS, intBetween(1, 3)),
     source: {
       id: source.id,
       name: source.name,
@@ -289,10 +291,15 @@ articles.slice(36, 48).forEach((a) => {
 // NEW 배지가 로컬에서 보이도록 공개된 아티클 몇 건의 수집 시각을 최근으로
 // 맞춘다. 목 데이터의 기준 시각은 고정이라 그냥 두면 전부 12시간을 넘긴다.
 articles
-  .filter((a) => a.processingStatus === "ENRICHED" && a.publicationStatus === "PUBLISHED")
+  .filter(
+    (a) =>
+      a.processingStatus === "ENRICHED" && a.publicationStatus === "PUBLISHED",
+  )
   .slice(0, 3)
   .forEach((a, index) => {
-    a.collectedAt = new Date(Date.now() - (index + 1) * 3600 * 1000).toISOString();
+    a.collectedAt = new Date(
+      Date.now() - (index + 1) * 3600 * 1000,
+    ).toISOString();
   });
 
 // 실제 파이프라인은 품질 평가 결과를 저장할 때 처음으로 점수를 기록한다.
@@ -305,7 +312,7 @@ articles
 
 const LAST_CRAWLED_AT = iso(0, -1);
 
-const evaluationOf = (article, flat) => {
+const evaluationOf = (article) => {
   const overall = article.valueScore;
   if (typeof overall !== "number") return null;
   const dimensions = {
@@ -315,7 +322,21 @@ const evaluationOf = (article, flat) => {
   };
   const decision =
     overall >= 70 ? "PASS" : overall >= 45 ? "REVIEW_REQUIRED" : "REJECT";
+  const axes = [
+    ["relevance", "개발 관련성", 0.45],
+    ["timeliness", "시의성", 0.3],
+    ["sourceReliability", "출처 신뢰도", 0.25],
+  ].map(([key, label, weight]) => ({
+    key,
+    label,
+    value: dimensions[key],
+    weight,
+    contribution: Number((dimensions[key] * weight).toFixed(2)),
+  }));
   return {
+    schemaVersion: "2.0",
+    evaluatorVersion: "mock-v2",
+    policyVersion: "quality-policy-v1",
     decision,
     reason:
       decision === "PASS"
@@ -331,7 +352,12 @@ const evaluationOf = (article, flat) => {
       spamSuspected: false,
       advertisementSuspected: overall < 45,
     },
-    score: flat ? { overall, ...dimensions } : { overall, dimensions },
+    score: {
+      overall,
+      scale: { min: 0, max: 100 },
+      axes,
+      dimensions,
+    },
   };
 };
 
@@ -348,22 +374,47 @@ const paginate = (rows, page, pageSize) => {
   };
 };
 
-const publicItem = (a) => ({
+const publicListItem = (a) => ({
   id: a.articleId,
   title: a.title,
   oneLineSummary: a.oneLineSummary,
   tags: a.tags,
-  source: a.source,
+  source: { name: a.source.name, domain: a.source.domain },
+  originalPublishedAt: a.originalPublishedAt,
+  isNew: isNewArticle(a.collectedAt),
+});
+
+const publicDetailItem = (a) => ({
+  id: a.articleId,
+  title: a.title,
+  oneLineSummary: a.oneLineSummary,
+  summaryMarkdown: a.summaryMarkdown,
+  tags: a.tags,
+  source: {
+    name: a.source.name,
+    domain: a.source.domain,
+    path: a.source.path,
+    articleUrl: a.source.articleUrl,
+  },
   originalLanguage: a.originalLanguage,
   originalPublishedAt: a.originalPublishedAt,
   collectedAt: a.collectedAt,
-  // 서버와 같은 기준(수집 후 12시간). base.NEW_ARTICLE_WINDOW_HOURS 와 맞춰야
-  // 로컬에서 본 화면이 운영과 같아집니다.
-  isNew: isNewArticle(a.collectedAt),
-  score: a.valueScore,
 });
 
-const NEW_ARTICLE_WINDOW_HOURS = 12;
+const publicValueScoreOf = (article) => {
+  const score = evaluationOf(article)?.score;
+  if (!score) return null;
+  return {
+    overall: score.overall,
+    scale: score.scale,
+    breakdown: score.axes.map(({ label, contribution }) => ({
+      label,
+      contribution,
+    })),
+  };
+};
+
+const NEW_ARTICLE_WINDOW_HOURS = 24;
 const isNewArticle = (collectedAt) => {
   if (!collectedAt) return false;
   const t = new Date(collectedAt).getTime();
@@ -373,10 +424,25 @@ const isNewArticle = (collectedAt) => {
 
 // 공개 화면 소스 선택기. 파이프라인 catalog.PUBLIC_SOURCE_CATALOG 와 같은 모양.
 const PUBLIC_SOURCES = [
-  { id: "cloudflare-blog", name: "Cloudflare Blog", domain: "blog.cloudflare.com", category: "기술 블로그" },
+  {
+    id: "cloudflare-blog",
+    name: "Cloudflare Blog",
+    domain: "blog.cloudflare.com",
+    category: "기술 블로그",
+  },
   { id: "infoq", name: "InfoQ", domain: "infoq.com", category: "업계 뉴스" },
-  { id: "sdtimes", name: "SD Times", domain: "sdtimes.com", category: "업계 뉴스" },
-  { id: "github-trending", name: "GitHub Trending", domain: "github.com", category: "저장소" },
+  {
+    id: "sdtimes",
+    name: "SD Times",
+    domain: "sdtimes.com",
+    category: "업계 뉴스",
+  },
+  {
+    id: "github-trending",
+    name: "GitHub Trending",
+    domain: "github.com",
+    category: "저장소",
+  },
 ];
 
 // 관리자 승인이 실제로 있었던 아티클. 서버는 quality_review_cases 를 보지만
@@ -439,9 +505,25 @@ const hasStatusMismatch = (a) =>
   a.reviewStatus === "APPROVED" &&
   !APPROVED_COMPATIBLE.includes(a.processingStatus);
 
+// 아티클별 조회수. 실제로는 파이프라인 MySQL 의 article_view_counts 입니다.
+const viewCounts = new Map();
+const viewCountsOf = (id) =>
+  viewCounts.get(id) || { member: 0, guest: 0, lastViewedAt: null };
+
+// 조회수가 화면에 보이도록 몇 건 시드한다. 비회원 열람이 회원 열람보다 많은
+// 아티클을 하나 넣어 두 숫자를 나눠 보여주는 이유가 드러나게 한다.
+articles.slice(0, 5).forEach((a, index) => {
+  viewCounts.set(a.articleId, {
+    member: [42, 17, 8, 3, 0][index],
+    guest: [5, 2, 0, 61, 1][index],
+    lastViewedAt: new Date(Date.now() - index * 3600 * 1000).toISOString(),
+  });
+});
+
 const adminItem = (a) => ({
   ...a,
-  evaluation: evaluationOf(a, false),
+  viewCounts: viewCountsOf(a.articleId),
+  evaluation: evaluationOf(a),
   score: a.valueScore,
   stage: articleStage(a),
 });
@@ -505,7 +587,7 @@ const qualityCases = articles
   .filter((a) => a.processingStatus === "QUALITY_EVALUATED")
   .slice(0, 6)
   .map((a, i) => {
-    const evaluation = evaluationOf(a, false);
+    const evaluation = evaluationOf(a);
     return {
       caseId: `qcase-2026081-${String(i + 1).padStart(3, "0")}`,
       caseVersion: 1,
@@ -956,7 +1038,7 @@ const bulkResult = (items, idKey) => ({
   summary: { total: items.length, succeeded: items.length, failed: 0 },
 });
 
-function handle(method, pathname, query, body) {
+function handle(method, pathname, query, body, headers = {}) {
   if (method === "POST" && pathname === "/api/v1/auth/login") {
     if (!body?.username || !body?.password) {
       return [
@@ -1016,14 +1098,37 @@ function handle(method, pathname, query, body) {
   }
 
   // 소스는 계속 늘어나므로 목록 응답이 아니라 별도 경로로 줍니다.
+  // Nest 미들웨어가 가드 앞에서 부르는 경로. 회원/비회원을 나눠 셉니다.
+  if (
+    method === "POST" &&
+    /\/view$/.test(pathname) &&
+    pathname.startsWith(`${PUBLIC_BASE}/`)
+  ) {
+    const id = decodeURIComponent(
+      pathname.slice(PUBLIC_BASE.length + 1, -"/view".length),
+    );
+    if (!articles.some((a) => a.articleId === id)) return [204, null];
+    const current = viewCountsOf(id);
+    const key = query.get("member") === "true" ? "member" : "guest";
+    viewCounts.set(id, {
+      ...current,
+      [key]: current[key] + 1,
+      lastViewedAt: new Date().toISOString(),
+    });
+    return [204, null];
+  }
+
   if (method === "GET" && pathname === `${PUBLIC_BASE}/sources`) {
     const published = articles.filter(isPublic);
-    return [200, {
-      items: PUBLIC_SOURCES.map((source) => ({
-        ...source,
-        count: published.filter((a) => a.source?.id === source.id).length,
-      })),
-    }];
+    return [
+      200,
+      {
+        items: PUBLIC_SOURCES.map((source) => ({
+          ...source,
+          count: published.filter((a) => a.source?.id === source.id).length,
+        })),
+      },
+    ];
   }
 
   if (method === "GET" && pathname === PUBLIC_BASE) {
@@ -1036,10 +1141,11 @@ function handle(method, pathname, query, body) {
         (a) => !selected.length || a.tags.some((t) => selected.includes(t)),
       )
       .filter(
-        (a) => !selectedSources.length || selectedSources.includes(a.source?.id),
+        (a) =>
+          !selectedSources.length || selectedSources.includes(a.source?.id),
       )
       .sort(byNewest)
-      .map(publicItem);
+      .map(publicListItem);
     return [
       200,
       { ...paginate(rows, page, pageSize), lastCrawledAt: LAST_CRAWLED_AT },
@@ -1060,10 +1166,12 @@ function handle(method, pathname, query, body) {
     return [
       200,
       {
-        ...publicItem(found),
-        authors: found.authors,
-        summaryMarkdown: found.summaryMarkdown,
-        evaluation: evaluationOf(found, true), // 공개 상세는 score가 평탄화된 형태
+        ...publicDetailItem(found),
+        ...(headers.authorization
+          ? {
+              valueScore: publicValueScoreOf(found),
+            }
+          : {}),
       },
     ];
   }
@@ -1366,7 +1474,7 @@ function handle(method, pathname, query, body) {
       {
         ...adminItem(found),
         latestCrawlItemId: `item-${found.articleId}`,
-        evaluation: evaluationOf(found, false), // 관리자 상세는 dimensions 중첩 형태
+        evaluation: evaluationOf(found), // 관리자 상세는 dimensions 중첩 형태
       },
     ];
   }
@@ -1452,6 +1560,7 @@ const server = createServer((req, res) => {
         url.pathname,
         url.searchParams,
         body,
+        req.headers,
       );
     } catch (error) {
       status = 500;

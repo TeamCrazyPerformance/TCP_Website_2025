@@ -1,14 +1,5 @@
-/* 이 파일은 자동 생성됩니다. 직접 수정하지 말아 주세요.
- *
- * 재생성: python3 tools/scope_v9.py public
- * 원본:   docs/tech-articles-v9-mockup/
- * 조정:   techArticlesPublicAlign.css 에 작성해 주세요.
- *
- * v9 목업 CSS 를 .ta-public 하위로 스코프해 기존 서비스와 격리합니다.
- * @import 체인 평탄화 / :root -> .ta-public / html·body 규칙 제거 / 사문 사이트 헤더·푸터 규칙 제거
- */
 
-/* 목업 body 규칙을 스코프 루트로 옮깁니다. 전역 오염 방지. */
+
 .ta-public {
   color: #fff;
   font-family: "Spoqa Han Sans Neo", sans-serif;
@@ -169,12 +160,6 @@
   margin: 0 0 24px;
   color: var(--gray-300);
   font-size: 24px;
-}
-.ta-public .hero-description {
-  max-width: 672px;
-  margin: 0 auto;
-  color: var(--gray-400);
-  font-size: 18px;
 }
 .ta-public .last-collected {
   margin: 16px 0 0;
@@ -868,9 +853,6 @@
 .ta-public .hero-lead {
     font-size: 18px;
   }
-.ta-public .hero-description {
-    font-size: 16px;
-  }
 .ta-public .articles-section {
     padding-top: 48px;
   }
@@ -948,9 +930,6 @@
 .ta-public .hero-lead {
   margin-bottom: 14px;
   font-size: 20px;
-}
-.ta-public .hero-description {
-  font-size: 16px;
 }
 .ta-public .last-collected {
   margin-top: 12px;
@@ -1570,26 +1549,6 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 9px 18px;
-}
-.ta-public .detail-info-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--gray-400);
-  font-size: 14px;
-}
-.ta-public .detail-source-item {
-  flex-wrap: wrap;
-  row-gap: 6px;
-}
-.ta-public .detail-info-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-.ta-public .detail-info-item strong {
-  color: var(--gray-200, #e5e7eb);
-  font-weight: 700;
 }
 .ta-public .detail-original-link {
   display: inline-flex;

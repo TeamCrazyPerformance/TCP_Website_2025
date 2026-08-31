@@ -91,7 +91,6 @@ test("관리자 목록이 단계와 표시 오류를 서버 쿼리로 보낸다"
 });
 
 test("단계를 고르지 않으면 쿼리에 실리지 않는다", async () => {
-  // 예전 동작과 완전히 같은 요청이어야 서버 구버전에서도 안전합니다.
   apiGet.mockResolvedValue({ items: [] });
 
   await getAdminTechArticles({ page: 1, pageSize: 20 });
@@ -102,7 +101,6 @@ test("단계를 고르지 않으면 쿼리에 실리지 않는다", async () => 
 });
 
 test("통계도 목록과 같은 조건으로 센다", async () => {
-  // 칩만 전체를 세면 "칩 11 / 목록 2 건"이 됩니다.
   apiGet.mockResolvedValue({});
 
   await getAdminTechArticleStats({
@@ -119,7 +117,6 @@ test("통계도 목록과 같은 조건으로 센다", async () => {
 });
 
 test("공개 목록이 소스를 반복 쿼리로 전달한다", async () => {
-  // 태그와 같은 반복 쿼리 형식이라야 서버가 둘을 같은 방식으로 읽습니다.
   apiGet.mockResolvedValue({ items: [] });
 
   await getTechArticles({
@@ -145,7 +142,6 @@ test("소스를 고르지 않으면 쿼리에 실리지 않는다", async () => 
 });
 
 test("소스 목록은 별도 엔드포인트에서 받는다", async () => {
-  // 소스는 계속 늘어나므로 목록 응답에 얹지 않습니다.
   apiGet.mockResolvedValue({ items: [] });
 
   await getTechArticleSources();

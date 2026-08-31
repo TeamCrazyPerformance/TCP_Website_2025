@@ -70,6 +70,27 @@ class DeveloperNewsInput(ContractModel):
     generation_options: GenerationOptions = Field(alias="generationOptions")
 
 
+class GeneratedEnrichmentPayload(ContractModel):
+    """Structured Gemini response before it is rendered to public Markdown."""
+
+    localized_title: str | None = Field(alias="localizedTitle")
+    tags: list[str]
+    one_line_summary: str = Field(alias="oneLineSummary")
+    key_points: list[str] = Field(alias="keyPoints")
+    check_points: list[str] = Field(alias="checkPoints")
+    localized_content: str | None = Field(alias="localizedContent")
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, values: list[str]) -> list[str]:
+        invalid = sorted(set(values) - set(ALLOWED_TAGS))
+        if invalid:
+            raise ValueError(f"허용되지 않은 태그: {invalid}")
+        if len(values) != len(set(values)):
+            raise ValueError("태그는 중복될 수 없습니다.")
+        return values
+
+
 class EnrichmentPayload(ContractModel):
     localized_title: str | None = Field(alias="localizedTitle")
     tags: list[str]

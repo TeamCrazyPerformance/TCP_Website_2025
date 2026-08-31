@@ -45,6 +45,30 @@ SOURCE_CATALOG: dict[str, dict[str, Any]] = {
             "maximumArticleCount": {"default": 3, "minimum": 1, "maximum": 3},
         },
     },
+    "tailscale-blog": {
+        "name": "Tailscale Blog",
+        "domain": "tailscale.com",
+        "category": "기술 블로그",
+        "capabilities": [{"sourceType": "RSS", "sectionKey": "BLOG"}],
+    },
+    "rust-blog": {
+        "name": "Rust Blog",
+        "domain": "blog.rust-lang.org",
+        "category": "기술 블로그",
+        "capabilities": [{"sourceType": "RSS", "sectionKey": "BLOG"}],
+    },
+    "hugging-face-blog": {
+        "name": "Hugging Face Blog",
+        "domain": "huggingface.co",
+        "category": "AI",
+        "capabilities": [{"sourceType": "RSS", "sectionKey": "BLOG"}],
+    },
+    "deepmind-blog": {
+        "name": "Google DeepMind Blog",
+        "domain": "deepmind.google",
+        "category": "AI",
+        "capabilities": [{"sourceType": "RSS", "sectionKey": "BLOG"}],
+    },
 }
 
 

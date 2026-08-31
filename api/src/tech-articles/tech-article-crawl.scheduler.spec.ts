@@ -41,7 +41,7 @@ describe('TechArticleCrawlScheduler', () => {
 
     await scheduler.runScheduledCrawls(new Date('2026-08-21T04:25:00Z'));
 
-    expect(techArticles.startCrawl).toHaveBeenCalledTimes(5);
+    expect(techArticles.startCrawl).toHaveBeenCalledTimes(9);
     expect(techArticles.startCrawl).toHaveBeenNthCalledWith(
       1,
       {
@@ -61,6 +61,15 @@ describe('TechArticleCrawlScheduler', () => {
       'auto-crawl:v1:20260821T0000KST:cloudflare-blog-rss-blog',
       'SCHEDULED',
     );
+    const newSourceIds = techArticles.startCrawl.mock.calls
+      .slice(5)
+      .map(([crawl]) => crawl.source.sourceId);
+    expect(newSourceIds).toEqual([
+      'tailscale-blog',
+      'rust-blog',
+      'hugging-face-blog',
+      'deepmind-blog',
+    ]);
     const [infoQNews, infoQNewsKey] = techArticles.startCrawl.mock.calls[1];
     expect(infoQNews.source).toEqual({
       sourceId: 'infoq',
@@ -110,7 +119,7 @@ describe('TechArticleCrawlScheduler', () => {
     await scheduler.runScheduledCrawls(now);
     await scheduler.runScheduledCrawls(now);
 
-    expect(techArticles.startCrawl).toHaveBeenCalledTimes(5);
+    expect(techArticles.startCrawl).toHaveBeenCalledTimes(9);
   });
 
   it('enqueues profiles again when the next Seoul day begins', async () => {
@@ -119,9 +128,9 @@ describe('TechArticleCrawlScheduler', () => {
     await scheduler.runScheduledCrawls(new Date('2026-08-21T14:59:59Z'));
     await scheduler.runScheduledCrawls(new Date('2026-08-21T15:00:00Z'));
 
-    expect(techArticles.startCrawl).toHaveBeenCalledTimes(10);
+    expect(techArticles.startCrawl).toHaveBeenCalledTimes(18);
     expect(techArticles.startCrawl).toHaveBeenNthCalledWith(
-      6,
+      10,
       expect.any(Object),
       'auto-crawl:v1:20260822T0000KST:cloudflare-blog-rss-blog',
       'SCHEDULED',
@@ -148,8 +157,8 @@ describe('TechArticleCrawlScheduler', () => {
     await scheduler.runScheduledCrawls(now);
     await scheduler.runScheduledCrawls(now);
 
-    expect(techArticles.startCrawl).toHaveBeenCalledTimes(6);
-    const [retriedCrawl, retriedKey] = techArticles.startCrawl.mock.calls[5];
+    expect(techArticles.startCrawl).toHaveBeenCalledTimes(10);
+    const [retriedCrawl, retriedKey] = techArticles.startCrawl.mock.calls[9];
     expect(retriedCrawl.source.sourceId).toBe('github-trending');
     expect(retriedKey).toBe(
       'auto-crawl:v1:20260821T0000KST:github-trending-web-repositories-daily',
