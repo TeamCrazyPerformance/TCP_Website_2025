@@ -319,24 +319,25 @@ function Recruitment() {
   return (
     <>
       <section className="pt-24 pb-16 min-h-screen flex items-center">
-        <div className="container mx-auto px-4">
+        <div className="container site-content-container mx-auto px-4">
           <div className="text-center">
             <div className="mb-8">
-              <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-400 via-purple-400 to-pink-400 flex items-center justify-center">
+              <div className="site-hero-icon w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-blue-400 via-purple-400 to-pink-400 flex items-center justify-center">
                 <FontAwesomeIcon
                   icon={faRocket}
                   className="text-white text-3xl"
                 />
               </div>
-              <h1 className="orbitron text-5xl md:text-7xl font-black mb-4">
+              <h1 className="site-hero-title orbitron mb-4">
                 <span className="gradient-text">TCP</span>
               </h1>
               <p className="orbitron text-xl md:text-2xl text-gray-300 mb-6">
                 Team Crazy Performance
               </p>
               <p className="orbitron text-lg text-gray-400 max-w-2xl mx-auto mb-8">
-                서울과학기술대학교의 개발자 동아리 TCP에서 새로운 사람들과 함께
-                당신의 열정을 실현해보세요.
+                서울과학기술대학교 컴퓨터공학과 학술동아리 TCP에서
+                <br />
+                새로운 사람들과 함께 당신의 열정을 실현해 보세요.
               </p>
               <button
                 id="heroApplyBtn"
@@ -357,17 +358,24 @@ function Recruitment() {
         id="about"
         className="py-16 bg-gradient-to-b from-transparent to-gray-900"
       >
-        <div className="container mx-auto px-4">
+        <div className="container site-content-container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-4">
               About TCP
-            </h2>
+              </h2>
             <div className="max-w-4xl mx-auto">
-              <p className="orbitron text-xl text-gray-300 mb-6">
-                TCP (Team Crazy Performance)는 서울과학기술대학교의 개발자 동아리입니다.
+              <p className="orbitron text-xl text-gray-300 mb-4">
+                <span className="recruitment-about-desktop">
+                  TCP(Team Crazy Performance)는 서울과학기술대학교 컴퓨터공학과 학술동아리입니다.
+                </span>
+                <span className="recruitment-about-mobile">
+                  TCP는 서울과학기술대학교 컴퓨터공학과 학술동아리입니다.
+                </span>
               </p>
               <p className="orbitron text-lg text-gray-400 mb-8">
-                우리는 다양한 사람들이 모여, 함께 탐구하고 함께 성장하는 것을 목표로 합니다.
+                TCP는 다양한 사람이 모여 같이 탐구하고,
+                <br className="recruitment-about-mobile-break" />
+                함께 성장하는 것을 목표로 합니다.
               </p>
             </div>
           </div>
@@ -376,12 +384,29 @@ function Recruitment() {
 
       {/* 지원자 세션 */}
       <section id="who-should-apply" className="py-16">
-        <div className="container mx-auto px-4">
+        <div className="container site-content-container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
             <h2 className="orbitron text-3xl font-bold gradient-text mb-8 text-center">
               TCP는 이런 사람들을 환영해요
             </h2>
             <div className="grid md:grid-cols-3 gap-8">
+              <div className="scroll-fade h-full">
+                <div className="feature-card p-8 rounded-2xl h-full flex flex-col">
+                  <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center">
+                    <FontAwesomeIcon
+                      icon={faFire}
+                      className="text-white text-2xl"
+                    />
+                  </div>
+                  <h3 className="orbitron text-xl font-bold mb-4 text-red-300 text-center">
+                    열정적인 학습자
+                  </h3>
+                  <p className="text-gray-300 text-center flex-1">
+                    스스로를 개선하고, 성장하고자 하는 열정을 가진 학습자를 찾고 있어요.
+                    같이 배우고, 함께 발전하는 것을 중요하게 생각해요.
+                  </p>
+                </div>
+              </div>
               <div className="scroll-fade h-full">
                 <div className="feature-card p-8 rounded-2xl h-full flex flex-col">
                   <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
@@ -397,23 +422,6 @@ function Recruitment() {
                     서울과학기술대학교의 모든 학생들을 환영해요. 전공에
                     관계없이 개발에 대한 열정과 사랑이 있다면 누구나 지원할 수
                     있어요.
-                  </p>
-                </div>
-              </div>
-              <div className="scroll-fade h-full">
-                <div className="feature-card p-8 rounded-2xl h-full flex flex-col">
-                  <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center">
-                    <FontAwesomeIcon
-                      icon={faFire}
-                      className="text-white text-2xl"
-                    />
-                  </div>
-                  <h3 className="orbitron text-xl font-bold mb-4 text-red-300 text-center">
-                    열정적인 학습자
-                  </h3>
-                  <p className="text-gray-300 text-center flex-1">
-                    개선하고 성장하려는 열정적인 학습자를 특히 찾고 있어요.
-                    함께 배우고 발전해나가는 것을 중요하게 생각해요.
                   </p>
                 </div>
               </div>
@@ -444,7 +452,7 @@ function Recruitment() {
         id="what-we-do"
         className="py-16 bg-gradient-to-b from-transparent to-gray-900"
       >
-        <div className="container mx-auto px-4">
+        <div className="container site-content-container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-8">
               TCP는 이런 활동을 해요

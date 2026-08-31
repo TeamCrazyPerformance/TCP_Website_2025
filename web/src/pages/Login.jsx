@@ -93,56 +93,58 @@ function Login() {
             {/* Login Form */}
             <div className="login-card p-8 rounded-2xl card-hover">
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Username Input */}
-                <div>
-                  {/* "아이디" 레이블 왼쪽 정렬 */}
-                  <label
-                    className="block text-sm font-medium text-gray-300 mb-2 text-left"
-                    htmlFor="username"
-                  >
-                    아이디
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      id="username"
-                      className="input-field w-full px-4 py-3 rounded-lg text-white placeholder-gray-400"
-                      placeholder="ID"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      required
-                    />
-                    <i className="fas fa-user absolute right-3 top-3.5 text-gray-400"></i>
+                <div className="login-credentials">
+                  {/* Username Input */}
+                  <div className="login-field-group">
+                    <label
+                      className="login-field-label block text-sm font-medium text-gray-300 mb-2 text-left"
+                      htmlFor="username"
+                    >
+                      아이디
+                    </label>
+                    <div className="login-input-shell relative">
+                      <input
+                        type="text"
+                        id="username"
+                        aria-label="아이디"
+                        className="input-field w-full px-4 py-3 rounded-lg text-white placeholder-gray-400"
+                        placeholder="ID"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        required
+                      />
+                      <i className="fas fa-user absolute right-3 top-3.5 text-gray-400"></i>
+                    </div>
                   </div>
-                </div>
 
-                {/* Password Input */}
-                <div>
-                  {/* "비밀번호" 레이블 왼쪽 정렬 */}
-                  <label
-                    className="block text-sm font-medium text-gray-300 mb-2 text-left"
-                    htmlFor="password"
-                  >
-                    비밀번호
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="password"
-                      id="password"
-                      className="input-field w-full px-4 py-3 rounded-lg text-white placeholder-gray-400"
-                      placeholder="Password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                    <i className="fas fa-lock absolute right-3 top-3.5 text-gray-400"></i>
+                  {/* Password Input */}
+                  <div className="login-field-group">
+                    <label
+                      className="login-field-label block text-sm font-medium text-gray-300 mb-2 text-left"
+                      htmlFor="password"
+                    >
+                      비밀번호
+                    </label>
+                    <div className="login-input-shell relative">
+                      <input
+                        type="password"
+                        id="password"
+                        aria-label="비밀번호"
+                        className="input-field w-full px-4 py-3 rounded-lg text-white placeholder-gray-400"
+                        placeholder="PW"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                      />
+                      <i className="fas fa-lock absolute right-3 top-3.5 text-gray-400"></i>
+                    </div>
                   </div>
                 </div>
 
                 {/* Login Button */}
                 <button
                   type="submit"
-                  className="login-button w-full py-3 rounded-lg text-white font-semibold orbitron text-lg"
+                  className="login-button login-submit-button w-full py-3 rounded-lg text-white font-semibold orbitron text-lg"
                   disabled={isSubmitting}
                 >
                   <i className="fas fa-sign-in-alt mr-2"></i>
@@ -150,7 +152,7 @@ function Login() {
                 </button>
 
                 {/* Secondary Actions */}
-                <div className="flex justify-center space-x-6 text-sm pt-4">
+                <div className="login-secondary-actions flex justify-center text-sm">
                   <button
                     type="button"
                     onClick={() =>
@@ -160,7 +162,7 @@ function Login() {
                     }
                     className="secondary-link hover:underline"
                   >
-                    <i className="fas fa-search mr-1"></i>
+                    <i className="login-secondary-icon fas fa-search mr-1"></i>
                     아이디 찾기
                   </button>
                   <span className="text-gray-600">|</span>
@@ -173,7 +175,7 @@ function Login() {
                     }
                     className="secondary-link hover:underline"
                   >
-                    <i className="fas fa-key mr-1"></i>
+                    <i className="login-secondary-icon fas fa-key mr-1"></i>
                     비밀번호 재설정
                   </button>
                   <span className="text-gray-600">|</span>
@@ -181,9 +183,7 @@ function Login() {
                     to="/register"
                     className="secondary-link hover:underline"
                   >
-                    {" "}
-                    {/* 회원가입 링크 */}
-                    <i className="fas fa-user-plus mr-1"></i>
+                    <i className="login-secondary-icon fas fa-user-plus mr-1"></i>
                     회원가입
                   </Link>
                 </div>

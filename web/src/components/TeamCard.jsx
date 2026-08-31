@@ -14,7 +14,7 @@ const TeamCard = React.memo(({ team, currentUser, applicationStatus, onOpenDetai
   return (
     <div
       key={team.id}
-      className={`recruitment-card rounded-xl overflow-hidden transition-transform duration-300 hover:-translate-y-1 ${disabled && !isMyPage ? 'brightness-75' : ''} ${disabled && !isLeader && !isMyPage ? 'opacity-60 cursor-not-allowed' : ''}`}
+      className={`recruitment-card h-full flex flex-col rounded-xl overflow-hidden transition-transform duration-300 hover:-translate-y-1 ${disabled && !isMyPage ? 'brightness-75' : ''} ${disabled && !isLeader && !isMyPage ? 'opacity-60 cursor-not-allowed' : ''}`}
       onClick={() => (isMyPage || !disabled) && onOpenDetail(team)}
       role="button"
       tabIndex={0}
@@ -27,7 +27,7 @@ const TeamCard = React.memo(({ team, currentUser, applicationStatus, onOpenDetai
         alt={team.title}
         className="w-full h-40 object-cover"
       />
-      <div className="p-6">
+      <div className="team-card-body p-6 flex flex-col flex-1">
         <span
           className={`text-xs font-semibold mb-2 block ${team.status === '모집완료' ? 'text-gray-500' : 'text-accent-blue'} text-left`}
         >
@@ -77,7 +77,7 @@ const TeamCard = React.memo(({ team, currentUser, applicationStatus, onOpenDetai
           ))}
         </div>
 
-        <div className="flex justify-between items-center text-left">
+        <div className="team-card-footer mt-auto flex justify-between items-center text-left">
           <span
             className={`text-xs ${team.status === '모집완료' ? 'text-gray-500' : expired ? 'text-red-500' : 'text-red-400'}`}
           >
@@ -174,7 +174,7 @@ const TeamCard = React.memo(({ team, currentUser, applicationStatus, onOpenDetai
             </div>
           ) : (
             <button
-              className={`${(disabled && !isMyPage) || team.teamCategory === 'completed' ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : hasApplied ? 'bg-green-600 text-white hover:bg-green-700' : 'cta-button text-white'} px-4 py-2 rounded-lg text-sm font-bold transition-colors`}
+              className={`${(disabled && !isMyPage) || team.teamCategory === 'completed' ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : hasApplied ? 'bg-green-600 text-white hover:bg-green-700' : 'cta-button primary-cta-text'} px-4 py-2 rounded-lg text-sm font-bold transition-colors`}
               disabled={(disabled && !isMyPage) || team.teamCategory === 'completed'}
               onClick={(e) => {
                 e.stopPropagation();

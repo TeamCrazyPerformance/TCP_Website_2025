@@ -1,15 +1,36 @@
 export const tagColorClass = (tag) => {
   const map = {
-    AI: 'bg-blue-900 text-blue-300',
-    해커톤: 'bg-yellow-900 text-yellow-300',
-    프론트엔드: 'bg-green-900 text-green-300',
-    백엔드: 'bg-purple-900 text-purple-300',
-    공모전: 'bg-pink-900 text-pink-300',
-    초보환영: 'bg-gray-700 text-gray-300',
-    프로젝트: 'bg-indigo-900 text-indigo-300',
-    알고리즘: 'bg-red-900 text-red-300',
+    AI: 'service-tag-tone-01',
+    'AI/ML': 'service-tag-tone-01',
+    TensorFlow: 'service-tag-tone-01',
+    PyTorch: 'service-tag-tone-01',
+    'Machine Learning': 'service-tag-tone-01',
+    React: 'service-tag-tone-02',
+    JavaScript: 'service-tag-tone-04',
+    TypeScript: 'service-tag-tone-08',
+    CSS: 'service-tag-tone-10',
+    프론트엔드: 'service-tag-tone-02',
+    'Vue.js': 'service-tag-tone-11',
+    Swift: 'service-tag-tone-03',
+    Flutter: 'service-tag-tone-07',
+    Kotlin: 'service-tag-tone-12',
+    모바일: 'service-tag-tone-03',
+    Java: 'service-tag-tone-06',
+    Python: 'service-tag-tone-05',
+    알고리즘: 'service-tag-tone-04',
+    MySQL: 'service-tag-tone-12',
+    'Data Science': 'service-tag-tone-13',
+    AWS: 'service-tag-tone-06',
+    Django: 'service-tag-tone-14',
+    Spring: 'service-tag-tone-15',
+    'Node.js': 'service-tag-tone-09',
+    백엔드: 'service-tag-tone-09',
+    프로젝트: 'service-tag-tone-10',
+    초보환영: 'service-tag-tone-13',
+    공모전: 'service-tag-tone-14',
+    해커톤: 'service-tag-tone-15',
   };
-  return map[tag] || 'bg-gray-700 text-gray-300';
+  return `service-tag ${map[tag] || 'service-tag-tone-10'}`;
 };
 
 export const isExpired = (deadline) => {

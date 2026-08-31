@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { apiGet } from '../api/client';
 import defaultProfileImage from '../logo.svg';
-
-
+import { allMembers as developmentMembers } from '../data/members';
+import { tagColorClass } from '../utils/helpers';
 
 function Members() {
   const [members, setMembers] = useState([]);
@@ -59,12 +59,21 @@ function Members() {
           };
         });
         if (isMounted) {
-          setMembers(mapped);
+          const visibleMembers =
+            process.env.NODE_ENV === 'development' && mapped.length === 0
+              ? developmentMembers
+              : mapped;
+          setMembers(visibleMembers);
           setErrorMessage('');
         }
       } catch (error) {
         if (isMounted) {
-          setErrorMessage(error.message || '멤버 정보를 불러오지 못했습니다.');
+          if (process.env.NODE_ENV === 'development') {
+            setMembers(developmentMembers);
+            setErrorMessage('');
+          } else {
+            setErrorMessage(error.message || '멤버 정보를 불러오지 못했습니다.');
+          }
         }
       } finally {
         if (isMounted) {
@@ -151,60 +160,25 @@ function Members() {
     setActiveTag((prevTag) => (prevTag === tag ? '' : tag));
   };
 
-  // 태그 버튼의 동적 CSS 클래스 생성 (members2.html의 색상 매핑)
-  const getTagBgClass = (tag) => {
-    switch (tag) {
-      case 'React':
-      case 'JavaScript':
-      case 'TypeScript':
-      case 'CSS':
-      case 'MySQL':
-      case 'Data Science':
-        return 'bg-blue-900 text-blue-300';
-      case 'Python':
-      case 'TensorFlow':
-      case 'PyTorch':
-      case 'AI/ML':
-      case 'Django':
-      case 'Spring':
-      case 'AWS':
-      case 'Machine Learning':
-        return 'bg-purple-900 text-purple-300';
-      case 'Node.js':
-        return 'bg-green-900 text-green-300';
-      case 'Swift':
-      case 'Flutter':
-      case 'Kotlin':
-      case '모바일':
-        return 'bg-pink-900 text-pink-300';
-      case 'Java':
-        return 'bg-red-900 text-red-300';
-      case 'Vue.js':
-        return 'bg-teal-900 text-teal-300';
-      case 'AI':
-        return 'bg-orange-900 text-orange-300';
-      default:
-        return 'bg-gray-700 text-gray-300';
-    }
-  };
-
   return (
     <>
       <section className="pt-24 pb-16 min-h-screen flex items-center">
-        <div className="container mx-auto px-4">
+        <div className="container site-content-container mx-auto px-4">
           <div className="text-center">
             <div className="mb-8">
-              <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-400 via-purple-400 to-green-400 flex items-center justify-center">
+              <div className="site-hero-icon w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-blue-400 via-purple-400 to-green-400 flex items-center justify-center">
                 <i className="fas fa-users text-white text-3xl"></i>
               </div>
-              <h1 className="orbitron text-5xl md:text-7xl font-black mb-4">
+              <h1 className="site-hero-title orbitron mb-4">
                 <span className="gradient-text">TCP Members</span>
               </h1>
               <p className="orbitron text-xl md:text-2xl text-gray-300 mb-6">
                 Team Crazy Performance
               </p>
               <p className="orbitron text-lg text-gray-400 max-w-2xl mx-auto">
-                TCP의 멤버들을 만나보세요. 검색과 필터로 원하는 멤버를 찾아보세요.
+                TCP의 멤버들을 만나보세요.
+                <br />
+                검색과 필터 기능으로 원하는 멤버를 찾아볼 수 있어요.
               </p>
             </div>
           </div>
@@ -213,31 +187,26 @@ function Members() {
 
       {/* Search and Filter Section */}
       <section className="py-8 bg-gradient-to-b from-transparent to-gray-900">
-        <div className="container mx-auto px-4">
-          <div className="mb-10 p-6 bg-gray-900 rounded-xl border border-gray-800">
+        <div className="container site-content-container mx-auto px-4">
+          <div className="service-filter-panel members-filter-panel mb-10 rounded-xl">
             <div>
-              <label
-                htmlFor="search"
-                className="block text-sm font-medium text-gray-300 mb-2"
-              >
-                검색
-              </label>
               <div className="relative">
                 <input
                   type="text"
                   id="search"
+                  aria-label="멤버 검색"
                   placeholder="이름, 기술 스택, 소개, 소속으로 검색"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg py-2 px-4 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="service-filter-control py-2 pl-4 pr-10 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                <i className="fas fa-search absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                <i
+                  className="search-field-icon search-field-icon-right fas fa-search text-gray-500"
+                  aria-hidden="true"
+                ></i>
               </div>
             </div>
-            <div className="mt-6">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                태그 필터
-              </label>
+            <div className="members-tag-filter">
               <div id="tag-cloud" className="flex flex-wrap gap-2">
                 {[
                   'React',
@@ -252,8 +221,9 @@ function Members() {
                 ].map((tag) => (
                   <button
                     key={tag}
-                    className={`tag-btn px-3 py-1 rounded-full text-xs hover:bg-opacity-80 transition-colors
-                      ${getTagBgClass(tag)} ${activeTag === tag ? 'ring-2 ring-blue-400' : ''}`}
+                    type="button"
+                    className={`tag-btn px-3 py-1 rounded-full hover:opacity-80 transition-colors
+                      ${tagColorClass(tag)} ${activeTag === tag ? 'is-selected' : ''}`}
                     onClick={() => handleTagClick(tag)}
                   >
                     {tag}
@@ -270,7 +240,7 @@ function Members() {
         id="current-members"
         className="py-16 bg-gradient-to-b from-transparent to-gray-900"
       >
-        <div className="container mx-auto px-4">
+        <div className="container site-content-container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-4">
               현재 멤버
@@ -282,7 +252,7 @@ function Members() {
 
           <div
             id="members-grid"
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
+            className="members-grid grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
           >
             {isLoading && (
               <div className="col-span-full text-center py-12 text-gray-500">
@@ -298,7 +268,7 @@ function Members() {
               currentMembers.map((member, index) => (
                 <div
                   key={index}
-                  className="scroll-fade member-card p-6 rounded-xl text-center card-hover"
+                  className="scroll-fade member-card py-6 px-5 rounded-xl text-center card-hover"
                 >
                   <div className="img-container mx-auto">
                     <img
@@ -330,17 +300,17 @@ function Members() {
                     <i className="fas fa-graduation-cap mr-1"></i>
                     {member.educationStatus}
                   </p>
-                  <div className="flex flex-wrap justify-center gap-1 mt-3 mb-4">
+                  <div className="member-tag-list flex flex-wrap justify-center gap-1 mt-3 mb-4">
                     {member.tags.map((tag, tagIndex) => (
                       <span
                         key={tagIndex}
-                        className={`px-2 py-1 rounded-full text-xs ${getTagBgClass(tag)}`}
+                        className={`px-2 py-1 rounded-full ${tagColorClass(tag)}`}
                       >
                         {tag}
                       </span>
                     ))}
                   </div>
-                  <div className="flex justify-center space-x-4 mt-4">
+                  <div className="member-card-links flex justify-center space-x-4 mt-4">
                     {member.githubUrl && (
                       <a
                         href={member.githubUrl}
@@ -376,7 +346,7 @@ function Members() {
 
       {/* Alumni Members Section */}
       <section id="alumni-members" className="py-16">
-        <div className="container mx-auto px-4">
+        <div className="container site-content-container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-4">
               졸업 멤버
@@ -387,7 +357,7 @@ function Members() {
           </div>
           <div
             id="alumni-grid"
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
+            className="members-grid grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
           >
             {isLoading && (
               <div className="col-span-full text-center py-12 text-gray-500">
@@ -403,7 +373,7 @@ function Members() {
               alumniMembers.map((member, index) => (
                 <div
                   key={index}
-                  className="scroll-fade member-card p-6 rounded-xl text-center card-hover"
+                  className="scroll-fade member-card py-6 px-5 rounded-xl text-center card-hover"
                 >
                   <div className="img-container mx-auto">
                     <img
@@ -435,17 +405,17 @@ function Members() {
                     <i className="fas fa-graduation-cap mr-1"></i>
                     {member.educationStatus}
                   </p>
-                  <div className="flex flex-wrap justify-center gap-1 mt-3 mb-4">
+                  <div className="member-tag-list flex flex-wrap justify-center gap-1 mt-3 mb-4">
                     {member.tags.map((tag, tagIndex) => (
                       <span
                         key={tagIndex}
-                        className={`px-2 py-1 rounded-full text-xs ${getTagBgClass(tag)}`}
+                        className={`px-2 py-1 rounded-full ${tagColorClass(tag)}`}
                       >
                         {tag}
                       </span>
                     ))}
                   </div>
-                  <div className="flex justify-center space-x-4 mt-4">
+                  <div className="member-card-links flex justify-center space-x-4 mt-4">
                     {member.githubUrl && (
                       <a
                         href={member.githubUrl}

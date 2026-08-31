@@ -256,17 +256,17 @@ function Home() {
       {/* React Fragment 요소 묶기 */}
       {/* Hero Section */}
       <section className="pt-24 pb-16 min-h-screen flex items-center">
-        <div className="container mx-auto px-4">
+        <div className="container site-content-container mx-auto px-4">
           <div className="text-center">
             <div className="mb-8">
-              <div className="w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center">
+              <div className="site-hero-icon w-24 h-24 mx-auto rounded-full flex items-center justify-center">
                 <img
                   src={logo}
                   alt="TCP 로고"
                   className="w-full h-full object-contain"
                 />
               </div>
-              <h1 className="orbitron text-5xl md:text-7xl font-black mb-4">
+              <h1 className="site-hero-title orbitron mb-4">
                 <span className="gradient-text">TCP</span>
               </h1>
               <p className="orbitron text-xl md:text-2xl text-gray-300 mb-6">
@@ -325,7 +325,7 @@ function Home() {
         id="about"
         className="py-16 bg-gradient-to-b from-transparent to-gray-900"
       >
-        <div className="container mx-auto px-4">
+        <div className="container site-content-container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-4">
               TCP 소개
@@ -420,7 +420,7 @@ function Home() {
 
       {/* TCP 활동 소개 세션 */}
       <section className="py-16">
-        <div className="container mx-auto px-4">
+        <div className="container site-content-container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-4">
               주요 활동
@@ -597,7 +597,7 @@ function Home() {
       </section>
       {/* CTA Section */}
       <section className="py-20 bg-gradient-to-r from-blue-900 via-purple-900 to-pink-900">
-        <div className="container mx-auto px-4 text-center">
+        <div className="container site-content-container mx-auto px-4 text-center">
           <div className="max-w-3xl mx-auto">
             <h2 className="orbitron text-4xl md:text-5xl font-black mb-6 text-white">
               TCP에서 개발자의 길을 걸어보세요
