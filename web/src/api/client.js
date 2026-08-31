@@ -12,19 +12,29 @@ function getAuthHeaders() {
   return {};
 }
 
-let isRefreshing = false;
-let failedQueue = [];
+let refreshPromise = null;
 
-const processQueue = (error, token = null) => {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token);
-    }
-  });
-  failedQueue = [];
-};
+function refreshAccessToken() {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = fetch(`${API_BASE}/api/v1/auth/refresh`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+  })
+    .then(async (response) => {
+      if (!response.ok) throw new Error('Session expired');
+      const data = await response.json();
+      if (!data.access_token) throw new Error('Access token was not refreshed');
+      localStorage.setItem('access_token', data.access_token);
+      return data.access_token;
+    })
+    .finally(() => {
+      refreshPromise = null;
+    });
+
+  return refreshPromise;
+}
 
 /**
  * Core Request Function with Auto-Refresh Logic
@@ -32,9 +42,11 @@ const processQueue = (error, token = null) => {
 async function request(path, method, body = null, options = {}) {
   const url = `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
   const extraHeaders = options.headers || {};
+  const accessTokenAtRequest = localStorage.getItem('access_token');
 
   const config = {
     method,
+    credentials: 'include',
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
@@ -62,60 +74,20 @@ async function request(path, method, body = null, options = {}) {
   // 1. If 401 Unauthorized, try to refresh token
   // Skip refresh if we are already on the login endpoint or refresh endpoint
   if (response.status === 401 && !url.includes('/auth/login') && !url.includes('/auth/refresh')) {
-    if (isRefreshing) {
-      try {
-        await new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        });
-        // Retry with new token
-        config.headers = {
-          ...config.headers,
-          ...getAuthHeaders(),
-        };
-        return await fetch(url, config);
-      } catch (error) {
-        throw error;
-      }
-    }
-
-    isRefreshing = true;
-
     try {
-      // Attempt refresh
-      const refreshResponse = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
-        method: 'POST',
-        headers: { Accept: 'application/json' }, // Credentials (cookies) sent automatically by browser
-      });
-
-      if (refreshResponse.ok) {
-        const data = await refreshResponse.json();
-        // Update Token
-        if (data.access_token) {
-          localStorage.setItem('access_token', data.access_token);
-        }
-
-        // Notify waiting requests
-        processQueue(null);
-
-        // Retry original request with new token
-        config.headers = {
-          ...config.headers,
-          ...getAuthHeaders(),
-        };
-        response = await fetch(url, config);
-      } else {
-        // Refresh failed (session expired completely)
-        const err = new Error('Session expired');
-        processQueue(err);
-        handleSessionExpiry();
-        throw err;
+      const latestAccessToken = localStorage.getItem('access_token');
+      if (!latestAccessToken || latestAccessToken === accessTokenAtRequest) {
+        await refreshAccessToken();
       }
+
+      config.headers = {
+        ...config.headers,
+        ...getAuthHeaders(),
+      };
+      response = await fetch(url, config);
     } catch (e) {
-      processQueue(e);
       handleSessionExpiry();
       throw e;
-    } finally {
-      isRefreshing = false;
     }
   }
 

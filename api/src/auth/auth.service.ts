@@ -10,6 +10,11 @@ import { RefreshToken } from './entities/refresh-token.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtPayload, RefreshPayload, SanitizedUser } from './types';
+import {
+  ACCESS_TOKEN_EXPIRES_IN,
+  REFRESH_TOKEN_EXPIRES_IN,
+  REFRESH_TOKEN_TTL_MS,
+} from './auth.constants';
 
 @Injectable()
 export class AuthService {
@@ -50,14 +55,14 @@ export class AuthService {
     const accessPayload: JwtPayload = { sub: user.id, username: user.username, role: user.role };
     const access_token = await this.jwt.signAsync(accessPayload, {
       secret,
-      expiresIn: '15m',
+      expiresIn: ACCESS_TOKEN_EXPIRES_IN,
     });
 
     // Refresh Token: 7일
     const refreshPayload: RefreshPayload = { sub: user.id, type: 'refresh' };
     const refresh_token = await this.jwt.signAsync(refreshPayload, {
       secret,
-      expiresIn: '7d',
+      expiresIn: REFRESH_TOKEN_EXPIRES_IN,
     });
 
     // Refresh Token을 해시화하여 DB에 저장 (원문은 클라이언트에게만 전달)
@@ -69,7 +74,7 @@ export class AuthService {
       token_hash: hashedRefreshToken,
       user_id: user.id,
       device_info: deviceInfo ?? null,
-      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7일 후
+      expires_at: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
       last_used_at: null,
     });
     await this.refreshTokenRepo.save(tokenEntity);
