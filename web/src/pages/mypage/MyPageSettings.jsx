@@ -190,7 +190,7 @@ const MyPageSettings = () => {
                 <div className="preview-container">
                     <div className="widget-card p-6 rounded-xl">
                         <h4 className="text-xl font-bold gradient-text mb-4">멤버 카드 미리보기</h4>
-                        <p className="text-sm text-gray-400 mb-6">멤버 페이지에 표시될 카드 모양을 확인하세요.</p>
+                        <p className="text-sm text-gray-400 mb-6">멤버 페이지에 표시될 카드 모양을 확인할 수 있어요.</p>
                         <MemberCardPreview settings={settings} profile={profile} />
                     </div>
                 </div>

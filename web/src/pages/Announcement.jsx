@@ -128,20 +128,25 @@ function Announcement() {
   return (
     <>
       <section className="pt-24 pb-16 min-h-screen flex items-center">
-        <div className="container mx-auto px-4">
+        <div className="container site-content-container mx-auto px-4">
           <div className="text-center">
             <div className="mb-8">
-              <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-purple-400 via-pink-400 to-red-400 flex items-center justify-center">
+              <div className="site-hero-icon w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-purple-400 via-pink-400 to-red-400 flex items-center justify-center">
                 <i className="fas fa-bullhorn text-white text-3xl"></i>
               </div>
-              <h1 className="orbitron text-5xl md:text-7xl font-black mb-4">
+              <h1 className="site-hero-title orbitron mb-4">
                 <span className="gradient-text">Announcements</span>
               </h1>
               <p className="orbitron text-xl md:text-2xl text-gray-300 mb-6">
                 TCP의 중요한 소식을 놓치지 마세요
               </p>
               <p className="orbitron text-lg text-gray-400 max-w-2xl mx-auto">
-                동아리 운영, 행사, 프로젝트 등 TCP의 모든 공식 공지사항을 이곳에서 확인하세요.
+                동아리 운영, 행사, 프로젝트 등
+                <br className="announcement-mobile-break" />
+                {' '}TCP의 모든 공식 공지사항을
+                <br className="announcement-mobile-break" />
+                {' '}
+                이곳에서 확인할 수 있어요.
               </p>
             </div>
           </div>
@@ -152,13 +157,13 @@ function Announcement() {
         id="announcements"
         className="py-16 bg-gradient-to-b from-transparent to-gray-900"
       >
-        <div className="container mx-auto px-4">
+        <div className="container site-content-container mx-auto px-4">
           <div className="flex justify-between items-center mb-12">
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text">
               공지사항
             </h2>
             <button
-              className="cta-button px-6 py-2 rounded-lg text-sm font-bold text-white hover:text-black transition-colors"
+              className="cta-button primary-cta-text px-6 py-2 rounded-lg text-sm font-bold transition-colors"
               onClick={handleWriteClick}
             >
               <i className="fas fa-edit mr-2"></i> 글쓰기

@@ -87,7 +87,10 @@ describe('AuthController', () => {
       expect(mockRes.cookie).toHaveBeenCalledWith(
         'refresh_token',
         'refresh.token',
-        expect.objectContaining({ httpOnly: true }),
+        expect.objectContaining({
+          httpOnly: true,
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+        }),
       );
       expect(res.access_token).toBeDefined();
       // refresh_token은 응답 body에서 제거됨

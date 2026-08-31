@@ -856,7 +856,7 @@ sequenceDiagram
     Database-->>AuthService: User entity
     AuthService->>AuthService: Compare password (bcrypt)
     AuthService->>AuthService: Generate access token (15min)
-    AuthService->>AuthService: Generate refresh token (7days)
+    AuthService->>AuthService: Generate refresh token (7 days)
     AuthService->>Database: Store refresh token
     AuthService-->>AuthController: Tokens
     AuthController-->>Frontend: Access token in body + refresh token in HTTP-only cookie
@@ -1443,4 +1443,3 @@ SHA-256 manifest. See `CICDtools/README.md` and
 **Document Version**: 2.1
 **Last Updated**: 2026-08-17
 **Maintained By**: Development Team
-

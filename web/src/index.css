@@ -6,6 +6,7 @@
   --accent-purple: #c5a8e6;
   --accent-green: #a8e6c5;
   --accent-pink: #e6a8c5;
+  --cta-text-color: #25223d;
 }
 
 body {
@@ -63,10 +64,12 @@ body,
 
 .cta-button {
   background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  color: var(--cta-text-color);
   transition: all 0.3s ease;
 }
 
 .cta-button:hover {
+  color: var(--cta-text-color);
   transform: scale(1.05);
   box-shadow: 0 10px 30px rgba(168, 197, 230, 0.3);
 }
@@ -126,6 +129,10 @@ body,
 .accordion-header.active {
   background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
   color: var(--primary-black);
+}
+
+.accordion-header.active .history-header-muted {
+  color: #1f2937;
 }
 
 .accordion-content {
@@ -736,6 +743,72 @@ body,
 
 .secondary-link:hover {
   color: var(--accent-blue);
+}
+
+.login-card {
+  padding: 1.25rem;
+}
+
+.login-credentials {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  background: rgba(42, 42, 42, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+}
+
+.login-field-group + .login-field-group {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.login-field-label,
+.login-secondary-icon {
+  display: none;
+}
+
+.login-input-shell {
+  transform: none !important;
+}
+
+.login-credentials .input-field {
+  height: 2.75rem;
+  padding: 0.625rem 2.5rem 0.625rem 0.875rem;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font-size: 0.875rem;
+}
+
+.login-credentials .input-field:focus {
+  background: rgba(255, 255, 255, 0.035);
+  border: 0;
+  box-shadow: none;
+}
+
+.login-submit-button {
+  width: 70%;
+  margin-right: auto;
+  margin-left: auto;
+  padding: 0.625rem 1rem;
+  color: #0b1220;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.login-secondary-actions {
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 0;
+  font-size: 0.6875rem;
+  white-space: nowrap;
+}
+
+@media (min-width: 480px) {
+  .login-secondary-actions {
+    font-size: 0.8125rem;
+  }
 }
 
 .checkbox-container {

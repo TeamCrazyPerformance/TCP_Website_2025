@@ -5,6 +5,7 @@ import TeamDetailModal from '../components/modals/TeamDetailModal';
 import TeamCard from '../components/TeamCard';
 import { tagColorClass } from '../utils/helpers';
 import { apiGet, apiPatch, apiDelete } from '../api/client';
+import { initialTeams as developmentTeams } from '../data/teams';
 
 const TAGS = [
   'AI',
@@ -16,6 +17,124 @@ const TAGS = [
   '프로젝트',
   '알고리즘',
 ];
+
+const formatDate = (value, separator = '.') => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}${separator}${month}${separator}${day}`;
+};
+
+const normalizeStatus = (status) => {
+  if (status === 'open') return '모집중';
+  if (status === 'closed') return '모집완료';
+  return status || '모집중';
+};
+
+const normalizeExecutionType = (type) => {
+  if (type === 'online') return '온라인';
+  if (type === 'offline') return '오프라인';
+  if (type === 'hybrid') return '온/오프라인 혼합';
+  return '온라인';
+};
+
+const splitTags = (value) => {
+  if (!value) return [];
+  return value
+    .split(/[,\s/|]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
+const splitGoals = (value) => {
+  if (!value) return [];
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
+const mapApiTeam = (team) => {
+  const roles = team.roles || [];
+  const neededRoles = roles.length
+    ? roles
+      .map((role) => `${role.roleName} ${role.recruitCount}명`)
+      .join(', ')
+    : '모집 역할 미정';
+  const tags = [
+    ...new Set([...splitTags(team.tag), ...splitTags(team.techStack)]),
+  ];
+  const leaderName = team.leader?.name || team.leader?.username || '팀 리더';
+  const leaderAvatar = team.leader?.profile_image ||
+    'https://via.placeholder.com/40/A8C5E6/FFFFFF?text=L';
+  const period = `${formatDate(team.periodStart)} – ${formatDate(
+    team.periodEnd
+  )}`;
+  const deadline = team.deadline ? formatDate(team.deadline, '-') : '';
+  const links = team.link ? [team.link] : [];
+  const goals = splitGoals(team.goals || '').length
+    ? splitGoals(team.goals || '')
+    : ['프로젝트 완수'];
+  const selectionProcess = team.selectionProc || '지원서 검토 후 안내';
+  const techStack = splitTags(team.techStack);
+  const images = team.projectImage && team.projectImage.trim()
+    ? [team.projectImage]
+    : [
+      'https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=2020&auto=format&fit=crop',
+    ];
+
+  return {
+    id: team.id,
+    leaderId: team.leader?.id,
+    title: team.title,
+    category: team.category,
+    leader: {
+      name: leaderName,
+      avatar: leaderAvatar,
+      role: '팀 리더',
+    },
+    status: normalizeStatus(team.status),
+    period,
+    periodStart: team.periodStart,
+    periodEnd: team.periodEnd,
+    deadline,
+    deadlineDate: team.deadline,
+    description: team.description,
+    fullDescription: team.description,
+    neededRoles,
+    participants: [
+      {
+        name: leaderName,
+        role: '팀 리더',
+        avatar: leaderAvatar,
+      },
+    ],
+    techStack,
+    techStackRaw: team.techStack,
+    tags,
+    tag: team.tag,
+    tagsRaw: team.tag,
+    images,
+    projectImage: team.projectImage,
+    links,
+    link: team.link,
+    linksRaw: team.link,
+    location: normalizeExecutionType(team.executionType),
+    executionType: team.executionType,
+    executionTypeRaw: team.executionType,
+    selectionProcess,
+    selectionProc: team.selectionProc,
+    contact: team.contact || '연락처 없음',
+    goals,
+    goalsRaw: team.goals,
+    roles: team.roles,
+    rolesRaw: team.roles,
+    createdAt: team.createdAt,
+  };
+};
 
 export default function Team() {
   const { user } = useAuth();
@@ -80,125 +199,6 @@ export default function Team() {
     sortBy,
   ]);
 
-  const formatDate = (value, separator = '.') => {
-    if (!value) return '';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}${separator}${month}${separator}${day}`;
-  };
-
-  const normalizeStatus = (status) => {
-    if (status === 'open') return '모집중';
-    if (status === 'closed') return '모집완료';
-    return status || '모집중';
-  };
-
-  const normalizeExecutionType = (type) => {
-    if (type === 'online') return '온라인';
-    if (type === 'offline') return '오프라인';
-    if (type === 'hybrid') return '온/오프라인 혼합';
-    return '온라인';
-  };
-
-  const splitTags = (value) => {
-    if (!value) return [];
-    return value
-      .split(/[,\s/|]+/)
-      .map((item) => item.trim())
-      .filter(Boolean);
-  };
-
-  const splitGoals = (value) => {
-    if (!value) return [];
-    return value
-      .split(',')
-      .map((item) => item.trim())
-      .filter(Boolean);
-  };
-
-  const mapTeam = (team) => {
-    const roles = team.roles || [];
-    const neededRoles = roles.length
-      ? roles
-        .map((role) => `${role.roleName} ${role.recruitCount}명`)
-        .join(', ')
-      : '모집 역할 미정';
-    const tags = [
-      ...new Set([...splitTags(team.tag), ...splitTags(team.techStack)]),
-    ];
-    const leaderName = team.leader?.name || team.leader?.username || '팀 리더';
-    const leaderAvatar = team.leader?.profile_image ||
-      'https://via.placeholder.com/40/A8C5E6/FFFFFF?text=L';
-    const period = `${formatDate(team.periodStart)} – ${formatDate(
-      team.periodEnd
-    )}`;
-    const deadline = team.deadline ? formatDate(team.deadline, '-') : '';
-    const links = team.link ? [team.link] : [];
-    const goals = splitGoals(team.goals || '').length
-      ? splitGoals(team.goals || '')
-      : ['프로젝트 완수'];
-    const selectionProcess = team.selectionProc || '지원서 검토 후 안내';
-    const techStack = splitTags(team.techStack);
-    const images = team.projectImage && team.projectImage.trim()
-      ? [team.projectImage]
-      : [
-        'https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=2020&auto=format&fit=crop',
-      ];
-
-    return {
-      id: team.id,
-      leaderId: team.leader?.id,
-      title: team.title,
-      category: team.category,
-      leader: {
-        name: leaderName,
-        avatar: leaderAvatar,
-        role: '팀 리더',
-      },
-      status: normalizeStatus(team.status),
-      period,
-      periodStart: team.periodStart,
-      periodEnd: team.periodEnd,
-      deadline,
-      deadlineDate: team.deadline,
-      description: team.description,
-      fullDescription: team.description,
-      neededRoles,
-      roles: team.roles,
-      participants: [
-        {
-          name: leaderName,
-          role: '팀 리더',
-          avatar: leaderAvatar,
-        },
-      ],
-      techStack,
-      techStackRaw: team.techStack,
-      tags,
-      tag: team.tag,
-      tagsRaw: team.tag, // tag 필드를 tagsRaw로도 매핑
-      images,
-      projectImage: team.projectImage,
-      links,
-      link: team.link,
-      linksRaw: team.link, // link 필드를 linksRaw로도 매핑
-      location: normalizeExecutionType(team.executionType),
-      executionType: team.executionType,
-      executionTypeRaw: team.executionType, // executionType을 executionTypeRaw로도 매핑
-      selectionProcess,
-      selectionProc: team.selectionProc,
-      contact: team.contact || '연락처 없음',
-      goals,
-      goalsRaw: team.goals,
-      roles: team.roles, // roles 추가
-      rolesRaw: team.roles, // rolesRaw로도 매핑
-      createdAt: team.createdAt,
-    };
-  };
-
   // ---- IntersectionObserver for cards ----
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -234,12 +234,22 @@ export default function Team() {
         setIsLoading(true);
         const data = await apiGet('/api/v1/teams');
         if (isMounted) {
-          setTeams((data || []).map(mapTeam));
+          const mappedTeams = (data || []).map(mapApiTeam);
+          const visibleTeams =
+            process.env.NODE_ENV === 'development' && mappedTeams.length === 0
+              ? developmentTeams
+              : mappedTeams;
+          setTeams(visibleTeams);
           setErrorMessage('');
         }
       } catch (error) {
         if (isMounted) {
-          setErrorMessage(error.message || '팀 정보를 불러오지 못했습니다.');
+          if (process.env.NODE_ENV === 'development') {
+            setTeams(developmentTeams);
+            setErrorMessage('');
+          } else {
+            setErrorMessage(error.message || '팀 정보를 불러오지 못했습니다.');
+          }
         }
       } finally {
         if (isMounted) {
@@ -386,54 +396,59 @@ export default function Team() {
 
   // ---- UI ----
   return (
-    <main className="container mx-auto px-4 py-24">
-      <div className="text-center mb-16">
-        <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 flex items-center justify-center">
-          <i className="fas fa-users text-white text-3xl"></i>
+    <>
+      <section className="pt-24 pb-16 min-h-screen flex items-center">
+        <div className="container site-content-container mx-auto px-4">
+          <div className="text-center">
+            <div className="site-hero-icon team-hero-icon w-24 h-24 mx-auto rounded-full flex items-center justify-center">
+              <i className="fas fa-users text-white text-3xl"></i>
+            </div>
+            <h1 className="site-hero-title orbitron gradient-text mb-4">
+              Find Your Team
+            </h1>
+            <p className="orbitron text-lg text-gray-400 max-w-2xl mx-auto mb-8">
+              함께 성장하고 도전할 최고의 팀원을 찾아보세요. TCP 동아리원뿐만
+              아니라 누구나 프로젝트, 스터디, 해커톤 팀원을 쉽게 모집하고 지원할 수 있어요.
+            </p>
+            <button
+              onClick={handleOpenRecruit}
+              className="cta-button primary-cta-text inline-flex items-center justify-center px-6 py-3 rounded-lg text-lg font-bold transition-transform transform hover:scale-105"
+              aria-label="팀 모집 시작하기"
+            >
+              <i className="fas fa-plus mr-2" />팀 모집 시작하기
+            </button>
+          </div>
         </div>
-        <h1 className="orbitron text-4xl md:text-5xl font-bold gradient-text mb-4">
-          Find Your Team
-        </h1>
-        <p className="orbitron text-lg text-gray-400 max-w-2xl mx-auto mb-8">
-          함께 성장하고 도전할 최고의 팀원을 찾아보세요. TCP 동아리원뿐만
-          아니라 누구나 프로젝트, 스터디, 해커톤 팀원을 쉽게 모집하고 지원할 수 있어요.
-        </p>
-        <button
-          onClick={handleOpenRecruit}
-          className="cta-button inline-flex items-center justify-center px-6 py-3 rounded-lg text-lg font-bold text-white transition-transform transform hover:scale-105"
-          aria-label="팀 모집 시작하기"
-        >
-          <i className="fas fa-plus mr-2" />팀 모집 시작하기
-        </button>
-      </div>
+      </section>
 
-      <div className="mb-10 p-6 bg-gray-900 rounded-xl border border-gray-800 shadow-lg">
+      <section className="py-16 bg-gradient-to-b from-transparent to-gray-900">
+        <div className="container site-content-container mx-auto px-4">
+          <div className="service-filter-panel mb-10 rounded-xl shadow-lg">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Search */}
           <div>
-            <label htmlFor="search" className="block text-sm font-medium text-gray-300 mb-2">
-              검색
-            </label>
             <div className="relative">
               <input
                 id="search"
                 type="text"
+                aria-label="팀 모집글 검색"
                 placeholder="제목 또는 태그로 검색"
-                className="w-full bg-gray-800 border-gray-700 rounded-lg py-2 pl-10 pr-4 focus:ring-2 focus:ring-accent-blue focus:outline-none"
+                className="service-filter-control team-filter-control team-filter-input py-2 pl-10 pr-4 focus:ring-2 focus:ring-accent-blue focus:outline-none"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+              <i
+                className="search-field-icon search-field-icon-left fas fa-search text-gray-500"
+                aria-hidden="true"
+              />
             </div>
           </div>
           {/* Status */}
-          <div>
-            <label htmlFor="filter-status" className="block text-sm font-medium text-gray-300 mb-2">
-              모집 상태
-            </label>
+          <div className="team-filter-select-wrap">
             <select
               id="filter-status"
-              className="w-full bg-gray-800 border-gray-700 rounded-lg py-2 px-4 focus:ring-2 focus:ring-accent-blue focus:outline-none"
+              aria-label="모집 상태"
+              className="service-filter-control team-filter-control team-filter-select py-2 px-4 focus:ring-2 focus:ring-accent-blue focus:outline-none"
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
             >
@@ -441,15 +456,14 @@ export default function Team() {
               <option value="모집중">모집중</option>
               <option value="모집완료">모집완료</option>
             </select>
+            <i className="team-filter-chevron fas fa-chevron-down" aria-hidden="true" />
           </div>
           {/* Category */}
-          <div>
-            <label htmlFor="filter-category" className="block text-sm font-medium text-gray-300 mb-2">
-              카테고리
-            </label>
+          <div className="team-filter-select-wrap">
             <select
               id="filter-category"
-              className="w-full bg-gray-800 border-gray-700 rounded-lg py-2 px-4 focus:ring-2 focus:ring-accent-blue focus:outline-none"
+              aria-label="카테고리"
+              className="service-filter-control team-filter-control team-filter-select py-2 px-4 focus:ring-2 focus:ring-accent-blue focus:outline-none"
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
             >
@@ -460,32 +474,32 @@ export default function Team() {
               <option value="스터디">스터디</option>
               <option value="기타">기타</option>
             </select>
+            <i className="team-filter-chevron fas fa-chevron-down" aria-hidden="true" />
           </div>
           {/* Sort by */}
-          <div>
-            <label htmlFor="sort-by" className="block text-sm font-medium text-gray-300 mb-2">
-              날짜순 정렬
-            </label>
+          <div className="team-filter-select-wrap">
             <select
               id="sort-by"
-              className="w-full bg-gray-800 border-gray-700 rounded-lg py-2 px-4 focus:ring-2 focus:ring-accent-blue focus:outline-none"
+              aria-label="날짜순 정렬"
+              className="service-filter-control team-filter-control team-filter-select py-2 px-4 focus:ring-2 focus:ring-accent-blue focus:outline-none"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
             >
               <option value="latest">최신순</option>
               <option value="oldest">오래된순</option>
             </select>
+            <i className="team-filter-chevron fas fa-chevron-down" aria-hidden="true" />
           </div>
         </div>
-        <div className="mt-6 pt-4 border-t border-gray-800">
+        <div className="team-tag-filter">
           <div id="tag-cloud" className="flex flex-wrap gap-2">
             {TAGS.map((tag) => (
               <button
                 key={tag}
-                className={`tag-btn px-3 py-1 rounded-full text-sm transition-all duration-200 ${tagColorClass(
+                className={`tag-btn px-3 py-1 rounded-full transition-all duration-200 ${tagColorClass(
                   tag
                 )} ${activeTag === tag
-                  ? 'ring-2 ring-offset-2 ring-offset-gray-900 ring-accent-blue scale-110'
+                  ? 'is-selected scale-110'
                   : 'hover:opacity-80'
                   }`}
                 onClick={() => setActiveTag((t) => (t === tag ? '' : tag))}
@@ -495,9 +509,9 @@ export default function Team() {
             ))}
           </div>
         </div>
-      </div>
+          </div>
 
-      <div id="recruitment-grid" className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div id="recruitment-grid" className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
         {isLoading && (
           <div className="col-span-full text-center text-gray-400 py-12">
             팀 모집글을 불러오는 중...
@@ -527,7 +541,9 @@ export default function Team() {
               onStatusChange={handleToggleStatus}
             />
           ))}
-      </div>
+          </div>
+        </div>
+      </section>
 
       <RecruitTeamModal
         isOpen={isRecruitModalOpen}
@@ -543,6 +559,6 @@ export default function Team() {
         team={selectedTeam}
         onApplicationStatusChange={handleApplicationStatusChange}
       />
-    </main>
+    </>
   );
 }

@@ -9,6 +9,7 @@ export const allMembers = [
     githubUrl: 'https://github.com/kimminjun',
     portfolioUrl: 'https://portfolio.kimminjun.com',
     status: 'current',
+    educationStatus: '재학',
   },
   {
     name: '이서연',
@@ -20,6 +21,7 @@ export const allMembers = [
     githubUrl: 'https://github.com/leeseoyeon',
     portfolioUrl: 'https://portfolio.leeseoyeon.com',
     status: 'current',
+    educationStatus: '재학',
   },
   {
     name: '박지훈',
@@ -31,6 +33,7 @@ export const allMembers = [
     githubUrl: 'https://github.com/parkjihun',
     portfolioUrl: 'https://portfolio.parkjihun.com',
     status: 'current',
+    educationStatus: '휴학',
   },
   {
     name: '최예원',
@@ -42,6 +45,7 @@ export const allMembers = [
     githubUrl: 'https://github.com/choiyewon',
     portfolioUrl: 'https://portfolio.choiyewon.com',
     status: 'current',
+    educationStatus: '재학',
   },
   {
     name: '정수현',
@@ -53,6 +57,7 @@ export const allMembers = [
     githubUrl: 'https://github.com/jeongsuhyun',
     portfolioUrl: 'https://portfolio.jeongsuhyun.com',
     status: 'current',
+    educationStatus: '재학',
   },
   {
     name: '한동민',
@@ -64,6 +69,7 @@ export const allMembers = [
     githubUrl: 'https://github.com/handongmin',
     portfolioUrl: 'https://portfolio.handongmin.com',
     status: 'current',
+    educationStatus: '휴학',
   },
   {
     name: '김명수',
@@ -75,6 +81,8 @@ export const allMembers = [
     githubUrl: 'https://github.com/kimmyungsoo',
     portfolioUrl: 'https://link.kimmyungsoo.com',
     status: 'alumni',
+    educationStatus: '졸업',
+    currentCompany: '네이버',
   },
   {
     name: '박은지',
@@ -86,6 +94,8 @@ export const allMembers = [
     githubUrl: 'https://github.com/parkeunji',
     portfolioUrl: 'https://link.parkeunji.com',
     status: 'alumni',
+    educationStatus: '졸업',
+    currentCompany: '카카오',
   },
   {
     name: '최현우',
@@ -97,5 +107,7 @@ export const allMembers = [
     githubUrl: 'https://github.com/choihyunwoo',
     portfolioUrl: 'https://link.choihyunwoo.com',
     status: 'alumni',
+    educationStatus: '졸업',
+    currentCompany: '삼성전자',
   },
 ];

@@ -25,6 +25,7 @@ import {
 import { Link } from 'react-router-dom';
 import { apiPost, apiGet } from '../api/client';
 import { formatBirthDate } from '../utils/dateFormatter';
+import '../styles/recruitmentApplication.css';
 
 // 전화번호 자동 형식화 함수
 const formatPhoneNumber = (value) => {
@@ -135,13 +136,43 @@ function Recruitment() {
       return;
     }
     setIsModalOpen(true);
-    document.body.style.overflow = 'hidden';
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
-    document.body.style.overflow = 'auto';
   };
+
+  const requestCloseModal = () => {
+    const form = document.querySelector('#applicationModal form');
+    const inputs = form ? form.querySelectorAll('input, textarea, select') : [];
+    const hasContent = Array.from(inputs).some((element) => {
+      if (element.type === 'checkbox' || element.type === 'radio') {
+        return element.checked;
+      }
+
+      return element.value && element.value.trim();
+    });
+
+    if (
+      hasContent &&
+      !window.confirm('작성 중인 내용이 있습니다. 정말 닫으시겠습니까?')
+    ) {
+      return;
+    }
+
+    closeModal();
+  };
+
+  useEffect(() => {
+    if (!isModalOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isModalOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -319,30 +350,31 @@ function Recruitment() {
   return (
     <>
       <section className="pt-24 pb-16 min-h-screen flex items-center">
-        <div className="container mx-auto px-4">
+        <div className="container site-content-container mx-auto px-4">
           <div className="text-center">
             <div className="mb-8">
-              <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-400 via-purple-400 to-pink-400 flex items-center justify-center">
+              <div className="site-hero-icon w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-blue-400 via-purple-400 to-pink-400 flex items-center justify-center">
                 <FontAwesomeIcon
                   icon={faRocket}
                   className="text-white text-3xl"
                 />
               </div>
-              <h1 className="orbitron text-5xl md:text-7xl font-black mb-4">
+              <h1 className="site-hero-title orbitron mb-4">
                 <span className="gradient-text">TCP</span>
               </h1>
               <p className="orbitron text-xl md:text-2xl text-gray-300 mb-6">
                 Team Crazy Performance
               </p>
               <p className="orbitron text-lg text-gray-400 max-w-2xl mx-auto mb-8">
-                서울과학기술대학교의 개발자 동아리 TCP에서 새로운 사람들과 함께
-                당신의 열정을 실현해보세요.
+                서울과학기술대학교 컴퓨터공학과 학술동아리 TCP에서
+                <br />
+                새로운 사람들과 함께 당신의 열정을 실현해 보세요.
               </p>
               <button
                 id="heroApplyBtn"
                 onClick={openModal}
                 disabled={!isRecruitmentActive}
-                className={`cta-button px-12 py-4 rounded-full text-lg font-bold orbitron text-white transition-colors ${!isRecruitmentActive ? 'opacity-50 cursor-not-allowed bg-gray-600' : 'hover:text-black'}`}
+                className={`cta-button px-12 py-4 rounded-full text-lg font-bold orbitron transition-colors ${!isRecruitmentActive ? 'opacity-50 cursor-not-allowed bg-gray-600 text-white' : 'primary-cta-text'}`}
               >
                 <FontAwesomeIcon icon={faRocket} className="mr-2" />
                 {isRecruitmentActive ? '지금 지원하기' : '모집 기간이 아닙니다'}
@@ -357,17 +389,24 @@ function Recruitment() {
         id="about"
         className="py-16 bg-gradient-to-b from-transparent to-gray-900"
       >
-        <div className="container mx-auto px-4">
+        <div className="container site-content-container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-4">
               About TCP
-            </h2>
+              </h2>
             <div className="max-w-4xl mx-auto">
-              <p className="orbitron text-xl text-gray-300 mb-6">
-                TCP (Team Crazy Performance)는 서울과학기술대학교의 개발자 동아리입니다.
+              <p className="orbitron text-xl text-gray-300 mb-4">
+                <span className="recruitment-about-desktop">
+                  TCP(Team Crazy Performance)는 서울과학기술대학교 컴퓨터공학과 학술동아리입니다.
+                </span>
+                <span className="recruitment-about-mobile">
+                  TCP는 서울과학기술대학교 컴퓨터공학과 학술동아리입니다.
+                </span>
               </p>
               <p className="orbitron text-lg text-gray-400 mb-8">
-                우리는 다양한 사람들이 모여, 함께 탐구하고 함께 성장하는 것을 목표로 합니다.
+                TCP는 다양한 사람이 모여 같이 탐구하고,
+                <br className="recruitment-about-mobile-break" />
+                {' '}함께 성장하는 것을 목표로 합니다.
               </p>
             </div>
           </div>
@@ -376,12 +415,29 @@ function Recruitment() {
 
       {/* 지원자 세션 */}
       <section id="who-should-apply" className="py-16">
-        <div className="container mx-auto px-4">
+        <div className="container site-content-container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
             <h2 className="orbitron text-3xl font-bold gradient-text mb-8 text-center">
               TCP는 이런 사람들을 환영해요
             </h2>
             <div className="grid md:grid-cols-3 gap-8">
+              <div className="scroll-fade h-full">
+                <div className="feature-card p-8 rounded-2xl h-full flex flex-col">
+                  <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center">
+                    <FontAwesomeIcon
+                      icon={faFire}
+                      className="text-white text-2xl"
+                    />
+                  </div>
+                  <h3 className="orbitron text-xl font-bold mb-4 text-red-300 text-center">
+                    열정적인 학습자
+                  </h3>
+                  <p className="text-gray-300 text-center flex-1">
+                    스스로를 개선하고, 성장하고자 하는 열정을 가진 학습자를 찾고 있어요.
+                    같이 배우고, 함께 발전하는 것을 중요하게 생각해요.
+                  </p>
+                </div>
+              </div>
               <div className="scroll-fade h-full">
                 <div className="feature-card p-8 rounded-2xl h-full flex flex-col">
                   <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
@@ -397,23 +453,6 @@ function Recruitment() {
                     서울과학기술대학교의 모든 학생들을 환영해요. 전공에
                     관계없이 개발에 대한 열정과 사랑이 있다면 누구나 지원할 수
                     있어요.
-                  </p>
-                </div>
-              </div>
-              <div className="scroll-fade h-full">
-                <div className="feature-card p-8 rounded-2xl h-full flex flex-col">
-                  <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center">
-                    <FontAwesomeIcon
-                      icon={faFire}
-                      className="text-white text-2xl"
-                    />
-                  </div>
-                  <h3 className="orbitron text-xl font-bold mb-4 text-red-300 text-center">
-                    열정적인 학습자
-                  </h3>
-                  <p className="text-gray-300 text-center flex-1">
-                    개선하고 성장하려는 열정적인 학습자를 특히 찾고 있어요.
-                    함께 배우고 발전해나가는 것을 중요하게 생각해요.
                   </p>
                 </div>
               </div>
@@ -444,7 +483,7 @@ function Recruitment() {
         id="what-we-do"
         className="py-16 bg-gradient-to-b from-transparent to-gray-900"
       >
-        <div className="container mx-auto px-4">
+        <div className="container site-content-container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-8">
               TCP는 이런 활동을 해요
@@ -606,7 +645,7 @@ function Recruitment() {
               id="sectionApplyBtn"
               onClick={openModal}
               disabled={!isRecruitmentActive}
-              className={`cta-button px-12 py-4 rounded-full text-lg font-bold orbitron text-white transition-colors ${!isRecruitmentActive ? 'opacity-50 cursor-not-allowed bg-gray-600' : 'hover:text-black'}`}
+              className={`cta-button px-12 py-4 rounded-full text-lg font-bold orbitron transition-colors ${!isRecruitmentActive ? 'opacity-50 cursor-not-allowed bg-gray-600 text-white' : 'primary-cta-text'}`}
             >
               <FontAwesomeIcon icon={faRocket} className="mr-2" />
               {isRecruitmentActive ? '지금 지원하기' : '모집 기간이 아닙니다'}
@@ -622,32 +661,39 @@ function Recruitment() {
       {isModalOpen && (
         <div
           id="applicationModal"
-          className="modal active"
+          className="modal active recruitment-application-modal"
           onClick={(e) => {
             if (e.target.id === 'applicationModal') {
-              const form = e.target.querySelector('form');
-              const inputs = form ? form.querySelectorAll('input, textarea, select') : [];
-              const hasContent = Array.from(inputs).some(el => el.value && el.value.trim());
-              if (hasContent && !window.confirm('작성 중인 내용이 있습니다. 정말 닫으시겠습니까?')) return;
-              closeModal();
+              requestCloseModal();
             }
           }}
         >
-          <div className="modal-content">
-            <button className="close-modal" onClick={() => {
-              const form = document.querySelector('#applicationModal form');
-              const inputs = form ? form.querySelectorAll('input, textarea, select') : [];
-              const hasContent = Array.from(inputs).some(el => el.value && el.value.trim());
-              if (hasContent && !window.confirm('작성 중인 내용이 있습니다. 정말 닫으시겠습니까?')) return;
-              closeModal();
-            }}>
-              <FontAwesomeIcon icon={faTimes} />
-            </button>
-            <div className="p-8">
-              <h2 className="orbitron text-2xl font-bold gradient-text mb-6 text-center">
-                TCP 지원서
-              </h2>
-              <form onSubmit={handleSubmit}>
+          <section
+            className="modal-content recruitment-application-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="applicationModalTitle"
+            aria-describedby="applicationModalDescription"
+          >
+            <header className="recruitment-application-header">
+              <div className="recruitment-application-heading">
+                <h2 id="applicationModalTitle">TCP 지원서</h2>
+                <p id="applicationModalDescription">
+                  필수 항목을 작성한 뒤 제출해 주세요.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="close-modal recruitment-application-close"
+                onClick={requestCloseModal}
+                aria-label="지원서 닫기"
+              >
+                <FontAwesomeIcon icon={faTimes} />
+              </button>
+            </header>
+
+            <form className="recruitment-application-form" onSubmit={handleSubmit}>
+              <div className="recruitment-application-scroll">
                 <div className="form-group">
                   <label
                     htmlFor="name"
@@ -660,6 +706,7 @@ function Recruitment() {
                     id="name"
                     name="name"
                     className="form-input"
+                    autoComplete="name"
                     required
                   />
                 </div>
@@ -677,6 +724,10 @@ function Recruitment() {
                     name="studentId"
                     className={`form-input ${studentNumberError ? 'border-red-500' : ''}`}
                     placeholder="8자리 숫자"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    aria-invalid={Boolean(studentNumberError)}
+                    aria-describedby={studentNumberError ? 'studentIdError' : undefined}
                     value={studentNumber}
                     onChange={(e) => {
                       const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 8);
@@ -689,7 +740,11 @@ function Recruitment() {
                     }}
                     required
                   />
-                  {studentNumberError && <p className="text-red-500 text-sm mt-1">{studentNumberError}</p>}
+                  {studentNumberError && (
+                    <p id="studentIdError" className="text-red-500 text-sm mt-1" role="alert">
+                      {studentNumberError}
+                    </p>
+                  )}
                 </div>
 
                 <div className="form-group">
@@ -721,6 +776,10 @@ function Recruitment() {
                     name="phone"
                     className={`form-input ${phoneError ? 'border-red-500' : ''}`}
                     placeholder="010-0000-0000"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    aria-invalid={Boolean(phoneError)}
+                    aria-describedby={phoneError ? 'phoneError' : undefined}
                     value={phoneNumber}
                     onChange={(e) => {
                       const formatted = formatPhoneNumber(e.target.value);
@@ -734,7 +793,11 @@ function Recruitment() {
                     }}
                     required
                   />
-                  {phoneError && <p className="text-red-500 text-sm mt-1">{phoneError}</p>}
+                  {phoneError && (
+                    <p id="phoneError" className="text-red-500 text-sm mt-1" role="alert">
+                      {phoneError}
+                    </p>
+                  )}
                 </div>
 
                 <div className="form-group">
@@ -796,7 +859,7 @@ function Recruitment() {
                         key={index}
                         className="entry mb-4 p-4 border border-gray-700 rounded-lg"
                       >
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="entry-heading">
                           <h4 className="font-semibold text-white">
                             프로젝트 #{index + 1}
                           </h4>
@@ -810,7 +873,7 @@ function Recruitment() {
                             </button>
                           )}
                         </div>
-                        <label className="block text-sm font-medium text-gray-300">
+                        <label className="entry-field">
                           프로젝트명:
                           <input
                             type="text"
@@ -818,7 +881,7 @@ function Recruitment() {
                             className="form-input mt-1"
                           />
                         </label>
-                        <label className="block text-sm font-medium text-gray-300 mt-2">
+                        <label className="entry-field">
                           참여율 (%):
                           <input
                             type="text"
@@ -826,25 +889,29 @@ function Recruitment() {
                             className="form-input mt-1"
                           />
                         </label>
-                        <label className="block text-sm font-medium text-gray-300 mt-2">
+                        <label className="entry-field">
                           진행 기간:
-                          <div className="flex items-center space-x-2">
+                          <div className="project-date-range">
                             <input
                               type="text"
                               name="project_start_date"
                               className="form-input mt-1"
                               placeholder="YYYY-MM-DD"
+                              inputMode="numeric"
+                              aria-label={`프로젝트 ${index + 1} 시작일`}
                               maxLength={10}
                               onChange={(e) => {
                                 e.target.value = formatBirthDate(e.target.value);
                               }}
                             />
-                            <span>~</span>
+                            <span aria-hidden="true">~</span>
                             <input
                               type="text"
                               name="project_end_date"
                               className="form-input mt-1"
                               placeholder="YYYY-MM-DD"
+                              inputMode="numeric"
+                              aria-label={`프로젝트 ${index + 1} 종료일`}
                               maxLength={10}
                               onChange={(e) => {
                                 e.target.value = formatBirthDate(e.target.value);
@@ -852,14 +919,14 @@ function Recruitment() {
                             />
                           </div>
                         </label>
-                        <label className="block text-sm font-medium text-gray-300 mt-2">
+                        <label className="entry-field">
                           프로젝트 내용:
                           <textarea
                             name="project_description"
                             className="form-input form-textarea mt-1"
                           />
                         </label>
-                        <label className="block text-sm font-medium text-gray-300 mt-2">
+                        <label className="entry-field">
                           사용 기술:
                           <input
                             type="text"
@@ -873,7 +940,7 @@ function Recruitment() {
                   </div>
                   <button
                     type="button"
-                    className="btn-secondary px-4 py-2 text-sm rounded-lg"
+                    className="btn-secondary entry-add-button"
                     onClick={addProject}
                   >
                     <FontAwesomeIcon icon={faPlus} className="mr-2" />
@@ -892,7 +959,7 @@ function Recruitment() {
                         key={index}
                         className="entry mb-4 p-4 border border-gray-700 rounded-lg"
                       >
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="entry-heading">
                           <h4 className="font-semibold text-white">
                             수상 #{index + 1}
                           </h4>
@@ -906,7 +973,7 @@ function Recruitment() {
                             </button>
                           )}
                         </div>
-                        <label className="block text-sm font-medium text-gray-300">
+                        <label className="entry-field">
                           수상명:
                           <input
                             type="text"
@@ -914,7 +981,7 @@ function Recruitment() {
                             className="form-input mt-1"
                           />
                         </label>
-                        <label className="block text-sm font-medium text-gray-300 mt-2">
+                        <label className="entry-field">
                           수여 기관:
                           <input
                             type="text"
@@ -922,7 +989,7 @@ function Recruitment() {
                             className="form-input mt-1"
                           />
                         </label>
-                        <label className="block text-sm font-medium text-gray-300 mt-2">
+                        <label className="entry-field">
                           수상 년월일:
                           <input
                             type="text"
@@ -935,7 +1002,7 @@ function Recruitment() {
                             }}
                           />
                         </label>
-                        <label className="block text-sm font-medium text-gray-300 mt-2">
+                        <label className="entry-field">
                           수상 내용:
                           <textarea
                             name="award_description"
@@ -947,7 +1014,7 @@ function Recruitment() {
                   </div>
                   <button
                     type="button"
-                    className="btn-secondary px-4 py-2 text-sm rounded-lg"
+                    className="btn-secondary entry-add-button"
                     onClick={addAward}
                   >
                     <FontAwesomeIcon icon={faPlus} className="mr-2" />
@@ -979,18 +1046,28 @@ function Recruitment() {
                   </label>
                 </div>
 
+              </div>
+
+              <footer className="recruitment-application-footer">
+                <button
+                  type="button"
+                  className="recruitment-application-cancel"
+                  onClick={requestCloseModal}
+                >
+                  취소
+                </button>
                 <button
                   type="submit"
-                  className="w-full cta-button py-3 rounded-lg font-bold orbitron text-white hover:text-black transition-colors"
+                  className="recruitment-application-submit"
                   disabled={isSubmitting}
                 >
                   <FontAwesomeIcon icon={faPaperPlane} className="mr-2" />
                   {isSubmitting ? '제출 중...' : '지원서 제출'}
                 </button>
-              </form>
-            </div>
-          </div >
-        </div >
+              </footer>
+            </form>
+          </section>
+        </div>
       )
       }
     </>

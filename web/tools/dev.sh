@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 기술 아티클 프론트엔드 로컬 확인용 — 목 API + CRA 개발 서버를 한 번에 띄웁니다.
+# TCP 프론트엔드 로컬 확인용 — 목 API + CRA 개발 서버를 한 번에 띄웁니다.
 #
 #   bash tools/dev.sh
 #
@@ -41,7 +41,7 @@ cleanup() {
 trap cleanup INT TERM EXIT
 
 echo "▸ 목 API      http://localhost:$MOCK_PORT   (파일 저장 시 자동 재시작)"
-echo "▸ 프론트엔드  http://localhost:$WEB_PORT/tech-articles"
+echo "▸ 프론트엔드  http://localhost:$WEB_PORT"
 echo ""
 
 PORT="$MOCK_PORT" node --watch --watch-path=./tools tools/mock-tech-articles-api.mjs &
