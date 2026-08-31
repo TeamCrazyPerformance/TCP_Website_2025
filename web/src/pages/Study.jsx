@@ -180,20 +180,20 @@ function Study() {
   return (
     <>
       <section className="pt-24 pb-16 min-h-screen flex items-center">
-        <div className="container mx-auto px-4">
+        <div className="container site-content-container mx-auto px-4">
           <div className="text-center">
             <div className="mb-8">
-              <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-green-400 via-blue-400 to-purple-400 flex items-center justify-center">
+              <div className="site-hero-icon w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-green-400 via-blue-400 to-purple-400 flex items-center justify-center">
                 <i className="fas fa-book-open text-white text-3xl"></i>
               </div>
-              <h1 className="orbitron text-5xl md:text-7xl font-black mb-4">
+              <h1 className="site-hero-title orbitron mb-4">
                 <span className="gradient-text">TCP Study</span>
               </h1>
               <p className="orbitron text-xl md:text-2xl text-gray-300 mb-6">
-                다른 TCP 부원들과 함께 성장해요
+                TCP에서 같이 공부하고, 함께 성장해요
               </p>
               <p className="text-lg text-gray-400 max-w-2xl mx-auto">
-                스터디를 개설하여 자신의 지식을 나누고 스터디에 참여하여 함께 성장해 보세요.
+                스터디를 개설해 자신의 지식을 나누고, 스터디에 참여하여 함께 성장할 수 있어요.
               </p>
             </div>
           </div>
@@ -204,7 +204,7 @@ function Study() {
         id="study-list"
         className="py-16 bg-gradient-to-b from-transparent to-gray-900"
       >
-        <div className="container mx-auto px-4">
+        <div className="container site-content-container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center mb-12 space-y-4 md:space-y-0">
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text">
               스터디 목록
@@ -219,13 +219,13 @@ function Study() {
                   스터디 개설하기
                 </button>
               )}
-              <div className="relative w-full md:w-auto">
+              <div className="study-year-filter relative w-full md:w-auto">
                 <label htmlFor="year-select" className="sr-only">
                   년도 선택
                 </label>
                 <select
                   id="year-select"
-                  className="appearance-none w-full md:w-48 bg-gray-800 border border-gray-700 rounded-lg py-2 px-4 pr-10 text-white focus:ring-2 focus:ring-accent-blue focus:outline-none cursor-pointer"
+                  className="study-year-select appearance-none w-full md:w-48 bg-gray-800 border border-gray-700 rounded-lg py-2 px-4 pr-10 text-white focus:ring-2 focus:ring-accent-blue focus:outline-none cursor-pointer"
                   value={selectedYear}
                   onChange={handleYearChange}
                 >

@@ -1,7 +1,7 @@
 export const initialTeams = [
   {
     id: 1,
-    title: '2025 AI Creativity Hackathon',
+    title: '2026 AI Creativity Hackathon',
     category: '해커톤',
     leader: {
       name: '김AI',
@@ -9,8 +9,11 @@ export const initialTeams = [
       role: '팀 리더',
     },
     status: '모집중',
-    period: '2025.07.14 – 2025.07.18',
-    deadline: '2025-06-30',
+    period: '2026.09.14 – 2026.09.18',
+    periodStart: '2026-09-14',
+    periodEnd: '2026-09-18',
+    deadline: '2026-09-08',
+    deadlineDate: '2026-09-08',
     description:
       'AI 모델을 활용해 사회 문제를 해결하는 프로젝트. 초보도 환영합니다! 함께 창의적인 아이디어를 구현해보세요.',
     fullDescription: `이번 AI Creativity Hackathon은 인공지능 기술을 활용하여 실제 사회 문제를 해결하는 창의적인 솔루션을 개발하는 대회입니다.
@@ -38,6 +41,7 @@ export const initialTeams = [
     contact: 'leader@example.com',
     goals: ['프로토타입 완성', '데모데이 참가', '사회적 가치 창출'],
     benefits: ['실무 경험', '포트폴리오', '네트워킹'],
+    createdAt: '2026-08-28T09:00:00+09:00',
   },
   {
     id: 2,
@@ -49,10 +53,13 @@ export const initialTeams = [
       role: '팀 리더',
     },
     status: '모집중',
-    period: '2025.08.01 – 2025.08.15',
-    deadline: '2025-07-15',
+    period: '2026.10.01 – 2026.12.15',
+    periodStart: '2026-10-01',
+    periodEnd: '2026-12-15',
+    deadline: '2026-09-20',
+    deadlineDate: '2026-09-20',
     description: '실 서비스 지향 프로젝트를 위한 풀스택 팀 빌딩 중입니다.',
-    fullDescription: `서비스 운영을 목표로 하는 팀으로, 안정성과 확장성을 고려한 백엔드 구조 설계를 지향합니다.`, 
+    fullDescription: `서비스 운영을 목표로 하는 팀으로, 안정성과 확장성을 고려한 백엔드 구조 설계를 지향합니다.`,
     neededRoles: '백엔드',
     participants: [
       {
@@ -72,6 +79,7 @@ export const initialTeams = [
     contact: 'apply@maestro.dev',
     goals: ['MVP 출시', '사용자 100명 확보'],
     benefits: ['클라우드 크레딧', '멘토링'],
+    createdAt: '2026-08-24T14:30:00+09:00',
   },
   {
     id: 3,
@@ -83,10 +91,13 @@ export const initialTeams = [
       role: '팀 리더',
     },
     status: '모집중',
-    period: '2025.09.01 – 2025.12.15',
-    deadline: '2025-08-20',
+    period: '2026.09.21 – 2026.12.18',
+    periodStart: '2026-09-21',
+    periodEnd: '2026-12-18',
+    deadline: '2026-09-12',
+    deadlineDate: '2026-09-12',
     description: '캠퍼스 생활을 편리하게 만들어 줄 앱을 함께 만들어요!',
-    fullDescription: `학내 공지, 일정, 커뮤니티를 하나로 통합하는 캠퍼스 앱을 개발합니다.`, 
+    fullDescription: `학내 공지, 일정, 커뮤니티를 하나로 통합하는 캠퍼스 앱을 개발합니다.`,
     neededRoles: '디자인, 프론트엔드, 백엔드',
     participants: [
       {
@@ -106,6 +117,7 @@ export const initialTeams = [
     contact: 'union@app.dev',
     goals: ['출시', '학과 제휴'],
     benefits: ['대회 참가', '운영 경험'],
+    createdAt: '2026-08-18T11:20:00+09:00',
   },
   {
     id: 4,
@@ -117,10 +129,13 @@ export const initialTeams = [
       role: '스터디장',
     },
     status: '모집완료',
-    period: '2025.03.10 – 2025.05.30',
-    deadline: '2025-03-05',
+    period: '2026.03.10 – 2026.05.30',
+    periodStart: '2026-03-10',
+    periodEnd: '2026-05-30',
+    deadline: '2026-03-05',
+    deadlineDate: '2026-03-05',
     description: 'ACM-ICPC 대회 준비를 위한 집중 스터디 그룹',
-    fullDescription: `주 2회 문제 풀이와 토론, 라이트닝 강의로 실력을 끌어올립니다.`, 
+    fullDescription: `주 2회 문제 풀이와 토론, 라이트닝 강의로 실력을 끌어올립니다.`,
     neededRoles: '알고리즘',
     participants: [
       {
@@ -140,5 +155,6 @@ export const initialTeams = [
     contact: 'icpc@study.dev',
     goals: ['ICPC 예선 통과'],
     benefits: ['알고리즘 실력 향상'],
+    createdAt: '2026-02-20T18:00:00+09:00',
   },
 ];

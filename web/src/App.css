@@ -937,3 +937,563 @@ body {
     z-index: 50;
     display: none;
 }
+
+/* 공개 서비스 화면의 기준 폭입니다. Tech Articles 전용 CSS와 분리해 두어
+ * 기존 서비스 화면만 같은 1120px 그리드에 맞춥니다. */
+.site-content-container {
+    width: 100%;
+    max-width: 1120px;
+    margin-right: auto;
+    margin-left: auto;
+}
+
+/* ── 공용 내비게이션 바 ───────────────────────────────────
+ * 데스크톱(1024px 이상)에서는 스크롤을 따라오며, 스크롤이 시작되면 배경이
+ * 반투명 + backdrop blur 로 바뀝니다(애플 홈페이지식 프로스티드 글래스).
+ * 맨 위에서는 배경 없이 두어 히어로 영역이 그대로 보이게 합니다.
+ *
+ * 모바일에서도 문서 흐름 밖의 fixed 헤더를 사용합니다. 아래로 스크롤하면
+ * 화면 위로 숨기고, 위로 스크롤하는 순간 다시 보여 콘텐츠 영역을 가리지
+ * 않으면서도 메뉴에 빠르게 접근할 수 있게 합니다.
+ *
+ * 메뉴 링크가 모두 들어가지 않는 폭에서는 가로 스크롤 대신 목록 버튼을
+ * 표시하고, 넓은 화면에서만 전체 메뉴를 한 줄로 펼칩니다. */
+.site-nav {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 50;
+    background: #000;
+    border-bottom: 1px solid #1f2937;
+    transition: transform 0.22s ease;
+}
+
+@media (max-width: 1023px) {
+    .site-nav.is-mobile-hidden {
+        transform: translateY(calc(-100% - 1px));
+    }
+}
+
+@media (min-width: 1024px) {
+    .site-nav {
+        position: fixed;
+        background: transparent;
+        border-bottom-color: transparent;
+        transition:
+            background-color 0.3s ease,
+            border-color 0.3s ease,
+            backdrop-filter 0.3s ease;
+    }
+
+    .site-nav.is-scrolled {
+        background: rgba(10, 10, 10, 0.72);
+        border-bottom-color: rgba(255, 255, 255, 0.08);
+        -webkit-backdrop-filter: saturate(180%) blur(14px);
+        backdrop-filter: saturate(180%) blur(14px);
+    }
+
+    /* backdrop-filter 미지원 브라우저에서는 뒤가 비쳐 글자가 묻히므로
+     * 불투명도를 올려 가독성을 확보합니다. */
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+        .site-nav.is-scrolled {
+            background: rgba(10, 10, 10, 0.94);
+        }
+    }
+}
+
+/* ── 헤더의 로그인 · 회원가입 버튼 ─────────────────────────
+ * Tailwind 는 CDN 의 2.2.19 프리빌드를 그대로 씁니다(public/index.html).
+ * 프리빌드에는 text-[11px], max-[420px]:*, bg-white/5 같은 임의값·슬래시
+ * 문법이 클래스로 존재하지 않아 아무 효과가 없었고, 그래서 모바일에서는
+ * font-size 가 지정되지 않은 채 body 의 16px 를 상속받아 유독 커 보였습니다.
+ * (같은 자리의 로그아웃 버튼은 text-xs 를 써서 정상이었습니다.)
+ * 실제 크기를 여기서 정합니다. 데스크톱 14px 는 헤더의 다른 텍스트와 같은
+ * 단계입니다. */
+.nav-auth-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.625rem;
+    border-radius: 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    transition:
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease;
+}
+
+@media (max-width: 380px) {
+    .nav-auth-link {
+        padding: 0.3125rem 0.5rem;
+        font-size: 0.6875rem;
+    }
+}
+
+@media (min-width: 640px) {
+    .nav-auth-link {
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 0.75rem;
+        font-size: 0.875rem;
+    }
+}
+
+.nav-auth-login {
+    color: #e5e7eb;
+    background: transparent;
+    border: 1px solid #374151;
+}
+
+.nav-auth-login:hover,
+.nav-auth-login.is-active {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.05);
+    border-color: #6b7280;
+}
+
+.nav-auth-register {
+    color: #fff;
+    background: linear-gradient(to right, #3b82f6, #6366f1);
+    border: 1px solid transparent;
+    box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.2);
+}
+
+.nav-auth-register:hover,
+.nav-auth-register.is-active {
+    background: linear-gradient(to right, #6366f1, #8b5cf6);
+}
+
+.about-cta-mobile-break {
+    display: none;
+}
+
+.recruitment-about-mobile,
+.recruitment-about-mobile-break,
+.announcement-mobile-break,
+.about-stat-mobile-break {
+    display: none;
+}
+
+/* 공개 서비스 히어로의 아이콘과 제목 간격을 Members 기준으로 통일합니다. */
+.site-hero-icon {
+    margin-bottom: 1.5rem;
+}
+
+/* About의 TCP 제목을 기준으로 공개 페이지의 히어로 타이포그래피를 통일합니다. */
+.site-hero-title {
+    font-size: 2.25rem;
+    font-weight: 900;
+    line-height: 1.1;
+}
+
+@media (max-width: 479px) {
+    .site-hero-title {
+        font-size: 2rem;
+    }
+}
+
+@media (min-width: 768px) {
+    .site-hero-title {
+        font-size: 3.75rem;
+        line-height: 1;
+    }
+}
+
+.team-hero-icon {
+    background: linear-gradient(135deg, #22d3ee 0%, #3b82f6 52%, #9333ea 100%);
+}
+
+/* Tailwind 2 프리빌드에서는 translate 유틸리티가 단독으로 적용되지 않아
+ * 검색 아이콘의 중앙이 어긋날 수 있습니다. 위치 계산을 공용 CSS로 고정합니다. */
+.search-field-icon {
+    position: absolute;
+    top: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+.search-field-icon-left {
+    left: 1rem;
+}
+
+.search-field-icon-right {
+    right: 1rem;
+}
+
+/* Members와 Find Your Team의 필터 패널은 Tech Articles의 최신 검색 UI와
+ * 같은 표면색을 사용하되, 전용 스타일 파일에는 의존하지 않습니다. */
+.service-filter-panel {
+    padding: 1rem;
+    background: #080d1a;
+    border: 1px solid #171e33;
+}
+
+/* About의 목표 상세 카드도 Members 검색 패널과 같은 표면색을 사용합니다. */
+.about-goal-card {
+    background: #080d1a;
+}
+
+.service-filter-control {
+    width: 100%;
+    height: 42px;
+    color: #fff;
+    background: #080d1a;
+    border: 1px solid #171e33;
+    border-radius: 0.5rem;
+}
+
+.service-filter-control.team-filter-control {
+    font-size: 0.8125rem;
+}
+
+.team-filter-input::placeholder {
+    color: #9ca3af;
+    font-size: inherit;
+    opacity: 1;
+}
+
+.service-filter-control.team-filter-select {
+    color: #aeb6c3;
+    padding-right: 2.5rem;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.team-filter-select-wrap {
+    position: relative;
+}
+
+.team-filter-chevron {
+    position: absolute;
+    top: 50%;
+    right: 1rem;
+    color: #7f8794;
+    font-size: 0.625rem;
+    line-height: 1;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+.service-filter-divider {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #171e33;
+}
+
+.members-filter-panel {
+    width: 75%;
+    margin-right: auto;
+    margin-left: auto;
+}
+
+.members-tag-filter {
+    margin-top: 0.75rem;
+}
+
+.team-tag-filter {
+    margin-top: 0.75rem;
+}
+
+@media (max-width: 767px) {
+    .members-filter-panel {
+        width: 100%;
+    }
+}
+
+.primary-cta-text {
+    color: #0b1220;
+}
+
+/* 최신 Tech Articles 태그 팔레트를 기존 서비스에서 재사용합니다. */
+.service-tag {
+    color: #111827;
+    border: 0;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.service-tag.is-selected {
+    box-shadow: 0 0 0 2px rgba(248, 250, 252, 0.9);
+}
+
+.service-tag-tone-01 { background: #c978a9; }
+.service-tag-tone-02 { background: #a99fb4; }
+.service-tag-tone-03 { background: #d9cde5; }
+.service-tag-tone-04 { background: #9b89a8; }
+.service-tag-tone-05 { background: #a684a7; }
+.service-tag-tone-06 { background: #a181af; }
+.service-tag-tone-07 { background: #a17eba; }
+.service-tag-tone-08 { background: #758f9f; }
+.service-tag-tone-09 { background: #6fb8aa; }
+.service-tag-tone-10 { background: #808b89; }
+.service-tag-tone-11 { background: #75aea4; }
+.service-tag-tone-12 { background: #579c8f; }
+.service-tag-tone-13 { background: #7ba672; }
+.service-tag-tone-14 { background: #8ba0d6; }
+.service-tag-tone-15 { background: #9dc3d8; }
+
+/* Apple의 390px 화면에서 확인한 32px 제목, 14px 버튼, 48px 내비게이션과
+ * iOS의 17pt 기본·11pt 최소 글자 기준을 참고해 공개 화면의 모바일 밀도를
+ * 한 단계 낮춥니다. 브랜드 헤더와 터치 영역은 TCP 구성에 맞춰 조금 더 여유를 둡니다. */
+@media (max-width: 479px) {
+    .site-nav-row {
+        height: 3.5rem;
+    }
+
+    .site-nav-logo {
+        width: 2rem;
+        height: 2rem;
+    }
+
+    .site-nav-row h1 {
+        font-size: 1rem;
+        line-height: 1.25;
+    }
+
+    .nav-auth-link {
+        padding: 0.4375rem 0.5rem;
+        font-size: 0.6875rem;
+    }
+
+    .about-cta-mobile-break {
+        display: block;
+    }
+
+    .recruitment-about-desktop {
+        display: none;
+    }
+
+    .recruitment-about-mobile {
+        display: inline;
+    }
+
+    .recruitment-about-mobile-break,
+    .announcement-mobile-break,
+    .about-stat-mobile-break,
+    .about-cta-copy-line {
+        display: block;
+    }
+
+    .site-nav-mobile {
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+    }
+
+    .site-nav-mobile nav a {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8125rem;
+    }
+
+    section:has(> .site-content-container).min-h-screen {
+        min-height: 100svh;
+        padding-top: 5rem;
+        padding-bottom: 2rem;
+    }
+
+    section:has(> .site-content-container).py-16 {
+        padding-top: 2.5rem;
+        padding-bottom: 2.5rem;
+    }
+
+    section:has(> .site-content-container).py-12 {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+
+    section:has(> .site-content-container).py-8 {
+        padding-top: 1.5rem;
+        padding-bottom: 1.5rem;
+    }
+
+    footer.py-12 {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+
+    .site-hero-icon {
+        width: 4.5rem;
+        height: 4.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .site-hero-icon i,
+    .site-hero-icon svg {
+        font-size: 1.5rem;
+    }
+
+    .site-content-container .text-4xl {
+        font-size: 1.75rem;
+        line-height: 2.125rem;
+    }
+
+    .site-content-container .text-3xl {
+        font-size: 1.5rem;
+        line-height: 2rem;
+    }
+
+    .site-content-container .text-2xl {
+        font-size: 1.25rem;
+        line-height: 1.75rem;
+    }
+
+    .site-content-container .text-xl {
+        font-size: 1rem;
+        line-height: 1.5rem;
+    }
+
+    .site-content-container .text-lg {
+        font-size: 0.9375rem;
+        line-height: 1.375rem;
+    }
+
+    .site-content-container .mb-12 {
+        margin-bottom: 2rem;
+    }
+
+    .site-content-container .mb-8 {
+        margin-bottom: 1.5rem;
+    }
+
+    .site-content-container .gap-8 {
+        gap: 1rem;
+    }
+
+    .site-content-container .gap-6 {
+        gap: 0.75rem;
+    }
+
+    .site-content-container .cta-button {
+        min-height: 2.5rem;
+        padding: 0.625rem 1rem;
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+    }
+
+    .site-content-container .feature-card {
+        padding: 1.25rem;
+    }
+
+    .site-content-container .feature-card .rounded-full {
+        width: 3.25rem;
+        height: 3.25rem;
+        margin-bottom: 1rem;
+    }
+
+    .site-content-container .stat-card,
+    .site-content-container .announcement-item,
+    .site-content-container .study-item,
+    .site-content-container .team-card-body {
+        padding: 1rem;
+    }
+
+    .service-filter-panel {
+        padding: 0.75rem;
+    }
+
+    .service-filter-control {
+        height: 2.5rem;
+        font-size: 0.875rem;
+    }
+
+    .members-filter-panel {
+        margin-bottom: 1.5rem;
+    }
+
+    .members-tag-filter {
+        margin-top: 0.625rem;
+    }
+
+    .team-tag-filter {
+        margin-top: 0.625rem;
+    }
+
+    .study-year-filter {
+        width: 7.5rem;
+        flex: 0 0 7.5rem;
+    }
+
+    .study-year-select {
+        height: 2.25rem;
+        padding: 0.375rem 1.875rem 0.375rem 0.625rem;
+        font-size: 0.8125rem;
+        line-height: 1.25rem;
+    }
+
+    .study-year-filter .fa-chevron-down {
+        font-size: 0.6875rem;
+    }
+
+    .accordion-header,
+    .accordion-body {
+        padding: 0.875rem;
+    }
+
+    .accordion-header .w-12 {
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+
+    .accordion-item {
+        margin-bottom: 0.75rem;
+    }
+}
+
+/* 390px 폭에서도 멤버 목록을 두 열로 유지하도록 카드 내부 밀도를 줄입니다. */
+@media (max-width: 479px) {
+    .members-grid {
+        gap: 0.75rem;
+    }
+
+    .member-card {
+        min-width: 0;
+        padding: 0.75rem 0.5rem;
+    }
+
+    .member-card .img-container {
+        width: 72px;
+        height: 72px;
+        margin-bottom: 0.625rem;
+        border-width: 2px;
+    }
+
+    .member-card h3 {
+        margin-bottom: 0.375rem;
+        overflow-wrap: anywhere;
+        font-size: 0.875rem;
+        line-height: 1.25;
+    }
+
+    .member-card > p {
+        margin-bottom: 0.375rem;
+        overflow-wrap: anywhere;
+        font-size: 0.6875rem;
+        line-height: 1.35;
+    }
+
+    .member-card .member-tag-list {
+        margin-top: 0.625rem;
+        margin-bottom: 0.75rem;
+        gap: 0.25rem;
+    }
+
+    .member-card .service-tag {
+        padding: 0.1875rem 0.375rem;
+        font-size: 11px;
+    }
+
+    .member-card .member-card-links {
+        margin-top: 0.75rem;
+        font-size: 0.875rem;
+    }
+}
