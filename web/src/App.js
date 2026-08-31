@@ -3,6 +3,7 @@ import {
   BrowserRouter as Router,
   Routes,
   Route,
+  Navigate,
   useLocation,
 } from "react-router-dom";
 import "./App.css";
@@ -14,7 +15,6 @@ import Footer from "./components/Footer";
 import { AuthProvider } from "./context/AuthContext";
 
 // 페이지 컴포넌트 임포트
-import Home from "./pages/Home";
 import About from "./pages/About";
 import Members from "./pages/Members";
 import Recruitment from "./pages/Recruitment";
@@ -124,8 +124,8 @@ function AppContent() {
     <div className="App">
       {!isNonCommonLayout && <Header isScrolled={isScrolled} />}
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/about" element={<About />} />
+        <Route path="/" element={<About />} />
+        <Route path="/about" element={<Navigate to="/" replace />} />
         <Route path="/members" element={<Members />} />
         <Route path="/recruitment" element={<Recruitment />} />
         <Route path="/announcement" element={<Announcement />} />

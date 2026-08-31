@@ -6,6 +6,7 @@
   --accent-purple: #c5a8e6;
   --accent-green: #a8e6c5;
   --accent-pink: #e6a8c5;
+  --cta-text-color: #25223d;
 }
 
 body {
@@ -63,10 +64,12 @@ body,
 
 .cta-button {
   background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  color: var(--cta-text-color);
   transition: all 0.3s ease;
 }
 
 .cta-button:hover {
+  color: var(--cta-text-color);
   transform: scale(1.05);
   box-shadow: 0 10px 30px rgba(168, 197, 230, 0.3);
 }

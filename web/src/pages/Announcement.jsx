@@ -141,8 +141,11 @@ function Announcement() {
                 TCP의 중요한 소식을 놓치지 마세요
               </p>
               <p className="orbitron text-lg text-gray-400 max-w-2xl mx-auto">
-                동아리 운영, 행사, 프로젝트 등 TCP의 모든 공식 공지사항을{' '}
+                동아리 운영, 행사, 프로젝트 등
                 <br className="announcement-mobile-break" />
+                {' '}TCP의 모든 공식 공지사항을
+                <br className="announcement-mobile-break" />
+                {' '}
                 이곳에서 확인할 수 있어요.
               </p>
             </div>

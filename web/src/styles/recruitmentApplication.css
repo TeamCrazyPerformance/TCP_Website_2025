@@ -1,0 +1,416 @@
+.recruitment-application-modal {
+  z-index: 1200;
+  padding: 24px;
+  background: rgba(3, 6, 12, 0.78);
+  backdrop-filter: blur(18px) saturate(115%);
+  -webkit-backdrop-filter: blur(18px) saturate(115%);
+}
+
+.recruitment-application-modal .recruitment-application-sheet {
+  width: min(720px, 100%);
+  max-width: 720px;
+  height: calc(100vh - 48px);
+  height: min(860px, calc(100dvh - 48px));
+  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
+  padding: 0;
+  overflow: hidden;
+  overflow: clip;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 24px;
+  background: #0b0e14;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.58);
+  color: #f5f5f7;
+}
+
+.recruitment-application-header {
+  display: flex;
+  min-height: 88px;
+  padding: 18px 24px 16px;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(11, 14, 20, 0.94);
+}
+
+.recruitment-application-heading {
+  min-width: 0;
+}
+
+.recruitment-application-heading h2 {
+  margin: 0;
+  color: #f5f5f7;
+  font-size: 24px;
+  font-weight: 730;
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+}
+
+.recruitment-application-heading > p:last-child {
+  margin: 6px 0 0;
+  color: #9da3ae;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.recruitment-application-modal .recruitment-application-close {
+  position: static;
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  flex: 0 0 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+  color: #d4d7dd;
+  font-size: 16px;
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.recruitment-application-modal .recruitment-application-close:hover {
+  background: rgba(255, 255, 255, 0.13);
+  color: #fff;
+}
+
+.recruitment-application-modal .recruitment-application-close:active {
+  transform: scale(0.96);
+}
+
+.recruitment-application-form {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+  overflow: clip;
+}
+
+.recruitment-application-scroll {
+  min-height: 0;
+  padding: 26px 24px 32px;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.recruitment-application-scroll .form-group {
+  margin-bottom: 22px;
+}
+
+.recruitment-application-scroll .form-label,
+.recruitment-application-scroll .entry label {
+  color: #e7e8ec;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.4;
+}
+
+.recruitment-application-scroll .form-input,
+.recruitment-application-scroll .form-textarea {
+  min-height: 44px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.055);
+  color: #f5f5f7;
+  font-size: 15px;
+  line-height: 1.45;
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.recruitment-application-scroll .form-input:hover,
+.recruitment-application-scroll .form-textarea:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.recruitment-application-scroll .form-input:focus,
+.recruitment-application-scroll .form-textarea:focus {
+  border-color: #7f9cff;
+  background: rgba(255, 255, 255, 0.075);
+  box-shadow: 0 0 0 3px rgba(104, 132, 255, 0.18);
+}
+
+.recruitment-application-scroll .form-input::placeholder,
+.recruitment-application-scroll .form-textarea::placeholder {
+  color: #737b88;
+  opacity: 1;
+}
+
+.recruitment-application-scroll .form-textarea {
+  min-height: 112px;
+  resize: vertical;
+}
+
+.recruitment-application-scroll .section {
+  margin-top: 34px;
+  padding-top: 26px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.recruitment-application-scroll .section > h3 {
+  margin-bottom: 14px;
+  color: #f5f5f7;
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  -webkit-text-fill-color: currentColor;
+}
+
+.recruitment-application-scroll .entry {
+  margin-bottom: 14px;
+  padding: 16px;
+  border-color: rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.recruitment-application-scroll .entry h4 {
+  width: 100%;
+  color: #f5f5f7;
+  font-size: 14px;
+  text-align: center;
+}
+
+.recruitment-application-scroll .entry-heading {
+  position: relative;
+  display: flex;
+  min-height: 32px;
+  margin-bottom: 16px;
+  align-items: center;
+  justify-content: center;
+}
+
+.recruitment-application-scroll .entry-heading button {
+  position: absolute;
+  right: 0;
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+}
+
+.recruitment-application-scroll .entry-field {
+  display: block;
+  margin-top: 17px;
+}
+
+.recruitment-application-scroll .entry-heading + .entry-field {
+  margin-top: 0;
+}
+
+.recruitment-application-scroll .entry-field > .form-input,
+.recruitment-application-scroll .entry-field > .form-textarea,
+.recruitment-application-scroll .entry-field > .project-date-range {
+  margin-top: 7px;
+}
+
+.recruitment-application-scroll .project-date-range {
+  display: grid;
+  width: 100%;
+  max-width: 292px;
+  grid-template-columns: minmax(0, 132px) auto minmax(0, 132px);
+  align-items: center;
+  justify-content: start;
+  gap: 8px;
+}
+
+.recruitment-application-scroll .project-date-range .form-input {
+  min-width: 0;
+  margin-top: 0;
+  padding-right: 8px;
+  padding-left: 8px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.recruitment-application-scroll .project-date-range > span {
+  color: #7f8794;
+  text-align: center;
+}
+
+.recruitment-application-scroll .entry-add-button {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 16px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #dfe3eb;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.recruitment-application-scroll .entry-add-button svg {
+  margin-right: 8px;
+}
+
+.recruitment-application-scroll .checkbox-container {
+  margin: 32px 0 0;
+  padding: 16px;
+  align-items: flex-start;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.recruitment-application-scroll .checkbox-container input {
+  margin-top: 1px;
+  flex: 0 0 auto;
+}
+
+.recruitment-application-footer {
+  display: grid;
+  padding: 14px 24px calc(14px + env(safe-area-inset-bottom));
+  flex: 0 0 auto;
+  grid-template-columns: 0.72fr 1.28fr;
+  gap: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(11, 14, 20, 0.96);
+}
+
+.recruitment-application-footer button {
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: 13px;
+  font-size: 14px;
+  font-weight: 700;
+  transition: filter 160ms ease, transform 160ms ease, background 160ms ease;
+}
+
+.recruitment-application-footer button:active {
+  transform: scale(0.985);
+}
+
+.recruitment-application-cancel {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.065);
+  color: #e4e6eb;
+}
+
+.recruitment-application-submit {
+  border: 0;
+  background: linear-gradient(135deg, #7da5ff, #9d86ff);
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.23);
+  color: #090b11;
+}
+
+.recruitment-application-submit:hover {
+  filter: brightness(1.07);
+}
+
+.recruitment-application-submit:disabled {
+  box-shadow: none;
+  cursor: not-allowed;
+  filter: grayscale(0.25);
+  opacity: 0.58;
+}
+
+@media (max-width: 479px) {
+  .recruitment-application-modal {
+    padding: 0;
+    align-items: stretch;
+    background: #0b0e14;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .recruitment-application-modal .recruitment-application-sheet {
+    width: 100%;
+    max-width: none;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    animation: recruitment-sheet-enter 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .recruitment-application-header {
+    min-height: 78px;
+    padding: calc(12px + env(safe-area-inset-top)) 18px 12px;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .recruitment-application-heading h2 {
+    font-size: 21px;
+  }
+
+  .recruitment-application-heading > p:last-child {
+    margin-top: 4px;
+    font-size: 12px;
+  }
+
+  .recruitment-application-scroll {
+    padding: 22px 18px 28px;
+    scrollbar-gutter: auto;
+  }
+
+  .recruitment-application-scroll .form-group {
+    margin-bottom: 20px;
+  }
+
+  .recruitment-application-scroll .form-input,
+  .recruitment-application-scroll .form-textarea {
+    font-size: 16px;
+  }
+
+  .recruitment-application-scroll .form-textarea {
+    min-height: 104px;
+  }
+
+  .recruitment-application-scroll .section {
+    margin-top: 30px;
+    padding-top: 24px;
+  }
+
+  .recruitment-application-scroll .entry {
+    padding: 14px;
+  }
+
+  .recruitment-application-scroll .project-date-range {
+    max-width: 100%;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .recruitment-application-footer {
+    padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
+    grid-template-columns: 0.68fr 1.32fr;
+    gap: 8px;
+  }
+}
+
+@keyframes recruitment-sheet-enter {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recruitment-application-modal .recruitment-application-sheet {
+    animation: none;
+  }
+}

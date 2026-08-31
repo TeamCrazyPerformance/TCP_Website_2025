@@ -371,10 +371,12 @@ body {
 
 .cta-button {
     background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+    color: var(--cta-text-color);
     transition: all 0.3s ease;
 }
 
 .cta-button:hover {
+    color: var(--cta-text-color);
     transform: scale(1.05);
     box-shadow: 0 10px 30px rgba(168, 197, 230, 0.3);
 }
@@ -1211,7 +1213,7 @@ body {
 }
 
 .primary-cta-text {
-    color: #0b1220;
+    color: var(--cta-text-color);
 }
 
 /* 최신 Tech Articles 태그 팔레트를 기존 서비스에서 재사용합니다. */
