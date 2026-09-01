@@ -461,7 +461,7 @@ describe("Tech Articles CSS 스코프", () => {
       /\.ta-public \.article-card \.article-summary-row\s*{[^}]*display:\s*block;/s,
     );
     expect(block[1]).toMatch(
-      /\.ta-public \.article-card \.article-summary-row \.article-summary\s*{[^}]*display:\s*-webkit-box;[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;[^}]*-webkit-line-clamp:\s*2;/s,
+      /\.ta-public \.article-card \.article-summary-row \.article-summary\s*{[^}]*display:\s*-webkit-box;[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*normal;[^}]*-webkit-line-clamp:\s*2;/s,
     );
     expect(block[1]).toMatch(
       /\.ta-public \.article-card \.article-meta-mobile\s*{[^}]*display:\s*block;[^}]*margin:\s*6px 0 0;[^}]*font-size:\s*11px;[^}]*white-space:\s*nowrap;/s,
@@ -887,6 +887,28 @@ describe("Tech Articles CSS 스코프", () => {
     );
   });
 
+  test("모바일 소스 선택 창은 화면 절반까지만 커지고 목록만 스크롤한다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+    const narrow = [
+      ...css.matchAll(/@media \(max-width:\s*767px\)\s*{([\s\S]*?)\n}/g),
+    ]
+      .map((match) => match[1])
+      .join("\n");
+
+    expect(narrow).toMatch(
+      /\.ta-public \.source-dialog-inner\s*{[^}]*max-height:\s*50vh;[^}]*max-height:\s*50dvh;/s,
+    );
+    expect(narrow).toMatch(
+      /\.ta-public \.source-option-list\s*{[^}]*min-height:\s*0;[^}]*overscroll-behavior-y:\s*contain;/s,
+    );
+    expect(css).toMatch(
+      /\.ta-public \.source-option-list\s*{[^}]*overflow-y:\s*auto;/s,
+    );
+  });
+
   test("가치 점수 안내는 넓은 화면에서 한 문장, 좁은 화면에서 두 줄로 읽힌다", () => {
     const css = fs.readFileSync(
       path.join(__dirname, "techArticlesPublicAlign.css"),
@@ -1054,7 +1076,7 @@ describe("Tech Articles CSS 스코프", () => {
     }
   });
 
-  test("한 줄 요약 박스는 좌측 세로 강조선을 그리지 않는다", () => {
+  test("상세 한 줄 요약은 강조선 없이 모바일에서도 전체를 표시한다", () => {
     const css = fs.readFileSync(
       path.join(__dirname, "techArticlesPublicAlign.css"),
       "utf8",
@@ -1070,7 +1092,7 @@ describe("Tech Articles CSS 스코프", () => {
       .map((match) => match[1])
       .join("\n");
     expect(narrow).toMatch(
-      /\.ta-public \.detail-one-line-summary\s*{[^}]*display:\s*-webkit-box;[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;[^}]*-webkit-line-clamp:\s*2;/s,
+      /\.ta-public \.detail-one-line-summary\s*{[^}]*display:\s*block;[^}]*overflow:\s*visible;[^}]*text-overflow:\s*clip;[^}]*-webkit-line-clamp:\s*unset;/s,
     );
   });
 

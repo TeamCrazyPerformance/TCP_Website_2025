@@ -4,13 +4,14 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { REFRESH_TOKEN_TTL_MS } from './auth.constants';
 
 // 쿠키 옵션 상수
 const REFRESH_TOKEN_COOKIE_OPTIONS = {
   httpOnly: true,           // JavaScript에서 접근 불가 (XSS 방지)
   secure: process.env.NODE_ENV === 'production', // 프로덕션에서만 HTTPS 필수
   sameSite: 'strict' as const, // CSRF 방지
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7일 (밀리초)
+  maxAge: REFRESH_TOKEN_TTL_MS,
   path: '/',                // 모든 경로에서 전송 (필요시 '/auth'로 제한 가능)
 };
 

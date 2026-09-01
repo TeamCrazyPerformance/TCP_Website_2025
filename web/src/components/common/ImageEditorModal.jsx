@@ -241,7 +241,7 @@ const ImageEditorModal = ({
                                 alignItems: 'center',
                                 gap: '0.5rem',
                                 border: 'none',
-                                color: '#fff',
+                                color: 'var(--cta-text-color)',
                                 fontWeight: 'bold'
                             }}
                         >

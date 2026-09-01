@@ -271,14 +271,14 @@
   display: none;
 }
 .ta-public .cta-button {
-  color: #fff;
+  color: var(--cta-text-color);
   background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
   border: 0;
   cursor: pointer;
   transition: all 0.3s ease;
 }
 .ta-public .cta-button:hover {
-  color: #000;
+  color: var(--cta-text-color);
   box-shadow: 0 10px 30px rgba(168, 197, 230, 0.3);
   transform: scale(1.05);
 }
@@ -450,15 +450,17 @@
 }
 .ta-public .article-card {
   padding: 24px;
-  background: var(--secondary-gray);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--card-surface-background);
+  border: 1px solid var(--card-surface-border);
   border-radius: 12px;
+  box-shadow: var(--card-surface-rest-shadow);
   text-align: left;
   transition: all 0.3s ease;
 }
 .ta-public .article-card:hover {
-  background: var(--light-gray);
-  box-shadow: 0 5px 15px rgba(168, 197, 230, 0.15);
+  background: var(--card-surface-background);
+  border-color: var(--card-surface-hover-border);
+  box-shadow: var(--card-surface-shadow);
   transform: translateY(-3px);
 }
 .ta-public .article-topline {
@@ -747,7 +749,7 @@
   cursor: pointer;
 }
 .ta-public .sheet-actions .cta-button {
-  color: #fff;
+  color: var(--cta-text-color);
   background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
   font-weight: 700;
 }
@@ -3986,10 +3988,10 @@
     margin-top: 0;
   }
 .ta-public .article-summary {
-    display: -webkit-box;
+    display: block;
+    overflow: visible;
+    text-overflow: clip;
     white-space: normal;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
   }
 .ta-public .article-card-bottom {
     align-items: center;

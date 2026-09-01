@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faPlus,
@@ -7,10 +7,8 @@ import {
   faPaperPlane,
   faRocket,
   faGraduationCap,
-  faHeart,
   faTrophy,
   faProjectDiagram,
-  faBriefcase,
   faCode,
   faGlobe,
   faMobileAlt,
@@ -25,60 +23,35 @@ import {
 import { Link } from 'react-router-dom';
 import { apiPost, apiGet } from '../api/client';
 import { formatBirthDate } from '../utils/dateFormatter';
+import PublicPageHero from '../components/public/PublicPageHero';
+import { useScrollReveal } from '../hooks/useScrollReveal';
+import {
+  buildRecruitmentApplication,
+  formatPhoneNumber,
+  hasValidApplicationDates,
+  validatePhoneNumber,
+} from '../utils/recruitmentApplication';
+import '../styles/recruitmentApplication.css';
 
-// 전화번호 자동 형식화 함수
-const formatPhoneNumber = (value) => {
-  // 숫자만 추출
-  const numbers = value.replace(/[^0-9]/g, '');
-
-  // 최대 11자리까지만 허용
-  const limited = numbers.slice(0, 11);
-
-  // 서울 지역번호 (02)인 경우
-  if (limited.startsWith('02')) {
-    if (limited.length <= 2) {
-      return limited;
-    } else if (limited.length <= 5) {
-      return `${limited.slice(0, 2)}-${limited.slice(2)}`;
-    } else if (limited.length <= 9) {
-      return `${limited.slice(0, 2)}-${limited.slice(2, 5)}-${limited.slice(5)}`;
-    } else {
-      return `${limited.slice(0, 2)}-${limited.slice(2, 6)}-${limited.slice(6, 10)}`;
-    }
-  }
-
-  // 일반 전화번호 (010, 011, 031 등 3자리 지역/통신사 번호)
-  if (limited.length <= 3) {
-    return limited;
-  } else if (limited.length <= 6) {
-    return `${limited.slice(0, 3)}-${limited.slice(3)}`;
-  } else if (limited.length <= 10) {
-    return `${limited.slice(0, 3)}-${limited.slice(3, 6)}-${limited.slice(6)}`;
-  } else {
-    return `${limited.slice(0, 3)}-${limited.slice(3, 7)}-${limited.slice(7)}`;
-  }
-};
-
-// 전화번호 유효성 검사 함수
-const validatePhoneNumber = (phone) => {
-  const pattern = /^0\d{1,2}-\d{3,4}-\d{4}$/;
-  return pattern.test(phone);
-};
+let applicationEntryId = 0;
+const createApplicationEntry = () => ({ id: `application-entry-${applicationEntryId++}` });
 
 function Recruitment() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [projects, setProjects] = useState([{}]); // Initial single empty project
-  const [awards, setAwards] = useState([{}]); // Initial single empty award
+  const [projects, setProjects] = useState(() => [createApplicationEntry()]);
+  const [awards, setAwards] = useState(() => [createApplicationEntry()]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRecruitmentActive, setIsRecruitmentActive] = useState(false); // New state
+  const [isRecruitmentActive, setIsRecruitmentActive] = useState(false);
   const [recruitmentPeriod, setRecruitmentPeriod] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [studentNumber, setStudentNumber] = useState('');
   const [studentNumberError, setStudentNumberError] = useState('');
+  const applicationFormRef = useRef(null);
+
+  useScrollReveal();
 
   useEffect(() => {
-    // Check Recruitment Status
     const checkStatus = async () => {
       try {
         const data = await apiGet('/api/v1/recruitment/status');
@@ -106,27 +79,6 @@ function Recruitment() {
     };
     checkStatus();
 
-    const observerOptions = {
-      threshold: 0,
-      rootMargin: '0px 0px -50px 0px',
-    };
-
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-          observer.unobserve(entry.target);
-        }
-      });
-    }, observerOptions);
-
-    document.querySelectorAll('.scroll-fade').forEach((el) => {
-      observer.observe(el);
-    });
-
-    return () => {
-      observer.disconnect();
-    };
   }, []);
 
   const openModal = () => {
@@ -135,145 +87,78 @@ function Recruitment() {
       return;
     }
     setIsModalOpen(true);
-    document.body.style.overflow = 'hidden';
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
-    document.body.style.overflow = 'auto';
   };
+
+  const requestCloseModal = () => {
+    const form = applicationFormRef.current;
+    const inputs = form ? form.querySelectorAll('input, textarea, select') : [];
+    const hasContent = Array.from(inputs).some((element) => {
+      if (element.type === 'checkbox' || element.type === 'radio') {
+        return element.checked;
+      }
+
+      return element.value && element.value.trim();
+    });
+
+    if (
+      hasContent &&
+      !window.confirm('작성 중인 내용이 있습니다. 정말 닫으시겠습니까?')
+    ) {
+      return;
+    }
+
+    closeModal();
+  };
+
+  useEffect(() => {
+    if (!isModalOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isModalOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const form = e.currentTarget;
 
-    const privacyAgreement = document.getElementById('privacyAgreement');
+    const privacyAgreement = form.elements.privacyAgreement;
     if (!privacyAgreement.checked) {
       alert('개인정보 수집 및 이용에 동의해주세요.');
       return;
     }
 
-    // 전화번호 유효성 검사
     if (!validatePhoneNumber(phoneNumber)) {
       setPhoneError('올바른 전화번호 형식이 아닙니다. (예: 010-1234-5678)');
       return;
     }
 
-    const formData = new FormData(e.target);
-    const data = {
-      projects: [],
-      awards: [],
-    };
-
-    // Process Projects
-    const projectNames = formData.getAll('project_name');
-    const projectContributions = formData.getAll('project_contribution');
-    const projectStartDates = formData.getAll('project_start_date');
-    const projectEndDates = formData.getAll('project_end_date');
-    const projectDescriptions = formData.getAll('project_description');
-    const projectTechStacks = formData.getAll('project_tech_stack');
-
-    projectNames.forEach((_, index) => {
-      data.projects.push({
-        name: projectNames[index],
-        contribution: projectContributions[index],
-        date: `${projectStartDates[index]} ~ ${projectEndDates[index]}`,
-        description: projectDescriptions[index],
-        techStack: projectTechStacks[index],
-      });
+    const formData = new FormData(form);
+    const application = buildRecruitmentApplication(formData, {
+      studentNumber,
+      phoneNumber,
     });
 
-    // Process Awards
-    const awardNames = formData.getAll('award_name');
-    const awardInstitutions = formData.getAll('award_institution');
-    const awardDates = formData.getAll('award_date');
-    const awardDescriptions = formData.getAll('award_description');
-
-    awardNames.forEach((_, index) => {
-      data.awards.push({
-        name: awardNames[index],
-        institution: awardInstitutions[index],
-        date: awardDates[index],
-        description: awardDescriptions[index],
-      });
-    });
-
-    // Add other form fields
-    data.name = formData.get('name');
-    data.studentId = studentNumber; // Use state value with validated student number
-    data.major = formData.get('major');
-    data.phone = phoneNumber; // Use state value with formatted phone number
-    data.techStack = formData.get('techStack');
-    data.interests = formData.get('interests');
-    data.selfIntroduction = formData.get('selfIntroduction');
-    data.expectations = formData.get('expectations');
-
-    const cleanedAwards = data.awards.filter(
-      (award) =>
-        award.name && award.institution && award.date && award.description
-    );
-    const cleanedProjects = data.projects.filter(
-      (project) =>
-        project.name &&
-        project.contribution &&
-        project.date &&
-        project.description &&
-        project.techStack
-    );
-
-    const payload = {
-      name: data.name,
-      student_number: data.studentId,
-      major: data.major,
-      phone_number: data.phone,
-      tech_stack: data.techStack || undefined,
-      area_interest: data.interests,
-      self_introduction: data.selfIntroduction,
-      club_expectation: data.expectations,
-      submit_year: new Date().getFullYear(),
-      awards: cleanedAwards.map((award) => ({
-        award_name: award.name,
-        award_institution: award.institution,
-        award_date: award.date,
-        award_description: award.description,
-      })),
-      projects: cleanedProjects.map((project) => ({
-        project_name: project.name,
-        project_contribution: project.contribution,
-        project_date: project.date.split('~')[0]?.trim() || project.date,
-        project_description: project.description,
-        project_tech_stack: project.techStack,
-      })),
-    };
-
-    // Validate student number before submission
     if (studentNumberError || !studentNumber || studentNumber.length !== 8) {
       alert('8자리 학번을 정확히 입력해주세요.');
       setIsSubmitting(false);
       return;
     }
 
-    // Validate phone number before submission
     if (phoneError || !phoneNumber) {
       alert('올바른 전화번호를 입력해주세요.');
       setIsSubmitting(false);
       return;
     }
 
-    // Validate dates (Year <= 9999)
-    const isValidDate = (dateString) => {
-      if (!dateString) return true; // Empty date is valid (or handled by required attribute if needed)
-      const year = new Date(dateString).getFullYear();
-      return year <= 9999;
-    };
-
-    const projectDatesValid = data.projects.every(p => {
-      const dates = p.date.split('~').map(d => d.trim());
-      return dates.every(d => isValidDate(d));
-    });
-
-    const awardDatesValid = data.awards.every(a => isValidDate(a.date));
-
-    if (!projectDatesValid || !awardDatesValid) {
+    if (!hasValidApplicationDates(application)) {
       alert('연도는 9999년까지만 입력 가능합니다.');
       setIsSubmitting(false);
       return;
@@ -281,9 +166,11 @@ function Recruitment() {
 
     try {
       setIsSubmitting(true);
-      await apiPost('/api/v1/recruitment', payload);
+      await apiPost('/api/v1/recruitment', application.payload);
       alert('지원서가 성공적으로 제출되었습니다! 검토 후 연락드리겠습니다.');
-      e.target.reset();
+      form.reset();
+      setProjects([createApplicationEntry()]);
+      setAwards([createApplicationEntry()]);
       setPhoneNumber('');
       setPhoneError('');
       setStudentNumber('');
@@ -297,85 +184,69 @@ function Recruitment() {
   };
 
   const addProject = () => {
-    setProjects([...projects, {}]);
+    setProjects((currentProjects) => [...currentProjects, createApplicationEntry()]);
   };
 
   const removeProject = (index) => {
-    const newProjects = [...projects];
-    newProjects.splice(index, 1);
-    setProjects(newProjects);
+    setProjects((currentProjects) =>
+      currentProjects.filter((_, projectIndex) => projectIndex !== index)
+    );
   };
 
   const addAward = () => {
-    setAwards([...awards, {}]);
+    setAwards((currentAwards) => [...currentAwards, createApplicationEntry()]);
   };
 
   const removeAward = (index) => {
-    const newAwards = [...awards];
-    newAwards.splice(index, 1);
-    setAwards(newAwards);
+    setAwards((currentAwards) =>
+      currentAwards.filter((_, awardIndex) => awardIndex !== index)
+    );
   };
 
   return (
-    <>
-      <section className="pt-24 pb-16 min-h-screen flex items-center">
-        <div className="container site-content-container mx-auto px-4">
-          <div className="text-center">
-            <div className="mb-8">
-              <div className="site-hero-icon w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-blue-400 via-purple-400 to-pink-400 flex items-center justify-center">
-                <FontAwesomeIcon
-                  icon={faRocket}
-                  className="text-white text-3xl"
-                />
-              </div>
-              <h1 className="site-hero-title orbitron mb-4">
-                <span className="gradient-text">TCP</span>
-              </h1>
-              <p className="orbitron text-xl md:text-2xl text-gray-300 mb-6">
-                Team Crazy Performance
-              </p>
-              <p className="orbitron text-lg text-gray-400 max-w-2xl mx-auto mb-8">
-                서울과학기술대학교 컴퓨터공학과 학술동아리 TCP에서
-                <br />
-                새로운 사람들과 함께 당신의 열정을 실현해 보세요.
-              </p>
-              <button
-                id="heroApplyBtn"
-                onClick={openModal}
-                disabled={!isRecruitmentActive}
-                className={`cta-button px-12 py-4 rounded-full text-lg font-bold orbitron text-white transition-colors ${!isRecruitmentActive ? 'opacity-50 cursor-not-allowed bg-gray-600' : 'hover:text-black'}`}
-              >
-                <FontAwesomeIcon icon={faRocket} className="mr-2" />
-                {isRecruitmentActive ? '지금 지원하기' : '모집 기간이 아닙니다'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
+    <main className="public-page-unified-background">
+      <PublicPageHero
+        icon={<FontAwesomeIcon icon={faRocket} className="text-white text-3xl" />}
+        iconClassName="bg-gradient-to-br from-blue-400 via-purple-400 to-pink-400"
+        title="Team Crazy Performance"
+        titleClassName="recruitment-hero-title"
+        lead={(
+          <>
+            TCP에서 뛰어난 동료들과 협업하고,
+            <br />
+            함께 성장하여 자신의 꿈을 현실로 만들어보세요.
+          </>
+        )}
+        action={(
+          <button
+            id="heroApplyBtn"
+            onClick={openModal}
+            disabled={!isRecruitmentActive}
+            className={`recruitment-hero-action cta-button px-12 py-4 rounded-full text-lg font-bold orbitron transition-colors ${!isRecruitmentActive ? 'opacity-50 cursor-not-allowed bg-gray-600 text-white' : 'primary-cta-text'}`}
+          >
+            <FontAwesomeIcon icon={faRocket} className="mr-2" />
+            {isRecruitmentActive ? '지금 지원하기' : '모집 기간이 아닙니다'}
+          </button>
+        )}
+      />
 
       {/* About TCP 세션 */}
       <section
         id="about"
-        className="py-16 bg-gradient-to-b from-transparent to-gray-900"
+        className="py-16"
       >
         <div className="container site-content-container mx-auto px-4">
-          <div className="text-center mb-12">
+          <div className="text-center">
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-4">
-              About TCP
+              Change Starts with TCP
               </h2>
             <div className="max-w-4xl mx-auto">
-              <p className="orbitron text-xl text-gray-300 mb-4">
-                <span className="recruitment-about-desktop">
-                  TCP(Team Crazy Performance)는 서울과학기술대학교 컴퓨터공학과 학술동아리입니다.
-                </span>
-                <span className="recruitment-about-mobile">
-                  TCP는 서울과학기술대학교 컴퓨터공학과 학술동아리입니다.
-                </span>
-              </p>
-              <p className="orbitron text-lg text-gray-400 mb-8">
-                TCP는 다양한 사람이 모여 같이 탐구하고,
-                <br className="recruitment-about-mobile-break" />
-                함께 성장하는 것을 목표로 합니다.
+              <p className="recruitment-about-summary orbitron text-xl text-gray-300">
+                TCP (Team Crazy Performance)는,
+                <br />
+                서울과학기술대학교 컴퓨터공학과 학술동아리로,
+                <br />
+                뛰어난 동료와 같이 탐구하고, 함께 성장하는 것을 목표로 합니다.
               </p>
             </div>
           </div>
@@ -383,11 +254,11 @@ function Recruitment() {
       </section>
 
       {/* 지원자 세션 */}
-      <section id="who-should-apply" className="py-16">
+      <section id="who-should-apply" className="recruitment-candidate-section">
         <div className="container site-content-container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
             <h2 className="orbitron text-3xl font-bold gradient-text mb-8 text-center">
-              TCP는 이런 사람들을 환영해요
+              TCP는 이런 사람을 찾고 있어요
             </h2>
             <div className="grid md:grid-cols-3 gap-8">
               <div className="scroll-fade h-full">
@@ -450,11 +321,11 @@ function Recruitment() {
       {/* TCP 활동 세션 */}
       <section
         id="what-we-do"
-        className="py-16 bg-gradient-to-b from-transparent to-gray-900"
+        className="py-16"
       >
         <div className="container site-content-container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-8">
+            <h2 className="orbitron text-3xl font-bold gradient-text mb-8">
               TCP는 이런 활동을 해요
             </h2>
           </div>
@@ -608,13 +479,27 @@ function Recruitment() {
             </div>
           </div>
 
-          {/* 지원 버튼 */}
-          <div className="text-center mt-12">
+        </div>
+      </section>
+
+      <section className="recruitment-closing-cta py-16">
+        <div className="container site-content-container mx-auto px-4">
+          <div className="max-w-3xl mx-auto text-center">
+            <h2 className="orbitron text-4xl md:text-5xl font-black mb-6 text-white">
+              TCP에서{' '}
+              <br className="recruitment-cta-mobile-break" />
+              개발자의 길을 걸어보세요
+            </h2>
+            <p className="text-xl text-gray-200 mb-8">
+              <span className="recruitment-cta-copy-line">뛰어난 동료들과 함께 성장하고,</span>{' '}
+              <span className="recruitment-cta-copy-line">협업 경험을 쌓으며,</span>{' '}
+              <span className="recruitment-cta-copy-line">자신의 꿈을 현실로 만들어보세요.</span>
+            </p>
             <button
               id="sectionApplyBtn"
               onClick={openModal}
               disabled={!isRecruitmentActive}
-              className={`cta-button px-12 py-4 rounded-full text-lg font-bold orbitron text-white transition-colors ${!isRecruitmentActive ? 'opacity-50 cursor-not-allowed bg-gray-600' : 'hover:text-black'}`}
+              className={`cta-button px-12 py-4 rounded-full text-lg font-bold orbitron transition-colors ${!isRecruitmentActive ? 'opacity-50 cursor-not-allowed bg-gray-600 text-white' : 'primary-cta-text'}`}
             >
               <FontAwesomeIcon icon={faRocket} className="mr-2" />
               {isRecruitmentActive ? '지금 지원하기' : '모집 기간이 아닙니다'}
@@ -630,44 +515,59 @@ function Recruitment() {
       {isModalOpen && (
         <div
           id="applicationModal"
-          className="modal active"
+          className="modal active recruitment-application-modal"
           onClick={(e) => {
             if (e.target.id === 'applicationModal') {
-              const form = e.target.querySelector('form');
-              const inputs = form ? form.querySelectorAll('input, textarea, select') : [];
-              const hasContent = Array.from(inputs).some(el => el.value && el.value.trim());
-              if (hasContent && !window.confirm('작성 중인 내용이 있습니다. 정말 닫으시겠습니까?')) return;
-              closeModal();
+              requestCloseModal();
             }
           }}
         >
-          <div className="modal-content">
-            <button className="close-modal" onClick={() => {
-              const form = document.querySelector('#applicationModal form');
-              const inputs = form ? form.querySelectorAll('input, textarea, select') : [];
-              const hasContent = Array.from(inputs).some(el => el.value && el.value.trim());
-              if (hasContent && !window.confirm('작성 중인 내용이 있습니다. 정말 닫으시겠습니까?')) return;
-              closeModal();
-            }}>
-              <FontAwesomeIcon icon={faTimes} />
-            </button>
-            <div className="p-8">
-              <h2 className="orbitron text-2xl font-bold gradient-text mb-6 text-center">
-                TCP 지원서
-              </h2>
-              <form onSubmit={handleSubmit}>
+          <section
+            className="modal-content recruitment-application-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="applicationModalTitle"
+            aria-describedby="applicationModalDescription"
+          >
+            <header className="recruitment-application-header">
+              <div className="recruitment-application-heading">
+                <h2 id="applicationModalTitle">TCP 지원서</h2>
+                <p id="applicationModalDescription">
+                  필수 항목을 작성한 뒤 제출해 주세요.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="close-modal recruitment-application-close"
+                onClick={requestCloseModal}
+                aria-label="지원서 닫기"
+              >
+                <FontAwesomeIcon icon={faTimes} />
+              </button>
+            </header>
+
+            <form ref={applicationFormRef} className="recruitment-application-form" onSubmit={handleSubmit}>
+              <div className="recruitment-application-scroll">
+                <section className="recruitment-form-section recruitment-application-basic-section">
+                  <div className="recruitment-form-section-heading">
+                    <h3>기본 정보</h3>
+                  </div>
                 <div className="form-group">
                   <label
                     htmlFor="name"
-                    className="form-label required text-left"
+                    className="form-label recruitment-question-label text-left"
                   >
-                    이름
+                    <span className="recruitment-question-required" aria-hidden="true">*</span>
+                    <span>이름</span>
                   </label>
+                  <p className="recruitment-question-hint">이름을 입력해주세요.</p>
                   <input
                     type="text"
                     id="name"
                     name="name"
                     className="form-input"
+                    placeholder="이름"
+                    autoComplete="name"
                     required
                   />
                 </div>
@@ -675,16 +575,22 @@ function Recruitment() {
                 <div className="form-group">
                   <label
                     htmlFor="studentId"
-                    className="form-label required text-left"
+                    className="form-label recruitment-question-label text-left"
                   >
-                    학번
+                    <span className="recruitment-question-required" aria-hidden="true">*</span>
+                    <span>학번</span>
                   </label>
+                  <p className="recruitment-question-hint">학번 8자리를 입력해주세요.</p>
                   <input
                     type="text"
                     id="studentId"
                     name="studentId"
                     className={`form-input ${studentNumberError ? 'border-red-500' : ''}`}
                     placeholder="8자리 숫자"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    aria-invalid={Boolean(studentNumberError)}
+                    aria-describedby={studentNumberError ? 'studentIdError' : undefined}
                     value={studentNumber}
                     onChange={(e) => {
                       const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 8);
@@ -697,21 +603,28 @@ function Recruitment() {
                     }}
                     required
                   />
-                  {studentNumberError && <p className="text-red-500 text-sm mt-1">{studentNumberError}</p>}
+                  {studentNumberError && (
+                    <p id="studentIdError" className="text-red-500 text-sm mt-1" role="alert">
+                      {studentNumberError}
+                    </p>
+                  )}
                 </div>
 
                 <div className="form-group">
                   <label
                     htmlFor="major"
-                    className="form-label required text-left"
+                    className="form-label recruitment-question-label text-left"
                   >
-                    학과/전공
+                    <span className="recruitment-question-required" aria-hidden="true">*</span>
+                    <span>학과/전공</span>
                   </label>
+                  <p className="recruitment-question-hint">학과 또는 전공을 입력해주세요.</p>
                   <input
                     type="text"
                     id="major"
                     name="major"
                     className="form-input"
+                    placeholder="학과/전공"
                     required
                   />
                 </div>
@@ -719,16 +632,22 @@ function Recruitment() {
                 <div className="form-group">
                   <label
                     htmlFor="phone"
-                    className="form-label required text-left"
+                    className="form-label recruitment-question-label text-left"
                   >
-                    전화번호
+                    <span className="recruitment-question-required" aria-hidden="true">*</span>
+                    <span>전화번호</span>
                   </label>
+                  <p className="recruitment-question-hint">연락 가능한 전화번호를 입력해주세요.</p>
                   <input
                     type="tel"
                     id="phone"
                     name="phone"
                     className={`form-input ${phoneError ? 'border-red-500' : ''}`}
                     placeholder="010-0000-0000"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    aria-invalid={Boolean(phoneError)}
+                    aria-describedby={phoneError ? 'phoneError' : undefined}
                     value={phoneNumber}
                     onChange={(e) => {
                       const formatted = formatPhoneNumber(e.target.value);
@@ -742,16 +661,22 @@ function Recruitment() {
                     }}
                     required
                   />
-                  {phoneError && <p className="text-red-500 text-sm mt-1">{phoneError}</p>}
+                  {phoneError && (
+                    <p id="phoneError" className="text-red-500 text-sm mt-1" role="alert">
+                      {phoneError}
+                    </p>
+                  )}
                 </div>
 
                 <div className="form-group">
                   <label
                     htmlFor="interests"
-                    className="form-label required text-left"
+                    className="form-label recruitment-question-label text-left"
                   >
-                    관심 분야
+                    <span className="recruitment-question-required" aria-hidden="true">*</span>
+                    <span>관심 분야</span>
                   </label>
+                  <p className="recruitment-question-hint">관심 있는 개발 분야를 알려주세요.</p>
                   <textarea
                     id="interests"
                     name="interests"
@@ -764,10 +689,12 @@ function Recruitment() {
                 <div className="form-group">
                   <label
                     htmlFor="selfIntroduction"
-                    className="form-label required text-left"
+                    className="form-label recruitment-question-label text-left"
                   >
-                    자기소개
+                    <span className="recruitment-question-required" aria-hidden="true">*</span>
+                    <span>자기소개</span>
                   </label>
+                  <p className="recruitment-question-hint">자신을 자유롭게 소개해주세요.</p>
                   <textarea
                     id="selfIntroduction"
                     name="selfIntroduction"
@@ -780,10 +707,12 @@ function Recruitment() {
                 <div className="form-group">
                   <label
                     htmlFor="expectations"
-                    className="form-label required text-left"
+                    className="form-label recruitment-question-label text-left"
                   >
-                    TCP에 대한 기대
+                    <span className="recruitment-question-required" aria-hidden="true">*</span>
+                    <span>TCP에 대한 기대</span>
                   </label>
+                  <p className="recruitment-question-hint">TCP에서 기대하는 경험을 작성해주세요.</p>
                   <textarea
                     id="expectations"
                     name="expectations"
@@ -793,6 +722,8 @@ function Recruitment() {
                   ></textarea>
                 </div>
 
+                </section>
+
                 {/* 프로젝트 경험 */}
                 <div className="section">
                   <h3 className="orbitron text-xl font-bold gradient-text mb-4 text-left">
@@ -801,10 +732,10 @@ function Recruitment() {
                   <div id="projects-container">
                     {projects.map((project, index) => (
                       <div
-                        key={index}
+                        key={project.id}
                         className="entry mb-4 p-4 border border-gray-700 rounded-lg"
                       >
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="entry-heading">
                           <h4 className="font-semibold text-white">
                             프로젝트 #{index + 1}
                           </h4>
@@ -818,7 +749,7 @@ function Recruitment() {
                             </button>
                           )}
                         </div>
-                        <label className="block text-sm font-medium text-gray-300">
+                        <label className="entry-field">
                           프로젝트명:
                           <input
                             type="text"
@@ -826,7 +757,7 @@ function Recruitment() {
                             className="form-input mt-1"
                           />
                         </label>
-                        <label className="block text-sm font-medium text-gray-300 mt-2">
+                        <label className="entry-field">
                           참여율 (%):
                           <input
                             type="text"
@@ -834,25 +765,29 @@ function Recruitment() {
                             className="form-input mt-1"
                           />
                         </label>
-                        <label className="block text-sm font-medium text-gray-300 mt-2">
+                        <label className="entry-field">
                           진행 기간:
-                          <div className="flex items-center space-x-2">
+                          <div className="project-date-range">
                             <input
                               type="text"
                               name="project_start_date"
                               className="form-input mt-1"
                               placeholder="YYYY-MM-DD"
+                              inputMode="numeric"
+                              aria-label={`프로젝트 ${index + 1} 시작일`}
                               maxLength={10}
                               onChange={(e) => {
                                 e.target.value = formatBirthDate(e.target.value);
                               }}
                             />
-                            <span>~</span>
+                            <span aria-hidden="true">~</span>
                             <input
                               type="text"
                               name="project_end_date"
                               className="form-input mt-1"
                               placeholder="YYYY-MM-DD"
+                              inputMode="numeric"
+                              aria-label={`프로젝트 ${index + 1} 종료일`}
                               maxLength={10}
                               onChange={(e) => {
                                 e.target.value = formatBirthDate(e.target.value);
@@ -860,14 +795,14 @@ function Recruitment() {
                             />
                           </div>
                         </label>
-                        <label className="block text-sm font-medium text-gray-300 mt-2">
+                        <label className="entry-field">
                           프로젝트 내용:
                           <textarea
                             name="project_description"
                             className="form-input form-textarea mt-1"
                           />
                         </label>
-                        <label className="block text-sm font-medium text-gray-300 mt-2">
+                        <label className="entry-field">
                           사용 기술:
                           <input
                             type="text"
@@ -881,10 +816,10 @@ function Recruitment() {
                   </div>
                   <button
                     type="button"
-                    className="btn-secondary px-4 py-2 text-sm rounded-lg"
+                    className="btn-secondary entry-add-button"
                     onClick={addProject}
                   >
-                    <FontAwesomeIcon icon={faPlus} className="mr-2" />
+                    <FontAwesomeIcon icon={faPlus} />
                     프로젝트 추가
                   </button>
                 </div>
@@ -897,10 +832,10 @@ function Recruitment() {
                   <div id="awards-container">
                     {awards.map((award, index) => (
                       <div
-                        key={index}
+                        key={award.id}
                         className="entry mb-4 p-4 border border-gray-700 rounded-lg"
                       >
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="entry-heading">
                           <h4 className="font-semibold text-white">
                             수상 #{index + 1}
                           </h4>
@@ -914,7 +849,7 @@ function Recruitment() {
                             </button>
                           )}
                         </div>
-                        <label className="block text-sm font-medium text-gray-300">
+                        <label className="entry-field">
                           수상명:
                           <input
                             type="text"
@@ -922,7 +857,7 @@ function Recruitment() {
                             className="form-input mt-1"
                           />
                         </label>
-                        <label className="block text-sm font-medium text-gray-300 mt-2">
+                        <label className="entry-field">
                           수여 기관:
                           <input
                             type="text"
@@ -930,7 +865,7 @@ function Recruitment() {
                             className="form-input mt-1"
                           />
                         </label>
-                        <label className="block text-sm font-medium text-gray-300 mt-2">
+                        <label className="entry-field">
                           수상 년월일:
                           <input
                             type="text"
@@ -943,7 +878,7 @@ function Recruitment() {
                             }}
                           />
                         </label>
-                        <label className="block text-sm font-medium text-gray-300 mt-2">
+                        <label className="entry-field">
                           수상 내용:
                           <textarea
                             name="award_description"
@@ -955,10 +890,10 @@ function Recruitment() {
                   </div>
                   <button
                     type="button"
-                    className="btn-secondary px-4 py-2 text-sm rounded-lg"
+                    className="btn-secondary entry-add-button"
                     onClick={addAward}
                   >
-                    <FontAwesomeIcon icon={faPlus} className="mr-2" />
+                    <FontAwesomeIcon icon={faPlus} />
                     수상 추가
                   </button>
                 </div>
@@ -972,7 +907,7 @@ function Recruitment() {
                   />
                   <label
                     htmlFor="privacyAgreement"
-                    className="text-sm text-gray-300 text-left"
+                    className="text-sm text-gray-300"
                   >
                     <Link
                       to="/privacy-consent"
@@ -987,21 +922,31 @@ function Recruitment() {
                   </label>
                 </div>
 
+              </div>
+
+              <footer className="recruitment-application-footer">
+                <button
+                  type="button"
+                  className="recruitment-application-cancel"
+                  onClick={requestCloseModal}
+                >
+                  취소
+                </button>
                 <button
                   type="submit"
-                  className="w-full cta-button py-3 rounded-lg font-bold orbitron text-white hover:text-black transition-colors"
+                  className="recruitment-application-submit"
                   disabled={isSubmitting}
                 >
                   <FontAwesomeIcon icon={faPaperPlane} className="mr-2" />
                   {isSubmitting ? '제출 중...' : '지원서 제출'}
                 </button>
-              </form>
-            </div>
-          </div >
-        </div >
+              </footer>
+            </form>
+          </section>
+        </div>
       )
       }
-    </>
+    </main>
   );
 }
 

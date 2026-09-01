@@ -43,7 +43,6 @@ const TeamCard = React.memo(({ team, currentUser, applicationStatus, onOpenDetai
           className={`text-sm space-y-2 mb-4 ${team.status === '모집완료' ? 'text-gray-500' : 'text-gray-400'} text-left`}
         >
           <p>
-            <i className="fas fa-users mr-2 w-4 text-center" />
             <strong
               className={`${team.status === '모집완료' ? 'text-gray-400' : 'text-gray-300'}`}
             >
@@ -52,7 +51,6 @@ const TeamCard = React.memo(({ team, currentUser, applicationStatus, onOpenDetai
             {team.neededRoles}
           </p>
           <p>
-            <i className="fas fa-calendar-alt mr-2 w-4 text-center" />
             <strong
               className={`${team.status === '모집완료' ? 'text-gray-400' : 'text-gray-300'}`}
             >
@@ -60,10 +58,7 @@ const TeamCard = React.memo(({ team, currentUser, applicationStatus, onOpenDetai
             </strong>{' '}
             {team.period}
           </p>
-          <p>
-            <i className="fas fa-info-circle mr-2 w-4 text-center" />
-            {team.description}
-          </p>
+          <p>{team.description}</p>
         </div>
 
         <div className="flex flex-wrap gap-2 mb-4">

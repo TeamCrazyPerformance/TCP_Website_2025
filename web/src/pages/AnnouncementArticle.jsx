@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import MarkdownIt from 'markdown-it';
 import { apiGet, apiDelete } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useScrollReveal } from '../hooks/useScrollReveal';
+import BackToListLink from '../components/public/BackToListLink';
 
 const md = new MarkdownIt({
   html: true,
@@ -37,13 +39,10 @@ function AnnouncementArticle() {
         const data = await apiGet(endpoint);
         const mapped = {
           id: data.id,
-          category: '공지사항',
           title: data.title,
           author: data.author?.name || '관리자',
           date: data.publishAt || data.createdAt,
           views: data.views ?? 0,
-          likes: 0,
-          tags: ['공지'],
           content: data.contents || '',
           summary: data.summary || '',
         };
@@ -69,27 +68,7 @@ function AnnouncementArticle() {
     };
   }, [id, fromAdmin]);
 
-  useEffect(() => {
-    const observerOptions = {
-      threshold: 0,
-      rootMargin: '0px 0px -50px 0px',
-    };
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-          observer.unobserve(entry.target);
-        }
-      });
-    }, observerOptions);
-
-    const elements = document.querySelectorAll('.scroll-fade');
-    elements.forEach((el) => {
-      observer.observe(el);
-    });
-
-    return () => observer.disconnect();
-  }, [isLoading]);
+  useScrollReveal('.scroll-fade', isLoading ? 'loading' : `article:${id}`);
 
   const openShareModal = () => setIsShareModalOpen(true);
   const closeShareModal = () => setIsShareModalOpen(false);
@@ -138,43 +117,6 @@ function AnnouncementArticle() {
       });
   };
 
-  const handleShareButtonClick = (platform) => {
-    const url = window.location.href;
-    const title = document.title;
-    let shareUrl = '';
-
-    switch (platform) {
-      case 'facebook':
-        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
-        window.open(
-          shareUrl,
-          '_blank',
-          'noopener,noreferrer,width=600,height=600'
-        );
-        break;
-      case 'twitter':
-        shareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`;
-        window.open(
-          shareUrl,
-          '_blank',
-          'noopener,noreferrer,width=600,height=400'
-        );
-        break;
-      case 'kakao':
-        alert(
-          '카카오톡 공유는 카카오 SDK 연동이 필요합니다. 원하시면 연동해드릴게요.'
-        );
-        break;
-      case 'instagram':
-        alert(
-          'Instagram은 웹 링크 공유 인터페이스가 제한적입니다. Web Share API 또는 앱 내 공유를 사용하세요.'
-        );
-        break;
-      default:
-        break;
-    }
-  };
-
   const articleBodyMarkup = useMemo(() => {
     const rawContent = article?.content || '';
     const html = md.render(rawContent);
@@ -202,83 +144,62 @@ function AnnouncementArticle() {
     return (
       <div className="container mx-auto px-4 py-24 text-center text-gray-400">
         <h1 className="text-4xl">게시글을 찾을 수 없습니다.</h1>
-        <Link
+        <BackToListLink
           to={fromAdmin ? "/admin/announcement" : "/announcement"}
-          className="mt-8 back-button inline-flex items-center px-8 py-4 rounded-lg text-lg font-medium"
+          className="mt-8"
         >
-          <i className="fas fa-list mr-3"></i>
           {fromAdmin ? '관리자 페이지로 돌아가기' : '공지사항 목록 보기'}
-        </Link>
+        </BackToListLink>
       </div>
     );
   }
 
   return (
-    <main className="pt-20 pb-16 min-h-screen">
-      <div className="container mx-auto px-4 max-w-4xl">
-        {/* Back Button: Left aligned, widget-card background */}
-        <div className="mb-8 scroll-fade text-left">
-          <Link
+    <main className="announcement-article-detail">
+      <div className="container site-content-container mx-auto px-4 announcement-article-shell">
+        <nav
+          className="detail-breadcrumb detail-breadcrumb-spaced scroll-fade text-left"
+          aria-label="현재 위치"
+        >
+          <BackToListLink
             to={fromAdmin ? "/admin/announcement" : "/announcement"}
-            className="widget-card btn-back-hover inline-flex items-center px-6 py-3 rounded-lg text-sm font-medium transition-colors"
           >
-            <i className="fas fa-arrow-left mr-2"></i>
             {fromAdmin ? '관리자 페이지로 돌아가기' : '공지사항 목록으로 돌아가기'}
-          </Link>
-        </div>
+          </BackToListLink>
+        </nav>
 
-        <article className="scroll-fade">
-          <header className="mb-8">
-            <div className="mb-4 text-left">
-              <span
-                className="px-3 py-1 rounded-full text-xs font-bold text-black"
-                style={{ background: 'linear-gradient(135deg, var(--accent-blue), var(--accent-purple))' }}
-              >
-                {article.category}
-              </span>
-            </div>
-            {/* Title: Left aligned */}
-            <h1 className="orbitron text-3xl md:text-5xl font-bold mb-6 gradient-text text-left">
+        <article className="announcement-article scroll-fade">
+          <header className="announcement-article-header">
+            <h1 className="announcement-article-title">
               {article.title}
             </h1>
 
-            {/* Meta: Removed likes/tags, Left aligned content */}
-            <div className="article-meta widget-card rounded-lg p-6 mb-8">
-              <div className="flex flex-wrap items-center justify-between gap-y-2 text-sm text-gray-300">
-                <div className="flex items-center gap-6">
-                  <div className="flex items-center space-x-2">
-                    <i className="fas fa-user text-blue-400"></i>
-                    <span>작성자: {article.author}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <i className="fas fa-calendar text-purple-400"></i>
-                    <span>
-                      {new Date(article.date).toLocaleDateString('ko-KR', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <i className="fas fa-eye text-green-400"></i>
-                    <span>조회 {article.views}</span>
-                  </div>
-                </div>
-              </div>
+            <div className="announcement-article-meta" aria-label="공지사항 정보">
+              <span>작성자 {article.author}</span>
+              <span className="announcement-meta-divider" aria-hidden="true">·</span>
+              <time dateTime={article.date}>
+                {new Date(article.date).toLocaleDateString('ko-KR', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </time>
+              <span className="announcement-meta-divider" aria-hidden="true">·</span>
+              <span>조회 {article.views}</span>
             </div>
+            {article.summary && (
+              <p className="announcement-article-summary">{article.summary}</p>
+            )}
           </header>
 
-          <div className="article-content widget-card rounded-lg p-8 mb-8">
+          <div className="announcement-article-content">
             <div
               className="article-body text-gray-200 text-left"
               dangerouslySetInnerHTML={articleBodyMarkup}
             />
           </div>
 
-          <footer className="border-t border-gray-700 pt-6">
+          <footer className="announcement-article-actions">
             <div className="flex flex-wrap items-center justify-end gap-3">
               {isAdmin && (
                 <>
@@ -310,16 +231,6 @@ function AnnouncementArticle() {
           </footer>
         </article>
 
-        {/* Bottom Back Button: Centered */}
-        <div className="mt-12 text-center">
-          <Link
-            to={fromAdmin ? "/admin/announcement" : "/announcement"}
-            className="widget-card btn-back-hover inline-flex items-center px-8 py-4 rounded-lg text-lg font-medium transition-colors"
-          >
-            <i className="fas fa-list mr-3"></i>
-            {fromAdmin ? '관리자 페이지로 돌아가기' : '공지사항 목록 보기'}
-          </Link>
-        </div>
       </div>
 
       {/* Share Modal remains unchanged */}

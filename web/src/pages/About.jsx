@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import logo from '../logo.svg';
 import { stats as staticStats } from '../data/stats';
+import ActivityHighlights from '../components/ActivityHighlights';
+import { useKonamiCode } from '../hooks/useKonamiCode';
+import { useScrollReveal } from '../hooks/useScrollReveal';
 
 function useCountUp(target, duration = 1200, enabled = true) {
   const [value, setValue] = useState(0);
@@ -12,8 +15,8 @@ function useCountUp(target, duration = 1200, enabled = true) {
       return;
     }
 
-    const startValue = value;
-    const delta = target - startValue;
+    const startValue = 0;
+    const delta = target;
     const startTime = performance.now();
     let frameId = null;
 
@@ -36,6 +39,10 @@ function useCountUp(target, duration = 1200, enabled = true) {
 }
 
 function About() {
+  const navigate = useNavigate();
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [isFadingOut, setIsFadingOut] = useState(false);
+  const [isHomeScrollCueVisible, setIsHomeScrollCueVisible] = useState(true);
   // 여러 연도의 활동 기록을 동시에 펼쳐 비교할 수 있도록 열린 인덱스를 각각 관리합니다.
   const [openAccordions, setOpenAccordions] = useState(() => new Set([0]));
   const [mainStats, setMainStats] = useState({
@@ -52,6 +59,13 @@ function About() {
   const animatedProjects = useCountUp(mainStats.projects, 1200, isStatsVisible);
   const animatedAwards = useCountUp(mainStats.awards, 1200, isStatsVisible);
   const animatedEmploymentRate = useCountUp(mainStats.employmentRate, 1200, isStatsVisible);
+
+  useScrollReveal();
+
+  useKonamiCode(() => {
+    setIsFadingOut(true);
+    window.setTimeout(() => navigate('/easter-egg'), 2000);
+  });
 
   // 연도별 활동 히스토리 데이터
   const historyData = [
@@ -227,26 +241,6 @@ function About() {
   ];
 
   useEffect(() => {
-    // 스크롤 페이드 인 애니메이션
-    const observerOptions = {
-      threshold: 0,
-      rootMargin: '0px 0px -50px 0px',
-    };
-
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-          observer.unobserve(entry.target); // 한 번 실행 후 관찰 해제
-        }
-      });
-    }, observerOptions);
-
-    document.querySelectorAll('.scroll-fade').forEach((el) => {
-      observer.observe(el);
-    });
-
-    // 통계 섹션이 보일 때 카운트업 시작
     const statsObserver = new IntersectionObserver(
       (entries, observerInstance) => {
         entries.forEach((entry) => {
@@ -263,7 +257,6 @@ function About() {
       statsObserver.observe(statsSectionRef.current);
     }
 
-    // 메인 페이지와 동일한 백엔드 통계 소스 사용
     const fetchMainStatistics = async () => {
       try {
         const response = await fetch('/api/v1/main/statistics');
@@ -282,12 +275,28 @@ function About() {
 
     fetchMainStatistics();
 
-    // 컴포넌트 언마운트 시 클린업
     return () => {
-      observer.disconnect(); // IntersectionObserver 연결 해제
       statsObserver.disconnect();
     };
-  }, []); // 빈 배열을 의존성으로 설정하여 컴포넌트가 마운트될 때만 실행
+  }, []);
+
+  useEffect(() => {
+    const shouldShow = sessionStorage.getItem('showWelcomeModal');
+    if (shouldShow === 'true') {
+      setShowWelcomeModal(true);
+      sessionStorage.removeItem('showWelcomeModal');
+    }
+  }, []);
+
+  useEffect(() => {
+    const updateScrollCue = () => {
+      setIsHomeScrollCueVisible(window.scrollY <= 16);
+    };
+
+    updateScrollCue();
+    window.addEventListener('scroll', updateScrollCue, { passive: true });
+    return () => window.removeEventListener('scroll', updateScrollCue);
+  }, []);
 
   // 아코디언 토글 함수 (React State를 활용)
   const toggleAccordion = (index) => {
@@ -302,9 +311,82 @@ function About() {
     });
   };
 
+  const goToMyPage = () => {
+    setShowWelcomeModal(false);
+    navigate('/mypage');
+  };
+
   return (
-    <>
-      <section className="pt-24 pb-16 min-h-screen flex items-center">
+    <main className="about-home-page">
+      {showWelcomeModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          onClick={() => setShowWelcomeModal(false)}
+          role="presentation"
+        >
+          <div
+            className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl max-w-lg w-full border border-purple-500/30 shadow-2xl shadow-purple-500/20"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="welcome-dialog-title"
+          >
+            <div className="p-8 text-center">
+              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+                <i className="fas fa-user-check text-3xl text-white" aria-hidden="true"></i>
+              </div>
+              <h2
+                id="welcome-dialog-title"
+                className="orbitron text-2xl md:text-3xl font-bold text-white mb-4"
+              >
+                TCP에 오신 것을 환영합니다! 🎉
+              </h2>
+              <p className="text-gray-300 mb-6 leading-relaxed">
+                회원가입이 완료되었습니다.
+              </p>
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6 text-left">
+                <div className="flex items-start gap-3">
+                  <i className="fas fa-exclamation-triangle text-yellow-400 mt-1" aria-hidden="true"></i>
+                  <div>
+                    <p className="text-yellow-200 font-semibold mb-1">
+                      추가 정보 입력 안내
+                    </p>
+                    <p className="text-gray-300 text-sm leading-relaxed">
+                      회원가입 시 추가 정보를 입력하지 않으신 분들은<br />
+                      <span className="orbitron text-yellow-300 font-medium">
+                        (서울과학기술대 학생 및 TCP 부원은 필수!!)
+                      </span>
+                      <br />
+                      원활한 활동을 위해{' '}
+                      <span className="text-purple-400 font-medium">마이페이지</span>에서
+                      회원 정보를 추가로 입력해주세요.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button
+                  type="button"
+                  onClick={goToMyPage}
+                  className="px-6 py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg font-semibold hover:from-purple-600 hover:to-blue-600 transition-all"
+                >
+                  <i className="fas fa-user-edit mr-2" aria-hidden="true"></i>
+                  마이페이지로 이동
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowWelcomeModal(false)}
+                  className="px-6 py-3 bg-gray-700 text-gray-300 rounded-lg font-semibold hover:bg-gray-600 transition-all"
+                >
+                  나중에 할게요
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <section className="home-brand-hero pt-24 pb-16 min-h-screen flex items-center">
         <div className="container site-content-container mx-auto px-4">
           <div className="text-center">
             <div className="mb-8">
@@ -318,31 +400,40 @@ function About() {
               <h1 className="site-hero-title orbitron mb-4">
                 <span className="gradient-text">TCP</span>
               </h1>
-              <p className="orbitron text-xl md:text-2xl text-gray-300 mb-3">
+              <p className="site-hero-lead orbitron home-hero-brand-lead text-xl md:text-2xl text-gray-300 mb-3">
                 Team Crazy Performance
               </p>
-              <p className="orbitron text-sm md:text-base text-gray-400">
-                서울과학기술대학교 컴퓨터공학과 학술동아리
+              <p className="site-hero-description text-sm md:text-base text-gray-400">
+                서울과학기술대학교 컴퓨터공학과 학술동아리 TCP
               </p>
             </div>
           </div>
         </div>
+        <a
+          className={`home-scroll-cue${isHomeScrollCueVisible ? '' : ' is-hidden'}`}
+          href="#about-overview"
+          aria-label="TCP 소개로 이동"
+          aria-hidden={!isHomeScrollCueVisible}
+          tabIndex={isHomeScrollCueVisible ? 0 : -1}
+        >
+          <i className="fas fa-chevron-down" aria-hidden="true"></i>
+        </a>
       </section>
 
-      <section className="py-12">
+      <section id="about-overview" className="py-12">
         <div className="container site-content-container mx-auto px-4">
-          <div className="text-center mb-12">
+          <div className="about-overview-intro text-center">
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-4">
-              TCP 소개
+              Team Crazy Performance
             </h2>
             <p className="orbitron text-xl text-gray-300 max-w-3xl mx-auto">
-              TCP(Team Crazy Performance)는 뛰어난 열정과 다양한 관심사를 가진
+              TCP는 뛰어난 열정과 다양한 관심사를 가진
               학생 개발자들이 모여 함께 성장하고 도전하는 서울과학기술대학교
               컴퓨터공학과 학술동아리입니다.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-12 items-center">
+          <div className="about-pillars-grid grid md:grid-cols-2 gap-12 items-start">
             <div className="scroll-fade">
               <h3 className="orbitron text-2xl font-bold mb-6 text-blue-300">
                 TCP의 가치
@@ -351,7 +442,6 @@ function About() {
                 <li className="flex items-start space-x-3">
                   <i className="fas fa-check-circle text-green-400 mt-1"></i>
                   <div>
-                    {/* "포용" h4 태그 왼쪽 정렬 */}
                     <h4 className="orbitron font-semibold mb-1 text-left">
                       포용 Inclusion
                     </h4>
@@ -363,7 +453,6 @@ function About() {
                 <li className="flex items-start space-x-3">
                   <i className="fas fa-check-circle text-green-400 mt-1"></i>
                   <div>
-                    {/* "탐구" h4 태그 왼쪽 정렬 */}
                     <h4 className="orbitron font-semibold mb-1 text-left">
                       탐구 Inquiry
                     </h4>
@@ -375,7 +464,6 @@ function About() {
                 <li className="flex items-start space-x-3">
                   <i className="fas fa-check-circle text-green-400 mt-1"></i>
                   <div>
-                    {/* "협력" h4 태그 왼쪽 정렬 */}
                     <h4 className="orbitron font-semibold mb-1 text-left">
                       협력 Collaboration
                     </h4>
@@ -387,24 +475,21 @@ function About() {
               </ul>
             </div>
 
-            <div className="scroll-fade">
+            <div className="about-goal-column scroll-fade">
               <h3 className="orbitron text-2xl font-bold mb-6 text-purple-300">
                 TCP의 목표
               </h3>
-              <div className="about-goal-card bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-2xl">
-                {/* "TCP의 목표" p 태그 왼쪽 정렬 */}
-                <p className="orbitron text-gray-300 leading-relaxed text-left">
-                  TCP는 여러 분야를 공부하는 개발자들이 모여, 공통 관심사를
-                  중심으로 스터디, 프로젝트, 대회에 참여하고, 같이 탐구하고
-                  협력하여 함께 성장하는 것을 목표로 합니다.
-                </p>
-              </div>
+              <p className="orbitron text-gray-300 leading-relaxed text-left">
+                TCP는 여러 분야를 공부하는 개발자들이 모여, 공통 관심사를
+                중심으로 스터디, 프로젝트, 대회에 참여하고, 같이 탐구하고
+                협력하여 함께 성장하는 것을 목표로 합니다.
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      <section ref={statsSectionRef} className="py-12 bg-gradient-to-b from-transparent to-gray-900">
+      <section ref={statsSectionRef} className="py-12">
         <div className="container site-content-container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-4">
@@ -477,6 +562,8 @@ function About() {
         </div>
       </section>
 
+      <ActivityHighlights />
+
       <section className="py-12">
         <div className="container site-content-container mx-auto px-4">
           <div className="text-center mb-12">
@@ -489,7 +576,6 @@ function About() {
           </div>
 
           <div className="max-w-4xl mx-auto">
-            {/* 아코디언 컴포넌트 */}
             {historyData.map((data, index) => (
               <div className="accordion-item" key={data.year}>
                 <div
@@ -497,16 +583,13 @@ function About() {
                   onClick={() => toggleAccordion(index)}
                 >
                   <div className="flex items-center space-x-4">
-                    {/* 연도 숫자를 포함하는 div에 Tailwind gradient 클래스 적용 */}
                     <div
                       className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${data.gradientClass}`}
                     >
                       <span className="orbitron font-bold text-white text-left">
                         {data.tag}
-                      </span>{' '}
-                      {/* text-left 추가 */}
+                      </span>
                     </div>
-                    {/* 연도 제목 (h3)과 부제목 (p)을 포함하는 div에 text-left 추가 */}
                     <div className="text-left">
                       <h3 className="orbitron text-xl font-bold">
                         {data.title}
@@ -561,7 +644,7 @@ function About() {
                           </div>
                           <div className="flex flex-wrap gap-2">
                             {data.activities.map((activity, i) => (
-                              <span key={i} className="activity-tag tag-event">
+                              <span key={i} className="activity-tag tag-event history-tag-event">
                                 {activity}
                               </span>
                             ))}
@@ -589,34 +672,12 @@ function About() {
         </div>
       </section>
 
-      <section className="py-16 bg-gradient-to-r from-blue-900 via-purple-900 to-pink-900">
-        <div className="container site-content-container mx-auto px-4 text-center">
-          <div className="max-w-3xl mx-auto">
-            <h2 className="orbitron text-4xl md:text-5xl font-black mb-6 text-white">
-              TCP에서{' '}
-              <br className="about-cta-mobile-break" />
-              개발자의 길을 걸어보세요
-            </h2>
-            <p className="text-xl text-gray-200 mb-8">
-              <span className="about-cta-copy-line">뛰어난 동료들과 함께 성장하고,</span>{' '}
-              <span className="about-cta-copy-line">협업 경험을 쌓으며,</span>{' '}
-              <span className="about-cta-copy-line">자신의 꿈을 현실로 만들어보세요.</span>
-            </p>
-            { }
-            <Link
-              to="/recruitment"
-              className="cta-button px-12 py-4 rounded-full text-lg font-bold orbitron text-white hover:text-black transition-colors"
-            >
-              <i className="fas fa-users mr-2"></i>
-              지금 지원하기
-            </Link>
-            <p className="text-sm text-gray-300 mt-4">
-              * 지원 기간: 매 학기 시작 2주 전 ~ 개강 후 1주
-            </p>
-          </div>
-        </div>
-      </section>
-    </>
+      <div
+        className="fixed inset-0 z-[9999] bg-black pointer-events-none transition-opacity duration-2000 ease-in-out"
+        style={{ opacity: isFadingOut ? 1 : 0 }}
+        aria-hidden="true"
+      />
+    </main>
   );
 }
 

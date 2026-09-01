@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import InfoRow from '../ui/InfoRow';
 import { isExpired } from '../../utils/helpers';
 import { apiGet, apiPost, apiDelete } from '../../api/client';
+import '../../styles/teamDetailModal.css';
 
 export default function TeamDetailModal({ isOpen, onClose, team, onApplicationStatusChange, isMyPage = false, isAdminView = false }) {
   const { user } = useAuth();
@@ -128,31 +129,34 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
 
   return (
     <div
-      className="modal active"
+      className="modal active team-detail-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="team-detail-title"
       onClick={(e) => {
-        if (e.target.className.includes('modal')) onClose();
+        if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="modal-content">
-        <button className="close-modal" onClick={onClose}>
+      <div className="modal-content team-detail-sheet">
+        <button className="close-modal" onClick={onClose} aria-label="팀 상세 정보 닫기">
           <i className="fas fa-times" />
         </button>
 
-        <div className="mb-6">
-          <h3 className="orbitron text-2xl font-bold gradient-text">
-            팀 상세 정보
-          </h3>
+        <div className="team-detail-header">
+          <p className="team-detail-eyebrow">{team.category} 팀원 모집 · {team.status}</p>
+          <h3 id="team-detail-title">{team.title}</h3>
+          <p className="team-detail-header-description">{team.description}</p>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto pr-2 -mr-2">
+        <div className="team-detail-scroll flex-1 min-h-0 overflow-y-auto">
 
           {/* Image Carousel */}
           {team.images?.length ? (
-            <div className="relative mb-6">
+            <div className="team-detail-image-wrap relative">
               <img
                 src={team.images[currentImageIndex]}
                 alt={`${team.title} 이미지 ${currentImageIndex + 1}`}
-                className="w-full h-64 object-cover rounded-lg"
+                className="team-detail-image w-full object-cover"
               />
               {team.images.length > 1 && (
                 <>
@@ -176,9 +180,9 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
           ) : null}
 
           {/* Project Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className="team-detail-summary-grid grid grid-cols-1 md:grid-cols-2">
             <div>
-              <h4 className="font-semibold text-white mb-3 flex items-center">
+              <h4 className="font-semibold text-white flex items-center">
                 <i className="fas fa-info-circle text-blue-400 mr-2" />
                 기본 정보
               </h4>
@@ -204,10 +208,10 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
             </div>
 
             <div>
-              <h4 className="font-semibold text-white mb-3 flex items-center">
+              <h4 className="font-semibold text-white flex items-center">
                 <i className="fas fa-user-crown text-yellow-400 mr-2" />팀 리더
               </h4>
-              <div className="flex items-center p-3 bg-gray-800 bg-opacity-50 rounded-lg">
+              <div className="team-detail-inset flex items-center p-3">
                 <div className="relative">
                   <img
                     src={team.leader.avatar}
@@ -235,12 +239,12 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
           </div>
 
           {/* Description */}
-          <section className="mb-6">
-            <h4 className="font-semibold text-white mb-3 flex items-center">
+          <section className="team-detail-content-section">
+            <h4 className="font-semibold text-white flex items-center">
               <i className="fas fa-file-alt text-green-400 mr-2" />
               프로젝트 상세 설명
             </h4>
-            <div className="bg-gray-800 bg-opacity-50 rounded-lg p-4">
+            <div className="team-detail-inset p-4">
               <p className="text-gray-300 whitespace-pre-line">
                 {team.fullDescription}
               </p>
@@ -251,12 +255,12 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
 
 
           {/* Needed Roles */}
-          <section className="mb-6">
-            <h4 className="font-semibold text-white mb-3 flex items-center">
+          <section className="team-detail-content-section">
+            <h4 className="font-semibold text-white flex items-center">
               <i className="fas fa-user-plus text-red-400 mr-2" />
               모집 중인 역할
             </h4>
-            <div className="bg-red-500 bg-opacity-10 border border-red-500 border-opacity-50 rounded-lg p-4">
+            <div className="team-detail-inset p-4">
               <div className="flex flex-col space-y-1">
                 {team.neededRoles.split(',').map((role, idx) => (
                   <span key={idx} className="text-red-300">
@@ -268,8 +272,8 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
           </section>
 
           {/* Tech Stack */}
-          <section className="mb-6">
-            <h4 className="font-semibold text-white mb-3 flex items-center">
+          <section className="team-detail-content-section">
+            <h4 className="font-semibold text-white flex items-center">
               <i className="fas fa-code text-blue-400 mr-2" />
               기술 스택
             </h4>
@@ -277,7 +281,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
               {team.techStack?.map((tech, idx) => (
                 <span
                   key={`tech-${idx}`}
-                  className="px-2 py-1 bg-gray-800 rounded text-xs"
+                  className="team-detail-chip px-2 py-1 text-xs"
                 >
                   {tech}
                 </span>
@@ -287,12 +291,12 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
 
           {/* Goals & Benefits */}
           {/* Goals */}
-          <section className="mb-6">
-            <h4 className="font-semibold text-white mb-3 flex items-center">
+          <section className="team-detail-content-section">
+            <h4 className="font-semibold text-white flex items-center">
               <i className="fas fa-target text-green-400 mr-2" />
               프로젝트 목표
             </h4>
-            <div className="bg-gray-800 bg-opacity-50 rounded-lg p-4">
+            <div className="team-detail-inset p-4">
               <ul className="list-disc list-inside text-gray-300 space-y-1">
                 {team.goals?.map((g, idx) => (
                   <li key={`goal-${idx}`}>{g}</li>
@@ -302,12 +306,12 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
           </section>
 
           {/* Selection Process */}
-          <section className="mb-6">
-            <h4 className="font-semibold text-white mb-3 flex items-center">
+          <section className="team-detail-content-section">
+            <h4 className="font-semibold text-white flex items-center">
               <i className="fas fa-clipboard-check text-indigo-400 mr-2" />
               선발 과정
             </h4>
-            <div className="bg-indigo-500 bg-opacity-10 border border-indigo-500 border-opacity-50 rounded-lg p-4">
+            <div className="team-detail-inset p-4">
               <p className="text-indigo-300">
                 {team.selectionProcess}
               </p>
@@ -315,8 +319,8 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
           </section>
 
           {/* Tags */}
-          <section className="mb-6">
-            <h4 className="font-semibold text-white mb-3 flex items-center">
+          <section className="team-detail-content-section">
+            <h4 className="font-semibold text-white flex items-center">
               <i className="fas fa-tags text-purple-400 mr-2" />
               태그
             </h4>
@@ -324,7 +328,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
               {team.tags?.map((tag, idx) => (
                 <span
                   key={`tag-${idx}`}
-                  className="px-2 py-1 bg-gray-800 rounded text-xs"
+                  className="team-detail-chip px-2 py-1 text-xs"
                 >
                   {tag}
                 </span>
@@ -334,8 +338,8 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
 
           {/* Links */}
           {team.links?.length ? (
-            <section className="mb-6">
-              <h4 className="font-semibold text-white mb-3 flex items-center">
+            <section className="team-detail-content-section">
+              <h4 className="font-semibold text-white flex items-center">
                 <i className="fas fa-link text-pink-400 mr-2" />
                 관련 링크
               </h4>
@@ -346,7 +350,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
                     href={lnk}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center px-3 py-2 bg-gray-800/50 rounded-lg text-blue-400 hover:text-blue-300 text-sm"
+                    className="team-detail-link flex items-center px-3 py-2 text-blue-400 hover:text-blue-300 text-sm"
                   >
                     <i className="fas fa-external-link-alt mr-2" />
                     {lnk}
@@ -357,24 +361,24 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
           ) : null}
 
           {/* Contact + Actions */}
-          <section className="mb-6">
-            <h4 className="font-semibold text-white mb-3 flex items-center">
+          <section className="team-detail-content-section">
+            <h4 className="font-semibold text-white flex items-center">
               <i className="fas fa-envelope text-green-400 mr-2" />
               연락처
             </h4>
-            <div className="bg-green-500 bg-opacity-10 border border-green-500 border-opacity-50 rounded-lg p-4">
+            <div className="team-detail-inset p-4">
               <p className="text-green-300">{team.contact}</p>
             </div>
           </section>
 
           {/* 지원자 정보 - 리더인 경우에만 표시 */}
           {team.applicants && team.applicants.length > 0 && (
-            <section className="mb-6">
-              <h4 className="font-semibold text-white mb-3 flex items-center">
+            <section className="team-detail-content-section">
+              <h4 className="font-semibold text-white flex items-center">
                 <i className="fas fa-users text-yellow-400 mr-2" />
                 지원 멤버 ({team.applicants.length}명)
               </h4>
-              <div className="bg-gray-800 bg-opacity-50 rounded-lg overflow-hidden">
+              <div className="team-detail-inset overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm min-w-[620px]">
                     <thead className="bg-gray-700 bg-opacity-50">
@@ -417,15 +421,15 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
 
           {/* 역할 선택 - 로그인 사용자 & 리더 아님 & 지원하지 않은 경우만 표시 */}
           {!isAdminView && user && !isLeader && !applicationStatus?.hasApplied && team.status === '모집중' && !isExpired(team.deadline) && (
-            <section className="mb-6">
-              <h4 className="font-semibold text-white mb-3 flex items-center">
+            <section className="team-detail-content-section">
+              <h4 className="font-semibold text-white flex items-center">
                 <i className="fas fa-user-tag text-purple-400 mr-2" />
                 지원 역할 선택
               </h4>
               <select
                 value={selectedRoleId || ''}
                 onChange={(e) => setSelectedRoleId(Number(e.target.value))}
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-accent-blue transition-colors"
+                className="team-detail-role-select w-full px-4 py-3 text-white focus:outline-none focus:border-accent-blue transition-colors"
               >
                 <option value="">역할을 선택하세요</option>
                 {team.rolesRaw?.map((role) => (
@@ -439,12 +443,12 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
 
           {/* 이미 지원한 경우 정보 표시 */}
           {!isAdminView && applicationStatus?.hasApplied && applicationStatus.applicationInfo?.appliedRole && (
-            <section className="mb-6">
-              <h4 className="font-semibold text-white mb-3 flex items-center">
+            <section className="team-detail-content-section">
+              <h4 className="font-semibold text-white flex items-center">
                 <i className="fas fa-check-circle text-green-400 mr-2" />
                 지원 상태
               </h4>
-              <div className="bg-green-500 bg-opacity-10 border border-green-500 border-opacity-50 rounded-lg p-4">
+              <div className="team-detail-inset p-4">
                 <p className="text-green-300">
                   <i className="fas fa-check mr-2" />
                   <strong>{applicationStatus.applicationInfo.appliedRole.roleName}</strong> 역할로 지원하셨습니다.
@@ -453,7 +457,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
             </section>
           )}
 
-          <div className="flex justify-end gap-3">
+          <div className="team-detail-actions flex justify-end gap-3">
             <button
               onClick={onClose}
               className="px-6 py-2 border border-gray-600 rounded-lg hover:border-gray-400 transition-colors"

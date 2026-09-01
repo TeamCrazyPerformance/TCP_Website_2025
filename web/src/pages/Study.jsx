@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiGet } from '../api/client';
 import RecruitStudyModal from '../components/modals/RecruitStudyModal';
+import PublicPageHero from '../components/public/PublicPageHero';
+import { useScrollReveal } from '../hooks/useScrollReveal';
 
 function Study() {
   const navigate = useNavigate();
@@ -98,40 +100,18 @@ function Study() {
     setHasYearInit(true);
   }, [studies, hasYearInit]);
 
-  useEffect(() => {
-    const observerOptions = {
-      threshold: 0,
-      rootMargin: '0px 0px -50px 0px',
-    };
-
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-          observer.unobserve(entry.target);
-        }
-      });
-    }, observerOptions);
-
-    const scrollFadeElements = document.querySelectorAll('.scroll-fade');
-    scrollFadeElements.forEach((el) => {
-      observer.observe(el);
-    });
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [selectedYear, studies]);
-
   const filteredStudies = useMemo(() => {
-    return selectedYear === 'all'
-      ? studies
+    const visibleStudies = selectedYear === 'all'
+      ? [...studies]
       : studies.filter((study) => study.year?.toString() === selectedYear);
+
+    return visibleStudies.sort((a, b) => (b.year || 0) - (a.year || 0));
   }, [studies, selectedYear]);
 
-  filteredStudies.sort((a, b) => {
-    return (b.year || 0) - (a.year || 0);
-  });
+  useScrollReveal(
+    '.scroll-fade',
+    `${selectedYear}:${filteredStudies.map((study) => study.id).join(',')}`,
+  );
 
   const getTagClassName = (tagType) => {
     switch (tagType) {
@@ -179,26 +159,13 @@ function Study() {
 
   return (
     <>
-      <section className="pt-24 pb-16 min-h-screen flex items-center">
-        <div className="container site-content-container mx-auto px-4">
-          <div className="text-center">
-            <div className="mb-8">
-              <div className="site-hero-icon w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-green-400 via-blue-400 to-purple-400 flex items-center justify-center">
-                <i className="fas fa-book-open text-white text-3xl"></i>
-              </div>
-              <h1 className="site-hero-title orbitron mb-4">
-                <span className="gradient-text">TCP Study</span>
-              </h1>
-              <p className="orbitron text-xl md:text-2xl text-gray-300 mb-6">
-                TCP에서 같이 공부하고, 함께 성장해요
-              </p>
-              <p className="text-lg text-gray-400 max-w-2xl mx-auto">
-                스터디를 개설해 자신의 지식을 나누고, 스터디에 참여하여 함께 성장할 수 있어요.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+      <PublicPageHero
+        icon={<i className="fas fa-book-open text-white text-3xl"></i>}
+        iconClassName="bg-gradient-to-br from-green-400 via-blue-400 to-purple-400"
+        title="TCP Study"
+        lead="같이 탐구하고, 함께 성장할 스터디를 찾아보세요."
+        description="스터디를 개설해 자신의 지식을 나누고, 스터디에 참여하여 함께 성장할 수 있어요."
+      />
 
       <section
         id="study-list"
@@ -213,19 +180,19 @@ function Study() {
               {isLoggedIn && (
                 <button
                   onClick={handleOpenRecruit}
-                  className="cta-button px-6 py-2 rounded-lg text-sm font-bold text-white"
+                  className="cta-button study-create-button rounded-lg text-sm font-bold text-white"
                 >
                   <i className="fas fa-plus mr-2" />
                   스터디 개설하기
                 </button>
               )}
-              <div className="study-year-filter relative w-full md:w-auto">
+              <div className="study-year-filter relative">
                 <label htmlFor="year-select" className="sr-only">
                   년도 선택
                 </label>
                 <select
                   id="year-select"
-                  className="study-year-select appearance-none w-full md:w-48 bg-gray-800 border border-gray-700 rounded-lg py-2 px-4 pr-10 text-white focus:ring-2 focus:ring-accent-blue focus:outline-none cursor-pointer"
+                  className="study-year-select appearance-none w-full bg-gray-800 border border-gray-700 rounded-lg py-2 pl-3 pr-8 text-white focus:ring-2 focus:ring-accent-blue focus:outline-none cursor-pointer"
                   value={selectedYear}
                   onChange={handleYearChange}
                 >
@@ -266,22 +233,24 @@ function Study() {
                   className="study-item p-6 rounded-xl card-hover scroll-fade"
                   onClick={() => handleStudyClick(study.id)}
                 >
-                  <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="study-card-title-row mb-2">
                     <h3 className="orbitron text-xl font-bold text-white text-left flex-1">
                       {study.title}
                     </h3>
+                  </div>
+                  <div className="study-card-meta-row">
+                    <p className="study-card-period text-gray-400 text-left">{study.period}</p>
                     {normalizeBoolean(study.is_public) && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-300 border border-green-500/30 whitespace-nowrap">
+                      <span className="study-card-visibility inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-300 whitespace-nowrap">
                         <i className="fas fa-unlock-alt mr-1"></i>
                         공개 스터디
                       </span>
                     )}
                   </div>
-                  <p className="text-gray-400 mb-2 text-left">{study.period}</p>
-                  <p className="text-sm text-gray-500 text-left">
+                  <p className="study-card-summary text-sm text-gray-500 text-left">
                     {(study.description || '').substring(0, 80)}...
                   </p>
-                  <div className="flex flex-wrap mt-3">
+                  <div className="study-card-tags flex flex-wrap mt-3">
                     {(study.tags || []).map((tag, tagIndex) => (
                       <span
                         key={tagIndex}

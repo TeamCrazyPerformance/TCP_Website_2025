@@ -3,17 +3,18 @@ import { apiGet } from '../api/client';
 import defaultProfileImage from '../logo.svg';
 import { allMembers as developmentMembers } from '../data/members';
 import { tagColorClass } from '../utils/helpers';
+import PublicPageHero from '../components/public/PublicPageHero';
+import TagMultiSelect from '../components/public/TagMultiSelect';
+import { useScrollReveal } from '../hooks/useScrollReveal';
 
 function Members() {
   const [members, setMembers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // 필터링 상태 관리
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTag, setActiveTag] = useState('');
+  const [activeTags, setActiveTags] = useState([]);
 
-  // 스크롤 애니메이션 효과
   useEffect(() => {
     let isMounted = true;
 
@@ -89,30 +90,10 @@ function Members() {
     };
   }, []);
 
-  useEffect(() => {
-    const observerOptions = {
-      threshold: 0,
-      rootMargin: '0px 0px -50px 0px',
-    };
-
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-          observer.unobserve(entry.target);
-        }
-      });
-    }, observerOptions);
-
-    const scrollFadeElements = document.querySelectorAll('.scroll-fade');
-    scrollFadeElements.forEach((el) => {
-      observer.observe(el);
-    });
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [searchTerm, activeTag, members]);
+  useScrollReveal(
+    '.scroll-fade',
+    `${searchTerm}:${activeTags.join(',')}:${members.length}`,
+  );
 
   const filteredMembers = useMemo(() => {
     return members.filter((member) => {
@@ -135,11 +116,12 @@ function Members() {
       const searchCombined = nameMatch || tagsMatch || descMatch || statusMatch || companyMatch;
 
       const tagButtonMatch =
-        !activeTag || (member.tags || []).includes(activeTag);
+        !activeTags.length ||
+        (member.tags || []).some((tag) => activeTags.includes(tag));
 
       return searchCombined && tagButtonMatch;
     });
-  }, [members, searchTerm, activeTag]);
+  }, [members, searchTerm, activeTags]);
 
   const currentMembers = filteredMembers
     .filter((member) => member.status === 'current')
@@ -155,38 +137,27 @@ function Members() {
     .filter((member) => member.status === 'alumni')
     .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
 
-  // 태그 버튼 클릭 핸들러
   const handleTagClick = (tag) => {
-    setActiveTag((prevTag) => (prevTag === tag ? '' : tag));
+    setActiveTags((currentTags) =>
+      currentTags.includes(tag)
+        ? currentTags.filter((currentTag) => currentTag !== tag)
+        : [...currentTags, tag]
+    );
   };
 
   return (
-    <>
-      <section className="pt-24 pb-16 min-h-screen flex items-center">
-        <div className="container site-content-container mx-auto px-4">
-          <div className="text-center">
-            <div className="mb-8">
-              <div className="site-hero-icon w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-blue-400 via-purple-400 to-green-400 flex items-center justify-center">
-                <i className="fas fa-users text-white text-3xl"></i>
-              </div>
-              <h1 className="site-hero-title orbitron mb-4">
-                <span className="gradient-text">TCP Members</span>
-              </h1>
-              <p className="orbitron text-xl md:text-2xl text-gray-300 mb-6">
-                Team Crazy Performance
-              </p>
-              <p className="orbitron text-lg text-gray-400 max-w-2xl mx-auto">
-                TCP의 멤버들을 만나보세요.
-                <br />
-                검색과 필터 기능으로 원하는 멤버를 찾아볼 수 있어요.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+    <main className="public-page-unified-background">
+      <PublicPageHero
+        className="members-page-hero"
+        icon={<i className="fas fa-users text-white text-3xl"></i>}
+        iconClassName="bg-gradient-to-br from-blue-400 via-purple-400 to-green-400"
+        title="TCP Members"
+        lead="TCP의 멤버들을 만나보세요."
+        description="검색과 필터 기능으로 원하는 멤버를 찾아볼 수 있어요."
+      />
 
       {/* Search and Filter Section */}
-      <section className="py-8 bg-gradient-to-b from-transparent to-gray-900">
+      <section className="members-filter-section py-8">
         <div className="container site-content-container mx-auto px-4">
           <div className="service-filter-panel members-filter-panel mb-10 rounded-xl">
             <div>
@@ -206,31 +177,15 @@ function Members() {
                 ></i>
               </div>
             </div>
-            <div className="members-tag-filter">
-              <div id="tag-cloud" className="flex flex-wrap gap-2">
-                {[
-                  'React',
-                  'JavaScript',
-                  'Node.js',
-                  'Python',
-                  'Swift',
-                  'Java',
-                  'Flutter',
-                  'Vue.js',
-                  'AI/ML',
-                ].map((tag) => (
-                  <button
-                    key={tag}
-                    type="button"
-                    className={`tag-btn px-3 py-1 rounded-full hover:opacity-80 transition-colors
-                      ${tagColorClass(tag)} ${activeTag === tag ? 'is-selected' : ''}`}
-                    onClick={() => handleTagClick(tag)}
-                  >
-                    {tag}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <TagMultiSelect
+              className="members-tag-filter"
+              ariaLabel="멤버 태그 필터"
+              tags={['React', 'JavaScript', 'Node.js', 'Python', 'Swift', 'Java', 'Flutter', 'Vue.js', 'AI/ML']}
+              selectedTags={activeTags}
+              onToggle={handleTagClick}
+              onReset={() => setActiveTags([])}
+              getTagClassName={tagColorClass}
+            />
           </div>
         </div>
       </section>
@@ -238,7 +193,7 @@ function Members() {
       {/* Current Members Section */}
       <section
         id="current-members"
-        className="py-16 bg-gradient-to-b from-transparent to-gray-900"
+        className="members-current-section"
       >
         <div className="container site-content-container mx-auto px-4">
           <div className="text-center mb-12">
@@ -448,7 +403,7 @@ function Members() {
           </div>
         </div>
       </section>
-    </>
+    </main>
   );
 }
 
