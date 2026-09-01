@@ -14,11 +14,12 @@ describe('공개 페이지 모바일 문구', () => {
     expect(copy.match(/announcement-mobile-break/g)).toHaveLength(2);
   });
 
-  test('Recruitment 소개 문구는 개행이 사라져도 쉼표 뒤 띄어쓰기를 유지한다', () => {
+  test('Recruitment 소개 문구는 세 줄로 핵심 정체성과 성장 목표를 설명한다', () => {
     const source = fs.readFileSync(path.join(__dirname, 'Recruitment.jsx'), 'utf8');
 
     expect(source).toMatch(
-      /TCP는 다양한 사람이 모여 같이 탐구하고,\s*<br className="recruitment-about-mobile-break" \/>\s*\{' '\}함께 성장하는 것을 목표로 합니다\./s,
+      /TCP \(Team Crazy Performance\)는,\s*<br \/>\s*서울과학기술대학교 컴퓨터공학과 학술동아리로,\s*<br \/>\s*뛰어난 동료와 같이 탐구하고, 함께 성장하는 것을 목표로 합니다\./s,
     );
+    expect(source).not.toContain('TCP는 다양한 사람이 모여 같이 탐구하고');
   });
 });

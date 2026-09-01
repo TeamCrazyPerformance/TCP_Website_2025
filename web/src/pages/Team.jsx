@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import RecruitTeamModal from '../components/modals/RecruitTeamModal';
 import TeamDetailModal from '../components/modals/TeamDetailModal';
+import PublicPageHero from '../components/public/PublicPageHero';
+import TagMultiSelect from '../components/public/TagMultiSelect';
+import { useScrollReveal } from '../hooks/useScrollReveal';
 import TeamCard from '../components/TeamCard';
 import { tagColorClass } from '../utils/helpers';
 import { apiGet, apiPatch, apiDelete } from '../api/client';
@@ -143,34 +146,43 @@ export default function Team() {
   const [errorMessage, setErrorMessage] = useState('');
   const [applicationStatuses, setApplicationStatuses] = useState({});
 
-  // ---- Filters ----
   const [searchTerm, setSearchTerm] = useState('');
 
   const [filterStatus, setFilterStatus] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
-  const [activeTag, setActiveTag] = useState('');
-  const [sortBy, setSortBy] = useState('latest'); // 정렬 상태 추가
+  const [activeTags, setActiveTags] = useState([]);
+  const [sortBy, setSortBy] = useState('latest');
 
-  // ---- Modals ----
   const [isRecruitModalOpen, setIsRecruitModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [recruitModalInitialData, setRecruitModalInitialData] = useState(null);
 
-  // ---- Handlers ----
-
-
   const filteredTeams = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     let filtered = teams.filter((t) => {
-      const titleMatch = t.title.toLowerCase().includes(term);
-      const tagsMatch = t.tags?.some((tg) => tg.toLowerCase().includes(term));
-      const searchMatch = !term || titleMatch || tagsMatch;
-
-
+      const searchableValues = [
+        t.title,
+        t.description,
+        t.fullDescription,
+        t.category,
+        t.status,
+        t.neededRoles,
+        t.location,
+        t.leader?.name,
+        ...(t.tags || []),
+        ...(t.techStack || []),
+      ];
+      const searchMatch =
+        !term ||
+        searchableValues.some((value) =>
+          String(value || '').toLowerCase().includes(term)
+        );
       const statusMatch = !filterStatus || t.status === filterStatus;
       const categoryMatch = !filterCategory || t.category === filterCategory;
-      const tagButtonMatch = !activeTag || t.tags?.includes(activeTag);
+      const tagButtonMatch =
+        !activeTags.length ||
+        (t.tags || []).some((tag) => activeTags.includes(tag));
 
       return (
         searchMatch &&
@@ -181,7 +193,6 @@ export default function Team() {
       );
     });
 
-    // 정렬 로직 추가
     if (sortBy === 'latest') {
       filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     } else if (sortBy === 'oldest') {
@@ -195,36 +206,22 @@ export default function Team() {
 
     filterStatus,
     filterCategory,
-    activeTag,
+    activeTags,
     sortBy,
   ]);
 
-  // ---- IntersectionObserver for cards ----
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries, obs) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('visible');
-            obs.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0, rootMargin: '0px 0px -50px 0px' }
+  const handleTagClick = (tag) => {
+    setActiveTags((currentTags) =>
+      currentTags.includes(tag)
+        ? currentTags.filter((currentTag) => currentTag !== tag)
+        : [...currentTags, tag]
     );
+  };
 
-    const elements = document.querySelectorAll('.recruitment-card');
-    elements.forEach((el) => observer.observe(el));
-
-    // 클린업 함수에서 모든 관찰을 중단하도록 수정
-    return () => {
-      elements.forEach((el) => {
-        if (observer && el) {
-          observer.unobserve(el);
-        }
-      });
-    };
-  }, [filteredTeams]);
+  useScrollReveal(
+    '.recruitment-card',
+    filteredTeams.map((team) => team.id).join(','),
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -290,7 +287,6 @@ export default function Team() {
     fetchApplicationStatuses();
   }, [user, teams]);
 
-  // 지원 상태 변경 콜백
   const handleApplicationStatusChange = (teamId, newStatus) => {
     setApplicationStatuses(prev => ({
       ...prev,
@@ -394,32 +390,30 @@ export default function Team() {
     }
   };
 
-  // ---- UI ----
   return (
     <>
-      <section className="pt-24 pb-16 min-h-screen flex items-center">
-        <div className="container site-content-container mx-auto px-4">
-          <div className="text-center">
-            <div className="site-hero-icon team-hero-icon w-24 h-24 mx-auto rounded-full flex items-center justify-center">
-              <i className="fas fa-users text-white text-3xl"></i>
-            </div>
-            <h1 className="site-hero-title orbitron gradient-text mb-4">
-              Find Your Team
-            </h1>
-            <p className="orbitron text-lg text-gray-400 max-w-2xl mx-auto mb-8">
-              함께 성장하고 도전할 최고의 팀원을 찾아보세요. TCP 동아리원뿐만
-              아니라 누구나 프로젝트, 스터디, 해커톤 팀원을 쉽게 모집하고 지원할 수 있어요.
-            </p>
-            <button
-              onClick={handleOpenRecruit}
-              className="cta-button primary-cta-text inline-flex items-center justify-center px-6 py-3 rounded-lg text-lg font-bold transition-transform transform hover:scale-105"
-              aria-label="팀 모집 시작하기"
-            >
-              <i className="fas fa-plus mr-2" />팀 모집 시작하기
-            </button>
-          </div>
-        </div>
-      </section>
+      <PublicPageHero
+        icon={<i className="fas fa-users text-white text-3xl"></i>}
+        iconClassName="team-hero-icon"
+        title="Find Your Team"
+        lead="함께 성장하고 도전할 최고의 팀원을 찾아보세요."
+        description={(
+          <>
+            TCP 동아리원뿐만 아니라 누구나 프로젝트, 스터디, 해커톤과 같은
+            <br className="team-description-desktop-break" />
+            {' '}여러 활동의 팀원을 모집하고, 지원할 수 있어요.
+          </>
+        )}
+        action={(
+          <button
+            onClick={handleOpenRecruit}
+            className="team-hero-action cta-button primary-cta-text inline-flex items-center justify-center px-6 py-3 rounded-lg text-lg font-bold transition-transform transform hover:scale-105"
+            aria-label="팀 모집 시작하기"
+          >
+            <i className="fas fa-plus mr-2" />팀 모집 시작하기
+          </button>
+        )}
+      />
 
       <section className="py-16 bg-gradient-to-b from-transparent to-gray-900">
         <div className="container site-content-container mx-auto px-4">
@@ -432,7 +426,7 @@ export default function Team() {
                 id="search"
                 type="text"
                 aria-label="팀 모집글 검색"
-                placeholder="제목 또는 태그로 검색"
+                placeholder="제목, 설명, 태그, 역할, 리더로 검색"
                 className="service-filter-control team-filter-control team-filter-input py-2 pl-10 pr-4 focus:ring-2 focus:ring-accent-blue focus:outline-none"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -491,24 +485,15 @@ export default function Team() {
             <i className="team-filter-chevron fas fa-chevron-down" aria-hidden="true" />
           </div>
         </div>
-        <div className="team-tag-filter">
-          <div id="tag-cloud" className="flex flex-wrap gap-2">
-            {TAGS.map((tag) => (
-              <button
-                key={tag}
-                className={`tag-btn px-3 py-1 rounded-full transition-all duration-200 ${tagColorClass(
-                  tag
-                )} ${activeTag === tag
-                  ? 'is-selected scale-110'
-                  : 'hover:opacity-80'
-                  }`}
-                onClick={() => setActiveTag((t) => (t === tag ? '' : tag))}
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
-        </div>
+        <TagMultiSelect
+          className="team-tag-filter"
+          ariaLabel="팀 모집 태그 필터"
+          tags={TAGS}
+          selectedTags={activeTags}
+          onToggle={handleTagClick}
+          onReset={() => setActiveTags([])}
+          getTagClassName={tagColorClass}
+        />
           </div>
 
           <div id="recruitment-grid" className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">

@@ -1,9 +1,9 @@
 import React, { lazy, Suspense, useEffect, useState } from "react";
 import {
   BrowserRouter as Router,
+  Navigate,
   Routes,
   Route,
-  Navigate,
   useLocation,
 } from "react-router-dom";
 import "./App.css";

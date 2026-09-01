@@ -56,14 +56,21 @@ describe("본문 컨테이너 정렬 일치", () => {
     }
   });
 
-  test("공개 TA 히어로 상단 여백이 기존 공개 페이지의 pt-24와 같다", () => {
-    const css = read("styles/techArticlesPublic.css");
-    expect(css).toMatch(
+  test("공개 TA와 탐색 페이지는 각 목적에 맞는 히어로 높이를 사용한다", () => {
+    const taCss = read("styles/techArticlesPublic.css");
+    const appCss = read("App.css");
+    expect(taCss).toMatch(
       /\.ta-public \.page-hero\s*\{[^}]*padding-top:\s*96px[^}]*padding-bottom:\s*64px/,
     );
+    expect(appCss).toMatch(
+      /\.compact-page-hero\s*\{[^}]*min-height:\s*clamp\(22rem, 46vh, 28rem\);/s,
+    );
 
+    expect(read("components/public/PublicPageHero.jsx")).toContain(
+      "compact-page-hero",
+    );
     for (const page of ["pages/Announcement.jsx", "pages/Members.jsx"]) {
-      expect(read(page)).toMatch(/className="pt-24 pb-16/);
+      expect(read(page)).toContain("<PublicPageHero");
     }
   });
 

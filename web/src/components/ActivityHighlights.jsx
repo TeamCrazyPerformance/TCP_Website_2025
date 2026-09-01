@@ -199,7 +199,7 @@ function ActivityHighlights() {
 
               return (
                 <article className="scroll-fade" key={activity.key}>
-                  <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl overflow-hidden card-hover h-full">
+                  <div className="activity-highlight-card rounded-2xl overflow-hidden card-hover h-full">
                     {image ? (
                       <button
                         type="button"

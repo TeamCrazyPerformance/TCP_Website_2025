@@ -51,3 +51,20 @@ test("목 서버가 만드는 태그 개수가 파이프라인 상한을 넘지 
   expect(lower).toBeGreaterThanOrEqual(1);
   expect(upper).toBeLessThanOrEqual(Number(contractMaximum[1]));
 });
+
+test("목 서버 공개 목록이 운영 Tech Articles와 유사한 데이터 구성을 제공한다", () => {
+  const mockSource = fs.readFileSync(
+    path.resolve(__dirname, "../../tools/mock-tech-articles-api.mjs"),
+    "utf8",
+  );
+
+  expect(mockSource).toMatch(/MOCK_PUBLIC_ARTICLE_COUNT \|\| 106/);
+  expect(mockSource).toContain(
+    "DoorDash의 Flux, 클라우드 기반 에이전트로 13만 건의 엔지니어링 작업 처리",
+  );
+  expect(mockSource).toContain("Tailscale Blog");
+  expect(mockSource).toContain("GitHub Trending");
+  expect(
+    (mockSource.match(/articleId: "article-202608/g) || []).length,
+  ).toBeGreaterThanOrEqual(20);
+});

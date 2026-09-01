@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import MarkdownIt from 'markdown-it';
 import { apiPost, apiPatch, apiGet } from '../api/client';
 import { formatBirthDate } from '../utils/dateFormatter';
+import BackToListLink from '../components/public/BackToListLink';
 
 const md = new MarkdownIt({
   html: true,
@@ -294,17 +295,16 @@ function AnnouncementWrite() {
       <div className="container mx-auto px-4 max-w-4xl">
         {/* 페이지 헤더 - 수정 모드일 때는 숨김 */}
         {!isEditMode && (
-          <div className="mb-8 flex justify-start">
-            {' '}
-            {/* flex와 justify-start 추가 */}
-            <Link
+          <nav
+            className="detail-breadcrumb mb-8"
+            aria-label="현재 위치"
+          >
+            <BackToListLink
               to={fromAdmin ? "/admin/announcement" : "/announcement"}
-              className="btn-secondary inline-flex items-center px-6 py-3 rounded-lg text-sm font-medium text-white"
             >
-              <i className="fas fa-arrow-left mr-2"></i>
               {fromAdmin ? '관리자 페이지로 돌아가기' : '공지사항 목록으로 돌아가기'}
-            </Link>
-          </div>
+            </BackToListLink>
+          </nav>
         )}
 
         <div className="text-center mb-12">
@@ -602,12 +602,11 @@ function AnnouncementWrite() {
             <p className="text-gray-300 mb-6">
               공지사항이 성공적으로 게시되었습니다.
             </p>
-            <button
-              onClick={() => navigate(fromAdmin ? '/admin/announcement' : '/announcement')}
-              className="btn-primary px-6 py-2 rounded-lg font-medium text-white"
+            <BackToListLink
+              to={fromAdmin ? '/admin/announcement' : '/announcement'}
             >
               공지사항 목록 보기
-            </button>
+            </BackToListLink>
           </div>
         </div>
       )}

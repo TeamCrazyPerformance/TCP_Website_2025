@@ -81,7 +81,7 @@ function Header({ isScrolled }) {
 
   return (
     <header
-      className={`site-nav ${isScrolled ? "is-scrolled" : ""} ${isMobileNavVisible ? "" : "is-mobile-hidden"}`}
+      className={`site-nav ${isScrolled ? "is-scrolled" : ""} ${isMobileMenuOpen ? "is-menu-open" : ""} ${isMobileNavVisible ? "" : "is-mobile-hidden"}`}
     >
       <div className="container mx-auto px-2.5 sm:px-4">
         <div className="site-nav-row flex items-center justify-between h-16">
