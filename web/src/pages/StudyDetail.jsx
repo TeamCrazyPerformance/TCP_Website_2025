@@ -1,165 +1,176 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { apiGet, apiPost, apiDelete } from '../api/client';
 import DOMPurify from 'dompurify';
 import MarkdownIt from 'markdown-it';
-import defaultProfileImage from '../logo.svg';
+import '../styles/studyDetail.css';
+import BackToListLink from '../components/public/BackToListLink';
+import { resolveStudyRole, STUDY_ROLE } from '../utils/studyRoles';
 
 const md = new MarkdownIt({ html: true, linkify: true, breaks: true });
 const normalizeBoolean = (value) => value === true || value === 1 || value === '1' || value === 'true';
 
+const getStoredUser = () => {
+  const storedUser = localStorage.getItem('auth_user');
+  return storedUser ? JSON.parse(storedUser) : null;
+};
+
+const mapStudy = (data) => ({
+  id: data.id,
+  year: data.start_year,
+  title: data.study_name,
+  period: data.period || `${data.start_year}년`,
+  method: data.way || '정보 없음',
+  cycle: data.cycle || '정보 없음',
+  location: data.place || '정보 없음',
+  recruitCount: data.recruit_count || 0,
+  memberCount: (data.members || []).filter((member) =>
+    ['MEMBER', 'LEADER', 'NOMINEE'].includes(member.role)
+  ).length,
+  description: data.study_description,
+  tags: data.tag ? data.tag.split(',').map((tag) => tag.trim()) : ['스터디'],
+  isPublic: normalizeBoolean(data.is_public),
+  leader: data.leader ? {
+    id: data.leader.user_id,
+    name: data.leader.name || '알 수 없음',
+    quote: data.leader.intro || '함께 성장하는 스터디를 만들어갑시다!',
+  } : null,
+});
+
+const mapMembers = (data) => (data.members || [])
+  .filter((member) => ['MEMBER', 'LEADER', 'NOMINEE'].includes(member.role))
+  .map((member) => ({
+    id: member.user_id,
+    name: member.user?.name || member.name,
+    role: member.role === 'LEADER'
+      ? '스터디장'
+      : member.role === 'NOMINEE' ? '스터디장 후보' : '스터디원',
+    avatar: member.user?.profile_image || member.profile_image || 'https://via.placeholder.com/40',
+    major: member.user?.major || '전공 미입력',
+    techStack: member.user?.tech_stack || [],
+  }));
+
+function StudyActionBar({
+  studyId,
+  role,
+  isAdmin,
+  canJoin,
+  onJoin,
+  onAcceptLeadership,
+  onDeclineLeadership,
+}) {
+  return (
+    <div className="study-detail-actions">
+      {(role === STUDY_ROLE.LEADER || isAdmin) && (
+        <Link to={`/study/${studyId}/manage`} className="study-detail-action cta-button primary-cta-text">
+          <i className="fas fa-cog mr-2" aria-hidden="true"></i>
+          스터디 관리
+        </Link>
+      )}
+
+      {role === STUDY_ROLE.NOMINEE && (
+        <>
+          <button
+            type="button"
+            onClick={onAcceptLeadership}
+            className="study-detail-action study-detail-action-warning"
+          >
+            <i className="fas fa-crown mr-2" aria-hidden="true"></i>
+            스터디장 수락
+          </button>
+          <button
+            type="button"
+            onClick={onDeclineLeadership}
+            className="study-detail-action study-detail-action-secondary"
+          >
+            거절
+          </button>
+        </>
+      )}
+
+      {canJoin && (
+        <button
+          type="button"
+          onClick={onJoin}
+          className="study-detail-action cta-button primary-cta-text"
+        >
+          <i className="fas fa-user-plus mr-2" aria-hidden="true"></i>
+          스터디 참여
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function StudyDetail() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const [study, setStudy] = useState(null);
   const [members, setMembers] = useState([]);
   const [progress, setProgress] = useState([]);
-  const [resources, setResources] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // userRole is dynamically determined based on API response
-  const [userRole, setUserRole] = useState('guest'); // 'guest', 'member', 'leader'
-  const [isNominee, setIsNominee] = useState(false); // Whether user is a NOMINEE
+  const [userRole, setUserRole] = useState(STUDY_ROLE.GUEST);
 
-  // Progress form state
-  const [showProgressForm, setShowProgressForm] = useState(false);
-  const [progressTitle, setProgressTitle] = useState('');
-  const [progressContent, setProgressContent] = useState('');
-  const [isSubmittingProgress, setIsSubmittingProgress] = useState(false);
-  const [selectedProgress, setSelectedProgress] = useState(null); // For Modal
-
-  // Member search state
+  const [selectedProgress, setSelectedProgress] = useState(null);
   const [memberSearch, setMemberSearch] = useState('');
 
-  // Resource upload state
-  const fileInputRef = useRef(null);
-  const [isUploadingResource, setIsUploadingResource] = useState(false);
+  const currentUser = getStoredUser();
 
-  const user = localStorage.getItem('auth_user');
-  const currentUser = user ? JSON.parse(user) : null;
-
-  useEffect(() => {
-    let isMounted = true;
+  const loadStudy = useCallback(async () => {
     const token = localStorage.getItem('access_token');
-    const user = localStorage.getItem('auth_user');
-    const currentUser = user ? JSON.parse(user) : null;
+    const storedUser = getStoredUser();
 
     if (!token) {
       setIsLoading(false);
+      setStudy(null);
+      setMembers([]);
+      setProgress([]);
+      setUserRole(STUDY_ROLE.GUEST);
       setErrorMessage('스터디 상세는 로그인 후 확인할 수 있습니다.');
-      return undefined;
+      return;
     }
 
-    const fetchStudy = async () => {
-      try {
-        setIsLoading(true);
-        const data = await apiGet(`/api/v1/study/${id}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+    try {
+      setIsLoading(true);
+      const data = await apiGet(`/api/v1/study/${id}`);
+      const role = resolveStudyRole(data, storedUser);
+      const canViewMemberContent = [
+        STUDY_ROLE.MEMBER,
+        STUDY_ROLE.NOMINEE,
+        STUDY_ROLE.LEADER,
+      ].includes(role) || storedUser?.role === 'ADMIN';
 
-        // Determine user role based on API response
-        // PENDING users are still treated as guests until approved
-        let role = 'guest';
-        if (currentUser?.id) {
-          // Check explicitly against the leader object first (safest)
-          if (data.leader?.user_id === currentUser.id) {
-            role = 'leader';
-          }
-          // Check members array
-          else if (data.members?.some((m) => m.user_id === currentUser.id && m.role === 'LEADER')) {
-            role = 'leader';
-          } else if (data.members?.some((m) => m.user_id === currentUser.id && m.role === 'NOMINEE')) {
-            role = 'member';
-            setIsNominee(true);
-          } else if (data.members?.some((m) => m.user_id === currentUser.id && m.role === 'MEMBER')) {
-            role = 'member';
-          }
+      setStudy(mapStudy(data));
+      setMembers(mapMembers(data));
+      setUserRole(role);
+      setErrorMessage('');
+
+      if (canViewMemberContent) {
+        try {
+          const progressData = await apiGet(`/api/v1/study/${id}/progress`);
+          setProgress(progressData || []);
+        } catch {
+          setProgress([]);
         }
-
-        const mappedStudy = {
-          id: data.id,
-          year: data.start_year,
-          title: data.study_name,
-          period: data.period || `${data.start_year}년`,
-          method: data.way || '정보 없음',
-          cycle: data.cycle || '정보 없음',
-          location: data.place || '정보 없음',
-          recruitCount: data.recruit_count || 0,
-          memberCount: (data.members || []).filter(m => m.role === 'MEMBER' || m.role === 'LEADER' || m.role === 'NOMINEE').length,
-          description: data.study_description,
-          tags: data.tag ? data.tag.split(',').map((t) => t.trim()) : ['스터디'],
-          is_public: normalizeBoolean(data.is_public),
-          leader: data.leader ? {
-            id: data.leader.user_id,
-            name: data.leader.name || '알 수 없음',
-            quote: data.leader.intro || '함께 성장하는 스터디를 만들어갑시다!', // Fallback quote if not in API
-          } : null,
-        };
-        // Filter out PENDING members, show MEMBER, LEADER, and NOMINEE
-        const approvedMembers = (data.members || []).filter(m => m.role === 'MEMBER' || m.role === 'LEADER' || m.role === 'NOMINEE');
-        const mappedMembers = approvedMembers.map((member) => ({
-          id: member.user_id,
-          name: member.user?.name || member.name, // Access user relation if available
-          role: member.role === 'LEADER' ? '스터디장' : member.role === 'NOMINEE' ? '스터디장 후보' : '스터디원',
-          avatar: member.user?.profile_image || member.profile_image || 'https://via.placeholder.com/40',
-          major: member.user?.major || '전공 미입력',
-          techStack: member.user?.tech_stack || [],
-        }));
-
-        if (isMounted) {
-          setStudy(mappedStudy);
-          setMembers(mappedMembers);
-          setUserRole(role);
-          setErrorMessage('');
-
-          // Fetch progress if user is member, leader_nominee or leader
-          if (role !== 'guest') {
-            try {
-              const progressData = await apiGet(`/api/v1/study/${id}/progress`, {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              });
-              setProgress(progressData || []);
-            } catch {
-              setProgress([]);
-            }
-
-            // Fetch resources
-            try {
-              const resourceData = await apiGet(`/api/v1/study/${id}/resources`, {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              });
-              setResources(resourceData || []);
-            } catch {
-              setResources([]);
-            }
-          }
-        }
-      } catch (error) {
-        if (isMounted) {
-          setErrorMessage(error.message || '스터디 정보를 불러오지 못했습니다.');
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+      } else {
+        setProgress([]);
       }
-    };
-
-    fetchStudy();
-
-    return () => {
-      isMounted = false;
-    };
+    } catch (error) {
+      setStudy(null);
+      setMembers([]);
+      setProgress([]);
+      setUserRole(STUDY_ROLE.GUEST);
+      setErrorMessage(error.message || '스터디 정보를 불러오지 못했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
   }, [id]);
 
-  // Filtered members for search (must be before early returns per Rules of Hooks)
+  useEffect(() => {
+    loadStudy();
+  }, [loadStudy]);
+
   const filteredMembers = useMemo(() => {
     if (!memberSearch.trim()) return members;
     const term = memberSearch.toLowerCase();
@@ -181,16 +192,19 @@ export default function StudyDetail() {
 
   if (errorMessage) {
     return (
-      <div className="container mx-auto px-4 py-24 text-center text-gray-400">
-        <p className="mb-6">{errorMessage}</p>
-        <Link
-          to="/study"
-          className="back-button inline-flex items-center px-8 py-4 rounded-lg text-lg font-medium"
-        >
-          <i className="fas fa-list mr-3"></i>
-          스터디 목록 보기
-        </Link>
-      </div>
+      <main className="study-detail-page">
+        <div className="study-detail-shell container mx-auto px-4 max-w-4xl">
+          <nav
+            className="detail-breadcrumb detail-breadcrumb-spaced study-detail-breadcrumb"
+            aria-label="현재 위치"
+          >
+            <BackToListLink to="/study">
+              스터디 목록으로 돌아가기
+            </BackToListLink>
+          </nav>
+          <div className="study-detail-empty-state">{errorMessage}</div>
+        </div>
+      </main>
     );
   }
 
@@ -209,13 +223,9 @@ export default function StudyDetail() {
       return;
     }
     try {
-      await apiPost(`/api/v1/study/${id}/apply`, {}, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      await apiPost(`/api/v1/study/${id}/apply`, {});
       alert('스터디 가입 신청이 완료되었습니다. 스터디장의 승인을 기다려주세요.');
-      window.location.reload();
+      await loadStudy();
     } catch (error) {
       alert(error.message || '가입 신청에 실패했습니다.');
     }
@@ -226,7 +236,7 @@ export default function StudyDetail() {
     try {
       await apiPost(`/api/v1/study/${id}/accept-leadership`);
       alert('스터디장 지명을 수락했습니다. 이제 스터디장입니다!');
-      window.location.reload();
+      await loadStudy();
     } catch (error) {
       alert(error.message || '수락에 실패했습니다.');
     }
@@ -237,89 +247,9 @@ export default function StudyDetail() {
     try {
       await apiPost(`/api/v1/study/${id}/decline-leadership`);
       alert('스터디장 지명을 거절했습니다.');
-      window.location.reload();
+      await loadStudy();
     } catch (error) {
       alert(error.message || '거절에 실패했습니다.');
-    }
-  };
-
-
-  const handleProgressSubmit = async (e) => {
-    e.preventDefault();
-    const token = localStorage.getItem('access_token');
-    if (!token) return;
-
-    if (!progressTitle.trim() || !progressContent.trim()) {
-      alert('제목과 내용을 모두 입력해주세요.');
-      return;
-    }
-
-    try {
-      setIsSubmittingProgress(true);
-      await apiPost(`/api/v1/study/${id}/progress`, {
-        title: progressTitle,
-        content: progressContent,
-      }, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      alert('진행사항이 등록되었습니다.');
-      setProgressTitle('');
-      setProgressContent('');
-      setShowProgressForm(false);
-      window.location.reload();
-    } catch (error) {
-      alert(error.message || '진행사항 등록에 실패했습니다.');
-    } finally {
-      setIsSubmittingProgress(false);
-    }
-  };
-
-  const handleResourceUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const token = localStorage.getItem('access_token');
-    if (!token) return;
-
-
-
-    // Check file size (10MB)
-    const MAX_SIZE = 10 * 1024 * 1024;
-    if (file.size > MAX_SIZE) {
-      alert('파일 크기는 10MB를 초과할 수 없습니다.');
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      return;
-    }
-
-    try {
-      setIsUploadingResource(true);
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await fetch(`/api/v1/study/${id}/resources`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || '업로드 실패');
-      }
-
-      alert('자료가 업로드되었습니다.');
-      window.location.reload();
-    } catch (error) {
-      alert(error.message || '자료 업로드에 실패했습니다.');
-    } finally {
-      setIsUploadingResource(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
     }
   };
 
@@ -352,82 +282,73 @@ export default function StudyDetail() {
     }
   };
 
-  const ActionButtons = () => {
-    const user = localStorage.getItem('auth_user');
-    const currentUser = user ? JSON.parse(user) : null;
-    const isAdmin = currentUser?.role === 'ADMIN';
+  const handleDeleteProgress = async (progressId) => {
+    if (!window.confirm('정말 삭제하시겠습니까?')) return;
 
-    return (
-      <div className="flex gap-2 items-center flex-wrap">
-        {(userRole === 'leader' || isAdmin) && (
-          <Link to={`/study/${id}/manage`} className="cta-button px-4 py-2 rounded-lg font-bold text-white hover:text-black transition-colors inline-flex items-center">
-            <i className="fas fa-cog mr-2"></i>스터디 관리
-          </Link>
-        )}
-
-        {/* Nominee Accept/Decline Buttons */}
-        {isNominee && (
-          <>
-            <button
-              onClick={handleAcceptLeadership}
-              className="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded-lg font-bold text-black transition-colors flex items-center"
-            >
-              <i className="fas fa-crown mr-2"></i> 스터디장 수락
-            </button>
-            <button
-              onClick={handleDeclineLeadership}
-              className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg font-bold text-white transition-colors flex items-center"
-            >
-              <i className="fas fa-times mr-2"></i> 거절
-            </button>
-          </>
-        )}
-
-        {/* Guest Join Button */}
-        {(userRole === 'guest' && (study.is_public || (currentUser && currentUser.role !== 'GUEST'))) && (
-          <button
-            onClick={handleJoin}
-            className="cta-button px-6 py-3 rounded-lg font-bold text-white hover:text-black transition-colors flex items-center"
-          >
-            <i className="fas fa-user-plus mr-2"></i> 스터디 참여
-          </button>
-        )}
-      </div>
-    );
+    try {
+      await apiDelete(`/api/v1/study/${id}/progress/${progressId}`);
+      await loadStudy();
+    } catch (error) {
+      alert(error.message || '진행사항 삭제에 실패했습니다.');
+    }
   };
 
+  const handleRemoveMember = async (memberId) => {
+    if (!window.confirm('이 스터디원을 내보내시겠습니까?')) return;
+
+    try {
+      await apiDelete(`/api/v1/study/${id}/members/${memberId}`);
+      alert('스터디원을 내보냈습니다.');
+      await loadStudy();
+    } catch (error) {
+      alert(error.message || '스터디원을 내보내지 못했습니다.');
+    }
+  };
+
+  const isAdmin = currentUser?.role === 'ADMIN';
+  const canManage = userRole === STUDY_ROLE.LEADER || isAdmin;
+  const canViewMemberContent = [
+    STUDY_ROLE.MEMBER,
+    STUDY_ROLE.NOMINEE,
+    STUDY_ROLE.LEADER,
+  ].includes(userRole) || isAdmin;
+  const canJoin = userRole === STUDY_ROLE.GUEST
+    && (study.isPublic || (currentUser && currentUser.role !== 'GUEST'));
+
   return (
-    <main className="container mx-auto px-4 py-24 max-w-6xl">
+    <main className="study-detail-page">
+      <div className="study-detail-shell container mx-auto px-4 max-w-4xl">
       {/* Back Navigation */}
-      <div className="mb-8">
-        <Link to="/study" className="back-button inline-flex items-center px-6 py-3 rounded-lg text-sm font-medium">
-          <i className="fas fa-arrow-left mr-2"></i>
+      <nav
+        className="detail-breadcrumb detail-breadcrumb-spaced study-detail-breadcrumb"
+        aria-label="현재 위치"
+      >
+        <BackToListLink to="/study">
           스터디 목록으로 돌아가기
-        </Link>
-      </div>
+        </BackToListLink>
+      </nav>
 
       {/* Study Overview */}
-      <section className="mb-12 scroll-fade visible">
-        <div className="feature-card rounded-xl p-8">
+      <section className="study-detail-overview scroll-fade visible">
+        <div className="study-detail-surface">
           {/* Title Area */}
-          <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6 mb-6">
+          <div className="study-detail-header">
 
-            <div className="flex-1 text-left">
-              <div className="flex flex-wrap items-center gap-3 mb-2">
-                <h1 className="orbitron text-3xl md:text-4xl font-bold gradient-text mb-0 text-left">
+            <div className="study-detail-heading">
+              <div className="study-detail-title-row">
+                <h1 className="study-detail-title">
                   {study.title}
                 </h1>
-                {normalizeBoolean(study.is_public) && (
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-500/20 text-green-300 border border-green-500/30">
+                {study.isPublic && (
+                  <span className="study-detail-visibility">
                     <i className="fas fa-unlock-alt mr-2"></i>
                     공개 스터디
                   </span>
                 )}
               </div>
-              <p className="text-lg text-gray-300 mb-4 text-left whitespace-pre-wrap">{study.description}</p>
-              <div className="flex flex-wrap gap-2">
+              <p className="study-detail-description whitespace-pre-wrap">{study.description}</p>
+              <div className="study-detail-tags">
                 {study.tags.map((tag, index) => {
-                  // Simple logic to assign colors based on tag name or index
                   const colors = ['tag-blue', 'tag-purple', 'tag-green', 'tag-yellow', 'tag-red'];
                   const colorClass = colors[index % colors.length];
                   return (
@@ -438,40 +359,48 @@ export default function StudyDetail() {
                 })}
               </div>
             </div>
-            <div className="ml-auto flex flex-col gap-2">
-              <ActionButtons />
+            <div className="study-detail-action-wrap">
+              <StudyActionBar
+                studyId={id}
+                role={userRole}
+                isAdmin={isAdmin}
+                canJoin={canJoin}
+                onJoin={handleJoin}
+                onAcceptLeadership={handleAcceptLeadership}
+                onDeclineLeadership={handleDeclineLeadership}
+              />
             </div>
           </div>
 
           {/* Info Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 text-gray-300 text-left">
-            <div>
-              <h3 className="text-lg font-bold text-white mb-2">📅 진행 기간</h3>
+          <div className="study-detail-info-grid">
+            <div className="study-detail-info-card">
+              <h3><i className="fas fa-calendar-alt" aria-hidden="true"></i>진행 기간</h3>
               <p>{study.period}</p>
             </div>
-            <div>
-              <h3 className="text-lg font-bold text-white mb-2">📍 진행 방식</h3>
+            <div className="study-detail-info-card">
+              <h3><i className="fas fa-laptop-code" aria-hidden="true"></i>진행 방식</h3>
               <p>{study.method}</p>
             </div>
-            <div>
-              <h3 className="text-lg font-bold text-white mb-2">🔄 주기</h3>
+            <div className="study-detail-info-card">
+              <h3><i className="fas fa-sync-alt" aria-hidden="true"></i>주기</h3>
               <p>{study.cycle}</p>
             </div>
-            <div>
-              <h3 className="text-lg font-bold text-white mb-2">🏢 장소</h3>
+            <div className="study-detail-info-card">
+              <h3><i className="fas fa-map-marker-alt" aria-hidden="true"></i>장소</h3>
               <p>{study.location}</p>
             </div>
-            <div>
-              <h3 className="text-lg font-bold text-white mb-2">👨‍💻 스터디장</h3>
+            <div className="study-detail-info-card">
+              <h3><i className="fas fa-user" aria-hidden="true"></i>스터디장</h3>
               <p>
                 <strong>{study.leader ? study.leader.name : '공석'}</strong>
-                {study.leader && <span className="block text-sm text-gray-400">"{study.leader.quote}"</span>}
+                {study.leader && <span>"{study.leader.quote}"</span>}
               </p>
             </div>
-            <div>
-              <h3 className="text-lg font-bold text-white mb-2">👥 참여 인원</h3>
+            <div className="study-detail-info-card">
+              <h3><i className="fas fa-users" aria-hidden="true"></i>참여 인원</h3>
               <p>
-                <span className="text-accent-blue font-bold">{study.memberCount}</span>명 / {study.recruitCount}명
+                <strong>{study.memberCount}</strong>명 / {study.recruitCount}명
                 {study.memberCount >= study.recruitCount ? ' (모집 완료)' : ' (모집 중)'}
               </p>
             </div>
@@ -483,11 +412,11 @@ export default function StudyDetail() {
 
       {/* Weekly Progress Section */}
       {
-        (userRole !== 'guest' || currentUser?.role === 'ADMIN') && (
-          <section className="mb-12 scroll-fade visible">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-3xl font-bold gradient-text">📚 주차별 진행 현황</h2>
-              {(userRole === 'leader' || currentUser?.role === 'ADMIN') && (
+        canViewMemberContent && (
+          <section className="study-detail-section scroll-fade visible">
+            <div className="study-detail-section-heading">
+              <h2 className="study-detail-section-title"><i className="fas fa-book-open" aria-hidden="true"></i>주차별 진행 현황</h2>
+              {canManage && (
                 <Link
                   to={`/study/${id}/progress/write`}
                   className="cta-button px-4 py-2 rounded-lg font-bold text-white hover:text-black transition-colors inline-flex items-center"
@@ -499,9 +428,9 @@ export default function StudyDetail() {
 
             {/* Weeks Grid */}
             {progress.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="study-detail-week-grid">
                 {progress.map((item) => (
-                  <div key={item.id} className="week-card p-6 rounded-xl relative group" onClick={() => setSelectedProgress(item)}>
+                  <div key={item.id} className="week-card study-detail-week-card relative group" onClick={() => setSelectedProgress(item)}>
                     <div className="flex items-center justify-between mb-3">
                       <span className="tag tag-blue text-xs">Week {item.weekNo || '?'}</span>
                       <span className="text-sm text-gray-400">
@@ -518,7 +447,7 @@ export default function StudyDetail() {
 
                     {/* Hover Content / Actions */}
                     <div className="hover-content absolute inset-x-0 bottom-0 p-6 bg-gray-800/90 backdrop-blur-sm rounded-b-xl border-t border-gray-700">
-                      {(userRole === 'leader' || currentUser?.role === 'ADMIN') ? (
+                      {canManage ? (
                         <div className="flex justify-between items-center">
                           <div className="flex gap-2">
                             <Link
@@ -528,13 +457,10 @@ export default function StudyDetail() {
                               <i className="fas fa-pen mr-1"></i>편집
                             </Link>
                             <button
-                              onClick={async (e) => {
+                              onClick={(e) => {
                                 e.preventDefault();
-                                if (!window.confirm('정말 삭제하시겠습니까?')) return;
-                                try {
-                                  await apiDelete(`/api/v1/study/${id}/progress/${item.id}`);
-                                  window.location.reload();
-                                } catch (err) { alert('삭제 실패'); }
+                                e.stopPropagation();
+                                handleDeleteProgress(item.id);
                               }}
                               className="text-xs px-3 py-1 rounded border border-red-900 hover:border-red-500 text-red-400 hover:text-red-300 transition-colors"
                             >
@@ -561,7 +487,7 @@ export default function StudyDetail() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 bg-gray-900 rounded-lg border border-gray-800 border-dashed">
+              <div className="study-detail-empty-state">
                 <i className="fas fa-book-open text-4xl text-gray-600 mb-4"></i>
                 <p className="text-gray-400">아직 등록된 진행사항이 없습니다.</p>
               </div>
@@ -570,14 +496,12 @@ export default function StudyDetail() {
         )
       }
 
-      {/* General Resources Section - REMOVED per user request */}
-
       {/* Member Search / List Section */}
       {
-        (userRole !== 'guest' || currentUser?.role === 'ADMIN') && (
-          <section className="mb-12 scroll-fade visible">
-            <h2 className="text-3xl font-bold gradient-text mb-8">👥 스터디원 검색</h2>
-            <div className="feature-card rounded-xl p-8">
+        canViewMemberContent && (
+          <section className="study-detail-section scroll-fade visible">
+            <h2 className="study-detail-section-title"><i className="fas fa-users" aria-hidden="true"></i>스터디원 검색</h2>
+            <div className="study-detail-member-surface">
               {/* Search Input */}
               <div className="flex flex-col sm:flex-row gap-4 mb-6">
                 <div className="flex-1">
@@ -601,7 +525,7 @@ export default function StudyDetail() {
                   </div>
                 )}
                 {filteredMembers.map(member => (
-                  <div key={member.id} className="member-card p-4 rounded-lg">
+                  <div key={member.id} className="study-detail-member-card">
                     <div className="flex items-center space-x-3 mb-3">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center text-white font-bold overflow-hidden">
                         {member.avatar && member.avatar !== 'https://via.placeholder.com/40' ? (
@@ -625,11 +549,14 @@ export default function StudyDetail() {
                       <span className="tag tag-devops text-xs">{member.role || 'MEMBER'}</span>
                     </div>
 
-                    {/* Kick button for Leader */}
-                    {(userRole === 'leader' || currentUser?.role === 'ADMIN') && member.id !== currentUser?.id && (
+                    {canManage && member.id !== currentUser?.id && (
                       <div className="flex justify-end mt-3">
-                        <button className="text-xs px-3 py-1 rounded border border-red-800 hover:border-red-500 text-red-400 hover:text-red-300 transition-colors">
-                          <i className="fas fa-user-minus mr-1"></i>방출
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMember(member.id)}
+                          className="text-xs px-3 py-1 rounded border border-red-800 hover:border-red-500 text-red-400 hover:text-red-300 transition-colors"
+                        >
+                          내보내기
                         </button>
                       </div>
                     )}
@@ -726,6 +653,7 @@ export default function StudyDetail() {
           </div>
         </div>
       )}
+      </div>
     </main>
   );
 }

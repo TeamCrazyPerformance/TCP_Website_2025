@@ -186,6 +186,8 @@
 
 .ta-public .article-card {
   --article-card-edge-space: 15px;
+  background: var(--card-surface-background);
+  border-color: var(--card-surface-border);
   padding-top: var(--article-card-edge-space);
   padding-bottom: var(--article-card-edge-space);
 }
@@ -518,6 +520,8 @@
 
 .ta-public .category-filter-panel {
   margin-bottom: 12px;
+  border-color: var(--card-surface-border);
+  box-shadow: var(--card-surface-rest-shadow);
 }
 
 @media (max-width: 767px) {
@@ -794,11 +798,14 @@
   }
 
   .ta-public .article-card .article-summary-row .article-summary {
-    display: block;
+    display: -webkit-box;
     margin: 0;
-    overflow: visible;
-    text-overflow: clip;
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
   }
 
   .ta-public .article-card .article-meta-desktop {
@@ -1383,6 +1390,8 @@
     overflow: visible;
     text-overflow: clip;
     white-space: normal;
+    -webkit-line-clamp: unset;
+    line-clamp: unset;
   }
 }
 

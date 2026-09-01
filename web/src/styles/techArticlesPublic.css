@@ -450,15 +450,17 @@
 }
 .ta-public .article-card {
   padding: 24px;
-  background: var(--secondary-gray);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--card-surface-background);
+  border: 1px solid var(--card-surface-border);
   border-radius: 12px;
+  box-shadow: var(--card-surface-rest-shadow);
   text-align: left;
   transition: all 0.3s ease;
 }
 .ta-public .article-card:hover {
-  background: var(--light-gray);
-  box-shadow: 0 5px 15px rgba(168, 197, 230, 0.15);
+  background: var(--card-surface-background);
+  border-color: var(--card-surface-hover-border);
+  box-shadow: var(--card-surface-shadow);
   transform: translateY(-3px);
 }
 .ta-public .article-topline {

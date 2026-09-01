@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiGet } from '../api/client';
+import PublicPageHero from '../components/public/PublicPageHero';
+import { useScrollReveal } from '../hooks/useScrollReveal';
 
 function Announcement() {
   const navigate = useNavigate();
@@ -69,31 +71,10 @@ function Announcement() {
   const endIndex = startIndex + itemsPerPage;
   const currentAnnouncements = announcements.slice(startIndex, endIndex);
 
-  useEffect(() => {
-    // IntersectionObserver를 사용하여 스크롤 시 요소가 보일 때 애니메이션 추가
-    const observerOptions = {
-      threshold: 0,
-      rootMargin: '0px 0px -50px 0px',
-    };
-
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-          observer.unobserve(entry.target); // 한 번 보이면 더 이상 관찰 안 함
-        }
-      });
-    }, observerOptions);
-
-    document.querySelectorAll('.scroll-fade').forEach((el) => {
-      observer.observe(el);
-    });
-
-    // 컴포넌트 언마운트 시 클린업
-    return () => {
-      observer.disconnect(); // IntersectionObserver 연결 해제
-    };
-  }, [currentPage, currentAnnouncements]);
+  useScrollReveal(
+    '.scroll-fade',
+    `${currentPage}:${currentAnnouncements.map((item) => item.id).join(',')}`,
+  );
 
   const handleWriteClick = () => {
     navigate('/announcement/write');
@@ -127,31 +108,21 @@ function Announcement() {
 
   return (
     <>
-      <section className="pt-24 pb-16 min-h-screen flex items-center">
-        <div className="container site-content-container mx-auto px-4">
-          <div className="text-center">
-            <div className="mb-8">
-              <div className="site-hero-icon w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-purple-400 via-pink-400 to-red-400 flex items-center justify-center">
-                <i className="fas fa-bullhorn text-white text-3xl"></i>
-              </div>
-              <h1 className="site-hero-title orbitron mb-4">
-                <span className="gradient-text">Announcements</span>
-              </h1>
-              <p className="orbitron text-xl md:text-2xl text-gray-300 mb-6">
-                TCP의 중요한 소식을 놓치지 마세요
-              </p>
-              <p className="orbitron text-lg text-gray-400 max-w-2xl mx-auto">
-                동아리 운영, 행사, 프로젝트 등
-                <br className="announcement-mobile-break" />
-                {' '}TCP의 모든 공식 공지사항을
-                <br className="announcement-mobile-break" />
-                {' '}
-                이곳에서 확인할 수 있어요.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+      <PublicPageHero
+        icon={<i className="fas fa-bullhorn text-white text-3xl"></i>}
+        iconClassName="bg-gradient-to-br from-purple-400 via-pink-400 to-red-400"
+        title="Announcements"
+        lead="TCP의 중요한 소식을 놓치지 마세요"
+        description={(
+          <>
+            동아리 운영, 행사, 프로젝트 등
+            <br className="announcement-mobile-break" />
+            {' '}TCP의 모든 공식 공지사항을
+            <br className="announcement-mobile-break" />
+            {' '}이곳에서 확인할 수 있어요.
+          </>
+        )}
+      />
 
       <section
         id="announcements"
@@ -163,7 +134,7 @@ function Announcement() {
               공지사항
             </h2>
             <button
-              className="cta-button primary-cta-text px-6 py-2 rounded-lg text-sm font-bold transition-colors"
+              className="announcement-write-button cta-button primary-cta-text px-6 py-2 rounded-lg text-sm font-bold transition-colors"
               onClick={handleWriteClick}
             >
               <i className="fas fa-edit mr-2"></i> 글쓰기
@@ -194,22 +165,25 @@ function Announcement() {
                   key={announcement.id}
                   className="block announcement-item p-6 rounded-xl scroll-fade"
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-bold text-xl text-blue-300 text-left">
+                  <div className="announcement-card-header flex items-center justify-between mb-2">
+                    <h3 className="announcement-card-title font-bold text-xl text-blue-300 text-left">
                       {announcement.title}
                     </h3>
-                    <span className="text-sm text-gray-400">
+                    <time
+                      className="announcement-card-date text-sm text-gray-400"
+                      dateTime={announcement.date || undefined}
+                    >
                       {announcement.date
                         ? new Date(announcement.date).toLocaleDateString(
                           'ko-KR'
                         )
                         : ''}
-                    </span>
+                    </time>
                   </div>
-                  <p className="text-gray-300 mb-2 text-left">
+                  <p className="announcement-card-summary text-gray-300 mb-2 text-left">
                     {announcement.summary}
                   </p>
-                  <div className="text-sm text-gray-500 text-left">
+                  <div className="announcement-card-author text-sm text-gray-500 text-left">
                     작성자: {announcement.author}{' '}
                     <i className="fas fa-user-shield ml-1"></i>
                   </div>
