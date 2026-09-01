@@ -461,7 +461,7 @@ describe("Tech Articles CSS 스코프", () => {
       /\.ta-public \.article-card \.article-summary-row\s*{[^}]*display:\s*block;/s,
     );
     expect(block[1]).toMatch(
-      /\.ta-public \.article-card \.article-summary-row \.article-summary\s*{[^}]*display:\s*block;[^}]*overflow:\s*visible;[^}]*text-overflow:\s*clip;[^}]*white-space:\s*normal;/s,
+      /\.ta-public \.article-card \.article-summary-row \.article-summary\s*{[^}]*display:\s*-webkit-box;[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*normal;[^}]*-webkit-line-clamp:\s*2;/s,
     );
     expect(block[1]).toMatch(
       /\.ta-public \.article-card \.article-meta-mobile\s*{[^}]*display:\s*block;[^}]*margin:\s*6px 0 0;[^}]*font-size:\s*11px;[^}]*white-space:\s*nowrap;/s,
@@ -1076,7 +1076,7 @@ describe("Tech Articles CSS 스코프", () => {
     }
   });
 
-  test("한 줄 요약 박스는 좌측 강조선이나 모바일 말줄임을 사용하지 않는다", () => {
+  test("상세 한 줄 요약은 강조선 없이 모바일에서도 전체를 표시한다", () => {
     const css = fs.readFileSync(
       path.join(__dirname, "techArticlesPublicAlign.css"),
       "utf8",
@@ -1092,10 +1092,7 @@ describe("Tech Articles CSS 스코프", () => {
       .map((match) => match[1])
       .join("\n");
     expect(narrow).toMatch(
-      /\.ta-public \.detail-one-line-summary\s*{[^}]*display:\s*block;[^}]*overflow:\s*visible;[^}]*text-overflow:\s*clip;[^}]*white-space:\s*normal;/s,
-    );
-    expect(narrow).not.toMatch(
-      /\.ta-public \.detail-one-line-summary\s*{[^}]*-webkit-line-clamp:/s,
+      /\.ta-public \.detail-one-line-summary\s*{[^}]*display:\s*block;[^}]*overflow:\s*visible;[^}]*text-overflow:\s*clip;[^}]*-webkit-line-clamp:\s*unset;/s,
     );
   });
 

@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-describe('홈과 About 통합', () => {
+describe('Home 단일 화면과 About 리다이렉트', () => {
   const appSource = fs.readFileSync(path.join(__dirname, '..', 'App.js'), 'utf8');
   const headerSource = fs.readFileSync(
     path.join(__dirname, '..', 'components', 'Header.jsx'),
@@ -9,16 +9,18 @@ describe('홈과 About 통합', () => {
   );
   const aboutSource = fs.readFileSync(path.join(__dirname, 'About.jsx'), 'utf8');
 
-  test('About을 기본 화면으로 사용하고 이전 주소는 홈으로 이동한다', () => {
+  test('Home은 현재 브랜드 히어로를 유지하고 About 주소는 Home으로 이동한다', () => {
     expect(appSource).toContain('<Route path="/" element={<About />} />');
-    expect(appSource).toContain(
-      '<Route path="/about" element={<Navigate to="/" replace />} />',
-    );
+    expect(appSource).toContain('<Route path="/about" element={<Navigate to="/" replace />} />');
+    expect(appSource).not.toContain('<Route path="/about" element={<About />} />');
+    expect(aboutSource).toContain('function About()');
+    expect(aboutSource).toContain('className="home-brand-hero pt-24 pb-16 min-h-screen flex items-center"');
+    expect(aboutSource).not.toContain('function About({ isHome');
     expect(appSource).not.toContain('./pages/Home');
     expect(fs.existsSync(path.join(__dirname, 'Home.jsx'))).toBe(false);
   });
 
-  test('데스크톱과 모바일 내비게이션에서 About이 홈으로 연결된다', () => {
+  test('데스크톱과 모바일 내비게이션의 About 항목을 유지한다', () => {
     const aboutLinks = headerSource.match(/to=["']\/about["']/g) || [];
 
     expect(aboutLinks).toHaveLength(2);

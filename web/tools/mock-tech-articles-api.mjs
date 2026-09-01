@@ -16,7 +16,11 @@ import { createServer } from "node:http";
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.MOCK_HOST || "localhost";
-const ARTICLE_COUNT = Number(process.env.MOCK_ARTICLE_COUNT || 72);
+const ARTICLE_COUNT = Number(process.env.MOCK_ARTICLE_COUNT || 130);
+const PUBLIC_ARTICLE_COUNT = Math.min(
+  Number(process.env.MOCK_PUBLIC_ARTICLE_COUNT || 106),
+  ARTICLE_COUNT,
+);
 
 /* ------------------------------------------------------------------ *
  * 결정론적 난수 (실행할 때마다 같은 더미 데이터가 나오도록)
@@ -76,6 +80,20 @@ const SOURCES = [
     type: "RSS",
     domain: "sdtimes.com",
     path: "/feed",
+  },
+  {
+    id: "tailscale-blog",
+    name: "Tailscale Blog",
+    type: "RSS",
+    domain: "tailscale.com",
+    path: "/blog",
+  },
+  {
+    id: "github-trending",
+    name: "GitHub Trending",
+    type: "HTML",
+    domain: "github.com",
+    path: "/trending",
   },
 ];
 
@@ -158,6 +176,220 @@ const SUMMARIES = [
   "성능 개선의 대부분이 특정 한 지점에서 나왔다는 점을 데이터로 보여줍니다.",
 ];
 
+// Representative fixtures keep the first page close to production; the
+// deterministic generator fills the remaining items.
+const PRODUCTION_LIKE_ARTICLES = [
+  {
+    articleId: "article-20260831-000040",
+    title: "DoorDash의 Flux, 클라우드 기반 에이전트로 13만 건의 엔지니어링 작업 처리",
+    oneLineSummary:
+      "DoorDash가 엔지니어링 에이전트 작업 부하를 클라우드 플랫폼 Flux로 이전하여 단일 월에 13만 건의 작업을 자동화합니다.",
+    tags: ["AI", "클라우드", "개발자 도구"],
+    sourceId: "infoq",
+    articleUrl: "https://www.infoq.com/news/2026/08/doordash-flux-cloud-agent",
+    originalPublishedAt: "2026-08-31T14:28:00.000Z",
+    collectedAt: "2026-08-31T15:00:00.000Z",
+    detailPoints: [
+      "DoorDash는 개별 노트북의 성능과 보안 한계를 해결하기 위해 Flux 클라우드 플랫폼을 개발했습니다.",
+      "Flux는 한 달 동안 13만 건의 엔지니어링 작업과 주당 2만 5천 건 이상의 코드 리뷰를 지원했습니다.",
+      "클라우드 샌드박스와 MCP 게이트웨이를 통해 에이전트 작업을 격리하고 접근 정책을 집행합니다.",
+    ],
+  },
+  {
+    articleId: "article-20260831-000047",
+    title: "Tailscale을 활용한 애플리케이션 구축: tsnet, API 및 자동화된 공유",
+    oneLineSummary:
+      "Tailscale은 tsnet 라이브러리와 Tailnets API를 통해 애플리케이션 내부에 보안 연결을 직접 내장하고 네트워크 프로비저닝을 자동화할 수 있는 기능을 제공합니다.",
+    tags: ["네트워크", "개발자 도구", "클라우드"],
+    sourceId: "tailscale-blog",
+    originalPublishedAt: "2026-08-31T12:10:00.000Z",
+    collectedAt: "2026-08-31T15:05:00.000Z",
+  },
+  {
+    articleId: "article-20260831-000046",
+    title: "Tailcat: Tailscale의 WireGuard, NAT 탐색 및 DERP를 위한 오픈소스 CLI",
+    oneLineSummary:
+      "Tailscale 개발진이 Tailscale 제어 plane 없이 데이터 plane만 사용할 수 있는 오픈소스 CLI 도구 tailcat을 공개합니다.",
+    tags: ["오픈소스", "개발자 도구", "네트워크"],
+    sourceId: "tailscale-blog",
+    originalPublishedAt: "2026-08-31T11:40:00.000Z",
+    collectedAt: "2026-08-31T15:10:00.000Z",
+  },
+  {
+    articleId: "article-20260831-000041",
+    title: "자바 뉴스 라운드업: GraalVM, Jakarta Data, JNoSQL, Azul Payara, WildFly, Quarkus, Atmosphere",
+    oneLineSummary:
+      "JDK 28의 JEP 542가 대상 지정 단계로 격상되었으며 GraalVM, Quarkus, WildFly 등 다양한 자바 생태계 기술의 최신 버전이 공개되었습니다.",
+    tags: ["프로그래밍 언어", "애플리케이션 개발", "클라우드"],
+    sourceId: "infoq",
+    originalPublishedAt: "2026-08-31T10:30:00.000Z",
+    collectedAt: "2026-08-31T15:15:00.000Z",
+  },
+  {
+    articleId: "article-20260831-000045",
+    title: "Workload Identity Federation을 통한 GCP의 장기 자격 증명 제거",
+    oneLineSummary:
+      "Workload Identity Federation은 외부 워크로드의 GCP 인증에서 장기 서비스 계정 키를 제거하여 자격 증명 노출과 운영 부담을 줄여줍니다.",
+    tags: ["보안", "클라우드", "DevOps"],
+    sourceId: "infoq",
+    originalPublishedAt: "2026-08-31T09:50:00.000Z",
+    collectedAt: "2026-08-31T15:20:00.000Z",
+  },
+  {
+    articleId: "article-20260831-000042",
+    title: "Foundry Model Router, 2개 지역에서 28개 지역으로 확장 및 모델 풀 갱신",
+    oneLineSummary:
+      "Microsoft가 Foundry Models의 모델 라우터를 28개 지역으로 확장하고 지원 모델 풀을 갱신했습니다.",
+    tags: ["AI", "클라우드", "산업 동향"],
+    sourceId: "infoq",
+    originalPublishedAt: "2026-08-31T09:10:00.000Z",
+    collectedAt: "2026-08-31T15:25:00.000Z",
+  },
+  {
+    articleId: "article-20260831-000043",
+    title: "FlexGanttFX 오픈소스화",
+    oneLineSummary:
+      "Dirk Lemmerman이 15년 만에 자원 스케줄링 프레임워크 FlexGanttFX를 AGPL 라이선스로 오픈소스로 공개합니다.",
+    tags: ["오픈소스", "애플리케이션 개발"],
+    sourceId: "infoq",
+    originalPublishedAt: "2026-08-31T08:40:00.000Z",
+    collectedAt: "2026-08-31T15:30:00.000Z",
+  },
+  {
+    articleId: "article-20260831-000044",
+    title: "Cloudflare, AI 에이전트와 개발자의 커스텀 데이터 검색을 지원하는 AI Search 확장",
+    oneLineSummary:
+      "Cloudflare가 AI 에이전트와 애플리케이션이 커스텀 데이터를 쉽게 검색할 수 있도록 지원하는 통합 검색 서비스인 AI Search를 확장합니다.",
+    tags: ["AI", "클라우드", "개발자 도구"],
+    sourceId: "infoq",
+    originalPublishedAt: "2026-08-31T08:00:00.000Z",
+    collectedAt: "2026-08-31T15:35:00.000Z",
+  },
+  {
+    articleId: "article-20260830-000003",
+    title: "Lakr233/vphone-cli",
+    oneLineSummary:
+      "vphone-cli 도구는 Apple Silicon 맥에서 Virtualization.framework을 활용해 가상 아이폰을 부팅하고 관리합니다.",
+    tags: ["애플리케이션 개발", "개발자 도구", "모바일"],
+    sourceId: "github-trending",
+    articleUrl: "https://github.com/Lakr233/vphone-cli",
+    originalPublishedAt: "2026-08-31T03:00:00.000Z",
+    collectedAt: "2026-08-31T15:40:00.000Z",
+  },
+  {
+    articleId: "article-20260830-000002",
+    title: "THU-MAIC/OpenMAIC",
+    oneLineSummary:
+      "OpenMAIC v1.0.0이 출시되어 에이전트 기반 커리큘럼 계획 및 제작을 지원하는 Pro 워크벤치와 서버 기반 세션 관리 기능이 추가되었습니다.",
+    tags: ["AI", "애플리케이션 개발", "오픈소스"],
+    sourceId: "github-trending",
+    articleUrl: "https://github.com/THU-MAIC/OpenMAIC",
+    originalPublishedAt: "2026-08-31T02:20:00.000Z",
+    collectedAt: "2026-08-31T15:45:00.000Z",
+  },
+  {
+    articleId: "article-20260830-000001",
+    title: "AWS, 비동기 코딩 에이전트를 위한 Kiro Crew 오픈소스 공개",
+    oneLineSummary:
+      "Amazon이 인시던트 조사와 PR 모니터링 등의 비동기 코딩 작업을 처리할 수 있는 오픈소스 에이전트 시스템 Kiro Crew를 공개했습니다.",
+    tags: ["AI", "개발자 도구", "오픈소스"],
+    sourceId: "infoq",
+    originalPublishedAt: "2026-08-30T12:00:00.000Z",
+    collectedAt: "2026-08-30T14:00:00.000Z",
+  },
+  {
+    articleId: "article-20260829-000001",
+    title: "Cloudflare Workers, 인바운드 TCP 지원 및 첫 번째 프로토콜로 gRPC 도입",
+    oneLineSummary:
+      "Cloudflare Workers가 인바운드 TCP 연결을 지원하며, 이를 기반으로 한 gRPC 지원 기능을 프라이빗 베타로 출시했습니다.",
+    tags: ["클라우드", "애플리케이션 개발", "네트워크"],
+    sourceId: "infoq",
+    originalPublishedAt: "2026-08-29T12:00:00.000Z",
+    collectedAt: "2026-08-29T14:00:00.000Z",
+  },
+  {
+    articleId: "article-20260829-000002",
+    title: "FreeToken: 동적 공동 실행을 통한 소비자 하드웨어에서의 프론티어 MoE 추론",
+    oneLineSummary:
+      "UC 버클리와 MIT 연구진이 공개한 오픈소스 추론 엔진 FreeToken은 동적 공동 실행을 통해 소비자 하드웨어에서 프론티어 MoE 모델을 실행합니다.",
+    tags: ["AI", "클라우드", "오픈소스"],
+    sourceId: "infoq",
+    originalPublishedAt: "2026-08-29T11:00:00.000Z",
+    collectedAt: "2026-08-29T14:10:00.000Z",
+  },
+  {
+    articleId: "article-20260829-000003",
+    title: "AI가 의도대로 작동하는지 확인하기: 질의응답",
+    oneLineSummary:
+      "사우스웍스의 최고기술책임자 조니 할리페는 AI가 코드 생성과 실행에는 뛰어나지만 문제 해결과 판단에는 한계가 있으며 개발자의 역할이 정의와 검증 중심으로 이동한다고 설명합니다.",
+    tags: ["AI", "개발자 도구", "소프트웨어 아키텍처"],
+    sourceId: "sdtimes",
+    originalPublishedAt: "2026-08-29T10:00:00.000Z",
+    collectedAt: "2026-08-29T14:20:00.000Z",
+  },
+  {
+    articleId: "article-20260828-000012",
+    title: "K-Dense-AI/scientific-agent-skills",
+    oneLineSummary:
+      "K-Dense-AI는 오픈 Agent Skills 표준을 지원하는 163개의 검증된 과학 및 연구 스킬 라이브러리를 제공합니다.",
+    tags: ["AI", "개발자 도구", "오픈소스"],
+    sourceId: "github-trending",
+    articleUrl: "https://github.com/K-Dense-AI/scientific-agent-skills",
+    originalPublishedAt: "2026-08-29T03:00:00.000Z",
+    collectedAt: "2026-08-29T06:00:00.000Z",
+  },
+  {
+    articleId: "article-20260828-000003",
+    title: "Uber, 대규모 모노레포를 위한 Git 운영 서비스 GitFarm 구축",
+    oneLineSummary:
+      "Uber가 대규모 모노레포를 위해 개발한 Git as a Service 플랫폼 GitFarm은 클라이언트 측 리소스 사용량을 80% 이상 줄였습니다.",
+    tags: ["애플리케이션 개발", "DevOps"],
+    sourceId: "infoq",
+    originalPublishedAt: "2026-08-28T12:00:00.000Z",
+    collectedAt: "2026-08-28T14:00:00.000Z",
+  },
+  {
+    articleId: "article-20260831-000006",
+    title: "Tailscale 및 Control D: tailnet을 위한 DNS 필터링",
+    oneLineSummary:
+      "Tailscale 고객은 Tailscale 영업 팀을 통해 Control D의 DNS 필터링 솔루션을 구매하여 tailnet에 통합할 수 있습니다.",
+    tags: ["네트워크", "보안", "클라우드"],
+    sourceId: "tailscale-blog",
+    originalPublishedAt: "2026-08-28T11:00:00.000Z",
+    collectedAt: "2026-08-28T14:10:00.000Z",
+  },
+  {
+    articleId: "article-20260828-000001",
+    title: "BotBase for Operators: Cloudflare 봇 디렉토리 등록 및 관리를 위한 투명성 강화",
+    oneLineSummary:
+      "Cloudflare가 봇 운영자를 위한 BotBase for Operators를 출시하여 제출 상태 확인과 정보 수정 기능을 제공합니다.",
+    tags: ["애플리케이션 개발", "보안", "산업 동향"],
+    sourceId: "cloudflare-blog",
+    originalPublishedAt: "2026-08-28T10:00:00.000Z",
+    collectedAt: "2026-08-28T14:20:00.000Z",
+  },
+  {
+    articleId: "article-20260828-000004",
+    title: "AKS, 새로운 NAP 가이드를 통해 노드 중단을 더욱 예측 가능하게 만들고자 함",
+    oneLineSummary:
+      "Microsoft가 공개한 AKS NAP 가이드는 자동화된 노드 통합 시 애플리케이션 가용성과 인프라 효율성을 균형 있게 유지하는 방법을 제시합니다.",
+    tags: ["클라우드", "개발 조직", "소프트웨어 품질"],
+    sourceId: "infoq",
+    originalPublishedAt: "2026-08-28T09:00:00.000Z",
+    collectedAt: "2026-08-28T14:30:00.000Z",
+  },
+  {
+    articleId: "article-20260828-000011",
+    title: "Spring Boot에서의 양자 후 암호화: 이번 스프린트에 적용 가능한 4가지 패턴",
+    oneLineSummary:
+      "Spring Boot 환경에서 JDK 24와 PqcStarterLib를 활용해 PQC 페이로드 암호화, 문서 서명, 토큰 인증을 구현합니다.",
+    tags: ["AI", "애플리케이션 개발", "보안"],
+    sourceId: "infoq",
+    originalPublishedAt: "2026-08-28T08:00:00.000Z",
+    collectedAt: "2026-08-28T14:40:00.000Z",
+  },
+];
+
 const markdown = (title) => `### 무엇이 달라졌나
 
 ${pick(SUMMARIES)}
@@ -173,6 +405,15 @@ ${pick(SUMMARIES)}
 3. 팀 내 온콜 문서를 함께 갱신해야 혼선이 없습니다.
 
 > \`${title}\` 는 데모용 더미 본문입니다. 실제 수집 결과가 아닙니다.`;
+
+const productionLikeMarkdown = (article) => {
+  const points = article.detailPoints || [
+    article.oneLineSummary,
+    "원문의 핵심 변화와 개발자가 확인해야 할 영향을 간결하게 정리했습니다.",
+    "세부 구현과 적용 조건은 연결된 원문에서 확인할 수 있습니다.",
+  ];
+  return `### 주요 내용\n\n${points.map((point) => `- ${point}`).join("\n")}`;
+};
 
 /* ------------------------------------------------------------------ *
  * 더미 아티클 생성
@@ -267,25 +508,55 @@ const articles = Array.from({ length: ARTICLE_COUNT }, (_, index) => {
   };
 });
 
-// 세 검수 큐가 비어 보이지 않도록 일부 아티클의 상태를 명시적으로 고정한다
-articles.slice(24, 30).forEach((a) => {
-  a.processingStatus = "ENRICHED";
-  a.reviewStatus = "PENDING";
-  a.publicationStatus = "UNPUBLISHED";
-  a.publishedAt = null;
+PRODUCTION_LIKE_ARTICLES.forEach((fixture, index) => {
+  const article = articles[index];
+  if (!article) return;
+  const source = SOURCES.find((item) => item.id === fixture.sourceId);
+  const articleUrl =
+    fixture.articleUrl ||
+    `https://${source.domain}${source.path}/${fixture.articleId}`;
+  Object.assign(article, {
+    articleId: fixture.articleId,
+    title: fixture.title,
+    originalTitle: fixture.title,
+    oneLineSummary: fixture.oneLineSummary,
+    summaryMarkdown: productionLikeMarkdown(fixture),
+    tags: fixture.tags,
+    source: {
+      id: source.id,
+      name: source.name,
+      type: source.type,
+      domain: source.domain,
+      path: source.path,
+      articleUrl,
+    },
+    canonicalUrl: articleUrl,
+    originalLanguage: LANGS[0],
+    originalPublishedAt: fixture.originalPublishedAt,
+    collectedAt: fixture.collectedAt,
+    crawledAt: fixture.collectedAt,
+    normalizedAt: fixture.collectedAt,
+  });
 });
-articles.slice(30, 36).forEach((a) => {
-  a.processingStatus = "QUALITY_EVALUATED";
-  a.reviewStatus = "PENDING";
-  a.publicationStatus = "UNPUBLISHED";
-  a.publishedAt = null;
-});
-// 공개 목록이 2페이지 이상이 되도록 공개 아티클을 충분히 확보한다
-articles.slice(36, 48).forEach((a) => {
-  a.processingStatus = "ENRICHED";
-  a.reviewStatus = "APPROVED";
-  a.publicationStatus = "PUBLISHED";
-  a.publishedAt = a.normalizedAt;
+
+// Keep 106 public items; the remainder exercise pre-public review states.
+const NON_PUBLIC_STATES = REACHABLE_STATES.filter(
+  ([, , publicationStatus]) => publicationStatus !== "PUBLISHED",
+);
+articles.forEach((article, index) => {
+  if (index < PUBLIC_ARTICLE_COUNT) {
+    article.processingStatus = "ENRICHED";
+    article.reviewStatus = "APPROVED";
+    article.publicationStatus = "PUBLISHED";
+    article.publishedAt = article.normalizedAt;
+    return;
+  }
+  const [processingStatus, reviewStatus, publicationStatus] =
+    NON_PUBLIC_STATES[(index - PUBLIC_ARTICLE_COUNT) % NON_PUBLIC_STATES.length];
+  article.processingStatus = processingStatus;
+  article.reviewStatus = reviewStatus;
+  article.publicationStatus = publicationStatus;
+  article.publishedAt = null;
 });
 
 // NEW 배지가 로컬에서 보이도록 공개된 아티클 몇 건의 수집 시각을 최근으로
@@ -295,10 +566,22 @@ articles
     (a) =>
       a.processingStatus === "ENRICHED" && a.publicationStatus === "PUBLISHED",
   )
-  .slice(0, 3)
+  .slice(0, 9)
   .forEach((a, index) => {
     a.collectedAt = new Date(
       Date.now() - (index + 1) * 3600 * 1000,
+    ).toISOString();
+  });
+
+articles
+  .filter(
+    (a) =>
+      a.processingStatus === "ENRICHED" && a.publicationStatus === "PUBLISHED",
+  )
+  .slice(9)
+  .forEach((a, index) => {
+    a.collectedAt = new Date(
+      Date.now() - (48 + index) * 3600 * 1000,
     ).toISOString();
   });
 
@@ -310,7 +593,7 @@ articles
     article.valueScore = null;
   });
 
-const LAST_CRAWLED_AT = iso(0, -1);
+const LAST_CRAWLED_AT = new Date(Date.now() - 8 * 3600 * 1000).toISOString();
 
 const evaluationOf = (article) => {
   const overall = article.valueScore;
@@ -436,6 +719,12 @@ const PUBLIC_SOURCES = [
     name: "SD Times",
     domain: "sdtimes.com",
     category: "업계 뉴스",
+  },
+  {
+    id: "tailscale-blog",
+    name: "Tailscale Blog",
+    domain: "tailscale.com",
+    category: "기술 블로그",
   },
   {
     id: "github-trending",

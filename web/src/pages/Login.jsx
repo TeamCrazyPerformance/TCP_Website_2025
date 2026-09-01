@@ -26,7 +26,6 @@ function Login() {
       setIsSubmitting(true);
       const data = await apiPost("/api/v1/auth/login", { username, password });
       login(data.user, data.access_token);
-      alert("로그인 되었습니다.");
       const nextPath =
         typeof location.state?.from === "string" &&
         location.state.from.startsWith("/") &&

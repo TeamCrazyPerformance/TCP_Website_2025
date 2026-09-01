@@ -4,6 +4,12 @@ import path from 'path';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Recruitment from './Recruitment';
 import { apiGet } from '../api/client';
+import {
+  buildRecruitmentApplication,
+  formatPhoneNumber,
+  hasValidApplicationDates,
+  validatePhoneNumber,
+} from '../utils/recruitmentApplication';
 
 jest.mock(
   'react-router-dom',
@@ -108,10 +114,59 @@ describe('모바일 지원서 팝업', () => {
       /\.recruitment-application-scroll \.entry-field\s*{[^}]*margin-top:\s*17px;/s,
     );
     expect(css).toMatch(
-      /\.recruitment-application-scroll \.entry-add-button\s*{[^}]*width:\s*100%;[^}]*justify-content:\s*center;/s,
+      /\.recruitment-application-scroll \.entry-add-button\s*{[^}]*display:\s*inline-flex;[^}]*width:\s*auto;[^}]*justify-content:\s*center;/s,
     );
     expect(css).toMatch(
       /@media \(max-width:\s*479px\)[\s\S]*\.recruitment-application-scroll \.project-date-range\s*{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto minmax\(0, 1fr\);/s,
     );
+  });
+});
+
+describe('지원서 데이터 변환', () => {
+  test('전화번호를 입력 중 형식화하고 완성된 번호만 허용한다', () => {
+    expect(formatPhoneNumber('01012345678')).toBe('010-1234-5678');
+    expect(formatPhoneNumber('0212345678')).toBe('02-1234-5678');
+    expect(validatePhoneNumber('010-1234-5678')).toBe(true);
+    expect(validatePhoneNumber('010-123')).toBe(false);
+  });
+
+  test('반복 입력을 API payload로 변환하고 날짜를 검증한다', () => {
+    const form = document.createElement('form');
+    form.innerHTML = `
+      <input name="name" value="테스터" />
+      <input name="major" value="컴퓨터공학과" />
+      <input name="interests" value="프론트엔드" />
+      <textarea name="selfIntroduction">소개</textarea>
+      <textarea name="expectations">기대</textarea>
+      <input name="project_name" value="TCP 웹사이트" />
+      <input name="project_contribution" value="50" />
+      <input name="project_start_date" value="2026-01-01" />
+      <input name="project_end_date" value="2026-06-30" />
+      <textarea name="project_description">리팩터링</textarea>
+      <input name="project_tech_stack" value="React" />
+      <input name="award_name" value="우수상" />
+      <input name="award_institution" value="TCP" />
+      <input name="award_date" value="2026-07-01" />
+      <textarea name="award_description">수상 내용</textarea>
+    `;
+
+    const application = buildRecruitmentApplication(new FormData(form), {
+      studentNumber: '20123456',
+      phoneNumber: '010-1234-5678',
+    });
+
+    expect(application.payload.projects).toEqual([
+      expect.objectContaining({
+        project_name: 'TCP 웹사이트',
+        project_date: '2026-01-01',
+      }),
+    ]);
+    expect(application.payload.awards).toEqual([
+      expect.objectContaining({ award_name: '우수상', award_date: '2026-07-01' }),
+    ]);
+    expect(hasValidApplicationDates(application)).toBe(true);
+
+    application.projects[0].project_start_date = '10000-01-01';
+    expect(hasValidApplicationDates(application)).toBe(false);
   });
 });

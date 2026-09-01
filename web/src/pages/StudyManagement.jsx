@@ -1,23 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { apiGet, apiPost } from '../api/client';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { apiDelete, apiGet, apiPatch, apiPost } from '../api/client';
+import '../styles/studyManagement.css';
+import BackToListLink from '../components/public/BackToListLink';
+
+const normalizeBoolean = (value) => value === true || value === 1 || value === '1' || value === 'true';
 
 export default function StudyManagement() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const fileInputRef = useRef(null);
-
     const [study, setStudy] = useState(null);
-    const [members, setMembers] = useState([]);
-    const [pendingMembers, setPendingMembers] = useState([]);
-    const [leaderNominees, setLeaderNominees] = useState([]);
-    const [progress, setProgress] = useState([]);
-    const [resources, setResources] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState('');
     const [activeTab, setActiveTab] = useState('info');
     const [isAuthorized, setIsAuthorized] = useState(false);
-    const [isAdmin, setIsAdmin] = useState(false);
     const [currentUserRole, setCurrentUserRole] = useState(null);
 
     // Edit mode states
@@ -31,105 +27,86 @@ export default function StudyManagement() {
     const [searchResults, setSearchResults] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
 
-    const normalizeBoolean = (value) => value === true || value === 1 || value === '1' || value === 'true';
-
-    useEffect(() => {
+    const loadStudy = useCallback(async () => {
         const token = localStorage.getItem('access_token');
         const user = localStorage.getItem('auth_user');
         const currentUser = user ? JSON.parse(user) : null;
 
         if (!token || !currentUser) {
             setIsLoading(false);
+            setIsAuthorized(false);
             setErrorMessage('로그인이 필요합니다.');
             return;
         }
 
-        const fetchData = async () => {
-            try {
-                setIsLoading(true);
-                const data = await apiGet(`/api/v1/study/${id}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
+        try {
+            setIsLoading(true);
+            const data = await apiGet(`/api/v1/study/${id}`);
+            const currentMember = (data.members || []).find((member) => member.user_id === currentUser.id);
+            const isLeader = currentMember?.role === 'LEADER';
+            const isAdmin = currentUser.role === 'ADMIN';
 
-                // Check authorization: must be leader or admin
-                // Multi-leader support: Check if current user is in the members list with LEADER role
-                const currentMember = (data.members || []).find(m => m.user_id === currentUser.id);
-                const isLeader = currentMember?.role === 'LEADER';
-                const isAdmin = currentUser.role === 'ADMIN';
-
-                if (!isLeader && !isAdmin) {
-                    setErrorMessage('스터디장 또는 관리자만 접근할 수 있습니다.');
-                    setIsLoading(false);
-                    return;
-                }
-
-                setIsAuthorized(true);
-                setIsAdmin(isAdmin);
-                setCurrentUserRole(isLeader ? 'LEADER' : (isAdmin ? 'ADMIN' : null));
-                setStudy(data);
-                setEditForm({
-                    study_name: data.study_name || '',
-                    start_year: data.start_year || new Date().getFullYear(),
-                    study_description: data.study_description || '',
-                    tag: data.tag || '',
-                    recruit_count: data.recruit_count || 0,
-                    period: data.period || '',
-                    apply_deadline: data.apply_deadline?.split('T')[0] || '',
-                    place: data.place || '',
-                    way: data.way || '',
-                    cycle: data.cycle || '',
-                    is_public: normalizeBoolean(data.is_public),
-                });
-
-                // Separate PENDING, MEMBER, LEADER_NOMINEE
-                // Note: Leaders are also in the members list but usually displayed separately or at top.
-                // For "Current Members" list, we might want to exclude the current user if they are leader?
-                // Or just show everyone. Let's show everyone except LEADER_NOMINEE and PENDING in the "Current Members" list.
-                // Actually, let's keep it simple:
-                // Members Tab: Shows LEADER and MEMBER.
-                // Nominees Section: Shows LEADER_NOMINEE.
-                // Pending Tab: Shows PENDING.
-
-                const approved = (data.members || []).filter(m => m.role === 'MEMBER' || m.role === 'LEADER');
-                const pending = (data.members || []).filter(m => m.role === 'PENDING');
-                const nominees = (data.members || []).filter(m => m.role === 'NOMINEE');
-
-                setMembers(approved);
-                setPendingMembers(pending);
-                setLeaderNominees(nominees);
-                setProgress(data.progress || []);
-                setResources(data.resources || []);
-            } catch (error) {
-                setErrorMessage(error.message || '스터디 정보를 불러오지 못했습니다.');
-            } finally {
-                setIsLoading(false);
+            if (!isLeader && !isAdmin) {
+                setStudy(null);
+                setIsAuthorized(false);
+                setCurrentUserRole(null);
+                setErrorMessage('스터디장 또는 관리자만 접근할 수 있습니다.');
+                return;
             }
-        };
 
-        fetchData();
+            setStudy(data);
+            setEditForm({
+                study_name: data.study_name || '',
+                start_year: data.start_year || new Date().getFullYear(),
+                study_description: data.study_description || '',
+                tag: data.tag || '',
+                recruit_count: data.recruit_count || 0,
+                period: data.period || '',
+                apply_deadline: data.apply_deadline?.split('T')[0] || '',
+                place: data.place || '',
+                way: data.way || '',
+                cycle: data.cycle || '',
+                is_public: normalizeBoolean(data.is_public),
+            });
+            setIsAuthorized(true);
+            setCurrentUserRole(isLeader ? 'LEADER' : 'ADMIN');
+            setErrorMessage('');
+        } catch (error) {
+            setStudy(null);
+            setIsAuthorized(false);
+            setErrorMessage(error.message || '스터디 정보를 불러오지 못했습니다.');
+        } finally {
+            setIsLoading(false);
+        }
     }, [id]);
 
-    const token = localStorage.getItem('access_token');
+    useEffect(() => {
+        loadStudy();
+    }, [loadStudy]);
+
+    const members = useMemo(
+        () => (study?.members || []).filter((member) => member.role === 'MEMBER' || member.role === 'LEADER'),
+        [study],
+    );
+    const pendingMembers = useMemo(
+        () => (study?.members || []).filter((member) => member.role === 'PENDING'),
+        [study],
+    );
+    const leaderNominees = useMemo(
+        () => (study?.members || []).filter((member) => member.role === 'NOMINEE'),
+        [study],
+    );
+    const progress = study?.progress || [];
+    const resources = study?.resources || [];
 
     // Update study info
     const handleUpdateInfo = async (e) => {
         e.preventDefault();
         try {
-            const response = await fetch(`/api/v1/study/${id}`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(editForm),
-            });
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || `수정 실패 (${response.status})`);
-            }
+            await apiPatch(`/api/v1/study/${id}`, editForm);
             alert('스터디 정보가 수정되었습니다.');
             setIsEditingInfo(false);
-            window.location.reload();
+            await loadStudy();
         } catch (error) {
             alert(error.message || '수정에 실패했습니다.');
         }
@@ -138,18 +115,9 @@ export default function StudyManagement() {
     // Approve pending member
     const handleApproveMember = async (userId) => {
         try {
-            const response = await fetch(`/api/v1/study/${id}/members/${userId}/approve`, {
-                method: 'PATCH',
-                headers: { Authorization: `Bearer ${token}` },
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || '승인에 실패했습니다.');
-            }
-
+            await apiPatch(`/api/v1/study/${id}/members/${userId}/approve`);
             alert('멤버가 승인되었습니다.');
-            window.location.reload();
+            await loadStudy();
         } catch (error) {
             alert(error.message || '승인에 실패했습니다.');
         }
@@ -160,16 +128,9 @@ export default function StudyManagement() {
         const confirmMsg = isPending ? '이 신청을 거절하시겠습니까?' : '이 멤버를 추방하시겠습니까?';
         if (!window.confirm(confirmMsg)) return;
         try {
-            const response = await fetch(`/api/v1/study/${id}/members/${userId}`, {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || `작업 실패 (${response.status})`);
-            }
+            await apiDelete(`/api/v1/study/${id}/members/${userId}`);
             alert(isPending ? '신청이 거절되었습니다.' : '멤버가 추방되었습니다.');
-            window.location.reload();
+            await loadStudy();
         } catch (error) {
             alert(error.message || '작업에 실패했습니다.');
         }
@@ -181,7 +142,7 @@ export default function StudyManagement() {
         try {
             await apiPost(`/api/v1/study/${id}/members/${userId}/nominate`);
             alert('스터디장 지명이 완료되었습니다. 멤버가 수락하면 권한이 부여됩니다.');
-            window.location.reload();
+            await loadStudy();
         } catch (error) {
             alert(error.message || '지명에 실패했습니다.');
         }
@@ -191,10 +152,7 @@ export default function StudyManagement() {
     const handleLeaveStudy = async () => {
         if (!window.confirm('정말로 스터디를 탈퇴하시겠습니까? 다른 스터디장이 최소 1명 이상 있어야 가능합니다.')) return;
         try {
-            await fetch(`/api/v1/study/${id}/leave`, {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            await apiDelete(`/api/v1/study/${id}/leave`);
             alert('스터디를 성공적으로 탈퇴했습니다.');
             navigate('/study');
         } catch (error) {
@@ -205,21 +163,10 @@ export default function StudyManagement() {
     // Update progress
     const handleUpdateProgress = async (progressId) => {
         try {
-            const response = await fetch(`/api/v1/study/${id}/progress/${progressId}`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(editProgressForm),
-            });
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || `수정 실패 (${response.status})`);
-            }
+            await apiPatch(`/api/v1/study/${id}/progress/${progressId}`, editProgressForm);
             alert('진행사항이 수정되었습니다.');
             setEditingProgressId(null);
-            window.location.reload();
+            await loadStudy();
         } catch (error) {
             alert(error.message || '수정에 실패했습니다.');
         }
@@ -229,16 +176,9 @@ export default function StudyManagement() {
     const handleDeleteProgress = async (progressId) => {
         if (!window.confirm('이 진행사항을 삭제하시겠습니까?')) return;
         try {
-            const response = await fetch(`/api/v1/study/${id}/progress/${progressId}`, {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || `삭제 실패 (${response.status})`);
-            }
+            await apiDelete(`/api/v1/study/${id}/progress/${progressId}`);
             alert('진행사항이 삭제되었습니다.');
-            window.location.reload();
+            await loadStudy();
         } catch (error) {
             alert(error.message || '삭제에 실패했습니다.');
         }
@@ -248,16 +188,9 @@ export default function StudyManagement() {
     const handleDeleteResource = async (resourceId) => {
         if (!window.confirm('이 자료를 삭제하시겠습니까?')) return;
         try {
-            const response = await fetch(`/api/v1/study/${id}/resources/${resourceId}`, {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || `삭제 실패 (${response.status})`);
-            }
+            await apiDelete(`/api/v1/study/${id}/resources/${resourceId}`);
             alert('자료가 삭제되었습니다.');
-            window.location.reload();
+            await loadStudy();
         } catch (error) {
             alert(error.message || '삭제에 실패했습니다.');
         }
@@ -268,10 +201,9 @@ export default function StudyManagement() {
         if (!searchKeyword.trim()) return;
         try {
             setIsSearching(true);
-            const response = await fetch(`/api/v1/study/${id}/available-members?search=${encodeURIComponent(searchKeyword)}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            const data = await response.json();
+            const data = await apiGet(
+                `/api/v1/study/${id}/available-members?search=${encodeURIComponent(searchKeyword)}`,
+            );
             setSearchResults(data || []);
         } catch (error) {
             alert(error.message || '검색에 실패했습니다.');
@@ -283,18 +215,11 @@ export default function StudyManagement() {
     // Add member directly
     const handleAddMember = async (userId) => {
         try {
-            await fetch(`/api/v1/study/${id}/members`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ user_id: userId, role: 'MEMBER' }),
-            });
+            await apiPost(`/api/v1/study/${id}/members`, { user_id: userId, role: 'MEMBER' });
             alert('멤버가 추가되었습니다.');
             setSearchResults([]);
             setSearchKeyword('');
-            window.location.reload();
+            await loadStudy();
         } catch (error) {
             alert(error.message || '추가에 실패했습니다.');
         }
@@ -303,72 +228,87 @@ export default function StudyManagement() {
 
 
     if (isLoading) {
-        return <div className="container mx-auto px-4 py-24 text-center">로딩 중...</div>;
+        return (
+            <main className="study-management-page">
+                <div className="study-management-shell container mx-auto px-4">
+                    <div className="study-management-empty-state">스터디 정보를 불러오는 중...</div>
+                </div>
+            </main>
+        );
     }
 
     if (errorMessage || !isAuthorized) {
         return (
-            <div className="container mx-auto px-4 py-24 text-center text-gray-400">
-                <p className="mb-6">{errorMessage}</p>
-                <Link to="/study" className="back-button inline-flex items-center px-8 py-4 rounded-lg text-lg font-medium">
-                    스터디 목록으로
-                </Link>
-            </div>
+            <main className="study-management-page">
+                <div className="study-management-shell container mx-auto px-4">
+                    <nav
+                        className="detail-breadcrumb detail-breadcrumb-spaced study-management-breadcrumb"
+                        aria-label="현재 위치"
+                    >
+                        <BackToListLink to="/study">
+                            스터디 목록으로 돌아가기
+                        </BackToListLink>
+                    </nav>
+                    <div className="study-management-empty-state">{errorMessage}</div>
+                </div>
+            </main>
         );
     }
 
     const tabs = [
-        { key: 'info', label: '기본 정보', icon: 'fa-info-circle' },
-        { key: 'members', label: '멤버 관리', icon: 'fa-users' },
-        { key: 'pending', label: `승인 대기 (${pendingMembers.length})`, icon: 'fa-user-clock' },
-        { key: 'progress', label: '진행사항', icon: 'fa-tasks' },
-        { key: 'resources', label: '자료 관리', icon: 'fa-folder' },
+        { key: 'info', label: '기본 정보' },
+        { key: 'members', label: '멤버 관리' },
+        { key: 'pending', label: `승인 대기 (${pendingMembers.length})` },
+        { key: 'progress', label: '진행사항' },
+        { key: 'resources', label: '자료 관리' },
     ];
 
     return (
-        <main className="container mx-auto px-4 py-24">
-            <div className="max-w-5xl mx-auto">
+        <main className="study-management-page">
+            <div className="study-management-shell container mx-auto px-4">
                 {/* Header */}
-                <div className="mb-8">
-                    <Link to={`/study/${id}`} className="text-accent-blue hover:underline mb-4 inline-block">
-                        <i className="fas fa-arrow-left mr-2"></i>스터디로 돌아가기
-                    </Link>
-                    <div className="flex justify-between items-center">
-                        <h1 className="orbitron text-3xl md:text-4xl font-bold gradient-text">
-                            스터디 관리: {study?.study_name}
-                        </h1>
-                        <div className="flex gap-2">
-                            {currentUserRole === 'LEADER' && (
-                                <button
-                                    onClick={handleLeaveStudy}
-                                    className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
-                                >
-                                    <i className="fas fa-sign-out-alt mr-2"></i>스터디 탈퇴
-                                </button>
-                            )}
-
-                        </div>
+                <nav
+                    className="detail-breadcrumb detail-breadcrumb-spaced study-management-breadcrumb"
+                    aria-label="현재 위치"
+                >
+                    <BackToListLink to={`/study/${id}`}>
+                        스터디로 돌아가기
+                    </BackToListLink>
+                </nav>
+                <header className="study-management-header">
+                    <div>
+                        <p className="study-management-eyebrow">STUDY MANAGEMENT</p>
+                        <h1>{study?.study_name}</h1>
+                        <p>스터디 정보와 멤버, 진행 기록, 자료를 한곳에서 관리합니다.</p>
                     </div>
-                </div>
+                    {currentUserRole === 'LEADER' && (
+                        <button
+                            onClick={handleLeaveStudy}
+                            className="study-management-leave-button"
+                        >
+                            스터디 탈퇴
+                        </button>
+                    )}
+                </header>
 
                 {/* Tabs */}
-                <div className="flex flex-wrap gap-2 mb-8 border-b border-gray-700 pb-4">
+                <div className="study-management-tabs" role="tablist" aria-label="스터디 관리 메뉴">
                     {tabs.map((tab) => (
                         <button
                             key={tab.key}
                             onClick={() => setActiveTab(tab.key)}
-                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === tab.key
-                                ? 'bg-accent-blue text-white'
-                                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                                }`}
+                            type="button"
+                            role="tab"
+                            aria-selected={activeTab === tab.key}
+                            className={`study-management-tab ${activeTab === tab.key ? 'is-active' : ''}`}
                         >
-                            <i className={`fas ${tab.icon} mr-2`}></i>{tab.label}
+                            {tab.label}
                         </button>
                     ))}
                 </div>
 
                 {/* Tab Content */}
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                <div className="study-management-surface">
                     {/* Basic Info Tab */}
                     {activeTab === 'info' && (
                         <div>
@@ -498,7 +438,7 @@ export default function StudyManagement() {
                                     </button>
                                 </form>
                             ) : (
-                                <div className="grid md:grid-cols-2 gap-4 text-gray-300">
+                                <div className="study-management-info-grid grid md:grid-cols-2 gap-4 text-gray-300">
                                     <p><strong className="text-white">스터디명:</strong> {study?.study_name}</p>
                                     <p><strong className="text-white">시작 연도:</strong> {study?.start_year}</p>
                                     <p><strong className="text-white">모집 인원:</strong> {study?.recruit_count}명</p>
@@ -524,7 +464,7 @@ export default function StudyManagement() {
                             <h2 className="text-xl font-bold text-white mb-6">멤버 관리</h2>
 
                             {/* Search & Add */}
-                            <div className="mb-6 bg-gray-800 p-4 rounded-lg">
+                            <div className="study-management-inline-panel mb-6 bg-gray-800 p-4 rounded-lg">
                                 <h3 className="font-semibold text-white mb-3">멤버 직접 추가</h3>
                                 <div className="flex gap-2">
                                     <input
