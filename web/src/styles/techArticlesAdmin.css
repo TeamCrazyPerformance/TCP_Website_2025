@@ -3026,13 +3026,6 @@
   font-size: 14px;
   line-height: 1.7;
 }
-.ta-admin .section-eyebrow {
-  margin: 0 0 7px;
-  color: var(--accent-purple);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-}
 .ta-admin .public-page-link {
   display: inline-flex;
   min-height: 38px;

@@ -434,7 +434,6 @@ function TechArticleCrawlPanel() {
     >
         <div className="section-heading-row">
           <div>
-            <p className="section-eyebrow orbitron">ASYNC CRAWL RUN</p>
             <h3>비동기 수집 실행</h3>
           </div>
           <span className="policy-scope-badge">임의 URL 입력 없음</span>
@@ -609,7 +608,6 @@ function TechArticleCrawlPanel() {
       >
         <div className="section-heading-row crawl-history-heading-v9">
           <div>
-            <p className="section-eyebrow orbitron">RUN HISTORY</p>
             <div className="crawl-history-title-v9">
               <h3 id="crawlHistoryTitle">크롤링 실행 이력</h3>
               <span
@@ -813,7 +811,6 @@ function TechArticleCrawlPanel() {
         <div className="dialog-panel">
           <header className="dialog-header">
             <div>
-              <p className="section-eyebrow orbitron">RUN STATUS</p>
               <h2 id="crawlRunDetailTitle">실행 상세</h2>
             </div>
             <div className="crawl-detail-actions-v9">

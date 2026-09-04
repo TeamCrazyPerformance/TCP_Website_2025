@@ -245,13 +245,13 @@ describe("Tech Articles CSS 스코프", () => {
     );
 
     expect(css).toMatch(
-      /\.ta-public \.article-card\s*{[^}]*--article-card-edge-space:\s*15px;[^}]*padding-top:\s*var\(--article-card-edge-space\);[^}]*padding-bottom:\s*var\(--article-card-edge-space\);/s,
+      /\.ta-public \.article-card\s*{[^}]*padding-top:\s*var\(--article-card-edge-space\);[^}]*padding-bottom:\s*var\(--article-card-bottom-space\);/s,
     );
     expect(css).toMatch(
-      /\.ta-public \.article-card-bottom\s*{[^}]*margin-top:\s*6px;[^}]*padding-top:\s*0;[^}]*border-top:\s*0;/s,
+      /\.ta-public \.article-card-bottom\s*{[^}]*padding-top:\s*0;[^}]*border-top:\s*0;/s,
     );
     expect(css).toMatch(
-      /@media \(min-width:\s*768px\)\s*{\s*\.ta-public \.article-card-bottom\s*{[^}]*align-items:\s*flex-end;/s,
+      /@media \(min-width:\s*768px\)\s*{\s*\.ta-public \.article-card-bottom\s*{[^}]*align-items:\s*center;/s,
     );
   });
 
@@ -464,7 +464,7 @@ describe("Tech Articles CSS 스코프", () => {
       /\.ta-public \.article-card \.article-summary-row \.article-summary\s*{[^}]*display:\s*-webkit-box;[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*normal;[^}]*-webkit-line-clamp:\s*2;/s,
     );
     expect(block[1]).toMatch(
-      /\.ta-public \.article-card \.article-meta-mobile\s*{[^}]*display:\s*block;[^}]*margin:\s*6px 0 0;[^}]*font-size:\s*11px;[^}]*white-space:\s*nowrap;/s,
+      /\.ta-public \.article-card \.article-meta-mobile\s*{[^}]*display:\s*block;[^}]*margin:\s*var\(--article-card-meta-gap\) 0 0;[^}]*font-size:\s*11px;[^}]*white-space:\s*nowrap;/s,
     );
     expect(block[1]).not.toMatch(
       /\.ta-public \.article-card \.article-meta-mobile\s*{[^}]*margin-left:/s,
@@ -480,9 +480,80 @@ describe("Tech Articles CSS 스코프", () => {
       /\.ta-public \.article-card \.article-meta \.meta-divider::after\s*{[^}]*content:\s*"\|";/s,
     );
     expect(css).toMatch(
-      /\.ta-public \.article-card \.article-meta \.meta-divider\s*{[^}]*margin:\s*0 7px;[^}]*color:\s*var\(--gray-500/s,
+      /\.ta-public \.article-card \.article-meta \.meta-divider\s*{[^}]*margin:\s*0 var\(--article-card-divider-gap\);[^}]*color:\s*var\(--gray-500/s,
     );
     expect(block[1]).not.toMatch(/\.ta-public \.article-card \.article-meta i/);
+  });
+
+  test("카드 안의 네 간격은 각자의 변수를 쓴다", () => {
+    const css = fs.readFileSync(
+      path.join(__dirname, "techArticlesPublicAlign.css"),
+      "utf8",
+    );
+
+    const gapNames = [
+      "--article-card-edge-space",
+      "--article-card-bottom-space",
+      "--article-card-side-space",
+      "--article-card-title-gap",
+      "--article-card-meta-gap",
+      "--article-card-tags-gap",
+      "--article-card-tag-gap",
+      "--article-card-divider-gap",
+    ];
+
+    const pickCardRule = (source) =>
+      [...source.matchAll(/\.ta-public \.article-card\s*{([^}]*)}/g)]
+        .map((match) => match[1])
+        .find((body) => gapNames.every((name) => body.includes(`${name}:`)));
+
+    const cardRule = pickCardRule(css);
+    expect(cardRule).toBeDefined();
+
+    expect(cardRule).toMatch(
+      /padding-bottom:\s*var\(--article-card-bottom-space\);/,
+    );
+    expect(css).toMatch(
+      /\.ta-public \.article-card-bottom\s*{[^}]*margin-top:\s*var\(--article-card-tags-gap\);/s,
+    );
+    expect(css).toMatch(
+      /\.ta-public \.article-card\s*{[^}]*padding-inline:\s*var\(--article-card-side-space\);/s,
+    );
+    expect(css).toMatch(
+      /\.article-card-info\s*{[^}]*gap:\s*6px var\(--article-card-meta-gap\);/s,
+    );
+    expect(css).toMatch(
+      /\.article-card \.article-tags\s*{[^}]*gap:\s*var\(--article-card-tag-gap\);/s,
+    );
+    expect(css).toMatch(
+      /\.meta-divider\s*{[^}]*margin:\s*0 var\(--article-card-divider-gap\);/s,
+    );
+    expect(css).toMatch(
+      /\.article-meta-mobile\s*{[^}]*margin:\s*var\(--article-card-meta-gap\) 0 0;/s,
+    );
+
+    for (const name of gapNames) {
+      expect(cardRule).toMatch(new RegExp(`${name}:\\s*[\\d.]+px;`));
+    }
+
+    const narrow = [
+      ...css.matchAll(/@media \(max-width:\s*767px\)\s*{([\s\S]*?)\n}/g),
+    ]
+      .map((m) => m[1])
+      .join("\n");
+    const narrowCard = pickCardRule(narrow);
+
+    expect(narrowCard).toBeDefined();
+    for (const name of gapNames) {
+      expect(narrowCard).toMatch(new RegExp(`${name}:\\s*[\\d.]+px;`));
+    }
+
+    expect(css).toMatch(
+      /\.ta-public \.article-card \.article-summary\s*{[^}]*margin-top:\s*var\(--article-card-title-gap\);/s,
+    );
+    expect(css).toMatch(
+      /\.ta-public \.article-card \.article-summary-row\s*{[^}]*margin-top:\s*var\(--article-card-title-gap\);/s,
+    );
   });
 
   test("카드 여백과 구분자 세로 정렬을 조인 값으로 고정한다", () => {
@@ -493,10 +564,7 @@ describe("Tech Articles CSS 스코프", () => {
 
     expect(css).toMatch(/\.ta-public \.article-list\s*{[^}]*gap:\s*12px;/s);
     expect(css).toMatch(
-      /\.ta-public \.article-card\s*{[^}]*padding-inline:\s*20px;/s,
-    );
-    expect(css).toMatch(
-      /@media \(max-width:\s*767px\)\s*{\s*\.ta-public \.article-card\s*{[^}]*padding-inline:\s*16px;/s,
+      /\.ta-public \.article-card\s*{[^}]*padding-inline:\s*var\(--article-card-side-space\);/s,
     );
     expect(css).toMatch(
       /@media \(min-width:\s*768px\)\s*{\s*\.ta-public \.article-card \.article-meta \.meta-divider::after\s*{[^}]*top:\s*1\.3px;/s,
@@ -772,7 +840,7 @@ describe("Tech Articles CSS 스코프", () => {
       /\.ta-public \.search-mobile-filter-button\s*{[^}]*width:\s*auto;[^}]*justify-content:\s*normal;/s,
     );
     expect(block).toMatch(
-      /\.ta-public \.article-card\s*{[^}]*--article-card-edge-space:\s*12px;/s,
+      /\.ta-public \.article-card\s*{[^}]*--article-card-edge-space:\s*[\d.]+px;/s,
     );
   });
 

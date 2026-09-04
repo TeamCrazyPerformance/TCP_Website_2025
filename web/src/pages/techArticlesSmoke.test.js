@@ -1333,8 +1333,11 @@ describe("관리자 화면", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText("크롤링 실행 이력")).toBeInTheDocument();
 
-    const runner = container.querySelector("#asyncCrawlRunner");
-    expect(runner).not.toBeNull();
+    const runner = await waitFor(() => {
+      const element = container.querySelector("#asyncCrawlRunner");
+      expect(element).not.toBeNull();
+      return element;
+    });
     expect(
       screen.getByRole("heading", { name: "비동기 수집 실행" }),
     ).toBeInTheDocument();
