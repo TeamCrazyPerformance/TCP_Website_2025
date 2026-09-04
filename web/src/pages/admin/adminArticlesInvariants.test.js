@@ -1,4 +1,3 @@
-
 const fs = require("fs");
 const path = require("path");
 
@@ -52,6 +51,47 @@ describe("공개 토글 가드", () => {
   });
 });
 
+describe("전체 목록 상세 작업", () => {
+  test("대기 중인 품질검토 건에만 판정 작업을 준비한다", () => {
+    expect(SOURCE).toMatch(/function pendingQualityReview\(article\)/);
+    expect(SOURCE).toMatch(/resolveStage\(article\) !== "QUALITY_REVIEW"/);
+    expect(SOURCE).toMatch(/!review\?\.caseId/);
+    expect(SOURCE).toMatch(/!Number\.isInteger\(review\.caseVersion\)/);
+  });
+
+  test("기존 검토 큐와 같은 판정 API와 낙관적 잠금 버전을 사용한다", () => {
+    expect(SOURCE).toMatch(/resolveQualityReview\(review\.caseId, \{/);
+    expect(SOURCE).toMatch(/resolvePendingQualityReview\(detail, "APPROVE"\)/);
+    expect(SOURCE).toMatch(/resolvePendingQualityReview\(detail, "REJECT"\)/);
+    expect(SOURCE).toMatch(/expectedCaseVersion: review\.caseVersion/);
+  });
+
+  test("목록에는 판정 버튼이 없고 상세 창에만 통과와 탈락이 있다", () => {
+    const list = SOURCE.slice(
+      SOURCE.indexOf('<table className="article-table'),
+      SOURCE.indexOf("<dialog"),
+    );
+    const detail = SOURCE.slice(SOURCE.indexOf("<dialog"));
+    expect(list).not.toContain("품질 통과");
+    expect(list).not.toContain("품질 탈락");
+    expect(detail).toContain("품질 통과");
+    expect(detail).toContain("품질 탈락");
+  });
+
+  test("품질 미달과 처리 실패는 상세 창에서 재처리 API를 사용한다", () => {
+    expect(SOURCE).toMatch(/runReprocessing\(detail, "APPROVE_QUALITY"\)/);
+    expect(SOURCE).toMatch(/runReprocessing\(detail, "RETRY"\)/);
+    expect(SOURCE).toMatch(/reprocessArticle\(article\.articleId, \{/);
+    expect(SOURCE).toMatch(/"FAILED", "FAILED_AFTER_APPROVAL"/);
+  });
+
+  test("검색·필터·정렬·단계가 바뀌면 기존 선택을 지운다", () => {
+    expect(SOURCE).toMatch(
+      /setSelected\(\{\}\);\s*\}, \[keyword, page, publicationStatus, sort, stageFilter\]\);/,
+    );
+  });
+});
+
 describe("파이프라인 단계 표시", () => {
   test("전체 아티클 화면이 등록 전 중복 검토 대상을 범위에서 구분한다", () => {
     expect(SOURCE).toContain("중복 검토를 통과해 등록된 아티클");
@@ -69,16 +109,16 @@ describe("파이프라인 단계 표시", () => {
     expect(SOURCE).not.toMatch(/<strong>\{publishedCount\}<\/strong>/);
     expect(SOURCE).not.toMatch(/<strong>\{hiddenCount\}<\/strong>/);
     expect(ALIGN_CSS).toMatch(/\.queue-stat-inline \{[\s\S]*?color: #f3f4f6;/);
-    expect(ALIGN_CSS).toMatch(/\.queue-stat-inline \{[\s\S]*?font-weight: 400;/);
+    expect(ALIGN_CSS).toMatch(
+      /\.queue-stat-inline \{[\s\S]*?font-weight: 400;/,
+    );
     expect(ALIGN_CSS).not.toMatch(/\.queue-stat-item\.is-published/);
     expect(ALIGN_CSS).not.toMatch(/\.queue-stat-item\.is-unpublished/);
   });
 
   test("검토 큐 카드 제목이 등록 아티클 카드와 같은 위계를 쓴다", () => {
     for (const title of ["판정 대기", "품질 검토", "공개 검토"]) {
-      expect(REVIEWS).toContain(
-        `<p className="queue-stat-title">${title}</p>`,
-      );
+      expect(REVIEWS).toContain(`<p className="queue-stat-title">${title}</p>`);
     }
     expect(ALIGN_CSS).toMatch(
       /\.overview-card-title,\s*\.ta-admin \.queue-stat-card \.queue-stat-title \{[\s\S]*?font-size: 16px;/,
@@ -86,7 +126,9 @@ describe("파이프라인 단계 표시", () => {
   });
 
   test("공개 정책 제목과 선택 영역 사이에 작은 간격이 있다", () => {
-    expect(SOURCE).toMatch(/<form className="policy-form" onSubmit=\{savePolicy\}>/);
+    expect(SOURCE).toMatch(
+      /<form className="policy-form" onSubmit=\{savePolicy\}>/,
+    );
     expect(ALIGN_CSS).toMatch(
       /\.policy-card \.policy-form \{\s*margin-top: 12px;/,
     );
@@ -323,9 +365,10 @@ describe("품질 평가 근거 공유", () => {
     }
   });
 
-  test("검토 큐 두 탭 모두 원문 링크를 보여준다", () => {
+  test("검토 큐의 품질·품질 미달·공개 상세가 원문 링크를 보여준다", () => {
     expect((REVIEWS.match(/<OriginalSourceLink/g) || []).length).toBe(2);
     expect(REVIEWS).toMatch(/detail\.source\?\.articleUrl/);
+    expect(REVIEWS).toMatch(/kind === "quality" \|\| kind === "rejected"/);
   });
 
   test("중복 검토가 양쪽 원문 링크를 모두 보여준다", () => {
@@ -355,12 +398,12 @@ const ALIGN_CSS = fs.readFileSync(
 );
 
 describe("숫자 서체", () => {
-  test("orbitron 은 라틴 눈썹과 제목에만 남는다", () => {
+  test("orbitron 은 제목에만 남는다", () => {
     for (const source of [SOURCE, REVIEWS]) {
       const uses = source.match(/className="[^"]*orbitron[^"]*"/g) || [];
       expect(uses.length).toBeGreaterThan(0);
       for (const use of uses) {
-        expect(use).toMatch(/section-eyebrow|gradient-text/);
+        expect(use).toMatch(/gradient-text/);
       }
     }
   });

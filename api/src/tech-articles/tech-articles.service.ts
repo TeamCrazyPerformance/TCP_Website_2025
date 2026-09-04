@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import {
   AdminArticleQueryDto,
   AdminArticleStatsQueryDto,
+  ArticleReprocessingDto,
   BulkDuplicateResolutionDto,
   BulkPublicationDto,
   BulkQualityResolutionDto,
@@ -102,7 +103,7 @@ export interface PublicSource {
   count: number;
 }
 
-type ReviewKind = 'duplicate' | 'quality' | 'publication';
+type ReviewKind = 'duplicate' | 'quality' | 'rejected' | 'publication';
 type CrawlTrigger = 'MANUAL' | 'SCHEDULED';
 
 @Injectable()
@@ -237,6 +238,21 @@ export class TechArticlesService {
       dto.items,
       (item) => item.articleId,
       (item) => this.publicationAction(item.articleId, item, administratorId),
+    );
+  }
+
+  async reprocessArticle(
+    articleId: string,
+    dto: ArticleReprocessingDto,
+    administratorId: string,
+  ) {
+    return this.pipeline.post(
+      `/internal/v1/admin/articles/${encodeURIComponent(articleId)}/reprocessing`,
+      {
+        action: dto.action,
+        expectedRecordVersion: dto.expectedRecordVersion,
+        administratorId,
+      },
     );
   }
 
@@ -560,7 +576,9 @@ export class TechArticlesService {
       crawledAt: article.collectedAt,
       normalizedAt: article.normalizedAt,
       processingStatus: article.processingStatus,
+      stage: article.stage,
       duplicateStatus: article.duplicateStatus,
+      qualityReview: article.qualityReview ?? null,
       reviewStatus: article.reviewStatus,
       publicationStatus: article.publicationStatus,
       publishedAt: article.publishedAt,
@@ -624,6 +642,15 @@ export class TechArticlesService {
         reason: quality.evaluation?.reason ?? null,
         signals: quality.evaluation?.signals ?? null,
         queuedAt: quality.createdAt,
+      };
+    }
+    if (kind === 'rejected') {
+      const rejected = this.adminItem(item as PipelineArticle);
+      return {
+        ...rejected,
+        reason: rejected.evaluation?.reason ?? null,
+        signals: rejected.evaluation?.signals ?? null,
+        queuedAt: rejected.updatedAt,
       };
     }
     return this.adminItem(item as PipelineArticle);

@@ -21,6 +21,7 @@ from .base import (
     NEW_ARTICLE_WINDOW_HOURS,
     STAGE_NAMES,
     IdempotencyConflictError,
+    InvalidArticleActionError,
     NotFoundError,
     VersionConflictError,
     crawl_error_summary,
@@ -515,7 +516,7 @@ class MemoryPipelineRepository:
                     job["lease_token"] = None
                     job["lease_expires_at"] = None
                     if not can_retry:
-                        self.submissions[job["submission_id"]]["state"] = "PROCESSING_FAILED"
+                        self._mark_processing_failed(job["submission_id"])
             candidates = sorted(
                 (
                     job
@@ -733,7 +734,17 @@ class MemoryPipelineRepository:
                 lease_expires_at=None,
             )
             if not can_retry:
-                self.submissions[job.submission_id]["state"] = "PROCESSING_FAILED"
+                self._mark_processing_failed(job.submission_id)
+
+    def _mark_processing_failed(self, submission_id: str) -> None:
+        submission = self.submissions[submission_id]
+        submission["state"] = "PROCESSING_FAILED"
+        article_id = submission.get("article_id")
+        if article_id and article_id in self.articles:
+            article = self.articles[article_id]
+            article["processingStatus"] = "PROCESSING_FAILED"
+            article["recordVersion"] += 1
+            article["updatedAt"] = _now()
 
     def publication_policy(self) -> tuple[PublicationPolicy, int]:
         with self._lock:
@@ -853,6 +864,15 @@ class MemoryPipelineRepository:
         projected = copy.deepcopy(article)
         crawl_item = self.crawl_items.get(str(article.get("crawlItemId")))
         collected_at = crawl_item.get("produced_at") if crawl_item else None
+        quality_review = next(
+            (
+                review
+                for review in self.quality_reviews.values()
+                if review.get("articleId") == article.get("articleId")
+                and review.get("status") == "PENDING"
+            ),
+            None,
+        )
         projected.update(
             {
                 "source": source_projection(
@@ -867,6 +887,14 @@ class MemoryPipelineRepository:
                 "evaluation": copy.deepcopy(article.get("qualityEvaluation")),
                 "valueScore": article.get("qualityScore"),
                 "duplicateStatus": "UNIQUE",
+                "qualityReview": (
+                    {
+                        "caseId": quality_review.get("caseId"),
+                        "caseVersion": quality_review.get("caseVersion"),
+                    }
+                    if quality_review
+                    else None
+                ),
                 "stage": self._article_stage(article),
                 "viewCounts": copy.deepcopy(
                     self.article_views.get(
@@ -1167,6 +1195,12 @@ class MemoryPipelineRepository:
                             "originalPublishedAt": article.get("originalPublishedAt"),
                         }
                     )
+            elif kind == "rejected":
+                values = [
+                    self._project_article(article)
+                    for article in self.articles.values()
+                    if article["processingStatus"] == "QUALITY_REJECTED"
+                ]
             elif kind == "publication":
                 values = [
                     self._project_article(article)
@@ -1185,7 +1219,7 @@ class MemoryPipelineRepository:
             if filter_value:
                 if kind == "duplicate" and filter_value == "JACCARD":
                     values = [item for item in values if "JACCARD" in searchable(item).upper()]
-                elif kind in {"quality", "publication"}:
+                elif kind in {"quality", "rejected", "publication"}:
                     values = [
                         item
                         for item in values
@@ -1266,6 +1300,120 @@ class MemoryPipelineRepository:
                 article["processingStatus"] = "QUALITY_REJECTED"
                 submission["state"] = "QUALITY_REJECTED"
             return copy.deepcopy(case)
+
+    def reprocess_article(
+        self,
+        article_id: str,
+        *,
+        action: str,
+        expected_version: int,
+        administrator_id: str,
+        max_attempts: int,
+    ) -> dict[str, Any]:
+        with self._lock:
+            article = self.articles.get(article_id)
+            if not article:
+                raise NotFoundError(article_id)
+            if article["recordVersion"] != expected_version:
+                raise VersionConflictError(article_id)
+            submission = next(
+                (
+                    item
+                    for item in self.submissions.values()
+                    if item.get("article_id") == article_id
+                ),
+                None,
+            )
+            if submission is None:
+                raise InvalidArticleActionError("아티클의 처리 요청을 찾을 수 없습니다.")
+
+            if action == "APPROVE_QUALITY":
+                if article.get("processingStatus") != "QUALITY_REJECTED":
+                    raise InvalidArticleActionError(
+                        "품질 미달 상태의 아티클만 품질 통과로 변경할 수 있습니다."
+                    )
+                quality_result = submission.get("quality_result")
+                if not quality_result:
+                    raise InvalidArticleActionError("저장된 품질 평가 결과가 없습니다.")
+                review = next(
+                    (
+                        item
+                        for item in self.quality_reviews.values()
+                        if item.get("submissionId") == submission["submission_id"]
+                    ),
+                    None,
+                )
+                now = _now()
+                if review:
+                    review["status"] = "RESOLVED_APPROVE"
+                    review["caseVersion"] += 1
+                    review["administratorId"] = administrator_id
+                    review["resolvedAt"] = now
+                else:
+                    case_id = f"quality-review-{uuid4().hex}"
+                    self.quality_reviews[case_id] = {
+                        "caseId": case_id,
+                        "submissionId": submission["submission_id"],
+                        "articleId": article_id,
+                        "status": "RESOLVED_APPROVE",
+                        "caseVersion": 1,
+                        "evaluation": copy.deepcopy(quality_result.get("qualityEvaluation")),
+                        "administratorId": administrator_id,
+                        "resolvedAt": now,
+                        "createdAt": now,
+                    }
+                stage = Stage.ENRICHMENT
+                submission["state"] = "ENRICHMENT_PENDING"
+                article["processingStatus"] = "ENRICHMENT_PENDING"
+                article["reviewStatus"] = "APPROVED"
+            elif action == "RETRY":
+                if article.get("processingStatus") != "PROCESSING_FAILED":
+                    raise InvalidArticleActionError(
+                        "처리 실패 상태의 아티클만 재처리할 수 있습니다."
+                    )
+                failed_jobs = [
+                    item
+                    for item in self.jobs.values()
+                    if item["submission_id"] == submission["submission_id"]
+                    and item["status"] == "DEAD"
+                    and item["stage"] in {Stage.QUALITY.value, Stage.ENRICHMENT.value}
+                ]
+                if not failed_jobs:
+                    raise InvalidArticleActionError("재처리할 실패 작업을 찾을 수 없습니다.")
+                failed = max(
+                    failed_jobs,
+                    key=lambda item: (item["created_at"], item["job_id"]),
+                )
+                stage = Stage(failed["stage"])
+                if stage == Stage.QUALITY:
+                    submission["state"] = "QUALITY_PENDING"
+                    article["processingStatus"] = "INGESTED"
+                    article["reviewStatus"] = "NOT_REQUIRED"
+                else:
+                    submission["state"] = "ENRICHMENT_PENDING"
+                    article["processingStatus"] = "ENRICHMENT_PENDING"
+            else:
+                raise InvalidArticleActionError("지원하지 않는 재처리 작업입니다.")
+
+            article["recordVersion"] += 1
+            article["updatedAt"] = _now()
+            job_id = self.enqueue(
+                submission["submission_id"],
+                stage,
+                max_attempts=max_attempts,
+                unique_key=(
+                    f"{submission['submission_id']}:ADMIN:{action}:{article['recordVersion']}"
+                ),
+            )
+            return {
+                "articleId": article_id,
+                "action": action,
+                "processingStatus": article["processingStatus"],
+                "reviewStatus": article["reviewStatus"],
+                "recordVersion": article["recordVersion"],
+                "jobId": job_id,
+                "stage": stage.value,
+            }
 
     def apply_publication_action(
         self,

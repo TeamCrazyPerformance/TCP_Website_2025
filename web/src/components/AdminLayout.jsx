@@ -80,7 +80,8 @@ function AdminLayout() {
       return "Tech Articles · Suspected Duplicates";
     if (
       path === "/admin/tech-articles/reviews/quality" ||
-      path === "/admin/tech-articles/reviews/publication"
+      path === "/admin/tech-articles/reviews/publication" ||
+      path === "/admin/tech-articles/reviews/rejected"
     )
       return "Tech Articles · Article Review";
     if (path === "/admin/tech-articles/crawls")

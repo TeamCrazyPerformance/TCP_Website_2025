@@ -1162,6 +1162,163 @@ describe("관리자 화면", () => {
     expect(api.getCrawlSources).not.toHaveBeenCalled();
   });
 
+  test("전체 아티클의 품질검토 대기 건을 기존 승인 API로 통과시킨다", async () => {
+    asAdmin();
+    api.getAdminTechArticles.mockResolvedValue({
+      items: [
+        {
+          articleId: "article-review-1",
+          title: "품질검토 대기 아티클",
+          processingStatus: "QUALITY_EVALUATED",
+          reviewStatus: "PENDING",
+          publicationStatus: "UNPUBLISHED",
+          qualityReview: { caseId: "quality-case-1", caseVersion: 3 },
+          tags: [],
+        },
+      ],
+      pagination: { ...PAGINATION, totalCount: 1 },
+    });
+    api.resolveQualityReview.mockResolvedValue({
+      caseId: "quality-case-1",
+      status: "RESOLVED_APPROVE",
+      caseVersion: 4,
+    });
+    api.getAdminTechArticle.mockResolvedValue({
+      articleId: "article-review-1",
+      title: "품질검토 대기 아티클",
+      processingStatus: "QUALITY_EVALUATED",
+      reviewStatus: "PENDING",
+      publicationStatus: "UNPUBLISHED",
+      recordVersion: 2,
+      qualityReview: { caseId: "quality-case-1", caseVersion: 3 },
+      tags: [],
+    });
+    const AdminTechArticles = require("./admin/AdminTechArticles").default;
+    renderWithAuth(<AdminTechArticles />);
+
+    expect(
+      screen.queryByRole("button", { name: "품질 통과" }),
+    ).not.toBeInTheDocument();
+    const detailButtons = await screen.findAllByRole("button", {
+      name: "상세",
+    });
+    fireEvent.click(detailButtons[0]);
+    const articleDialog = await screen.findByRole("dialog", {
+      name: "아티클 상세 정보",
+    });
+    expect(
+      await within(articleDialog).findByRole("button", {
+        name: "품질 탈락",
+      }),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      within(articleDialog).getByRole("button", { name: "품질 통과" }),
+    );
+    const confirmation = await screen.findByRole("dialog", {
+      name: "품질 통과로 판정할까요?",
+    });
+    fireEvent.click(
+      within(confirmation).getByRole("button", { name: "품질 통과" }),
+    );
+
+    await waitFor(() =>
+      expect(api.resolveQualityReview).toHaveBeenCalledWith("quality-case-1", {
+        action: "APPROVE",
+        expectedCaseVersion: 3,
+      }),
+    );
+    expect(
+      await screen.findByText(
+        "품질 통과 처리를 완료하고 AI 요약 단계로 전달했습니다.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  test("전체 아티클의 선택은 단계 필터를 바꾸면 해제된다", async () => {
+    asAdmin();
+    api.getAdminTechArticles.mockResolvedValue({
+      items: [
+        {
+          articleId: "article-selected",
+          title: "선택된 아티클",
+          processingStatus: "QUALITY_EVALUATED",
+          reviewStatus: "PENDING",
+          publicationStatus: "UNPUBLISHED",
+          tags: [],
+        },
+      ],
+      pagination: { ...PAGINATION, totalCount: 1 },
+    });
+    api.getAdminTechArticleStats.mockResolvedValue({
+      totalCount: 1,
+      publication: { UNPUBLISHED: 1 },
+      reviews: {},
+      stages: { QUALITY_REVIEW: 1 },
+      stageOldest: {},
+      statusMismatch: 0,
+    });
+    const AdminTechArticles = require("./admin/AdminTechArticles").default;
+    renderWithAuth(<AdminTechArticles />);
+
+    const checkboxes = await screen.findAllByLabelText("선택된 아티클 선택");
+    fireEvent.click(checkboxes[0]);
+    expect(screen.getByText("1개 선택됨")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /품질 검토/ }));
+    await waitFor(() =>
+      expect(screen.queryByText("1개 선택됨")).not.toBeInTheDocument(),
+    );
+  });
+
+  test.each(["FAILED", "FAILED_AFTER_APPROVAL"])(
+    "%s 기사 상세에서 실패 단계를 재처리한다",
+    async (stage) => {
+      asAdmin();
+      const failedArticle = {
+        articleId: `article-${stage.toLowerCase()}`,
+        title: "처리 실패 아티클",
+        processingStatus: "PROCESSING_FAILED",
+        stage,
+        reviewStatus: stage === "FAILED" ? "NOT_REQUIRED" : "APPROVED",
+        publicationStatus: "UNPUBLISHED",
+        recordVersion: 7,
+        tags: [],
+      };
+      api.getAdminTechArticles.mockResolvedValue({
+        items: [failedArticle],
+        pagination: { ...PAGINATION, totalCount: 1 },
+      });
+      api.getAdminTechArticle.mockResolvedValue(failedArticle);
+      api.reprocessArticle.mockResolvedValue({
+        articleId: failedArticle.articleId,
+        processingStatus: "ENRICHMENT_PENDING",
+        recordVersion: 8,
+      });
+      const AdminTechArticles = require("./admin/AdminTechArticles").default;
+      renderWithAuth(<AdminTechArticles />);
+
+      const detailButtons = await screen.findAllByRole("button", {
+        name: "상세",
+      });
+      fireEvent.click(detailButtons[0]);
+      const retry = await screen.findByRole("button", { name: "재처리" });
+      fireEvent.click(retry);
+      const confirmation = await screen.findByRole("dialog", {
+        name: "실패한 처리를 다시 실행할까요?",
+      });
+      fireEvent.click(
+        within(confirmation).getByRole("button", { name: "재처리" }),
+      );
+
+      await waitFor(() =>
+        expect(api.reprocessArticle).toHaveBeenCalledWith(
+          failedArticle.articleId,
+          { action: "RETRY", expectedRecordVersion: 7 },
+        ),
+      );
+    },
+  );
+
   test("크롤링 관리 화면은 이력을 먼저 보여 주고 실행 폼을 아래에 항상 둔다", async () => {
     asAdmin();
     const AdminCrawlOperations =
@@ -1203,7 +1360,7 @@ describe("관리자 화면", () => {
     expect(api.getQualityReviews).not.toHaveBeenCalled();
   });
 
-  test.each([["quality"], ["publication"]])(
+  test.each([["quality"], ["rejected"], ["publication"]])(
     "아티클 검토(%s 탭)가 해당 큐를 요청한다",
     async (kind) => {
       asAdmin();
@@ -1219,4 +1376,56 @@ describe("관리자 화면", () => {
       expect(api.getDuplicateReviews).not.toHaveBeenCalled();
     },
   );
+
+  test("품질 미달 상세에서 관리자 통과 처리를 실행한다", async () => {
+    asAdmin();
+    api.getQualityReviews.mockResolvedValue({
+      items: [
+        {
+          articleId: "article-rejected",
+          title: "품질 미달 아티클",
+          processingStatus: "QUALITY_REJECTED",
+          reviewStatus: "NOT_REQUIRED",
+          publicationStatus: "UNPUBLISHED",
+          recordVersion: 5,
+          reason: "기술 내용이 부족합니다.",
+          source: { name: "InfoQ", articleUrl: "https://infoq.com/rejected" },
+          tags: [],
+          queuedAt: "2026-09-04T00:00:00Z",
+        },
+      ],
+      pagination: { ...PAGINATION, totalCount: 1 },
+    });
+    api.reprocessArticle.mockResolvedValue({
+      articleId: "article-rejected",
+      processingStatus: "ENRICHMENT_PENDING",
+      recordVersion: 6,
+    });
+    const Reviews = require("./admin/AdminTechArticleReviews").default;
+    renderWithAuth(<Reviews kind="rejected" />);
+
+    const detailButtons = await screen.findAllByRole("button", {
+      name: "상세",
+    });
+    fireEvent.click(detailButtons[0]);
+    const detailDialog = await screen.findByRole("dialog", {
+      name: "품질 미달 상세",
+    });
+    fireEvent.click(
+      within(detailDialog).getByRole("button", { name: "품질 통과" }),
+    );
+    const confirmation = await screen.findByRole("dialog", {
+      name: "품질 미달 판정을 통과로 변경할까요?",
+    });
+    fireEvent.click(
+      within(confirmation).getByRole("button", { name: "품질 통과" }),
+    );
+
+    await waitFor(() =>
+      expect(api.reprocessArticle).toHaveBeenCalledWith("article-rejected", {
+        action: "APPROVE_QUALITY",
+        expectedRecordVersion: 5,
+      }),
+    );
+  });
 });

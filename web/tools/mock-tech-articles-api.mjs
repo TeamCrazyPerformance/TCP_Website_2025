@@ -819,6 +819,12 @@ const adminItem = (a) => ({
   evaluation: evaluationOf(a),
   score: a.valueScore,
   stage: articleStage(a),
+  qualityReview: (() => {
+    const review = qualityCases.find((item) => item.articleId === a.articleId);
+    return review
+      ? { caseId: review.caseId, caseVersion: review.caseVersion }
+      : null;
+  })(),
 });
 
 const isPublic = (a) =>
@@ -1931,6 +1937,19 @@ function handle(method, pathname, query, body, headers = {}) {
       ),
     ];
   }
+  if (method === "GET" && pathname === `${ADMIN_BASE}/reviews/rejected`) {
+    const rows = articles
+      .filter((article) => article.processingStatus === "QUALITY_REJECTED")
+      .filter((article) => !keyword || article.title.includes(keyword))
+      .map((article) => ({
+        ...adminItem(article),
+        reason:
+          evaluationOf(article).reason || "품질 기준 미달로 종료되었습니다.",
+        signals: evaluationOf(article).signals,
+        queuedAt: article.updatedAt,
+      }));
+    return [200, paginate(rows, page, pageSize)];
+  }
   if (method === "GET" && pathname === `${ADMIN_BASE}/reviews/publication`) {
     return [
       200,
@@ -2071,6 +2090,58 @@ function handle(method, pathname, query, body, headers = {}) {
     if (!updated)
       return [404, { statusCode: 404, message: "아티클을 찾을 수 없습니다." }];
     return [200, updated];
+  }
+
+  if (method === "POST" && pathname.endsWith("/reprocessing")) {
+    const articleId = decodeURIComponent(
+      pathname.slice(
+        ADMIN_BASE.length + 1,
+        pathname.length - "/reprocessing".length,
+      ),
+    );
+    const article = articles.find((item) => item.articleId === articleId);
+    if (!article)
+      return [404, { statusCode: 404, message: "아티클을 찾을 수 없습니다." }];
+    if (body?.expectedRecordVersion !== article.recordVersion)
+      return [
+        409,
+        { statusCode: 409, code: "VERSION_CONFLICT", message: "버전 충돌" },
+      ];
+
+    const action = body?.action;
+    if (
+      (action === "APPROVE_QUALITY" &&
+        article.processingStatus !== "QUALITY_REJECTED") ||
+      (action === "RETRY" && article.processingStatus !== "PROCESSING_FAILED")
+    ) {
+      return [
+        422,
+        {
+          statusCode: 422,
+          code: "INVALID_ARTICLE_ACTION",
+          message: "현재 처리 상태에서는 요청한 작업을 실행할 수 없습니다.",
+        },
+      ];
+    }
+
+    if (action === "APPROVE_QUALITY") {
+      article.reviewStatus = "APPROVED";
+      resolvedApprovals.add(article.articleId);
+    }
+    article.processingStatus = "ENRICHMENT_PENDING";
+    article.updatedAt = new Date().toISOString();
+    article.recordVersion += 1;
+    return [
+      200,
+      {
+        articleId,
+        action,
+        processingStatus: article.processingStatus,
+        reviewStatus: article.reviewStatus,
+        recordVersion: article.recordVersion,
+        stage: "ENRICHMENT",
+      },
+    ];
   }
 
   /* ---------- 관리자: 검수 판정 ---------- */

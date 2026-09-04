@@ -19,6 +19,7 @@ from .base import (
     NEW_ARTICLE_WINDOW_HOURS,
     STAGE_NAMES,
     IdempotencyConflictError,
+    InvalidArticleActionError,
     NotFoundError,
     VersionConflictError,
     crawl_error_summary,
@@ -1426,8 +1427,8 @@ class MySQLPipelineRepository:
 
     @staticmethod
     def _public_list_projection(row: dict[str, Any]) -> dict[str, Any]:
-        original_published_at = _utc(row.get("original_published_at"))
         collected_at = _utc(row.get("collected_at"))
+        original_published_at = _utc(row.get("original_published_at"))
         return {
             "articleId": row["article_id"],
             "title": row.get("title"),
@@ -1483,11 +1484,14 @@ class MySQLPipelineRepository:
                     "ci.item_payload AS crawl_item_payload, ci.produced_at AS collected_at, "
                     "COALESCE(vc.member_views, 0) AS member_views, "
                     "COALESCE(vc.guest_attempts, 0) AS guest_attempts, "
-                    "vc.last_viewed_at "
+                    "vc.last_viewed_at, qr.case_id AS quality_review_case_id, "
+                    "qr.case_version AS quality_review_case_version "
                     "FROM articles a "
                     "LEFT JOIN pipeline_submissions ps ON ps.article_id = a.article_id "
                     "LEFT JOIN crawl_items ci ON ci.crawl_item_id = a.crawl_item_id "
                     "LEFT JOIN article_view_counts vc ON vc.article_id = a.article_id "
+                    "LEFT JOIN quality_review_cases qr ON qr.submission_id = ps.submission_id "
+                    "AND qr.status = 'PENDING' "
                     f"WHERE {where} ORDER BY {order_by} LIMIT %s OFFSET %s",
                     (*params, limit, offset),
                 )
@@ -1538,6 +1542,15 @@ class MySQLPipelineRepository:
             "processingStatus": row["processing_status"],
             "stage": row.get("stage"),
             "duplicateStatus": "UNIQUE",
+            "qualityReview": (
+                {
+                    "caseId": row.get("quality_review_case_id"),
+                    "caseVersion": int(row["quality_review_case_version"]),
+                }
+                if row.get("quality_review_case_id") is not None
+                and row.get("quality_review_case_version") is not None
+                else None
+            ),
             "reviewStatus": row["review_status"],
             "publicationStatus": row["publication_status"],
             "publishedAt": _utc(row["published_at"]),
@@ -1668,6 +1681,7 @@ class MySQLPipelineRepository:
         clauses = {
             "duplicate": ["r.status = 'PENDING'"],
             "quality": ["q.status = 'PENDING'"],
+            "rejected": ["a.processing_status = 'QUALITY_REJECTED'"],
             "publication": [
                 "a.processing_status = 'ENRICHED'",
                 "a.review_status = 'PENDING'",
@@ -1700,7 +1714,7 @@ class MySQLPipelineRepository:
                 clauses.append(
                     "JSON_EXTRACT(r.original_candidate_snapshot, '$[0].contentJaccard') IS NOT NULL"
                 )
-            elif kind in {"quality", "publication"}:
+            elif kind in {"quality", "rejected", "publication"}:
                 clauses.append("JSON_UNQUOTE(JSON_EXTRACT(ps.payload, '$.source.sourceType')) = %s")
                 params.append(filter_value)
         return " AND ".join(clauses), tuple(params)
@@ -1749,7 +1763,7 @@ class MySQLPipelineRepository:
                         f"WHERE {where} ORDER BY q.created_at DESC LIMIT %s OFFSET %s",
                         (*params, limit, offset),
                     )
-                elif kind == "publication":
+                elif kind in {"rejected", "publication"}:
                     cursor.execute(
                         "SELECT a.article_id AS articleId, a.title, "
                         "a.localized_title AS localizedTitle, a.one_line_summary AS oneLineSummary, "
@@ -1888,6 +1902,9 @@ class MySQLPipelineRepository:
                 "quality_review_cases q JOIN articles a ON a.article_id = q.article_id "
                 "LEFT JOIN pipeline_submissions ps ON ps.submission_id = q.submission_id"
             ),
+            "rejected": (
+                "articles a LEFT JOIN pipeline_submissions ps ON ps.article_id = a.article_id"
+            ),
             "publication": (
                 "articles a LEFT JOIN pipeline_submissions ps ON ps.article_id = a.article_id"
             ),
@@ -1970,6 +1987,145 @@ class MySQLPipelineRepository:
                     )
                 connection.commit()
                 return {"caseId": case_id, "status": status, "caseVersion": expected_version + 1}
+            finally:
+                cursor.close()
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    def reprocess_article(
+        self,
+        article_id: str,
+        *,
+        action: str,
+        expected_version: int,
+        administrator_id: str,
+        max_attempts: int,
+    ) -> dict[str, Any]:
+        connection = self._connection()
+        try:
+            cursor = connection.cursor(dictionary=True)
+            try:
+                cursor.execute(
+                    "SELECT a.processing_status, a.review_status, a.record_version, "
+                    "s.submission_id, s.quality_result "
+                    "FROM articles a JOIN pipeline_submissions s ON s.article_id = a.article_id "
+                    "WHERE a.article_id = %s ORDER BY s.created_at DESC LIMIT 1 FOR UPDATE",
+                    (article_id,),
+                )
+                article = cursor.fetchone()
+                if article is None:
+                    raise NotFoundError(article_id)
+                if int(article["record_version"]) != expected_version:
+                    raise VersionConflictError(article_id)
+                submission_id = article["submission_id"]
+
+                if action == "APPROVE_QUALITY":
+                    if article["processing_status"] != "QUALITY_REJECTED":
+                        raise InvalidArticleActionError(
+                            "품질 미달 상태의 아티클만 품질 통과로 변경할 수 있습니다."
+                        )
+                    quality_result = _decode(article.get("quality_result"))
+                    if not quality_result:
+                        raise InvalidArticleActionError("저장된 품질 평가 결과가 없습니다.")
+                    cursor.execute(
+                        "SELECT case_id, case_version FROM quality_review_cases "
+                        "WHERE submission_id = %s FOR UPDATE",
+                        (submission_id,),
+                    )
+                    review = cursor.fetchone()
+                    if review:
+                        cursor.execute(
+                            "UPDATE quality_review_cases SET status = 'RESOLVED_APPROVE', "
+                            "case_version = case_version + 1, administrator_id = %s, "
+                            "resolved_at = UTC_TIMESTAMP(6) WHERE case_id = %s",
+                            (administrator_id, review["case_id"]),
+                        )
+                    else:
+                        cursor.execute(
+                            "INSERT INTO quality_review_cases "
+                            "(case_id, submission_id, article_id, evaluation_payload, status, "
+                            "administrator_id, resolved_at) "
+                            "VALUES (%s, %s, %s, %s, 'RESOLVED_APPROVE', %s, UTC_TIMESTAMP(6))",
+                            (
+                                f"quality-review-{uuid4().hex}",
+                                submission_id,
+                                article_id,
+                                _json(quality_result),
+                                administrator_id,
+                            ),
+                        )
+                    stage = Stage.ENRICHMENT
+                    next_processing = "ENRICHMENT_PENDING"
+                    next_review = "APPROVED"
+                    next_submission = "ENRICHMENT_PENDING"
+                elif action == "RETRY":
+                    if article["processing_status"] != "PROCESSING_FAILED":
+                        raise InvalidArticleActionError(
+                            "처리 실패 상태의 아티클만 재처리할 수 있습니다."
+                        )
+                    cursor.execute(
+                        "SELECT stage FROM pipeline_jobs WHERE submission_id = %s "
+                        "AND status = 'DEAD' AND stage IN ('QUALITY', 'ENRICHMENT') "
+                        "ORDER BY created_at DESC, job_id DESC LIMIT 1 FOR UPDATE",
+                        (submission_id,),
+                    )
+                    failed = cursor.fetchone()
+                    if failed is None:
+                        raise InvalidArticleActionError("재처리할 실패 작업을 찾을 수 없습니다.")
+                    stage = Stage(failed["stage"])
+                    if stage == Stage.QUALITY:
+                        next_processing = "INGESTED"
+                        next_review = "NOT_REQUIRED"
+                        next_submission = "QUALITY_PENDING"
+                    else:
+                        next_processing = "ENRICHMENT_PENDING"
+                        next_review = article["review_status"]
+                        next_submission = "ENRICHMENT_PENDING"
+                    cursor.execute(
+                        "UPDATE article_processing_results SET status = 'PENDING', "
+                        "result_payload = NULL, error = NULL "
+                        "WHERE submission_id = %s AND stage = %s",
+                        (submission_id, stage.value),
+                    )
+                else:
+                    raise InvalidArticleActionError("지원하지 않는 재처리 작업입니다.")
+
+                next_version = expected_version + 1
+                cursor.execute(
+                    "UPDATE pipeline_submissions SET state = %s WHERE submission_id = %s",
+                    (next_submission, submission_id),
+                )
+                cursor.execute(
+                    "UPDATE articles SET processing_status = %s, review_status = %s, "
+                    "record_version = record_version + 1 WHERE article_id = %s",
+                    (next_processing, next_review, article_id),
+                )
+                job_id = f"job-{uuid4().hex}"
+                cursor.execute(
+                    "INSERT INTO pipeline_jobs "
+                    "(job_id, submission_id, unique_key, stage, status, max_attempts) "
+                    "VALUES (%s, %s, %s, %s, 'PENDING', %s)",
+                    (
+                        job_id,
+                        submission_id,
+                        f"{submission_id}:ADMIN:{action}:{next_version}",
+                        stage.value,
+                        max_attempts,
+                    ),
+                )
+                connection.commit()
+                return {
+                    "articleId": article_id,
+                    "action": action,
+                    "processingStatus": next_processing,
+                    "reviewStatus": next_review,
+                    "recordVersion": next_version,
+                    "jobId": job_id,
+                    "stage": stage.value,
+                }
             finally:
                 cursor.close()
         except Exception:

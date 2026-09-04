@@ -13,7 +13,10 @@ from tech_article_pipeline.contracts import (
     Stage,
 )
 from tech_article_pipeline.orchestration import PipelineOrchestrator
-from tech_article_pipeline.persistence.base import IdempotencyConflictError
+from tech_article_pipeline.persistence.base import (
+    IdempotencyConflictError,
+    InvalidArticleActionError,
+)
 from tech_article_pipeline.persistence.memory import MemoryPipelineRepository
 from tech_article_pipeline.worker import DurableWorker
 from tech_article_quality import QualityEvaluator
@@ -47,6 +50,18 @@ class FakeQuality:
                 "error": None,
             },
         }
+
+
+class FlakyQuality(FakeQuality):
+    def __init__(self):
+        super().__init__()
+        self.calls = 0
+
+    def evaluate(self, input_data):
+        self.calls += 1
+        if self.calls == 1:
+            raise RuntimeError("quality service unavailable")
+        return super().evaluate(input_data)
 
 
 class FakeSummarizer:
@@ -100,12 +115,19 @@ def digest(payload):
     return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False).encode()).digest()
 
 
-def runtime(normalized_payload, *, decision="PASS", summarizer=None, attempts=3):
+def runtime(
+    normalized_payload,
+    *,
+    decision="PASS",
+    quality=None,
+    summarizer=None,
+    attempts=3,
+):
     repository = MemoryPipelineRepository()
     orchestrator = PipelineOrchestrator(
         repository,
         FakeAdmission(),
-        FakeQuality(decision),
+        quality or FakeQuality(decision),
         summarizer or FakeSummarizer(),
         job_max_attempts=attempts,
     )
@@ -236,6 +258,108 @@ def test_unapproved_quality_review_cannot_run_enrichment(normalized_payload):
     assert enrichment_job["status"] == "DEAD"
     assert enrichment_job["error"]["code"] == "ARTICLE_NOT_ELIGIBLE"
     assert summarizer.calls == 0
+
+
+def test_admin_can_override_automatic_quality_rejection(normalized_payload):
+    summarizer = ContractValidatingSummarizer()
+    repository, worker, submission = runtime(
+        normalized_payload,
+        decision="REJECT",
+        summarizer=summarizer,
+    )
+    worker.process_once()
+    worker.process_once()
+    rejected = repository.list_review_queue("rejected", limit=10)
+    assert len(rejected) == 1
+
+    article = rejected[0]
+    result = repository.reprocess_article(
+        article["articleId"],
+        action="APPROVE_QUALITY",
+        expected_version=article["recordVersion"],
+        administrator_id="admin-1",
+        max_attempts=3,
+    )
+
+    assert result["processingStatus"] == "ENRICHMENT_PENDING"
+    assert repository.list_review_queue("rejected", limit=10) == []
+    assert worker.process_once() is True
+    assert len(repository.list_public_articles(limit=10, offset=0)) == 1
+    stored = repository.get_submission(submission["submissionId"])
+    assert stored["quality_result"]["qualityEvaluation"]["decision"] == "REJECT"
+    assert stored["quality_review_approved"] is True
+    assert summarizer.last_input is not None
+
+
+def test_failed_enrichment_can_be_requeued_and_completed(normalized_payload):
+    summarizer = FakeSummarizer(failures=1, retryable=False)
+    repository, worker, submission = runtime(
+        normalized_payload,
+        summarizer=summarizer,
+        attempts=1,
+    )
+    assert worker.process_once() is True
+    assert worker.process_once() is True
+    assert worker.process_once() is True
+
+    stored = repository.get_submission(submission["submissionId"])
+    article = repository.articles[stored["article_id"]]
+    assert article["processingStatus"] == "PROCESSING_FAILED"
+    result = repository.reprocess_article(
+        article["articleId"],
+        action="RETRY",
+        expected_version=article["recordVersion"],
+        administrator_id="admin-1",
+        max_attempts=1,
+    )
+
+    assert result["stage"] == "ENRICHMENT"
+    assert result["processingStatus"] == "ENRICHMENT_PENDING"
+    assert worker.process_once() is True
+    assert len(repository.list_public_articles(limit=10, offset=0)) == 1
+
+
+def test_failed_quality_evaluation_can_be_requeued_and_completed(normalized_payload):
+    repository, worker, submission = runtime(
+        normalized_payload,
+        quality=FlakyQuality(),
+        attempts=1,
+    )
+    assert worker.process_once() is True
+    assert worker.process_once() is True
+
+    stored = repository.get_submission(submission["submissionId"])
+    article = repository.articles[stored["article_id"]]
+    assert article["processingStatus"] == "PROCESSING_FAILED"
+    result = repository.reprocess_article(
+        article["articleId"],
+        action="RETRY",
+        expected_version=article["recordVersion"],
+        administrator_id="admin-1",
+        max_attempts=1,
+    )
+
+    assert result["stage"] == "QUALITY"
+    assert result["processingStatus"] == "INGESTED"
+    assert worker.process_once() is True
+    assert worker.process_once() is True
+    assert len(repository.list_public_articles(limit=10, offset=0)) == 1
+
+
+def test_reprocessing_rejects_an_action_that_does_not_match_state(normalized_payload):
+    repository, worker, submission = runtime(normalized_payload)
+    worker.process_once()
+    stored = repository.get_submission(submission["submissionId"])
+    article = repository.articles[stored["article_id"]]
+
+    with pytest.raises(InvalidArticleActionError):
+        repository.reprocess_article(
+            article["articleId"],
+            action="RETRY",
+            expected_version=article["recordVersion"],
+            administrator_id="admin-1",
+            max_attempts=3,
+        )
 
 
 def test_retryable_ai_failure_becomes_dead_after_max_attempts(normalized_payload):

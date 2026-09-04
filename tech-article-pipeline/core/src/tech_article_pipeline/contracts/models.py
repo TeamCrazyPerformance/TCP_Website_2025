@@ -68,16 +68,18 @@ class CrawlSource(ContractModel):
         "deepmind-blog",
     ] = Field(alias="sourceId")
     source_type: Literal["WEB_CRAWL", "RSS", "API"] = Field(alias="sourceType")
-    section_key: Literal["BLOG", "NEWS", "ENGINEERING", "REPOSITORIES"] = Field(
-        alias="sectionKey"
-    )
+    section_key: Literal["BLOG", "NEWS", "ENGINEERING", "REPOSITORIES"] = Field(alias="sectionKey")
 
     @model_validator(mode="after")
     def validate_source_capability(self) -> CrawlSource:
         allowed = {
             "cloudflare-blog": {("RSS", "BLOG")},
-            "infoq": {("RSS", "NEWS"), ("RSS", "ENGINEERING"),
-                      ("WEB_CRAWL", "NEWS"), ("WEB_CRAWL", "ENGINEERING")},
+            "infoq": {
+                ("RSS", "NEWS"),
+                ("RSS", "ENGINEERING"),
+                ("WEB_CRAWL", "NEWS"),
+                ("WEB_CRAWL", "ENGINEERING"),
+            },
             "sdtimes": {("WEB_CRAWL", "NEWS"), ("RSS", "NEWS"), ("API", "NEWS")},
             "github-trending": {("WEB_CRAWL", "REPOSITORIES")},
             "tailscale-blog": {("RSS", "BLOG")},
@@ -86,9 +88,7 @@ class CrawlSource(ContractModel):
             "deepmind-blog": {("RSS", "BLOG")},
         }
         if (self.source_type, self.section_key) not in allowed[self.source_id]:
-            raise ValueError(
-                f"unsupported sourceType/sectionKey for sourceId {self.source_id}"
-            )
+            raise ValueError(f"unsupported sourceType/sectionKey for sourceId {self.source_id}")
         return self
 
 
@@ -160,9 +160,7 @@ class DuplicatePolicy(ContractModel):
         ge=1,
         exclude_if=lambda value: value is None,
     )
-    maximum_candidate_count: int = Field(
-        alias="maximumCandidateCount", default=100, ge=1, le=100
-    )
+    maximum_candidate_count: int = Field(alias="maximumCandidateCount", default=100, ge=1, le=100)
 
     @model_validator(mode="after")
     def validate_thresholds(self) -> DuplicatePolicy:
@@ -173,14 +171,10 @@ class DuplicatePolicy(ContractModel):
 
 class QualityPolicy(ContractModel):
     policy_version: str = Field(alias="policyVersion", default="quality-policy-v1")
-    minimum_evaluation_score: int = Field(
-        alias="minimumEvaluationScore", default=70, ge=0, le=100
-    )
+    minimum_evaluation_score: int = Field(alias="minimumEvaluationScore", default=70, ge=0, le=100)
     review_lower_bound: int = Field(alias="reviewLowerBound", default=45, ge=0, le=100)
     minimum_content_length: int = Field(alias="minimumContentLength", default=200, ge=1)
-    maximum_content_length: int = Field(
-        alias="maximumContentLength", default=2_000_000, ge=1
-    )
+    maximum_content_length: int = Field(alias="maximumContentLength", default=2_000_000, ge=1)
     allowed_languages: list[str] = Field(
         alias="allowedLanguages", default_factory=lambda: ["ko", "en"]
     )
@@ -252,7 +246,10 @@ class CrawlRequested(ContractModel):
 
     @model_validator(mode="after")
     def validate_options_for_source(self) -> CrawlRequested:
-        if self.source.source_id == "cloudflare-blog" and self.crawl_options.maximum_age_hours is None:
+        if (
+            self.source.source_id == "cloudflare-blog"
+            and self.crawl_options.maximum_age_hours is None
+        ):
             raise ValueError("cloudflare-blog requires maximumAgeHours")
         if self.source.source_type != "WEB_CRAWL" and self.crawl_options.follow_pagination:
             raise ValueError("followPagination is supported only for WEB_CRAWL")
@@ -311,6 +308,12 @@ class PublicationAction(ContractModel):
     expected_record_version: int = Field(alias="expectedRecordVersion", ge=1)
     administrator_id: str = Field(alias="administratorId", min_length=1)
     reason: str = Field(default="", max_length=500)
+
+
+class ArticleProcessingAction(ContractModel):
+    action: Literal["RETRY", "APPROVE_QUALITY"]
+    expected_record_version: int = Field(alias="expectedRecordVersion", ge=1)
+    administrator_id: str = Field(alias="administratorId", min_length=1)
 
 
 def _require_utc(value: datetime | None, field: str) -> datetime | None:

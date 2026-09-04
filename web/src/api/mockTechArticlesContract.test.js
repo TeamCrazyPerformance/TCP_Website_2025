@@ -71,3 +71,14 @@ test("목 서버 공개 목록이 운영 Tech Articles와 유사한 데이터 �
     (mockSource.match(/articleId: "article-202608/g) || []).length,
   ).toBeGreaterThanOrEqual(20);
 });
+
+test("목 서버 관리자 목록이 품질검토 승인 식별자를 제공한다", () => {
+  const mockSource = fs.readFileSync(
+    path.resolve(__dirname, "../../tools/mock-tech-articles-api.mjs"),
+    "utf8",
+  );
+
+  expect(mockSource).toMatch(
+    /qualityReview:[\s\S]{0,260}caseId: review\.caseId,[\s\S]{0,80}caseVersion: review\.caseVersion/,
+  );
+});

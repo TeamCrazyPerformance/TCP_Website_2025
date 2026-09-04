@@ -45,6 +45,10 @@ class NotFoundError(RuntimeError):
     pass
 
 
+class InvalidArticleActionError(RuntimeError):
+    pass
+
+
 def crawl_error_summary(
     error: dict[str, Any] | None,
     *,
@@ -240,6 +244,16 @@ class PipelineRepository(Protocol):
     def resolve_quality_review(
         self,
         case_id: str,
+        *,
+        action: str,
+        expected_version: int,
+        administrator_id: str,
+        max_attempts: int,
+    ) -> dict[str, Any]: ...
+
+    def reprocess_article(
+        self,
+        article_id: str,
         *,
         action: str,
         expected_version: int,

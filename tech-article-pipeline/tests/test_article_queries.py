@@ -93,6 +93,8 @@ def test_mysql_projection_matches_rich_memory_projection_shape():
         "quality_result": '{"qualityEvaluation":{"decision":"PASS","score":{"overall":88,"dimensions":{"relevance":90,"timeliness":85,"sourceReliability":87}}}}',
         "crawl_item_payload": "{}",
         "collected_at": now,
+        "quality_review_case_id": "quality-case-1",
+        "quality_review_case_version": 4,
     }
 
     projected = MySQLPipelineRepository._article_projection(row)
@@ -102,6 +104,64 @@ def test_mysql_projection_matches_rich_memory_projection_shape():
     assert projected["originalLanguage"] == {"code": "en", "label": "영어"}
     assert projected["summaryMarkdown"] == "상세 요약"
     assert projected["evaluation"]["score"]["dimensions"]["relevance"] == 90
+    assert projected["qualityReview"] == {
+        "caseId": "quality-case-1",
+        "caseVersion": 4,
+    }
+
+
+def test_memory_admin_projection_exposes_only_the_pending_quality_review():
+    repository = MemoryPipelineRepository()
+    now = datetime.now(UTC)
+    repository.articles["article-1"] = article(
+        "article-1",
+        tag="AI",
+        published_at=now,
+        status="UNPUBLISHED",
+    )
+    repository.articles["article-1"]["processingStatus"] = "QUALITY_EVALUATED"
+    repository.articles["article-1"]["reviewStatus"] = "PENDING"
+    repository.quality_reviews = {
+        "resolved-case": {
+            "caseId": "resolved-case",
+            "articleId": "article-1",
+            "status": "RESOLVED_REJECT",
+            "caseVersion": 2,
+        },
+        "pending-case": {
+            "caseId": "pending-case",
+            "articleId": "article-1",
+            "status": "PENDING",
+            "caseVersion": 3,
+        },
+    }
+
+    projected = repository.list_articles(limit=20, offset=0)[0]
+
+    assert projected["qualityReview"] == {
+        "caseId": "pending-case",
+        "caseVersion": 3,
+    }
+
+
+def test_memory_rejected_review_queue_lists_only_quality_rejections():
+    repository = MemoryPipelineRepository()
+    now = datetime.now(UTC)
+    rejected = article(
+        "rejected",
+        tag="AI",
+        published_at=now,
+        status="UNPUBLISHED",
+    )
+    rejected["processingStatus"] = "QUALITY_REJECTED"
+    rejected["qualityDecision"] = "REJECT"
+    enriched = article("enriched", tag="AI", published_at=now)
+    repository.articles = {"rejected": rejected, "enriched": enriched}
+
+    items = repository.list_review_queue("rejected", limit=20)
+
+    assert [item["articleId"] for item in items] == ["rejected"]
+    assert repository.count_review_queue("rejected") == 1
 
 
 def test_mysql_public_queries_select_only_public_columns():

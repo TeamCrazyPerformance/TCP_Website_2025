@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import {
+  ArticleReprocessingDto,
   BulkPublicationDto,
   CrawlRunDto,
   PublicArticleQueryDto,
@@ -76,5 +77,19 @@ describe('tech article DTO validation', () => {
     });
 
     expect(await validate(dto)).not.toHaveLength(0);
+  });
+
+  it('accepts only supported article reprocessing actions', async () => {
+    const retry = plainToInstance(ArticleReprocessingDto, {
+      action: 'RETRY',
+      expectedRecordVersion: 3,
+    });
+    const invalid = plainToInstance(ArticleReprocessingDto, {
+      action: 'PUBLISH',
+      expectedRecordVersion: 0,
+    });
+
+    expect(await validate(retry)).toHaveLength(0);
+    expect(await validate(invalid)).not.toHaveLength(0);
   });
 });

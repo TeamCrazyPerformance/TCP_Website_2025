@@ -98,7 +98,8 @@ function AdminSidebar({ isOpen = false }) {
             to="/admin/tech-articles/reviews/quality"
             className={`sidebar-link ${
               isActive("/admin/tech-articles/reviews/quality") ||
-              isActive("/admin/tech-articles/reviews/publication")
+              isActive("/admin/tech-articles/reviews/publication") ||
+              isActive("/admin/tech-articles/reviews/rejected")
                 ? "bg-gray-700 text-white"
                 : ""
             }`}

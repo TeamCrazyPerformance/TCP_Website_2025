@@ -18,6 +18,7 @@ from tech_article_pipeline.catalog import (
     tag_catalog,
 )
 from tech_article_pipeline.contracts.models import (
+    ArticleProcessingAction,
     CrawlRequested,
     NormalizedArticleCandidate,
     PublicationAction,
@@ -27,6 +28,7 @@ from tech_article_pipeline.contracts.models import (
 from tech_article_pipeline.persistence.base import (
     STAGE_NAMES,
     IdempotencyConflictError,
+    InvalidArticleActionError,
     NotFoundError,
     VersionConflictError,
 )
@@ -158,6 +160,16 @@ def create_app(
         del request
         return JSONResponse(
             status_code=409, content={"code": "VERSION_CONFLICT", "message": str(exc)}
+        )
+
+    @app.exception_handler(InvalidArticleActionError)
+    async def invalid_article_action_handler(
+        request: Request, exc: InvalidArticleActionError
+    ) -> JSONResponse:
+        del request
+        return JSONResponse(
+            status_code=422,
+            content={"code": "INVALID_ARTICLE_ACTION", "message": str(exc)},
         )
 
     @app.get("/health/live")
@@ -452,7 +464,7 @@ def create_app(
         filter_value: str | None = Query(default=None, alias="filter"),
         sort: str = Query(default="NEWEST"),
     ) -> dict[str, Any]:
-        if kind not in {"duplicate", "quality", "publication"}:
+        if kind not in {"duplicate", "quality", "rejected", "publication"}:
             raise HTTPException(status_code=404, detail={"code": "REVIEW_QUEUE_NOT_FOUND"})
         allowed_sorts = {"duplicate": {"NEWEST", "SIMILARITY_DESC"}}.get(kind, {"NEWEST"})
         if sort not in allowed_sorts:
@@ -460,6 +472,7 @@ def create_app(
         allowed_filters = {
             "duplicate": {None, "JACCARD"},
             "quality": {None, "RSS", "WEB_CRAWL", "API"},
+            "rejected": {None, "RSS", "WEB_CRAWL", "API"},
             "publication": {None, "RSS", "WEB_CRAWL", "API"},
         }[kind]
         if filter_value not in allowed_filters:
@@ -534,6 +547,19 @@ def create_app(
             expected_version=command.expected_record_version,
             administrator_id=command.administrator_id,
             reason=command.reason,
+        )
+
+    @internal.post("/admin/articles/{article_id}/reprocessing")
+    async def reprocess_article(
+        request: Request, article_id: str, command: ArticleProcessingAction
+    ) -> dict[str, Any]:
+        return await asyncio.to_thread(
+            request.app.state.runtime.repository.reprocess_article,
+            article_id,
+            action=command.action,
+            expected_version=command.expected_record_version,
+            administrator_id=command.administrator_id,
+            max_attempts=request.app.state.settings.job_max_attempts,
         )
 
     @internal.get("/admin/settings/publication-policy")

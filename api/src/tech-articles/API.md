@@ -137,7 +137,8 @@
   `stage=INGESTED|QUALITY_REVIEW|ENRICHING|PUBLICATION_REVIEW|COMPLETED|FAILED_AFTER_APPROVAL|FAILED|QUALITY_REJECTED`,
   `statusMismatch=true`, `sort=NEWEST|OLDEST|SCORE_DESC|SCORE_ASC`. `stage` 와
   `statusMismatch` 는 선택이며, 없으면 전체를 돌려줍니다. 둘은 별개 축이라 함께
-  쓸 수 있습니다. 각 항목에는 같은 규칙으로 계산된 `stage` 가 함께 옵니다.
+  쓸 수 있습니다. 각 항목에는 같은 규칙으로 계산된 `stage` 가 함께 옵니다. 품질검토
+  대기 항목에는 승인 요청에 필요한 `qualityReview: { caseId, caseVersion }`도 포함됩니다.
 - `GET /api/v1/admin/tech-articles/stats`: `keyword`, `publicationStatus` 를 받습니다.
   **목록과 같은 조건으로 세야 칩 숫자와 목록 총계가 같은 모집단을 가리킵니다.**
   단계(`stage`)는 받지 않습니다 — 넣으면 고른 단계만 남고 나머지 칩이 0 이 됩니다.
@@ -149,7 +150,8 @@
 - `GET /api/v1/admin/tech-articles/:articleId`: 원문을 제외한 관리자 상세 projection.
 - `GET /api/v1/admin/tech-articles/reviews/duplicates`: `filter=JACCARD`,
   `sort=NEWEST|SIMILARITY_DESC`.
-- `GET /api/v1/admin/tech-articles/reviews/quality` 및 `/reviews/publication`:
+- `GET /api/v1/admin/tech-articles/reviews/quality`, `/reviews/rejected`,
+  `/reviews/publication`:
   `filter=RSS|WEB_CRAWL|API`, `sort=NEWEST`.
 
 모든 목록은 공통 페이지 메타데이터를 반환한다. 검수 항목에는 후속 요청에 필요한
@@ -183,6 +185,20 @@ JWT와 서버 시각으로 생성한다.
 의미하지 않으며 처리 상태는 `ENRICHMENT_PENDING`을 거쳐 `ENRICHED` 또는
 `PROCESSING_FAILED`로 변경될 수 있다. 원래 `REVIEW_REQUIRED` 판정과 세부 품질 점수는
 관리자 조회를 위해 그대로 보존된다.
+
+### 품질 미달 승인·실패 재처리
+
+- `POST /api/v1/admin/tech-articles/:articleId/reprocessing`
+
+```json
+{ "action": "RETRY", "expectedRecordVersion": 3 }
+```
+
+`APPROVE_QUALITY`는 `QUALITY_REJECTED` 기사만 허용하며 관리자 승인 이력을 남긴 뒤
+AI 요약 단계로 전달한다. 자동 품질 판정과 점수는 덮어쓰지 않는다. `RETRY`는
+`PROCESSING_FAILED` 기사만 허용하며 마지막으로 실패한 품질 평가 또는 AI 요약 작업을
+새 작업으로 등록한다. 두 작업 모두 레코드 버전이 다르면 409, 현재 상태와 액션이 맞지
+않으면 422를 반환한다.
 
 Bulk 본문은 `{"items": [...]}`이며 최대 50개, ID 중복 금지다. 유효한 요청은 일부 항목이
 실패해도 HTTP 200을 반환하고 입력 순서대로 다음 결과를 제공한다.

@@ -102,7 +102,7 @@ export function getQualityReviews(
   kind,
   { page = 1, pageSize = 20, keyword, filter, sort = "NEWEST" } = {},
 ) {
-  if (!["quality", "publication"].includes(kind)) {
+  if (!["quality", "rejected", "publication"].includes(kind)) {
     throw new Error("지원하지 않는 검수 큐입니다.");
   }
   return apiGet(
@@ -125,6 +125,13 @@ export function changeArticlePublication(articleId, payload) {
 
 export function changeArticlePublicationBulk(items) {
   return apiPost(`${ADMIN_BASE}/publication-actions/bulk`, { items });
+}
+
+export function reprocessArticle(articleId, payload) {
+  return apiPost(
+    `${ADMIN_BASE}/${encodeURIComponent(articleId)}/reprocessing`,
+    payload,
+  );
 }
 
 export function resolveDuplicateReview(caseId, payload) {

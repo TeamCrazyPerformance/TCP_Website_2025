@@ -20,6 +20,7 @@ import { UserRole } from '../members/entities/enums/user-role.enum';
 import {
   AdminArticleQueryDto,
   AdminArticleStatsQueryDto,
+  ArticleReprocessingDto,
   ArticleIdParamDto,
   BulkDuplicateResolutionDto,
   BulkPublicationDto,
@@ -65,6 +66,11 @@ export class AdminTechArticlesController {
   @Get('reviews/quality')
   qualityReviews(@Query() query: ProcessingReviewQueryDto) {
     return this.service.reviews('quality', query);
+  }
+
+  @Get('reviews/rejected')
+  rejectedReviews(@Query() query: ProcessingReviewQueryDto) {
+    return this.service.reviews('rejected', query);
   }
 
   @Get('reviews/publication')
@@ -169,6 +175,20 @@ export class AdminTechArticlesController {
     @Req() request: AdminRequest,
   ) {
     return this.service.publicationAction(
+      params.articleId,
+      dto,
+      request.user.userId,
+    );
+  }
+
+  @Post(':articleId/reprocessing')
+  @HttpCode(HttpStatus.OK)
+  reprocessArticle(
+    @Param() params: ArticleIdParamDto,
+    @Body() dto: ArticleReprocessingDto,
+    @Req() request: AdminRequest,
+  ) {
+    return this.service.reprocessArticle(
       params.articleId,
       dto,
       request.user.userId,

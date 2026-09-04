@@ -3854,6 +3854,11 @@
   background: var(--warning-bg);
   border-color: rgba(253, 230, 138, 0.15);
 }
+.ta-admin .queue-stat-icon.tone-danger {
+  color: #fca5a5;
+  background: rgba(127, 29, 29, 0.3);
+  border-color: rgba(252, 165, 165, 0.16);
+}
 .ta-admin .queue-stat-card p,
 .ta-admin .queue-stat-card strong,
 .ta-admin .queue-stat-card small {
@@ -4457,7 +4462,7 @@
   }
 .ta-admin .review-tabs {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 .ta-admin .review-tab {
     justify-content: center;
@@ -4507,7 +4512,7 @@
 @media (max-width: 520px) {
 .ta-admin .review-tabs {
     width: 100%;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 .ta-admin .case-id-row {
     align-items: flex-start;

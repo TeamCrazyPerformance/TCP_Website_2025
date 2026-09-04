@@ -103,11 +103,10 @@ class PipelineOrchestrator:
         quality_score = quality_evaluation.get("score")
         quality_decision = quality_evaluation["decision"]
         quality_review_approved = bool(
-            submission.get("quality_review_approved")
-            or submission.get("qualityReviewApproved")
+            submission.get("quality_review_approved") or submission.get("qualityReviewApproved")
         )
         if quality_decision != "PASS" and not (
-            quality_decision == "REVIEW_REQUIRED" and quality_review_approved
+            quality_decision in {"REVIEW_REQUIRED", "REJECT"} and quality_review_approved
         ):
             raise StageExecutionError(
                 {
@@ -135,9 +134,7 @@ class PipelineOrchestrator:
                 # summarizer receives PASS only after the review approval is verified.
                 "decision": "PASS",
                 "score": (
-                    {"overall": quality_score["overall"]}
-                    if quality_score is not None
-                    else None
+                    {"overall": quality_score["overall"]} if quality_score is not None else None
                 ),
             },
             "generationOptions": payload["generationOptions"],

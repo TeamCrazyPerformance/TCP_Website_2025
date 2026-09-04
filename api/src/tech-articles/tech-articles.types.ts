@@ -96,7 +96,12 @@ export interface PipelineArticle {
   qualityDecision?: string | null;
   evaluation?: QualityEvaluation | null;
   processingStatus?: string;
+  stage?: string;
   duplicateStatus?: string;
+  qualityReview?: {
+    caseId: string;
+    caseVersion: number;
+  } | null;
   reviewStatus?: string;
   publicationStatus?: string;
   publishedAt?: string | null;

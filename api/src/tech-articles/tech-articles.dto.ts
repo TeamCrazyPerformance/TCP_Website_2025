@@ -147,6 +147,15 @@ export class PublicationActionDto {
   reason = '';
 }
 
+export class ArticleReprocessingDto {
+  @IsIn(['RETRY', 'APPROVE_QUALITY'])
+  action: 'RETRY' | 'APPROVE_QUALITY';
+
+  @IsInt()
+  @Min(1)
+  expectedRecordVersion: number;
+}
+
 export class BulkPublicationItemDto extends PublicationActionDto {
   @IsString()
   @IsNotEmpty()

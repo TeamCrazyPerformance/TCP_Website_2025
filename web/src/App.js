@@ -225,6 +225,14 @@ function AppContent() {
             }
           />
           <Route
+            path="tech-articles/reviews/rejected"
+            element={
+              <Suspense fallback={<AdminChunkFallback />}>
+                <AdminTechArticleReviews kind="rejected" />
+              </Suspense>
+            }
+          />
+          <Route
             path="tech-articles/crawls"
             element={
               <Suspense fallback={<AdminChunkFallback />}>

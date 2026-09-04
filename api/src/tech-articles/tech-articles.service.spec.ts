@@ -130,6 +130,36 @@ describe('TechArticlesService', () => {
     );
   });
 
+  it('keeps the pending quality review handle in admin inventory items', async () => {
+    pipeline.get.mockResolvedValue({
+      totalCount: 1,
+      items: [
+        {
+          articleId: 'article-1',
+          title: '검토 대기 아티클',
+          processingStatus: 'QUALITY_EVALUATED',
+          stage: 'QUALITY_REVIEW',
+          reviewStatus: 'PENDING',
+          qualityReview: { caseId: 'quality-case-1', caseVersion: 3 },
+          content: 'must-not-leak',
+        },
+      ],
+    });
+
+    const result = await service.listAdmin({
+      page: 1,
+      pageSize: 20,
+      sort: 'NEWEST',
+    });
+
+    expect(result.items[0].qualityReview).toEqual({
+      caseId: 'quality-case-1',
+      caseVersion: 3,
+    });
+    expect(result.items[0].stage).toBe('QUALITY_REVIEW');
+    expect(result.items[0]).not.toHaveProperty('content');
+  });
+
   it('keeps bulk output ordered and reports item failures', async () => {
     pipeline.post
       .mockResolvedValueOnce({ articleId: 'a', recordVersion: 2 })
@@ -181,6 +211,68 @@ describe('TechArticlesService', () => {
       }),
     );
     expect(result).not.toHaveProperty('content');
+  });
+
+  it('injects the authenticated administrator into article reprocessing', async () => {
+    pipeline.post.mockResolvedValue({
+      articleId: 'article-1',
+      action: 'RETRY',
+      processingStatus: 'ENRICHMENT_PENDING',
+      recordVersion: 4,
+    });
+
+    await service.reprocessArticle(
+      'article-1',
+      { action: 'RETRY', expectedRecordVersion: 3 },
+      'admin-7',
+    );
+
+    expect(pipeline.post).toHaveBeenCalledWith(
+      '/internal/v1/admin/articles/article-1/reprocessing',
+      {
+        action: 'RETRY',
+        expectedRecordVersion: 3,
+        administratorId: 'admin-7',
+      },
+    );
+  });
+
+  it('projects rejected articles as a dedicated review queue', async () => {
+    pipeline.get.mockResolvedValue({
+      totalCount: 1,
+      items: [
+        {
+          articleId: 'article-rejected',
+          title: '품질 미달 기사',
+          processingStatus: 'QUALITY_REJECTED',
+          qualityScore: 32,
+          qualityResult: undefined,
+          evaluation: {
+            reason: '기술 내용이 부족합니다.',
+            signals: { hasCode: false },
+          },
+          updatedAt: '2026-09-04T00:00:00Z',
+        },
+      ],
+    });
+
+    const result = await service.reviews('rejected', {
+      page: 1,
+      pageSize: 20,
+      sort: 'NEWEST',
+    });
+
+    expect(pipeline.get).toHaveBeenCalledWith(
+      '/internal/v1/admin/reviews/rejected',
+      expect.objectContaining({ limit: 20, offset: 0 }),
+    );
+    expect(result.items[0]).toEqual(
+      expect.objectContaining({
+        articleId: 'article-rejected',
+        reason: '기술 내용이 부족합니다.',
+        queuedAt: '2026-09-04T00:00:00Z',
+      }),
+    );
   });
 
   it('removes the admitted source article from duplicate resolution responses', async () => {

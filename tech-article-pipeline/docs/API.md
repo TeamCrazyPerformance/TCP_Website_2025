@@ -116,6 +116,8 @@ through less than 92%.
   `FAILED_AFTER_APPROVAL` reads `quality_review_cases`, not `review_status`.
   `statusMismatch=true` narrows to articles whose `review_status` is `APPROVED` on a
   processing status that cannot produce it; it is a separate axis from `stage`.
+  Items awaiting quality review include the pending `qualityReview.caseId` and
+  `qualityReview.caseVersion` required for optimistic resolution.
   `GET /admin/articles/stats` adds `stages` (a count per stage over every article, zero
   counts included), `stageOldest` (oldest `updated_at` per stage, a lower bound for how
   long an article has sat there), and `statusMismatch`. It accepts `keyword` and
@@ -125,11 +127,12 @@ through less than 92%.
 - `GET /admin/articles` — supports `keyword`, `publicationStatus`, and
   `NEWEST|SCORE_DESC|SCORE_ASC`; returns `totalCount`.
 - `GET /admin/articles/stats` and `GET /admin/articles/{articleId}`
-- `GET /admin/reviews/duplicate|quality|publication`
+- `GET /admin/reviews/duplicate|quality|rejected|publication`
 - `GET /admin/crawl-sources`
 - `POST /admin/reviews/duplicate/{caseId}/resolution`
 - `POST /admin/reviews/quality/{caseId}/resolution`
 - `POST /admin/articles/{articleId}/publication`
+- `POST /admin/articles/{articleId}/reprocessing`
 - `GET|PATCH /admin/settings/publication-policy`
 
 Duplicate resolution bodies follow the admission module contract, including
@@ -142,6 +145,13 @@ enrichment. It does not overwrite the stored `REVIEW_REQUIRED` quality decision.
 The orchestrator derives an effective `PASS` for the strict summarizer contract
 and forwards only the overall quality score; the original decision and dimension
 scores remain available in the persisted quality result and admin projections.
+
+Article reprocessing accepts an expected article record version and one of two actions.
+`APPROVE_QUALITY` is limited to `QUALITY_REJECTED`; it records a resolved administrator
+approval while preserving the automatic `REJECT` result, then queues enrichment.
+`RETRY` is limited to `PROCESSING_FAILED`; it finds the latest dead quality or enrichment
+job and creates a new job for that stage. A mismatched state returns
+`INVALID_ARTICLE_ACTION`, and a stale record version returns `VERSION_CONFLICT`.
 
 The publication policy setting is `IMMEDIATE|REVIEW`, defaults to `IMMEDIATE`,
 and uses an optional expected version on PATCH for optimistic concurrency.

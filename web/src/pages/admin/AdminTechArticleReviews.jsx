@@ -13,6 +13,7 @@ import {
   getDuplicateReviews,
   getQualityReviews,
   isVersionConflict,
+  reprocessArticle,
   resolveDuplicateReview,
   resolveDuplicateReviewsBulk,
   resolveQualityReview,
@@ -36,21 +37,24 @@ import { useV9ConfirmDialog } from "../../components/tech-articles/V9ConfirmDial
 const PAGE_SIZE = 20;
 const VIEW_COPY = {
   duplicates: {
-    eyebrow: "POSSIBLE DUPLICATE",
     title: "중복 의심 검토 큐",
     description:
       "Jaccard 계수 0.92 이상으로 POSSIBLE_DUPLICATE 판정을 받은 수집 후보를 기존 아티클과 비교해 처리합니다.",
     listTitle: "판정 대기 후보",
   },
   quality: {
-    eyebrow: "ARTICLE REVIEW",
     title: "아티클 검토 큐",
     description:
       "품질 경계 사례와 검토 후 공개 정책에 따라 승인을 기다리는 아티클을 구분해 검토합니다.",
     listTitle: "검토 대기 아티클",
   },
+  rejected: {
+    title: "아티클 검토 큐",
+    description:
+      "품질 경계 사례와 품질 미달 기사, 검토 후 공개 정책에 따른 대기 항목을 구분해 관리합니다.",
+    listTitle: "품질 미달 아티클",
+  },
   publication: {
-    eyebrow: "ARTICLE REVIEW",
     title: "아티클 검토 큐",
     description:
       "품질 경계 사례와 검토 후 공개 정책에 따라 승인을 기다리는 아티클을 구분해 검토합니다.",
@@ -187,14 +191,20 @@ function AdminTechArticleReviews({ kind }) {
     }
   }, [filter, keyword, kind, page, sort]);
 
+  const loadStats = useCallback(async () => {
+    try {
+      setStats(await getAdminTechArticleStats());
+    } catch {
+      return undefined;
+    }
+  }, []);
+
   useEffect(() => {
     loadQueue();
   }, [loadQueue]);
   useEffect(() => {
-    getAdminTechArticleStats()
-      .then(setStats)
-      .catch(() => undefined);
-  }, [kind]);
+    loadStats();
+  }, [kind, loadStats]);
   useEffect(() => {
     setSelected({});
   }, [page, keyword, filter, sort]);
@@ -218,7 +228,9 @@ function AdminTechArticleReviews({ kind }) {
   const qualityCount = stats?.reviews?.quality ?? stats?.reviews?.QUALITY;
   const publicationCount =
     stats?.reviews?.publication ?? stats?.reviews?.PUBLICATION;
+  const rejectedCount = stats?.stages?.QUALITY_REJECTED;
   const currentCount = response?.pagination?.totalCount || 0;
+  const selectable = kind !== "rejected";
 
   const toggleRecord = (item) => {
     const id = recordId(kind, item);
@@ -260,6 +272,11 @@ function AdminTechArticleReviews({ kind }) {
     }
     if (kind === "quality")
       return { expectedCaseVersion: item.caseVersion, action };
+    if (kind === "rejected")
+      return {
+        action: "APPROVE_QUALITY",
+        expectedRecordVersion: item.recordVersion,
+      };
     return {
       action: "PUBLISH",
       expectedRecordVersion: item.recordVersion,
@@ -272,6 +289,7 @@ function AdminTechArticleReviews({ kind }) {
       APPROVE_UNIQUE: "Unique 판정",
       CONFIRM_DUPLICATE: "Duplicate 판정",
       APPROVE: "품질 통과",
+      APPROVE_QUALITY: "품질 통과",
       REJECT: "품질 탈락",
       PUBLISH: "승인 및 공개",
     })[action] || action;
@@ -297,6 +315,12 @@ function AdminTechArticleReviews({ kind }) {
           title: "품질 통과로 판정할까요?",
           description:
             "AI 요약 단계로 전달되며, 요약 완료 후 현재 공개 정책이 적용됩니다.",
+          confirmLabel: "품질 통과",
+          tone: "success",
+        },
+        APPROVE_QUALITY: {
+          title: "품질 미달 판정을 통과로 변경할까요?",
+          description: "관리자 승인 이력을 남기고 AI 요약 단계로 전달합니다.",
           confirmLabel: "품질 통과",
           tone: "success",
         },
@@ -335,6 +359,8 @@ function AdminTechArticleReviews({ kind }) {
           recordId(kind, item),
           singlePayload(item, action),
         );
+      else if (kind === "rejected")
+        await reprocessArticle(item.articleId, singlePayload(item, action));
       else
         await changeArticlePublication(
           item.articleId,
@@ -350,9 +376,10 @@ function AdminTechArticleReviews({ kind }) {
         type: "success",
         message: `${actionText(action)} 처리를 완료했습니다.`,
       });
-      await loadQueue();
+      await Promise.all([loadQueue(), loadStats()]);
     } catch (error) {
-      if (isVersionConflict(error)) await loadQueue();
+      if (isVersionConflict(error))
+        await Promise.all([loadQueue(), loadStats()]);
       setNotice({ type: "error", message: techArticleErrorMessage(error) });
     } finally {
       setIsMutating(false);
@@ -420,7 +447,7 @@ function AdminTechArticleReviews({ kind }) {
           ? `${result.summary.succeeded}건 성공, ${failed}건 실패했습니다. 실패 항목은 선택을 유지했습니다.`
           : `${result.summary?.succeeded || selectedRecords.length}건을 처리했습니다.`,
       });
-      const freshResponse = await loadQueue();
+      const [freshResponse] = await Promise.all([loadQueue(), loadStats()]);
       const freshById = new Map(
         (freshResponse?.items || []).map((item) => [
           recordId(kind, item),
@@ -456,6 +483,7 @@ function AdminTechArticleReviews({ kind }) {
   };
 
   const bulkButtons = () => {
+    if (kind === "rejected") return null;
     if (kind === "duplicates")
       return (
         <>
@@ -522,7 +550,6 @@ function AdminTechArticleReviews({ kind }) {
     <AdminTechArticleContent>
       <section className="admin-intro" aria-labelledby="adminViewTitle">
         <div>
-          <p className="section-eyebrow orbitron">{copy.eyebrow}</p>
           <h2 id="adminViewTitle" className="orbitron gradient-text">
             {copy.title}
           </h2>
@@ -556,7 +583,7 @@ function AdminTechArticleReviews({ kind }) {
       ) : (
         <>
           <section
-            className="queue-overview-grid queue-overview-grid-two"
+            className="queue-overview-grid"
             aria-label="아티클 검토 큐 현황"
           >
             <article className="widget-card queue-stat-card">
@@ -584,6 +611,18 @@ function AdminTechArticleReviews({ kind }) {
                 <small>정책에 따른 공개 승인</small>
               </div>
             </article>
+            <article className="widget-card queue-stat-card">
+              <span className="queue-stat-icon tone-danger" aria-hidden="true">
+                <i className="fas fa-ban"></i>
+              </span>
+              <div>
+                <p className="queue-stat-title">품질 미달</p>
+                <strong>
+                  {rejectedCount ?? (kind === "rejected" ? currentCount : "—")}
+                </strong>
+                <small>관리자 재검토 가능</small>
+              </div>
+            </article>
           </section>
           <div className="review-tabs" aria-label="검토 유형 필터">
             <Link
@@ -608,11 +647,23 @@ function AdminTechArticleReviews({ kind }) {
                   (kind === "publication" ? currentCount : "—")}
               </span>
             </Link>
+            <Link
+              className={`review-tab ${kind === "rejected" ? "is-active" : ""}`}
+              to="/admin/tech-articles/reviews/rejected"
+              aria-pressed={kind === "rejected"}
+            >
+              <i className="fas fa-ban" aria-hidden="true"></i>품질 미달
+              <span>
+                {rejectedCount ?? (kind === "rejected" ? currentCount : "—")}
+              </span>
+            </Link>
           </div>
           <p className="review-tab-help">
             {kind === "quality"
               ? "품질 평가 경계값에 있어 사람의 판단이 필요한 아티클입니다. 이 단계에는 AI 요약이 아직 없습니다."
-              : "AI 요약까지 완료됐지만 ‘검토 후 공개’ 정책에 따라 최종 승인을 기다리는 아티클입니다."}
+              : kind === "rejected"
+                ? "품질 미달로 종료된 아티클입니다. 상세 내용을 확인한 뒤 관리자가 품질 통과로 변경할 수 있습니다."
+                : "AI 요약까지 완료됐지만 ‘검토 후 공개’ 정책에 따라 최종 승인을 기다리는 아티클입니다."}
           </p>
         </>
       )}
@@ -623,7 +674,6 @@ function AdminTechArticleReviews({ kind }) {
       >
         <div className="section-heading-row">
           <div>
-            <p className="section-eyebrow orbitron">SEARCH &amp; FILTER</p>
             <h3 id="filterTitle">검색 및 필터</h3>
           </div>
           <button
@@ -716,7 +766,6 @@ function AdminTechArticleReviews({ kind }) {
       >
         <div className="list-heading-row">
           <div>
-            <p className="section-eyebrow orbitron">QUEUE &amp; RECORDS</p>
             <h3 id="recordListTitle">{copy.listTitle}</h3>
           </div>
           <p className="result-count" role="status">
@@ -750,15 +799,17 @@ function AdminTechArticleReviews({ kind }) {
               </caption>
               <thead>
                 <tr>
-                  <th className="selection-column" scope="col">
-                    <input
-                      className="selection-checkbox"
-                      type="checkbox"
-                      checked={allPageSelected}
-                      onChange={togglePage}
-                      aria-label="현재 페이지 전체 선택"
-                    />
-                  </th>
+                  {selectable && (
+                    <th className="selection-column" scope="col">
+                      <input
+                        className="selection-checkbox"
+                        type="checkbox"
+                        checked={allPageSelected}
+                        onChange={togglePage}
+                        aria-label="현재 페이지 전체 선택"
+                      />
+                    </th>
+                  )}
                   {kind === "duplicates" ? (
                     <>
                       <th scope="col">수집 후보</th>
@@ -775,7 +826,9 @@ function AdminTechArticleReviews({ kind }) {
                       <th scope="col">검토 유형</th>
                       <th scope="col">검토 사유</th>
                       <th scope="col">가치 점수</th>
-                      <th scope="col">대기 시각</th>
+                      <th scope="col">
+                        {kind === "rejected" ? "판정 시각" : "대기 시각"}
+                      </th>
                       <th scope="col">작업</th>
                     </>
                   )}
@@ -784,7 +837,10 @@ function AdminTechArticleReviews({ kind }) {
               <tbody>
                 {isLoading && !response ? (
                   <tr>
-                    <td className="admin-empty-state" colSpan="8">
+                    <td
+                      className="admin-empty-state"
+                      colSpan={selectable ? 8 : 7}
+                    >
                       <i
                         className="fas fa-circle-notch fa-spin"
                         aria-hidden="true"
@@ -794,7 +850,10 @@ function AdminTechArticleReviews({ kind }) {
                   </tr>
                 ) : !records.length ? (
                   <tr>
-                    <td className="admin-empty-state" colSpan="8">
+                    <td
+                      className="admin-empty-state"
+                      colSpan={selectable ? 8 : 7}
+                    >
                       <i className="fas fa-inbox" aria-hidden="true"></i>
                       <h3>조건에 맞는 항목이 없습니다.</h3>
                       <p>검색어 또는 필터를 변경해 보세요.</p>
@@ -805,20 +864,23 @@ function AdminTechArticleReviews({ kind }) {
                     const id = recordId(kind, item);
                     const matched = matchedArticle(item);
                     const isQuality = kind === "quality";
+                    const isRejected = kind === "rejected";
                     return (
                       <tr
                         key={id}
                         className={selected[id] ? "is-selected" : ""}
                       >
-                        <td className="selection-column">
-                          <input
-                            className="selection-checkbox"
-                            type="checkbox"
-                            checked={Boolean(selected[id])}
-                            onChange={() => toggleRecord(item)}
-                            aria-label={`${candidateTitle(item)} 선택`}
-                          />
-                        </td>
+                        {selectable && (
+                          <td className="selection-column">
+                            <input
+                              className="selection-checkbox"
+                              type="checkbox"
+                              checked={Boolean(selected[id])}
+                              onChange={() => toggleRecord(item)}
+                              aria-label={`${candidateTitle(item)} 선택`}
+                            />
+                          </td>
+                        )}
                         {kind === "duplicates" ? (
                           <>
                             <td className="admin-article-cell">
@@ -887,7 +949,7 @@ function AdminTechArticleReviews({ kind }) {
                                 {item.title || "제목 없음"}
                               </p>
                               <p className="admin-article-summary">
-                                {isQuality
+                                {isQuality || isRejected
                                   ? "AI 요약 생성 전"
                                   : item.oneLineSummary || "한 줄 요약 없음"}
                               </p>
@@ -906,9 +968,19 @@ function AdminTechArticleReviews({ kind }) {
                             </td>
                             <td>
                               <StatusBadge
-                                tone={isQuality ? "pending" : "processing"}
+                                tone={
+                                  isRejected
+                                    ? "failed"
+                                    : isQuality
+                                      ? "pending"
+                                      : "processing"
+                                }
                               >
-                                {isQuality ? "품질 검토" : "공개 검토"}
+                                {isRejected
+                                  ? "품질 미달"
+                                  : isQuality
+                                    ? "품질 검토"
+                                    : "공개 검토"}
                               </StatusBadge>
                             </td>
                             <td className="review-reason-cell">
@@ -916,7 +988,9 @@ function AdminTechArticleReviews({ kind }) {
                                 {item.reason ||
                                   (isQuality
                                     ? "관리자 품질 검토가 필요합니다."
-                                    : "공개 승인 대기")}
+                                    : isRejected
+                                      ? "품질 기준 미달로 종료되었습니다."
+                                      : "공개 승인 대기")}
                               </p>
                             </td>
                             <td>
@@ -941,7 +1015,7 @@ function AdminTechArticleReviews({ kind }) {
                                     className="fas fa-magnifying-glass"
                                     aria-hidden="true"
                                   ></i>
-                                  검토
+                                  {isRejected ? "상세" : "검토"}
                                 </button>
                               </div>
                             </td>
@@ -960,6 +1034,7 @@ function AdminTechArticleReviews({ kind }) {
           {records.map((item) => {
             const id = recordId(kind, item);
             const isQuality = kind === "quality";
+            const isRejected = kind === "rejected";
             return (
               <article
                 className={`admin-mobile-card ${selected[id] ? "is-selected" : ""}`}
@@ -972,12 +1047,15 @@ function AdminTechArticleReviews({ kind }) {
                     </span>
                     <h3>{candidateTitle(item)}</h3>
                   </div>
-                  <input
-                    className="selection-checkbox"
-                    type="checkbox"
-                    checked={Boolean(selected[id])}
-                    onChange={() => toggleRecord(item)}
-                  />
+                  {selectable && (
+                    <input
+                      className="selection-checkbox"
+                      type="checkbox"
+                      checked={Boolean(selected[id])}
+                      onChange={() => toggleRecord(item)}
+                      aria-label={`${candidateTitle(item)} 선택`}
+                    />
+                  )}
                 </div>
                 <p className="admin-mobile-card-summary">
                   {kind === "duplicates"
@@ -990,9 +1068,11 @@ function AdminTechArticleReviews({ kind }) {
                     <strong>
                       {kind === "duplicates"
                         ? "Jaccard 계수 0.92 이상"
-                        : isQuality
-                          ? "품질 검토"
-                          : "공개 검토"}
+                        : isRejected
+                          ? "품질 미달"
+                          : isQuality
+                            ? "품질 검토"
+                            : "공개 검토"}
                     </strong>
                   </span>
                   <span>
@@ -1006,20 +1086,32 @@ function AdminTechArticleReviews({ kind }) {
                 </div>
                 <div className="admin-mobile-controls">
                   <StatusBadge
-                    tone={kind === "publication" ? "processing" : "pending"}
+                    tone={
+                      isRejected
+                        ? "failed"
+                        : kind === "publication"
+                          ? "processing"
+                          : "pending"
+                    }
                   >
                     {kind === "duplicates"
                       ? "POSSIBLE_DUPLICATE"
-                      : isQuality
-                        ? "REVIEW_REQUIRED"
-                        : "공개 승인 대기"}
+                      : isRejected
+                        ? "품질 미달"
+                        : isQuality
+                          ? "REVIEW_REQUIRED"
+                          : "공개 승인 대기"}
                   </StatusBadge>
                   <button
                     className="row-action primary-row-action"
                     type="button"
                     onClick={() => setDetail(item)}
                   >
-                    {kind === "duplicates" ? "비교·판정" : "검토"}
+                    {kind === "duplicates"
+                      ? "비교·판정"
+                      : isRejected
+                        ? "상세"
+                        : "검토"}
                   </button>
                 </div>
               </article>
@@ -1068,24 +1160,20 @@ function AdminTechArticleReviews({ kind }) {
       <dialog
         ref={detailDialogRef}
         className="admin-dialog admin-dialog-wide"
+        aria-labelledby="reviewDetailTitle"
         onClose={() => setDetail(null)}
       >
         <div className="dialog-panel">
           <header className="dialog-header">
             <div>
-              <p className="section-eyebrow orbitron">
-                {kind === "duplicates"
-                  ? "DUPLICATE COMPARISON"
-                  : kind === "quality"
-                    ? "QUALITY REVIEW"
-                    : "PUBLICATION REVIEW"}
-              </p>
-              <h2>
+              <h2 id="reviewDetailTitle">
                 {kind === "duplicates"
                   ? "중복 후보 비교·판정"
                   : kind === "quality"
                     ? "품질 검토 상세"
-                    : "공개 검토 상세"}
+                    : kind === "rejected"
+                      ? "품질 미달 상세"
+                      : "공개 검토 상세"}
               </h2>
             </div>
             <button
@@ -1202,12 +1290,16 @@ function AdminTechArticleReviews({ kind }) {
                     종료합니다. Unique 판정 시 신규 아티클 흐름으로 이동합니다.
                   </p>
                 </>
-              ) : kind === "quality" ? (
+              ) : kind === "quality" || kind === "rejected" ? (
                 <article className="admin-detail-record">
                   <span className="admin-article-id">{detail.articleId}</span>
                   <h3 className="admin-detail-title">{detail.title}</h3>
                   <div className="admin-detail-meta">
-                    <StatusBadge>REVIEW_REQUIRED</StatusBadge>
+                    <StatusBadge
+                      tone={kind === "rejected" ? "failed" : "pending"}
+                    >
+                      {kind === "rejected" ? "품질 미달" : "REVIEW_REQUIRED"}
+                    </StatusBadge>
                     <StatusBadge tone="hidden">AI 요약 생성 전</StatusBadge>
                   </div>
                   <section className="quality-review-reason">
@@ -1219,9 +1311,16 @@ function AdminTechArticleReviews({ kind }) {
                         ></i>
                       </span>
                       <div>
-                        <h4>검토 필요 사유</h4>
+                        <h4>
+                          {kind === "rejected"
+                            ? "품질 미달 사유"
+                            : "검토 필요 사유"}
+                        </h4>
                         <p>
-                          {detail.reason || "관리자 품질 검토가 필요합니다."}
+                          {detail.reason ||
+                            (kind === "rejected"
+                              ? "품질 기준 미달로 처리가 종료되었습니다."
+                              : "관리자 품질 검토가 필요합니다.")}
                         </p>
                       </div>
                     </div>
@@ -1235,11 +1334,13 @@ function AdminTechArticleReviews({ kind }) {
                   <section className="admin-detail-section">
                     <h4>원문 및 처리 정보</h4>
                     <div className="admin-detail-grid">
-                      <DetailFact
-                        label="검토 작업 ID"
-                        value={recordId(kind, detail)}
-                        mono
-                      />
+                      {kind === "quality" && (
+                        <DetailFact
+                          label="검토 작업 ID"
+                          value={recordId(kind, detail)}
+                          mono
+                        />
+                      )}
                       <DetailFact
                         label="아티클 ID"
                         value={detail.articleId}
@@ -1256,16 +1357,24 @@ function AdminTechArticleReviews({ kind }) {
                         )}
                       />
                       <DetailFact
-                        label="대기 등록"
+                        label={kind === "rejected" ? "품질 판정" : "대기 등록"}
                         value={formatDate(detail.queuedAt)}
                       />
-                      <DetailFact label="처리 상태" value="QUALITY_EVALUATED" />
+                      <DetailFact
+                        label="처리 상태"
+                        value={
+                          kind === "rejected"
+                            ? "QUALITY_REJECTED"
+                            : "QUALITY_EVALUATED"
+                        }
+                      />
                     </div>
                   </section>
                   <p className="decision-guidance">
                     <i className="fas fa-circle-info" aria-hidden="true"></i>
-                    품질 통과 후 AI 요약을 생성합니다. 현재 공개 정책이 검토 후
-                    공개이므로 요약 완료 뒤 공개 검토 큐로 이동합니다.
+                    {kind === "rejected"
+                      ? "관리자가 품질 통과로 변경하면 AI 요약 단계부터 다시 처리합니다."
+                      : "품질 통과 후 AI 요약을 생성합니다. 현재 공개 정책이 검토 후 공개이므로 요약 완료 뒤 공개 검토 큐로 이동합니다."}
                   </p>
                 </article>
               ) : (
@@ -1342,6 +1451,15 @@ function AdminTechArticleReviews({ kind }) {
                   품질 통과
                 </button>
               </>
+            ) : detail && kind === "rejected" ? (
+              <button
+                className="btn-success"
+                type="button"
+                onClick={() => runSingle(detail, "APPROVE_QUALITY")}
+                disabled={isMutating}
+              >
+                <i className="fas fa-check" aria-hidden="true"></i>품질 통과
+              </button>
             ) : detail ? (
               <button
                 className="btn-success"

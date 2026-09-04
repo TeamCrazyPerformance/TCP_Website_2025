@@ -170,3 +170,60 @@ def test_api_rejects_idempotency_key_with_different_body(normalized_payload):
         response = client.post("/internal/v1/normalized-articles", json=changed, headers=headers)
         assert response.status_code == 409
         assert response.json()["detail"]["code"] == "IDEMPOTENCY_KEY_REUSE"
+
+
+def test_api_lists_and_overrides_quality_rejections(normalized_payload):
+    repository = MemoryPipelineRepository()
+    admission = FakeAdmission()
+    summarizer = FakeSummarizer()
+    orchestrator = PipelineOrchestrator(
+        repository,
+        admission,
+        FakeQuality("REJECT"),
+        summarizer,
+        job_max_attempts=3,
+    )
+    worker = DurableWorker(repository, orchestrator)
+    runtime = SimpleNamespace(
+        repository=repository,
+        admission=admission,
+        orchestrator=orchestrator,
+        worker=worker,
+    )
+    settings = Settings("x", 3306, "x", "x", "x", "token", backend="memory")
+    app = create_app(settings=settings, runtime=runtime, start_worker=False)
+    headers = {
+        "Authorization": "Bearer token",
+        "Idempotency-Key": "quality-reject",
+    }
+    with TestClient(app) as client:
+        created = client.post(
+            "/internal/v1/normalized-articles",
+            json=normalized_payload,
+            headers=headers,
+        )
+        assert created.status_code == 202
+        assert worker.process_once() is True
+        assert worker.process_once() is True
+
+        auth = {"Authorization": "Bearer token"}
+        queue = client.get(
+            "/internal/v1/admin/reviews/rejected",
+            headers=auth,
+        )
+        assert queue.status_code == 200
+        article = queue.json()["items"][0]
+
+        approved = client.post(
+            f"/internal/v1/admin/articles/{article['articleId']}/reprocessing",
+            headers=auth,
+            json={
+                "action": "APPROVE_QUALITY",
+                "expectedRecordVersion": article["recordVersion"],
+                "administratorId": "admin-1",
+            },
+        )
+        assert approved.status_code == 200
+        assert approved.json()["processingStatus"] == "ENRICHMENT_PENDING"
+        assert worker.process_once() is True
+        assert len(repository.list_public_articles(limit=10, offset=0)) == 1

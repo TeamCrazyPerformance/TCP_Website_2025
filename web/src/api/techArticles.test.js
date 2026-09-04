@@ -1,11 +1,13 @@
 import { apiGet, apiPost } from "./client";
 import {
   getAdminTechArticleStats,
+  getQualityReviews,
   getTechArticle,
   getTechArticleSources,
   getAdminTechArticles,
   getCrawlRuns,
   getTechArticles,
+  reprocessArticle,
   startCrawlRun,
   techArticleErrorMessage,
 } from "./techArticles";
@@ -127,6 +129,25 @@ test("통계도 목록과 같은 조건으로 센다", async () => {
 
   await getAdminTechArticleStats();
   expect(apiGet).toHaveBeenLastCalledWith("/api/v1/admin/tech-articles/stats");
+});
+
+test("품질 미달 큐와 재처리 요청을 관리자 API로 보낸다", async () => {
+  apiGet.mockResolvedValue({ items: [] });
+  apiPost.mockResolvedValue({ articleId: "article-1" });
+
+  await getQualityReviews("rejected", { page: 2, pageSize: 20 });
+  expect(apiGet).toHaveBeenCalledWith(
+    "/api/v1/admin/tech-articles/reviews/rejected?page=2&pageSize=20&sort=NEWEST",
+  );
+
+  await reprocessArticle("article 1", {
+    action: "RETRY",
+    expectedRecordVersion: 4,
+  });
+  expect(apiPost).toHaveBeenCalledWith(
+    "/api/v1/admin/tech-articles/article%201/reprocessing",
+    { action: "RETRY", expectedRecordVersion: 4 },
+  );
 });
 
 test("공개 목록이 소스를 반복 쿼리로 전달한다", async () => {

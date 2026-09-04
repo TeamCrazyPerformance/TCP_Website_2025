@@ -14,6 +14,8 @@ import {
   getAdminTechArticleStats,
   getPublicationPolicy,
   isVersionConflict,
+  reprocessArticle,
+  resolveQualityReview,
   techArticleErrorMessage,
   updatePublicationPolicy,
 } from "../../api/techArticles";
@@ -91,6 +93,22 @@ function sourceLanguage(article) {
   );
 }
 
+function pendingQualityReview(article) {
+  const review = article?.qualityReview;
+  if (
+    resolveStage(article) !== "QUALITY_REVIEW" ||
+    !review?.caseId ||
+    !Number.isInteger(review.caseVersion)
+  ) {
+    return null;
+  }
+  return review;
+}
+
+function canRetryProcessing(article) {
+  return ["FAILED", "FAILED_AFTER_APPROVAL"].includes(resolveStage(article));
+}
+
 function StatusBadge({ status }) {
   return (
     <span className={`status-badge ${statusTone(status)}`}>
@@ -124,9 +142,7 @@ function ViewCountCell({ counts }) {
   const member = counts?.member ?? 0;
   const guest = counts?.guest ?? 0;
   return (
-
     <div className="admin-view-grid">
-
       <strong className="admin-view-total">{member + guest}</strong>
       <span>회원</span>
       <strong>{member}</strong>
@@ -380,7 +396,7 @@ function AdminTechArticles() {
   }, [loadOverview]);
   useEffect(() => {
     setSelected({});
-  }, [page]);
+  }, [keyword, page, publicationStatus, sort, stageFilter]);
   useEffect(() => {
     setPage(1);
   }, [stageFilter, keyword, publicationStatus, sort]);
@@ -485,6 +501,103 @@ function AdminTechArticles() {
       await Promise.all([loadInventory(), loadOverview()]);
     } catch (error) {
       if (isVersionConflict(error)) {
+        await refreshAfterConflict(techArticleErrorMessage(error));
+      } else {
+        setNotice({ type: "error", message: techArticleErrorMessage(error) });
+      }
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const resolvePendingQualityReview = async (article, action) => {
+    const review = pendingQualityReview(article);
+    if (!review) {
+      await refreshAfterConflict(
+        "대기 중인 품질검토 정보를 확인할 수 없어 목록을 새로 불러왔습니다.",
+      );
+      return;
+    }
+    const approving = action === "APPROVE";
+    const accepted = await askConfirmation({
+      title: approving
+        ? "품질 통과로 판정할까요?"
+        : "품질 탈락으로 판정할까요?",
+      description: approving
+        ? "AI 요약 단계로 전달되며, 요약 완료 후 현재 공개 정책이 적용됩니다."
+        : "이 아티클은 후속 AI 요약과 공개 흐름으로 진행하지 않습니다.",
+      confirmLabel: approving ? "품질 통과" : "품질 탈락",
+      tone: approving ? "success" : "danger",
+    });
+    if (!accepted) return;
+
+    setIsMutating(true);
+    try {
+      await resolveQualityReview(review.caseId, {
+        action,
+        expectedCaseVersion: review.caseVersion,
+      });
+      setSelected((current) => {
+        const next = { ...current };
+        delete next[article.articleId];
+        return next;
+      });
+      setDetail(null);
+      setNotice({
+        type: "success",
+        message: approving
+          ? "품질 통과 처리를 완료하고 AI 요약 단계로 전달했습니다."
+          : "품질 탈락 처리를 완료했습니다.",
+      });
+      await Promise.all([loadInventory(), loadOverview()]);
+    } catch (error) {
+      if (isVersionConflict(error)) {
+        setDetail(null);
+        await refreshAfterConflict(techArticleErrorMessage(error));
+      } else {
+        setNotice({ type: "error", message: techArticleErrorMessage(error) });
+      }
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const runReprocessing = async (article, action) => {
+    const qualityOverride = action === "APPROVE_QUALITY";
+    const accepted = await askConfirmation({
+      title: qualityOverride
+        ? "품질 미달 판정을 통과로 변경할까요?"
+        : "실패한 처리를 다시 실행할까요?",
+      description: qualityOverride
+        ? "관리자 승인 이력을 남기고 AI 요약 단계로 전달합니다."
+        : "마지막으로 실패한 품질 평가 또는 AI 요약 단계부터 다시 실행합니다.",
+      confirmLabel: qualityOverride ? "품질 통과" : "재처리",
+      tone: "success",
+    });
+    if (!accepted) return;
+
+    setIsMutating(true);
+    try {
+      await reprocessArticle(article.articleId, {
+        action,
+        expectedRecordVersion: article.recordVersion,
+      });
+      setSelected((current) => {
+        const next = { ...current };
+        delete next[article.articleId];
+        return next;
+      });
+      setDetail(null);
+      setNotice({
+        type: "success",
+        message: qualityOverride
+          ? "품질 통과 처리를 완료하고 AI 요약 단계로 전달했습니다."
+          : "실패한 단계를 재처리 대기열에 등록했습니다.",
+      });
+      await Promise.all([loadInventory(), loadOverview()]);
+    } catch (error) {
+      if (isVersionConflict(error)) {
+        setDetail(null);
         await refreshAfterConflict(techArticleErrorMessage(error));
       } else {
         setNotice({ type: "error", message: techArticleErrorMessage(error) });
@@ -647,7 +760,6 @@ function AdminTechArticles() {
     <AdminTechArticleContent>
       <section className="admin-intro" aria-labelledby="adminViewTitle">
         <div>
-          <p className="section-eyebrow orbitron">ARTICLE INVENTORY</p>
           <h2 id="adminViewTitle" className="orbitron gradient-text">
             전체 아티클
           </h2>
@@ -688,22 +800,17 @@ function AdminTechArticles() {
             className="queue-stat-inline"
             aria-label={`공개 ${publishedCount}건, 비공개 ${hiddenCount}건`}
           >
-            <span>
-              공개 {publishedCount}
-            </span>
+            <span>공개 {publishedCount}</span>
             <span className="queue-stat-divider" aria-hidden="true">
               |
             </span>
-            <span>
-              비공개 {hiddenCount}
-            </span>
+            <span>비공개 {hiddenCount}</span>
           </div>
         </article>
 
         <article className="widget-card policy-card">
           <div className="policy-heading">
             <div>
-              <p className="section-eyebrow orbitron">PUBLICATION POLICY</p>
               <h3>새 아티클 공개 정책</h3>
             </div>
             <span className="policy-scope-badge">전체 적용</span>
@@ -785,7 +892,6 @@ function AdminTechArticles() {
       >
         <div className="section-heading-row">
           <div>
-            <p className="section-eyebrow orbitron">SEARCH &amp; FILTER</p>
             <h3 id="filterTitle">검색 및 필터</h3>
           </div>
           <button
@@ -865,7 +971,6 @@ function AdminTechArticles() {
       >
         <div className="list-heading-row">
           <div>
-            <p className="section-eyebrow orbitron">QUEUE &amp; RECORDS</p>
             <h3 id="recordListTitle">아티클 목록</h3>
           </div>
           <p className="result-count" role="status" aria-live="polite">
@@ -926,7 +1031,6 @@ function AdminTechArticles() {
 
         <div className="widget-card article-table-card">
           <div className="article-table-wrap">
-
             <table className="article-table admin-v9-table admin-articles-table">
               <caption className="sr-only">아티클 목록 및 관리 작업</caption>
               <thead>
@@ -1221,13 +1325,13 @@ function AdminTechArticles() {
       <dialog
         ref={detailDialogRef}
         className="admin-dialog admin-dialog-wide"
+        aria-labelledby="adminArticleDetailTitle"
         onClose={() => setDetail(null)}
       >
         <div className="dialog-panel">
           <header className="dialog-header">
             <div>
-              <p className="section-eyebrow orbitron">ARTICLE DETAILS</p>
-              <h2>아티클 상세 정보</h2>
+              <h2 id="adminArticleDetailTitle">아티클 상세 정보</h2>
             </div>
             <button
               className="dialog-close-button"
@@ -1419,6 +1523,47 @@ function AdminTechArticles() {
             >
               닫기
             </button>
+            {pendingQualityReview(detail) && (
+              <>
+                <button
+                  className="btn-danger"
+                  type="button"
+                  onClick={() => resolvePendingQualityReview(detail, "REJECT")}
+                  disabled={isMutating}
+                >
+                  품질 탈락
+                </button>
+                <button
+                  className="btn-success"
+                  type="button"
+                  onClick={() => resolvePendingQualityReview(detail, "APPROVE")}
+                  disabled={isMutating}
+                >
+                  <i className="fas fa-check" aria-hidden="true"></i>품질 통과
+                </button>
+              </>
+            )}
+            {resolveStage(detail) === "QUALITY_REJECTED" && (
+              <button
+                className="btn-success"
+                type="button"
+                onClick={() => runReprocessing(detail, "APPROVE_QUALITY")}
+                disabled={isMutating}
+              >
+                <i className="fas fa-check" aria-hidden="true"></i>품질 통과
+              </button>
+            )}
+            {canRetryProcessing(detail) && (
+              <button
+                className="btn-success"
+                type="button"
+                onClick={() => runReprocessing(detail, "RETRY")}
+                disabled={isMutating}
+              >
+                <i className="fas fa-rotate-right" aria-hidden="true"></i>
+                재처리
+              </button>
+            )}
             {detail?.source?.articleUrl && (
               <a
                 className="btn-primary dialog-link-button"
