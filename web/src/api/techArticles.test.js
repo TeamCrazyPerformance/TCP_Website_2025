@@ -1,6 +1,7 @@
 import { apiGet, apiPost } from "./client";
 import {
   getAdminTechArticleStats,
+  getTechArticle,
   getTechArticleSources,
   getAdminTechArticles,
   getCrawlRuns,
@@ -32,6 +33,18 @@ test("공개 목록 태그를 반복 쿼리로 전달한다", async () => {
   expect(apiGet).toHaveBeenCalledWith(
     "/api/v1/tech-articles?page=2&pageSize=20&keyword=React+%EC%83%81%ED%83%9C&tags=AI&tags=%EB%B3%B4%EC%95%88",
   );
+});
+
+test("상세 조회는 요청받은 경우에만 조회수 집계 신호를 보낸다", async () => {
+  apiGet.mockResolvedValue({ id: "article-1" });
+
+  await getTechArticle("article 1", { recordView: true });
+  expect(apiGet).toHaveBeenLastCalledWith(
+    "/api/v1/tech-articles/article%201?recordView=true",
+  );
+
+  await getTechArticle("article 1");
+  expect(apiGet).toHaveBeenLastCalledWith("/api/v1/tech-articles/article%201");
 });
 
 test("수집 요청에 멱등성 키를 헤더로 보낸다", async () => {

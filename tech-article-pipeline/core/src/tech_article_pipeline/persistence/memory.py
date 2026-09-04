@@ -831,19 +831,23 @@ class MemoryPipelineRepository:
                     counts[key] = counts.get(key, 0) + 1
             return counts
 
-    # mysql._is_new 와 같은 판정입니다.
     @staticmethod
-    def _is_new(collected_at: Any) -> bool:
-        if collected_at is None:
-            return False
-        if isinstance(collected_at, str):
-            try:
-                collected_at = datetime.fromisoformat(collected_at)
-            except ValueError:
+    def _is_new(collected_at: Any, original_published_at: Any) -> bool:
+        values: list[datetime] = []
+        for value in (collected_at, original_published_at):
+            if value is None:
                 return False
-        if collected_at.tzinfo is None:
-            collected_at = collected_at.replace(tzinfo=UTC)
-        return _now() - collected_at < timedelta(hours=NEW_ARTICLE_WINDOW_HOURS)
+            if isinstance(value, str):
+                try:
+                    value = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                except ValueError:
+                    return False
+            if value.tzinfo is None:
+                value = value.replace(tzinfo=UTC)
+            values.append(value.astimezone(UTC))
+        now = _now()
+        window = timedelta(hours=NEW_ARTICLE_WINDOW_HOURS)
+        return all(now - value < window for value in values)
 
     def _project_article(self, article: dict[str, Any]) -> dict[str, Any]:
         projected = copy.deepcopy(article)
@@ -858,7 +862,7 @@ class MemoryPipelineRepository:
                 ),
                 "originalLanguage": language_projection(article.get("language")),
                 "collectedAt": collected_at,
-                "isNew": self._is_new(collected_at),
+                "isNew": self._is_new(collected_at, article.get("originalPublishedAt")),
                 "summaryMarkdown": article.get("summary"),
                 "evaluation": copy.deepcopy(article.get("qualityEvaluation")),
                 "valueScore": article.get("qualityScore"),
@@ -886,7 +890,7 @@ class MemoryPipelineRepository:
             "sourceId": article.get("sourceId"),
             "canonicalUrl": article.get("canonicalUrl"),
             "originalPublishedAt": article.get("originalPublishedAt"),
-            "isNew": self._is_new(collected_at),
+            "isNew": self._is_new(collected_at, article.get("originalPublishedAt")),
         }
 
     def _project_public_detail_article(self, article: dict[str, Any]) -> dict[str, Any]:

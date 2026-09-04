@@ -821,7 +821,9 @@ describe("공개 화면", () => {
     await waitFor(() =>
       expect(scrollTo).toHaveBeenCalledWith({ top: 660, behavior: "auto" }),
     );
-    expect(sessionStorage.length).toBe(0);
+    expect(
+      sessionStorage.getItem("tcp.tech-articles.list-return.v1"),
+    ).toBeNull();
 
     Object.defineProperty(Element.prototype, "getBoundingClientRect", {
       configurable: true,
@@ -839,6 +841,32 @@ describe("공개 화면", () => {
     expect(container.querySelector(".back-to-list-link")).toHaveAttribute(
       "href",
       "/tech-articles",
+    );
+  });
+
+  test("같은 세션에서 다시 연 상세는 조회수를 재집계하지 않는다", async () => {
+    api.getTechArticle.mockResolvedValue({
+      id: "article-1",
+      title: "세션 조회 테스트",
+      summaryMarkdown: "요약",
+      tags: [],
+      source: { name: "InfoQ", domain: "infoq.com" },
+    });
+    const TechArticleDetail = require("./TechArticleDetail").default;
+
+    const firstRender = renderWithAuth(<TechArticleDetail />);
+    await waitFor(() =>
+      expect(api.getTechArticle).toHaveBeenCalledWith("article-1", {
+        recordView: true,
+      }),
+    );
+    firstRender.unmount();
+
+    renderWithAuth(<TechArticleDetail />);
+    await waitFor(() =>
+      expect(api.getTechArticle).toHaveBeenLastCalledWith("article-1", {
+        recordView: false,
+      }),
     );
   });
 

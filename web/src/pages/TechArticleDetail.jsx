@@ -15,6 +15,31 @@ import { shareArticle } from "../components/tech-articles/articleShare";
 import { V9ArticleTags } from "./TechArticles";
 import { useAuth } from "../context/AuthContext";
 
+const ARTICLE_VIEW_SESSION_PREFIX = "tcp.tech-articles.viewed.v1:";
+
+function claimArticleView(articleId) {
+  if (typeof window === "undefined") return false;
+
+  try {
+    const key = `${ARTICLE_VIEW_SESSION_PREFIX}${articleId}`;
+    if (window.sessionStorage.getItem(key)) return false;
+    window.sessionStorage.setItem(key, "1");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function releaseArticleViewClaim(articleId) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.sessionStorage.removeItem(
+      `${ARTICLE_VIEW_SESSION_PREFIX}${articleId}`,
+    );
+  } catch {}
+}
+
 function TechArticleDetail() {
   const { articleId } = useParams();
   const location = useLocation();
@@ -40,11 +65,15 @@ function TechArticleDetail() {
     let active = true;
     setIsLoading(true);
     setError("");
-    getTechArticle(articleId)
+    const shouldRecordView = claimArticleView(articleId);
+    getTechArticle(articleId, { recordView: shouldRecordView })
       .then((data) => {
         if (active) setArticle(data);
       })
       .catch((requestError) => {
+        if (shouldRecordView && requestError?.response?.status) {
+          releaseArticleViewClaim(articleId);
+        }
         if (!active) return;
         const notFound = requestError?.response?.status === 404;
         setError(

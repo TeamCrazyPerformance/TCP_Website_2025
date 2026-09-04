@@ -81,12 +81,14 @@ def _utc(value: datetime | None) -> datetime | None:
     return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
 
 
-def _is_new(collected_at: datetime | None) -> bool:
-    """수집 직후인지. 공개 목록은 원문 게시일 순으로 정렬되므로 새로 들어온
-    글이 위쪽에 오지 않습니다. 배지가 없으면 사용자가 찾을 방법이 없습니다."""
-    if collected_at is None:
+def _is_new(collected_at: datetime | None, original_published_at: datetime | None) -> bool:
+    if collected_at is None or original_published_at is None:
         return False
-    return datetime.now(UTC) - collected_at < timedelta(hours=NEW_ARTICLE_WINDOW_HOURS)
+    now = datetime.now(UTC)
+    window = timedelta(hours=NEW_ARTICLE_WINDOW_HOURS)
+    collected_age = now - _utc(collected_at)
+    published_age = now - _utc(original_published_at)
+    return collected_age < window and published_age < window
 
 
 def _payload_digest(value: dict[str, Any]) -> bytes:
@@ -1424,6 +1426,7 @@ class MySQLPipelineRepository:
 
     @staticmethod
     def _public_list_projection(row: dict[str, Any]) -> dict[str, Any]:
+        original_published_at = _utc(row.get("original_published_at"))
         collected_at = _utc(row.get("collected_at"))
         return {
             "articleId": row["article_id"],
@@ -1433,8 +1436,8 @@ class MySQLPipelineRepository:
             "tags": _decode(row.get("tags")) or [],
             "sourceId": row.get("source_id"),
             "canonicalUrl": row.get("canonical_url"),
-            "originalPublishedAt": _utc(row.get("original_published_at")),
-            "isNew": _is_new(collected_at),
+            "originalPublishedAt": original_published_at,
+            "isNew": _is_new(collected_at, original_published_at),
         }
 
     @staticmethod
@@ -1514,7 +1517,7 @@ class MySQLPipelineRepository:
                 row.get("source_id"), source.get("sourceType"), row.get("canonical_url")
             ),
             "collectedAt": _utc(row.get("collected_at")),
-            "isNew": _is_new(_utc(row.get("collected_at"))),
+            "isNew": _is_new(_utc(row.get("collected_at")), _utc(row.get("original_published_at"))),
             # 운영 판단용 집계. 공개 응답에는 싣지 않습니다(publicItem 참고).
             "viewCounts": {
                 "member": int(row.get("member_views") or 0),

@@ -664,7 +664,7 @@ const publicListItem = (a) => ({
   tags: a.tags,
   source: { name: a.source.name, domain: a.source.domain },
   originalPublishedAt: a.originalPublishedAt,
-  isNew: isNewArticle(a.collectedAt),
+  isNew: isNewArticle(a.collectedAt, a.originalPublishedAt),
 });
 
 const publicDetailItem = (a) => ({
@@ -698,11 +698,15 @@ const publicValueScoreOf = (article) => {
 };
 
 const NEW_ARTICLE_WINDOW_HOURS = 24;
-const isNewArticle = (collectedAt) => {
-  if (!collectedAt) return false;
-  const t = new Date(collectedAt).getTime();
-  if (Number.isNaN(t)) return false;
-  return Date.now() - t < NEW_ARTICLE_WINDOW_HOURS * 3600 * 1000;
+const isNewArticle = (collectedAt, originalPublishedAt) => {
+  if (!collectedAt || !originalPublishedAt) return false;
+  const collectedTime = new Date(collectedAt).getTime();
+  const publishedTime = new Date(originalPublishedAt).getTime();
+  if (Number.isNaN(collectedTime) || Number.isNaN(publishedTime)) return false;
+  const windowMs = NEW_ARTICLE_WINDOW_HOURS * 3600 * 1000;
+  const collectedAge = Date.now() - collectedTime;
+  const publishedAge = Date.now() - publishedTime;
+  return collectedAge < windowMs && publishedAge < windowMs;
 };
 
 // 공개 화면 소스 선택기. 파이프라인 catalog.PUBLIC_SOURCE_CATALOG 와 같은 모양.

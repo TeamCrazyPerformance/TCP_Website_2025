@@ -40,8 +40,12 @@ export function getTechArticleSources() {
   return apiGet(`${PUBLIC_BASE}/sources`);
 }
 
-export function getTechArticle(articleId) {
-  return apiGet(`${PUBLIC_BASE}/${encodeURIComponent(articleId)}`);
+export function getTechArticle(articleId, { recordView = false } = {}) {
+  return apiGet(
+    withQuery(`${PUBLIC_BASE}/${encodeURIComponent(articleId)}`, {
+      recordView: recordView ? true : undefined,
+    }),
+  );
 }
 
 export function getAdminTechArticles({

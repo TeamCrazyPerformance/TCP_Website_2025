@@ -13,7 +13,7 @@ import pytest
 from tech_article_pipeline.catalog import known_source_ids, public_source_catalog
 from tech_article_pipeline.persistence.base import NEW_ARTICLE_WINDOW_HOURS
 from tech_article_pipeline.persistence.memory import MemoryPipelineRepository
-from tech_article_pipeline.persistence.mysql import MySQLPipelineRepository
+from tech_article_pipeline.persistence.mysql import MySQLPipelineRepository, _is_new
 
 NOW = datetime.now(UTC)
 
@@ -138,16 +138,21 @@ def test_mysql_source_filter_is_parameterised():
 # ── NEW 배지 ──────────────────────────────────────────────
 
 
-def test_new_flag_marks_recently_collected_articles():
-    """수집 시각은 crawl_items 에서 옵니다 (mysql 은 ci.produced_at)."""
+def test_new_flag_requires_recent_collection_and_publication():
     repo = MemoryPipelineRepository()
     collected = {
         "fresh": NOW - timedelta(hours=1),
         "edge": NOW - timedelta(hours=NEW_ARTICLE_WINDOW_HOURS - 1),
-        "old": NOW - timedelta(hours=NEW_ARTICLE_WINDOW_HOURS + 1),
-        "unknown": None,
+        "old-collection": NOW - timedelta(hours=NEW_ARTICLE_WINDOW_HOURS + 1),
+        "unknown-collection": None,
+        "old-publication": NOW - timedelta(hours=1),
+        "unknown-publication": NOW - timedelta(hours=1),
     }
     repo.articles = {key: article(key, "infoq") for key in collected}
+    repo.articles["old-publication"]["originalPublishedAt"] = (
+        NOW - timedelta(hours=NEW_ARTICLE_WINDOW_HOURS + 1)
+    ).isoformat()
+    repo.articles["unknown-publication"]["originalPublishedAt"] = None
     repo.crawl_items = {
         f"item-{key}": {"crawl_run_id": "run-1", "produced_at": value}
         for key, value in collected.items()
@@ -156,9 +161,31 @@ def test_new_flag_marks_recently_collected_articles():
     flags = {
         item["articleId"]: item["isNew"] for item in repo.list_public_articles(limit=50, offset=0)
     }
-    assert flags == {"fresh": True, "edge": True, "old": False, "unknown": False}
+    assert flags == {
+        "fresh": True,
+        "edge": True,
+        "old-collection": False,
+        "unknown-collection": False,
+        "old-publication": False,
+        "unknown-publication": False,
+    }
+
+
+@pytest.mark.parametrize(
+    "collected_at,original_published_at,expected",
+    [
+        (NOW - timedelta(hours=1), NOW - timedelta(hours=1), True),
+        (NOW - timedelta(hours=25), NOW - timedelta(hours=1), False),
+        (NOW - timedelta(hours=1), NOW - timedelta(hours=25), False),
+        (None, NOW - timedelta(hours=1), False),
+        (NOW - timedelta(hours=1), None, False),
+    ],
+)
+def test_mysql_new_flag_uses_the_same_and_policy(
+    collected_at, original_published_at, expected
+):
+    assert _is_new(collected_at, original_published_at) is expected
 
 
 def test_new_window_is_a_server_side_policy():
-    # 프런트에 숫자를 박으면 바꿀 때마다 프런트를 배포해야 합니다.
     assert NEW_ARTICLE_WINDOW_HOURS == 24

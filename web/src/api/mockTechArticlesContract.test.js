@@ -23,6 +23,9 @@ test("목 서버의 NEW 기준이 파이프라인과 같다", () => {
   expect(numericConstant(mockSource, "NEW_ARTICLE_WINDOW_HOURS")).toBe(
     numericConstant(pipelineSource, "NEW_ARTICLE_WINDOW_HOURS"),
   );
+  expect(mockSource).toMatch(
+    /isNewArticle\(a\.collectedAt,\s*a\.originalPublishedAt\)/,
+  );
 });
 
 test("목 서버가 만드는 태그 개수가 파이프라인 상한을 넘지 않는다", () => {

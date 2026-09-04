@@ -96,11 +96,12 @@ through less than 92%.
   reason, signals, axis keys, raw axis values, and weights do not cross this boundary.
 - `GET /public/articles` — also supports `sources` (repeatable). Unknown ids return
   422 `INVALID_ARTICLE_SOURCE`. Every item carries `isNew`, true when the article was
-  collected within `NEW_ARTICLE_WINDOW_HOURS` (24). The public list is ordered by the
+  both collected and originally published within `NEW_ARTICLE_WINDOW_HOURS` (24).
+  The public list is ordered by the
   `originalPublishedAt` service timestamp. Source-provided publication time is used
   normally; GitHub Trending uses its UTC crawl observation time because that source
-  has no original publication timestamp. The `isNew` flag remains based on collection
-  time rather than this source-specific fallback.
+  has no original publication timestamp, so its UTC crawl observation time is used for
+  both publication freshness and collection freshness.
 - `POST /public/articles/{articleId}/view?member=true|false` — bumps the per-article
   counter. Operations-only aggregate; no per-user history is stored, so it is not
   personal data. Unknown ids match no row in `articles`, so the insert affects nothing
