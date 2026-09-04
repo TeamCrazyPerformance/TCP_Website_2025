@@ -213,14 +213,14 @@ class QualityEvaluator:
                 model_name = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={effective_key}"
                 prompt = (
-                    "Evaluate the technical depth of this engineering article on a scale of 0 to 100 based on these 4 rubrics:\n"
-                    "1. Code & Command Precision (0-30 pts): Contains code snippets, shell commands, or config schemas.\n"
-                    "2. Systems & Architectural Insight (0-30 pts): Discusses low-level internals, memory, protocols, or architecture.\n"
-                    "3. Production Problem-Solving (0-30 pts): Explains root cause analysis, performance tuning, benchmarks, or scalability.\n"
-                    "4. Professional Specificity (0-10 pts): Uses precise domain-specific engineering vocabulary instead of marketing hype.\n\n"
+                    "Evaluate the technical depth and engineering value of this tech article on a scale of 0 to 100 based on these 4 rubrics:\n"
+                    "1. Technical Utility & Open-Source/Tooling News (0-30 pts): Discusses useful open-source tools, CLI utilities, libraries, frameworks, or developer productivity announcements.\n"
+                    "2. Systems & Architectural Insight (0-30 pts): Explains low-level internals, memory allocation, network protocols, system architecture, or code/config schemas.\n"
+                    "3. Production Engineering & Problem-Solving (0-30 pts): Details real-world outage root-cause analysis, performance tuning, benchmarks, or scalability challenges.\n"
+                    "4. Engineering Specificity & Rigor (0-10 pts): Uses precise domain-specific engineering vocabulary instead of high-level marketing hype.\n\n"
                     f"Title: {article.title}\n"
                     f"Content: {article.content[:1500]}\n\n"
-                    f'Return JSON only: {{"depth_score": number, "reasoning": "brief explanation"}}'
+                    f'Return JSON format only: {{"depth_score": number, "reasoning": "brief explanation"}}'
                 )
                 payload = {
                     "contents": [{"parts": [{"text": prompt}]}],
@@ -248,14 +248,14 @@ class QualityEvaluator:
                 "Authorization": f"Bearer {effective_key}",
             }
             prompt = (
-                "Evaluate the technical depth of this engineering article on a scale of 0 to 100 based on these 4 rubrics:\n"
-                "1. Code & Command Precision (0-30 pts): Contains code snippets, shell commands, or config schemas.\n"
-                "2. Systems & Architectural Insight (0-30 pts): Discusses low-level internals, memory, protocols, or architecture.\n"
-                "3. Production Problem-Solving (0-30 pts): Explains root cause analysis, performance tuning, benchmarks, or scalability.\n"
-                "4. Professional Specificity (0-10 pts): Uses precise domain-specific engineering vocabulary instead of marketing hype.\n\n"
+                "Evaluate the technical depth and engineering value of this tech article on a scale of 0 to 100 based on these 4 rubrics:\n"
+                "1. Technical Utility & Open-Source/Tooling News (0-30 pts): Discusses useful open-source tools, CLI utilities, libraries, frameworks, or developer productivity announcements.\n"
+                "2. Systems & Architectural Insight (0-30 pts): Explains low-level internals, memory allocation, network protocols, system architecture, or code/config schemas.\n"
+                "3. Production Engineering & Problem-Solving (0-30 pts): Details real-world outage root-cause analysis, performance tuning, benchmarks, or scalability challenges.\n"
+                "4. Engineering Specificity & Rigor (0-10 pts): Uses precise domain-specific engineering vocabulary instead of high-level marketing hype.\n\n"
                 f"Title: {article.title}\n"
                 f"Content: {article.content[:1500]}\n\n"
-                f'Return JSON only: {{"depth_score": number, "reasoning": "brief explanation"}}'
+                f'Return JSON format only: {{"depth_score": number, "reasoning": "brief explanation"}}'
             )
             payload = {
                 "model": "gpt-4o-mini",
