@@ -18,7 +18,7 @@ export default function TagMultiSelect({
             <button
               key={tag}
               type="button"
-              className={`tag-btn px-3 py-1 rounded-full transition-colors ${getTagClassName(tag)} ${isSelected ? 'is-selected' : 'hover:opacity-80'}`}
+              className={`tag-btn transition-colors ${getTagClassName(tag)} ${isSelected ? 'is-selected' : 'hover:opacity-80'}`}
               aria-pressed={isSelected}
               onClick={() => onToggle(tag)}
             >

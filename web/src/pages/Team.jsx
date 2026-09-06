@@ -6,20 +6,15 @@ import PublicPageHero from '../components/public/PublicPageHero';
 import TagMultiSelect from '../components/public/TagMultiSelect';
 import { useScrollReveal } from '../hooks/useScrollReveal';
 import TeamCard from '../components/TeamCard';
-import { tagColorClass } from '../utils/helpers';
+import { parseTags, tagColorClass } from '../utils/helpers';
 import { apiGet, apiPatch, apiDelete } from '../api/client';
 import { initialTeams as developmentTeams } from '../data/teams';
 
-const TAGS = [
-  'AI',
-  '해커톤',
-  '프론트엔드',
-  '백엔드',
-  '공모전',
-  '초보환영',
-  '프로젝트',
-  '알고리즘',
-];
+const normalizeTeamTags = (team) => ({
+  ...team,
+  techStack: parseTags(team.techStack),
+  tags: [...new Set([...parseTags(team.tags), ...parseTags(team.techStack)])],
+});
 
 const formatDate = (value, separator = '.') => {
   if (!value) return '';
@@ -44,13 +39,7 @@ const normalizeExecutionType = (type) => {
   return '온라인';
 };
 
-const splitTags = (value) => {
-  if (!value) return [];
-  return value
-    .split(/[,\s/|]+/)
-    .map((item) => item.trim())
-    .filter(Boolean);
-};
+const splitTags = parseTags;
 
 const splitGoals = (value) => {
   if (!value) return [];
@@ -158,6 +147,23 @@ export default function Team() {
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [recruitModalInitialData, setRecruitModalInitialData] = useState(null);
 
+  const availableTags = useMemo(() => {
+    const counts = new Map();
+    teams.forEach((team) => {
+      team.tags.forEach((tag) => counts.set(tag, (counts.get(tag) || 0) + 1));
+    });
+    return [...counts.entries()]
+      .sort(([a, countA], [b, countB]) => countB - countA || a.localeCompare(b, 'ko'))
+      .map(([tag]) => tag);
+  }, [teams]);
+
+  useEffect(() => {
+    setActiveTags((current) => {
+      const kept = current.filter((tag) => availableTags.includes(tag));
+      return kept.length === current.length ? current : kept;
+    });
+  }, [availableTags]);
+
   const filteredTeams = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     let filtered = teams.filter((t) => {
@@ -236,13 +242,13 @@ export default function Team() {
             process.env.NODE_ENV === 'development' && mappedTeams.length === 0
               ? developmentTeams
               : mappedTeams;
-          setTeams(visibleTeams);
+          setTeams(visibleTeams.map(normalizeTeamTags));
           setErrorMessage('');
         }
       } catch (error) {
         if (isMounted) {
           if (process.env.NODE_ENV === 'development') {
-            setTeams(developmentTeams);
+            setTeams(developmentTeams.map(normalizeTeamTags));
             setErrorMessage('');
           } else {
             setErrorMessage(error.message || '팀 정보를 불러오지 못했습니다.');
@@ -262,7 +268,7 @@ export default function Team() {
     };
   }, []);
 
-  // 지원 상태 조회
+  // Load application status
   useEffect(() => {
     if (!user || teams.length === 0) return;
 
@@ -275,7 +281,7 @@ export default function Team() {
             const data = await apiGet(`/api/v1/teams/${team.id}/application-status`);
             statusMap[team.id] = data;
           } catch (error) {
-            // 에러 무시 (401 등)
+            // Ignore errors such as 401
             statusMap[team.id] = { hasApplied: false, applicationInfo: null };
           }
         })
@@ -331,12 +337,12 @@ export default function Team() {
   };
 
   const handleAddTeam = (newTeam) => {
-    setTeams((prevTeams) => [newTeam, ...prevTeams]);
+    setTeams((prevTeams) => [normalizeTeamTags(newTeam), ...prevTeams]);
   };
 
   const handleUpdateTeam = (updatedTeam) => {
     setTeams((prevTeams) =>
-      prevTeams.map((t) => (t.id === updatedTeam.id ? updatedTeam : t))
+      prevTeams.map((t) => (t.id === updatedTeam.id ? normalizeTeamTags(updatedTeam) : t))
     );
   };
 
@@ -488,7 +494,7 @@ export default function Team() {
         <TagMultiSelect
           className="team-tag-filter"
           ariaLabel="팀 모집 태그 필터"
-          tags={TAGS}
+          tags={availableTags}
           selectedTags={activeTags}
           onToggle={handleTagClick}
           onReset={() => setActiveTags([])}

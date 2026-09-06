@@ -1,15 +1,17 @@
 #!/usr/bin/env node
 /**
- * TCP 웹사이트 — 프론트엔드 전용 목(mock) API 서버
+ * TCP website — mock API server for frontend work
  *
- * 목적: MySQL / Python 파이프라인 / NestJS 없이 React 화면을 더미 데이터로 확인하기.
- * 의존성 없음(Node 18+ 내장 모듈만 사용). 데이터는 메모리에만 있고 재시작하면 초기화됩니다.
+ * Purpose: exercise the React screens with dummy data, without MySQL, the Python
+ * pipeline or NestJS. No dependencies (Node 18+ built-ins only). Data lives in
+ * memory and resets on restart.
  *
- *   node mock-tech-articles-api.mjs            # 기본 포트 3000
- *   PORT=4000 node mock-tech-articles-api.mjs  # 포트 변경
- *   MOCK_HOST=0.0.0.0 node mock-tech-articles-api.mjs  # 명시적으로 외부 접근 허용
+ *   node mock-tech-articles-api.mjs            # default port 3000
+ *   PORT=4000 node mock-tech-articles-api.mjs  # custom port
+ *   MOCK_HOST=0.0.0.0 node mock-tech-articles-api.mjs  # opt in to external access
  *
- * 주의: 실제 API 계약의 "표시에 필요한 부분"만 흉내 냅니다. 검증·권한·동시성은 없습니다.
+ * Note: only the parts of the real contract the UI needs are mocked. No validation,
+ * authorization or concurrency.
  */
 
 import { createServer } from "node:http";
@@ -23,7 +25,7 @@ const PUBLIC_ARTICLE_COUNT = Math.min(
 );
 
 /* ------------------------------------------------------------------ *
- * 결정론적 난수 (실행할 때마다 같은 더미 데이터가 나오도록)
+ * Deterministic RNG so every run produces the same dummy data
  * ------------------------------------------------------------------ */
 let seed = 20260820;
 const rand = () =>
@@ -39,7 +41,7 @@ const pickN = (list, n) => {
 const intBetween = (min, max) => min + Math.floor(rand() * (max - min + 1));
 
 /* ------------------------------------------------------------------ *
- * 고정 어휘 — 프론트엔드 TAG_CLASS_NAMES와 철자가 정확히 일치해야 합니다
+ * Fixed vocabulary — must match the frontend TAG_CLASS_NAMES exactly
  * ------------------------------------------------------------------ */
 const TAGS = [
   "AI",
@@ -416,23 +418,25 @@ const productionLikeMarkdown = (article) => {
 };
 
 /* ------------------------------------------------------------------ *
- * 더미 아티클 생성
+ * Dummy article generation
  * ------------------------------------------------------------------ */
-// 파이프라인이 실제로 만들 수 있는 상태 조합만 쓴다.
-// 세 축을 따로 뽑아 섞으면 도달 불가능한 조합이 나오고, 화면 오류로 오인하게 된다.
+// Only the state combinations the pipeline can actually produce.
+// Picking the three axes independently yields unreachable combinations that read
+// as UI bugs.
 //
-// 도달 경로 (tech-article-pipeline/core/.../persistence/mysql.py)
-//   최초 적재                     INGESTED            / NOT_REQUIRED
-//   품질 PASS                     ENRICHMENT_PENDING  / NOT_REQUIRED
-//   품질 REVIEW_REQUIRED          QUALITY_EVALUATED   / PENDING
-//   품질 REJECT                   QUALITY_REJECTED    / NOT_REQUIRED
-//   검토 승인                     ENRICHMENT_PENDING  / APPROVED
-//   검토 반려                     QUALITY_REJECTED    / REJECTED
-//   AI 요약 완료 + 즉시 공개 정책  ENRICHED            / NOT_REQUIRED / PUBLISHED
-//   AI 요약 완료 + 검토 후 공개    ENRICHED            / PENDING      / UNPUBLISHED
-//   공개 액션                     publicationStatus 만 변경
+// Reachable paths (tech-article-pipeline/core/.../persistence/mysql.py)
+//   first ingest                  INGESTED            / NOT_REQUIRED
+//   quality PASS                  ENRICHMENT_PENDING  / NOT_REQUIRED
+//   quality REVIEW_REQUIRED       QUALITY_EVALUATED   / PENDING
+//   quality REJECT                QUALITY_REJECTED    / NOT_REQUIRED
+//   review approved               ENRICHMENT_PENDING  / APPROVED
+//   review rejected               QUALITY_REJECTED    / REJECTED
+//   summarized, publish-now       ENRICHED            / NOT_REQUIRED / PUBLISHED
+//   summarized, review-first      ENRICHED            / PENDING      / UNPUBLISHED
+//   publication action            changes publicationStatus only
 //
-// 미사용 값: IN_REVIEW, CHANGES_REQUESTED, SCHEDULED (DB 제약에는 있으나 기록 경로 없음)
+// Unused: IN_REVIEW, CHANGES_REQUESTED, SCHEDULED — allowed by the DB constraint
+// but nothing writes them.
 const REACHABLE_STATES = [
   ["ENRICHED", "NOT_REQUIRED", "PUBLISHED"],
   ["ENRICHED", "NOT_REQUIRED", "HIDDEN"],
@@ -445,7 +449,7 @@ const REACHABLE_STATES = [
   ["QUALITY_REJECTED", "NOT_REQUIRED", "UNPUBLISHED"],
   ["QUALITY_REJECTED", "REJECTED", "UNPUBLISHED"],
   ["INGESTED", "NOT_REQUIRED", "UNPUBLISHED"],
-  // 실패는 직전 상태를 유지한 채 처리 단계만 바뀐다
+  // A failure keeps the previous state and only moves the processing stage
   ["PROCESSING_FAILED", "NOT_REQUIRED", "UNPUBLISHED"],
 ];
 
@@ -461,8 +465,8 @@ const articles = Array.from({ length: ARTICLE_COUNT }, (_, index) => {
       ? ` (${Math.floor(index / TITLES.length) + 1}편)`
       : "";
   const source = pick(SOURCES);
-  // 라운드로빈으로 배정해 모든 상태 조합이 최소 한 번씩 화면에 나오도록 한다.
-  // 앞 6건은 공개 목록이 비어 보이지 않도록 공개 상태로 고정한다.
+  // Round-robin so every state combination shows up at least once.
+  // The first six are forced public so the public list is never empty.
   const [processingStatus, reviewStatus, publicationStatus] =
     index < 6
       ? REACHABLE_STATES[0]
@@ -480,8 +484,8 @@ const articles = Array.from({ length: ARTICLE_COUNT }, (_, index) => {
     ),
     oneLineSummary: pick(SUMMARIES),
     summaryMarkdown: markdown(originalTitle),
-    // 요약기의 maximumTagCount 기본값이 3 입니다(contracts/models.py).
-    // 4개짜리 목 데이터는 실제로 나올 수 없는 화면을 만들어 냅니다.
+    // The summarizer's maximumTagCount defaults to 3 (contracts/models.py).
+    // Mock data with four tags would render a screen that cannot occur.
     tags: pickN(TAGS, intBetween(1, 3)),
     source: {
       id: source.id,
@@ -559,8 +563,8 @@ articles.forEach((article, index) => {
   article.publishedAt = null;
 });
 
-// NEW 배지가 로컬에서 보이도록 공개된 아티클 몇 건의 수집 시각을 최근으로
-// 맞춘다. 목 데이터의 기준 시각은 고정이라 그냥 두면 전부 12시간을 넘긴다.
+// Pull a few published articles' collection times forward so the NEW badge shows
+// up locally. The fixed base time would otherwise put everything past 12 hours.
 articles
   .filter(
     (a) =>
@@ -585,8 +589,8 @@ articles
     ).toISOString();
   });
 
-// 실제 파이프라인은 품질 평가 결과를 저장할 때 처음으로 점수를 기록한다.
-// INGESTED 는 자동 품질 평가 전 단계이므로 점수와 판정값이 없다.
+// The real pipeline records a score only when it stores the quality result.
+// INGESTED sits before automatic evaluation, so it has no score or decision.
 articles
   .filter((article) => article.processingStatus === "INGESTED")
   .forEach((article) => {
@@ -627,7 +631,7 @@ const evaluationOf = (article) => {
         : decision === "REVIEW_REQUIRED"
           ? "가치 점수가 경계 구간이라 관리자 확인이 필요합니다."
           : "품질 점수가 최소 검토 범위보다 낮습니다.",
-    // 실제 스키마와 동일 (modules/quality/.../models.py 의 Signals)
+    // Same shape as the real schema (Signals in modules/quality/.../models.py)
     signals: {
       contentLength: 400 + overall * 12,
       language: article.originalLanguage?.code || "en",
@@ -645,7 +649,7 @@ const evaluationOf = (article) => {
 };
 
 /* ------------------------------------------------------------------ *
- * 공통 헬퍼
+ * Shared helpers
  * ------------------------------------------------------------------ */
 const paginate = (rows, page, pageSize) => {
   const totalCount = rows.length;
@@ -705,7 +709,8 @@ const isNewArticle = (collectedAt) => {
   return Date.now() - t < NEW_ARTICLE_WINDOW_HOURS * 3600 * 1000;
 };
 
-// 공개 화면 소스 선택기. 파이프라인 catalog.PUBLIC_SOURCE_CATALOG 와 같은 모양.
+// Source picker for the public screens. Same shape as the pipeline's
+// catalog.PUBLIC_SOURCE_CATALOG.
 const PUBLIC_SOURCES = [
   {
     id: "cloudflare-blog",
@@ -734,21 +739,22 @@ const PUBLIC_SOURCES = [
   },
 ];
 
-// 관리자 승인이 실제로 있었던 아티클. 서버는 quality_review_cases 를 보지만
-// 목 서버에는 그 테이블이 없어 여기에 기록합니다. review_status 를 보면 공개
-// 토글이 덮어쓴 값에 속으므로 절대 그 값을 쓰지 않습니다.
+// Articles an admin actually approved. The server reads quality_review_cases,
+// but this mock has no such table so it tracks them here. Reading review_status
+// would pick up whatever the publish toggle overwrote, so never use it.
 const resolvedApprovals = new Set();
 
-// 승인 뒤 요약만 실패한 건(재처리 대상)이 화면에 하나는 보이도록 고정합니다.
-// 실제 서버에서는 quality_review_cases 의 RESOLVED_APPROVE 가 이 자리를 대신합니다.
+// Pin one article that was approved and then failed summarization, so the
+  // reprocessing case is always visible.
+// On the real server RESOLVED_APPROVE in quality_review_cases fills this role.
 for (const seed of articles
   .filter((a) => a.processingStatus === "PROCESSING_FAILED")
   .slice(0, 1)) {
   resolvedApprovals.add(seed.articleId);
 }
 
-// tech_article_pipeline.persistence.mysql.STAGE_PREDICATES 와 같은 판정입니다.
-// 한쪽만 고치면 화면이 목 서버에서만 다르게 보입니다.
+// Same predicates as tech_article_pipeline.persistence.mysql.STAGE_PREDICATES.
+// Change one side only and the mock renders differently from production.
 function articleStage(a) {
   switch (a.processingStatus) {
     case "INGESTED":
@@ -784,7 +790,7 @@ const STAGE_NAMES = [
   "QUALITY_REJECTED",
 ];
 
-// 검토 상태 표시 오류. 단계 축과 별개입니다.
+// Review-status mismatch. Independent of the stage axis.
 const APPROVED_COMPATIBLE = [
   "ENRICHMENT_PENDING",
   "ENRICHED",
@@ -794,13 +800,13 @@ const hasStatusMismatch = (a) =>
   a.reviewStatus === "APPROVED" &&
   !APPROVED_COMPATIBLE.includes(a.processingStatus);
 
-// 아티클별 조회수. 실제로는 파이프라인 MySQL 의 article_view_counts 입니다.
+// Per-article view counts. Backed by article_view_counts in the pipeline MySQL.
 const viewCounts = new Map();
 const viewCountsOf = (id) =>
   viewCounts.get(id) || { member: 0, guest: 0, lastViewedAt: null };
 
-// 조회수가 화면에 보이도록 몇 건 시드한다. 비회원 열람이 회원 열람보다 많은
-// 아티클을 하나 넣어 두 숫자를 나눠 보여주는 이유가 드러나게 한다.
+// Seed a few so the counts render. One article gets more guest views than member
+// views, which is why the two numbers are shown separately.
 articles.slice(0, 5).forEach((a, index) => {
   viewCounts.set(a.articleId, {
     member: [42, 17, 8, 3, 0][index],
@@ -823,7 +829,7 @@ const byNewest = (x, y) =>
   new Date(y.originalPublishedAt) - new Date(x.originalPublishedAt);
 
 /* ------------------------------------------------------------------ *
- * 검수 큐 / 정책 / 수집 상태 (메모리 상태)
+ * Review queue, policy and crawl state (in memory)
  * ------------------------------------------------------------------ */
 const duplicateCases = articles.slice(10, 15).map((a, i) => {
   const matched = articles[(i + 20) % articles.length];
@@ -896,7 +902,8 @@ const qualityCases = articles
 
 const publicationQueue = () =>
   articles
-    // 파이프라인의 공개 검토 큐 조건과 동일 (mysql.py _review_conditions)
+    // Same conditions as the pipeline's publication review queue
+  // (_review_conditions in mysql.py)
     .filter(
       (a) =>
         a.processingStatus === "ENRICHED" &&
@@ -1313,7 +1320,7 @@ const countBy = (rows, key) =>
   );
 
 /* ------------------------------------------------------------------ *
- * 사이트 공용 화면 더미 데이터
+ * Dummy data for the shared site screens
  * ------------------------------------------------------------------ */
 const demoAnnouncements = [
   {
@@ -1466,6 +1473,23 @@ const demoStudies = [
     members: [{ user_id: "demo-leader-3", name: "한동민", role: "LEADER" }],
   },
   {
+    id: 5,
+    study_name: "운영진 내부 세미나 (비공개)",
+    start_year: 2026,
+    study_description:
+      "비공개 스터디입니다. 로그인하지 않은 요청에는 목록에 나오지 않아야 합니다.",
+    tag: "운영,내부",
+    recruit_count: 5,
+    period: "2026.09 ~ 2026.12",
+    apply_deadline: "2026-09-30T23:59:59+09:00",
+    place: "동아리방",
+    way: "격주 금요일",
+    cycle: "격주",
+    is_public: false,
+    leader: { user_id: "demo-leader-1", name: "김민준" },
+    members: [{ user_id: "demo-leader-1", name: "김민준", role: "LEADER" }],
+  },
+  {
     id: 4,
     study_name: "알고리즘 문제 해결 입문",
     start_year: 2025,
@@ -1483,6 +1507,105 @@ const demoStudies = [
     members: [{ user_id: "demo-leader-4", name: "정수현", role: "LEADER" }],
   },
 ];
+
+/* Mixes short posts, a very long title and a link-only post so that line clamping
+ * and long-URL overflow can both be checked on one screen. */
+const demoStudyProgress = {
+  1: [
+    {
+      id: 101,
+      weekNo: 1,
+      progressDate: "2026-09-09T00:00:00.000Z",
+      title: "오리엔테이션과 개발 환경 맞추기",
+      content: `## 이번 주에 한 일
+
+- 스터디 목표와 진행 방식 합의
+- Node 22 / pnpm 으로 개발 환경 통일
+- 저장소 생성 및 브랜치 전략 정리
+
+## 다음 주까지
+
+각자 \`tsconfig.json\` 의 \`strict\` 옵션을 켜고 기존 코드에서 나는 오류를 정리해 옵니다.`,
+      resources: [
+        { id: 1001, name: "오리엔테이션 자료.pdf", format: "pdf" },
+        { id: 1002, name: "환경설정 가이드.md", format: "md" },
+      ],
+    },
+    {
+      id: 102,
+      weekNo: 2,
+      progressDate: "2026-09-16T00:00:00.000Z",
+      title:
+        "타입스크립트 제네릭과 조건부 타입을 실제 컴포넌트 Props 설계에 적용해 보고 서로의 코드를 리뷰하는 시간을 가졌습니다",
+      content: `## 다룬 내용
+
+제네릭 컴포넌트를 직접 만들어 보며 \`extends\` 제약과 기본 타입 인자를 언제 쓰는지 정리했습니다.
+
+조건부 타입은 유틸리티 타입을 직접 구현해 보는 방식으로 접근했고, 특히 \`ReturnType\` 과
+\`Parameters\` 를 손으로 다시 만들어 보면서 \`infer\` 의 동작을 이해했습니다.
+
+## 리뷰에서 나온 이야기
+
+- Props 에 유니온을 쓸 때는 판별 속성을 두는 편이 낫다
+- 제네릭을 남용하면 오히려 읽기 어려워진다는 의견이 많았습니다`,
+      resources: [{ id: 1003, name: "제네릭 실습.pptx", format: "pptx" }],
+    },
+    {
+      id: 103,
+      weekNo: 3,
+      progressDate: "2026-09-23T00:00:00.000Z",
+      title: "상태 관리 라이브러리 비교",
+      content: `## 참고 자료
+
+정리해 둔 문서와 벤치마크 결과는 아래 링크에 있습니다.
+
+https://example.com/tcp-study/react-state-management/benchmark-results-2026-09-23-with-a-very-long-slug-for-layout-testing
+
+짧은 링크도 함께: [스터디 노션](https://example.com/notion)
+
+## 결론
+
+작은 화면에서는 Context 로 충분했고, 폼 상태가 많아지는 순간부터 전역 스토어가 필요해졌습니다.`,
+      resources: [],
+    },
+    {
+      id: 104,
+      weekNo: 4,
+      progressDate: "2026-09-30T00:00:00.000Z",
+      title: "테스트 코드 작성 실습",
+      content: `Testing Library 로 컴포넌트 테스트를 작성했습니다.
+
+쿼리는 \`getByRole\` 을 우선 쓰고, 접근 가능한 이름이 없을 때만 다른 쿼리를 쓰기로 했습니다.`,
+      resources: [
+        { id: 1004, name: "테스트 작성 규칙.docx", format: "docx" },
+      ],
+    },
+  ],
+  2: [
+    {
+      id: 201,
+      weekNo: 1,
+      progressDate: "2026-09-12T00:00:00.000Z",
+      title: "NestJS 모듈 구조 잡기",
+      content: `## 이번 주
+
+모듈 경계를 도메인 기준으로 나누고, 공용 코드는 \`common\` 으로 분리했습니다.
+
+의존성 주입 범위를 정리하면서 순환 참조가 생기는 지점을 두 곳 찾아 고쳤습니다.`,
+      resources: [{ id: 2001, name: "모듈 구조도.pdf", format: "pdf" }],
+    },
+    {
+      id: 202,
+      weekNo: 2,
+      progressDate: "2026-09-19T00:00:00.000Z",
+      title: "인증과 인가 구현",
+      content: `JWT 발급과 갱신 흐름을 직접 구현했습니다.
+
+Refresh Token 은 httpOnly 쿠키로 내려주고, Access Token 만 응답 본문에 담기로 했습니다.`,
+      resources: [],
+    },
+  ],
+};
 
 const demoMembers = [
   [
@@ -1660,7 +1783,7 @@ const demoTeams = [
 ];
 
 /* ------------------------------------------------------------------ *
- * 라우팅
+ * Routing
  * ------------------------------------------------------------------ */
 const PUBLIC_BASE = "/api/v1/tech-articles";
 const ADMIN_BASE = "/api/v1/admin/tech-articles";
@@ -1691,7 +1814,7 @@ function handle(method, pathname, query, body, headers = {}) {
     ];
   }
 
-  /* ---------- 사이트 공용 공개 화면 ---------- */
+  /* ---------- Shared public screens ---------- */
   if (method === "GET" && pathname === "/api/v1/announcements") {
     return [200, demoAnnouncements];
   }
@@ -1704,12 +1827,18 @@ function handle(method, pathname, query, body, headers = {}) {
   }
   if (method === "GET" && pathname === "/api/v1/study") {
     const year = query.get("year");
+    // Mirrors the real API: anonymous callers only see public studies.
+    const signedIn = Boolean(headers.authorization);
     return [
       200,
-      year
-        ? demoStudies.filter((study) => String(study.start_year) === year)
-        : demoStudies,
+      demoStudies
+        .filter((study) => signedIn || study.is_public)
+        .filter((study) => !year || String(study.start_year) === year),
     ];
+  }
+  if (method === "GET" && /^\/api\/v1\/study\/\d+\/progress$/.test(pathname)) {
+    const id = Number(pathname.split("/").at(-2));
+    return [200, demoStudyProgress[id] ?? []];
   }
   if (method === "GET" && /^\/api\/v1\/study\/\d+$/.test(pathname)) {
     const id = Number(pathname.split("/").at(-1));
@@ -1731,8 +1860,8 @@ function handle(method, pathname, query, body, headers = {}) {
     return [200, { hasApplied: false, applicationInfo: null }];
   }
 
-  /* ---------- 홈/헤더가 호출하는 경로들 ----------
-   * 홈 화면이 실제 데이터가 있는 상태로 보이도록 최소 계약을 흉내 냅니다.
+  /* ---------- Routes the home page and header call ----------
+   * Mocks just enough of the contract for the home screen to look populated.
    */
   if (method === "GET" && pathname === "/api/v1/main/statistics") {
     return [
@@ -1778,13 +1907,13 @@ function handle(method, pathname, query, body, headers = {}) {
     a.title.includes(keyword) ||
     (a.oneLineSummary || "").includes(keyword);
 
-  /* ---------- 공개 ---------- */
+  /* ---------- Public ---------- */
   if (method === "GET" && pathname === `${PUBLIC_BASE}/tags`) {
     return [200, { items: TAGS }];
   }
 
-  // 소스는 계속 늘어나므로 목록 응답이 아니라 별도 경로로 줍니다.
-  // Nest 미들웨어가 가드 앞에서 부르는 경로. 회원/비회원을 나눠 셉니다.
+  // Sources keep growing, so they get their own route instead of riding the list.
+  // Nest middleware calls this ahead of the guards. Counts members and guests apart.
   if (
     method === "POST" &&
     /\/view$/.test(pathname) &&
@@ -1862,10 +1991,10 @@ function handle(method, pathname, query, body, headers = {}) {
     ];
   }
 
-  /* ---------- 관리자: 통계 ---------- */
+  /* ---------- Admin: statistics ---------- */
   if (method === "GET" && pathname === `${ADMIN_BASE}/stats`) {
-    // 목록과 같은 조건으로 셉니다. 단계(stage)는 넣지 않습니다 — 넣으면 고른
-    // 단계만 남고 나머지 칩이 전부 0 이 됩니다.
+    // Counted with the same filters as the list, minus stage — including it would
+    // leave only the selected stage and zero out every other chip.
     const statsStatus = query.get("publicationStatus");
     const scope = articles
       .filter(matches)
@@ -1891,7 +2020,7 @@ function handle(method, pathname, query, body, headers = {}) {
             scope.filter((a) => articleStage(a) === stage).length,
           ]),
         ),
-        // 단계별 최장 체류. 서버와 같이 updated_at 기준입니다.
+        // Longest time in each stage, keyed off updated_at as the server does.
         stageOldest: Object.fromEntries(
           STAGE_NAMES.map((stage) => {
             const rows = scope.filter((a) => articleStage(a) === stage);
@@ -1900,7 +2029,7 @@ function handle(method, pathname, query, body, headers = {}) {
           }),
         ),
         statusMismatch: scope.filter(hasStatusMismatch).length,
-        // 검수 큐는 다른 테이블이라 목록 필터와 무관하게 전체입니다.
+        // The review queue is a separate table, so list filters do not apply.
         reviews: {
           duplicates: duplicateCases.length,
           quality: qualityCases.length,
@@ -1913,7 +2042,7 @@ function handle(method, pathname, query, body, headers = {}) {
     ];
   }
 
-  /* ---------- 관리자: 검수 큐 ---------- */
+  /* ---------- Admin: review queue ---------- */
   if (method === "GET" && pathname === `${ADMIN_BASE}/reviews/duplicates`) {
     return [200, paginate(duplicateCases, page, pageSize)];
   }
@@ -1938,7 +2067,7 @@ function handle(method, pathname, query, body, headers = {}) {
     ];
   }
 
-  /* ---------- 관리자: 공개 정책 ---------- */
+  /* ---------- Admin: publication policy ---------- */
   if (method === "GET" && pathname === `${ADMIN_BASE}/publication-policy`) {
     return [200, publicationPolicy];
   }
@@ -1952,7 +2081,7 @@ function handle(method, pathname, query, body, headers = {}) {
     return [200, publicationPolicy];
   }
 
-  /* ---------- 관리자: 수집 ---------- */
+  /* ---------- Admin: crawling ---------- */
   if (method === "GET" && pathname === `${ADMIN_BASE}/crawl-sources`) {
     return [200, CRAWL_SOURCES];
   }
@@ -2005,8 +2134,8 @@ function handle(method, pathname, query, body, headers = {}) {
         404,
         { statusCode: 404, message: "수집 실행을 찾을 수 없습니다." },
       ];
-    // 새로 요청한 실행만 폴링할 때마다 QUEUED -> RUNNING -> COMPLETED 로 진행한다.
-    // 고정 더미 이력은 여러 상태를 계속 비교할 수 있도록 그대로 둔다.
+    // Only newly requested runs advance QUEUED -> RUNNING -> COMPLETED as you poll.
+    // The fixed history stays put so every state remains comparable.
     if (!run._demoLocked) run._polls += 1;
     if (!run._demoLocked && run._polls === 1) {
       Object.assign(run, {
@@ -2045,7 +2174,7 @@ function handle(method, pathname, query, body, headers = {}) {
     return [200, publicCrawlRun(run)];
   }
 
-  /* ---------- 관리자: 게시 상태 변경 ---------- */
+  /* ---------- Admin: publication actions ---------- */
   if (
     method === "POST" &&
     pathname === `${ADMIN_BASE}/publication-actions/bulk`
@@ -2069,7 +2198,7 @@ function handle(method, pathname, query, body, headers = {}) {
     return [200, updated];
   }
 
-  /* ---------- 관리자: 검수 판정 ---------- */
+  /* ---------- Admin: review decisions ---------- */
   if (
     method === "POST" &&
     pathname === `${ADMIN_BASE}/reviews/duplicates/resolutions/bulk`
@@ -2127,13 +2256,13 @@ function handle(method, pathname, query, body, headers = {}) {
     return [200, { caseId, status: "RESOLVED", caseVersion: 2 }];
   }
 
-  /* ---------- 관리자: 목록 / 상세 (마지막에 둬야 위 경로들을 가로채지 않음) ---------- */
+  /* ---------- Admin: list / detail (must stay last so it does not shadow the routes above) ---------- */
   if (method === "GET" && pathname === ADMIN_BASE) {
     const status = query.get("publicationStatus");
     const stage = query.get("stage");
     const mismatchOnly = query.get("statusMismatch") === "true";
     const sort = query.get("sort") || "NEWEST";
-    // 서버와 같은 순서로 거릅니다 — 거른 뒤에 페이지를 자릅니다.
+    // Filtered in the same order as the server: filter first, then paginate.
     let rows = articles
       .filter(matches)
       .filter((a) => !status || a.publicationStatus === status)
@@ -2160,7 +2289,7 @@ function handle(method, pathname, query, body, headers = {}) {
       {
         ...adminItem(found),
         latestCrawlItemId: `item-${found.articleId}`,
-        evaluation: evaluationOf(found), // 관리자 상세는 dimensions 중첩 형태
+        evaluation: evaluationOf(found), // The admin detail nests its dimensions
       },
     ];
   }
@@ -2184,9 +2313,9 @@ function applyPublication(articleId, action) {
     article.publicationStatus = next;
     article.publishedAt =
       next === "PUBLISHED" ? new Date().toISOString() : article.publishedAt;
-    // 서버 동작을 그대로 재현한다. PUBLISH 만 검토 상태를 승격시키고
-    // HIDE, ARCHIVE 는 건드리지 않는다 (mysql.py apply_publication_action).
-    // 승격 자체가 알려진 결함이므로 서버 수정 시 이 줄도 함께 제거한다.
+    // Mirrors the server: only PUBLISH promotes the review status, while
+    // HIDE and ARCHIVE leave it alone (apply_publication_action in mysql.py).
+    // That promotion is a known defect: drop this line when the server is fixed.
     if (action === "PUBLISH") article.reviewStatus = "APPROVED";
     article.recordVersion += 1;
   }
@@ -2204,12 +2333,12 @@ function removeCase(list, key, value) {
 }
 
 /* ------------------------------------------------------------------ *
- * HTTP 서버
+ * HTTP server
  * ------------------------------------------------------------------ */
 const server = createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
-  // 다른 포트에서 CRA dev server가 직접 호출하는 경우를 위해 CORS 허용
+  // CORS is open so the CRA dev server can call this from another port
   res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
   res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader(
@@ -2253,7 +2382,7 @@ const server = createServer((req, res) => {
       payload = { statusCode: 500, message: String(error?.stack || error) };
     }
 
-    // 로그인/로그아웃 등 화면이 부수적으로 부르는 경로는 조용히 200 처리
+    // Incidental calls such as login and logout return a quiet 200
     if (status === 404 && url.pathname.startsWith("/api/v1/auth/")) {
       status = 200;
       payload = {};
@@ -2285,7 +2414,7 @@ server.listen(PORT, HOST, () => {
       "  ─────────────────────────────────────────────",
       `  주소        http://${HOST}:${PORT}`,
       `  더미 아티클  ${articles.length}건 (공개 ${publicCount}건)`,
-      `  공용 화면     공지 ${demoAnnouncements.length} · 스터디 ${demoStudies.length} · 멤버 ${demoMembers.length} · 팀 ${demoTeams.length}`,
+      `  공용 화면     공지 ${demoAnnouncements.length} · 스터디 ${demoStudies.length}(비공개 ${demoStudies.filter((s) => !s.is_public).length})(주차 기록 ${Object.values(demoStudyProgress).flat().length}) · 멤버 ${demoMembers.length} · 팀 ${demoTeams.length}`,
       `  검수 큐      중복 ${duplicateCases.length} · 품질 ${qualityCases.length} · 공개 ${publicationQueue().length}`,
       "",
       "  프론트엔드는 다른 터미널에서:",

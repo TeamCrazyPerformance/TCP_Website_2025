@@ -910,22 +910,6 @@ body {
     overflow: hidden;
 }
 
-.member-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 5px;
-    background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
-    transform: translateY(-100%);
-    transition: transform 0.3s ease-out;
-}
-
-.member-card:hover::before {
-    transform: translateY(0);
-}
-
 .member-card .img-container {
     width: 120px;
     height: 120px;
@@ -1136,8 +1120,8 @@ body {
     display: none;
 }
 
-/* 공개 서비스 화면의 기준 폭입니다. Tech Articles 전용 CSS와 분리해 두어
- * 기존 서비스 화면만 같은 1120px 그리드에 맞춥니다. */
+/* Base width for the public pages. Kept apart from the Tech Articles CSS so that
+ * only the existing service screens share this 1120px grid. */
 .site-content-container {
     width: 100%;
     max-width: 1120px;
@@ -1145,17 +1129,17 @@ body {
     margin-left: auto;
 }
 
-/* ── 공용 내비게이션 바 ───────────────────────────────────
- * 데스크톱(1024px 이상)에서는 스크롤을 따라오며, 스크롤이 시작되면 배경이
- * 반투명 + backdrop blur 로 바뀝니다(애플 홈페이지식 프로스티드 글래스).
- * 맨 위에서는 배경 없이 두어 히어로 영역이 그대로 보이게 합니다.
+/* ── Shared navigation bar ───────────────────────────────
+ * On desktop (1024px and up) it follows the scroll, and once scrolling starts the
+ * background turns translucent with a backdrop blur (Apple-style frosted glass).
+ * At the very top it stays transparent so the hero shows through.
  *
- * 모바일에서도 문서 흐름 밖의 fixed 헤더를 사용합니다. 아래로 스크롤하면
- * 화면 위로 숨기고, 위로 스크롤하는 순간 다시 보여 콘텐츠 영역을 가리지
- * 않으면서도 메뉴에 빠르게 접근할 수 있게 합니다.
+ * Mobile also uses a fixed header outside the document flow. It hides on scroll
+ * down and reappears the moment you scroll up, so it stays out of the content
+ * while keeping the menu one gesture away.
  *
- * 메뉴 링크가 모두 들어가지 않는 폭에서는 가로 스크롤 대신 목록 버튼을
- * 표시하고, 넓은 화면에서만 전체 메뉴를 한 줄로 펼칩니다. */
+ * When the links no longer fit, a menu button replaces horizontal scrolling;
+ * only wide screens lay the full menu out in a single row. */
 .site-nav {
     position: fixed;
     top: 0;
@@ -1191,8 +1175,8 @@ body {
         backdrop-filter: saturate(180%) blur(14px);
     }
 
-    /* backdrop-filter 미지원 브라우저에서는 뒤가 비쳐 글자가 묻히므로
-     * 불투명도를 올려 가독성을 확보합니다. */
+    /* Without backdrop-filter the page shows through and swallows the text,
+     * so raise the opacity to keep it readable. */
     @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
         .site-nav.is-scrolled {
             background: rgba(10, 10, 10, 0.94);
@@ -1213,14 +1197,13 @@ body {
     }
 }
 
-/* ── 헤더의 로그인 · 회원가입 버튼 ─────────────────────────
- * Tailwind 는 CDN 의 2.2.19 프리빌드를 그대로 씁니다(public/index.html).
- * 프리빌드에는 text-[11px], max-[420px]:*, bg-white/5 같은 임의값·슬래시
- * 문법이 클래스로 존재하지 않아 아무 효과가 없었고, 그래서 모바일에서는
- * font-size 가 지정되지 않은 채 body 의 16px 를 상속받아 유독 커 보였습니다.
- * (같은 자리의 로그아웃 버튼은 text-xs 를 써서 정상이었습니다.)
- * 실제 크기를 여기서 정합니다. 데스크톱 14px 는 헤더의 다른 텍스트와 같은
- * 단계입니다. */
+/* ── Header sign-in / sign-up buttons ────────────────────
+ * Tailwind comes from the 2.2.19 CDN prebuild (see public/index.html).
+ * That build has no arbitrary-value or slash classes such as text-[11px],
+ * max-[420px]:* or bg-white/5, so those did nothing and the buttons inherited
+ * the body's 16px on mobile, which made them look oversized.
+ * (The logout button beside them used text-xs and was fine.)
+ * The real sizes are set here. 14px on desktop matches the rest of the header. */
 .nav-auth-link {
     display: inline-flex;
     align-items: center;
@@ -1534,6 +1517,13 @@ body {
     box-shadow: none;
 }
 
+/* Same value as .study-detail-tags in studyDetail.css. */
+.study-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
 section.recruitment-candidate-section {
     padding-top: 1.5rem;
     padding-bottom: 4rem;
@@ -1547,8 +1537,8 @@ section.recruitment-candidate-section {
     margin-bottom: 4rem;
 }
 
-/* Tailwind 2 프리빌드에서는 translate 유틸리티가 단독으로 적용되지 않아
- * 검색 아이콘의 중앙이 어긋날 수 있습니다. 위치 계산을 공용 CSS로 고정합니다. */
+/* In the Tailwind 2 prebuild the translate utilities do not apply on their own,
+ * which can leave the search icon off-center. Pin the position here instead. */
 .search-field-icon {
     position: absolute;
     top: 50%;
@@ -1568,8 +1558,8 @@ section.recruitment-candidate-section {
     right: 1rem;
 }
 
-/* Members와 Find Your Team의 필터 패널은 Tech Articles의 최신 검색 UI와
- * 같은 표면색을 사용하되, 전용 스타일 파일에는 의존하지 않습니다. */
+/* The Members and Find Your Team filter panels reuse the surface color of the
+ * latest Tech Articles search UI without depending on its stylesheet. */
 .service-filter-panel {
     padding: 1rem;
     background: #080d1a;
@@ -1666,6 +1656,42 @@ section.members-current-section {
     margin-top: 1rem;
 }
 
+/* Matches the final public tag styling in techArticlesPublicAlign.css. */
+:is(.members-tag-filter, .team-tag-filter, .member-card, .recruitment-card, .team-detail-modal, .study-card-tags, .study-detail-tags) :is(button, span).service-tag {
+    min-height: 22px;
+    padding: 2px 10px;
+    border-radius: 9999px;
+    color: #111827;
+    background: var(--service-filter-tag-background, #808b89);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 16px;
+}
+
+:is(.members-tag-filter, .team-tag-filter, .member-card, .recruitment-card, .team-detail-modal, .study-card-tags, .study-detail-tags) > [aria-label] {
+    gap: 6px;
+}
+
+:is(.members-tag-filter, .team-tag-filter, .member-card, .recruitment-card, .team-detail-modal, .study-card-tags, .study-detail-tags) .tag-btn[aria-pressed="true"] {
+    box-shadow: 0 0 0 2px rgba(248, 250, 252, 0.9);
+}
+
+:is(.members-tag-filter, .team-tag-filter, .member-card, .recruitment-card, .team-detail-modal, .study-card-tags, .study-detail-tags) .tag-ai-ml { --service-filter-tag-background: #c978a9; }
+:is(.members-tag-filter, .team-tag-filter, .member-card, .recruitment-card, .team-detail-modal, .study-card-tags, .study-detail-tags) .tag-frontend { --service-filter-tag-background: #a99fb4; }
+:is(.members-tag-filter, .team-tag-filter, .member-card, .recruitment-card, .team-detail-modal, .study-card-tags, .study-detail-tags) .tag-mobile { --service-filter-tag-background: #d9cde5; }
+:is(.members-tag-filter, .team-tag-filter, .member-card, .recruitment-card, .team-detail-modal, .study-card-tags, .study-detail-tags) .tag-language-framework { --service-filter-tag-background: #9b89a8; }
+:is(.members-tag-filter, .team-tag-filter, .member-card, .recruitment-card, .team-detail-modal, .study-card-tags, .study-detail-tags) :is(.tag-data, .tag-data-db) { --service-filter-tag-background: #a684a7; }
+:is(.members-tag-filter, .team-tag-filter, .member-card, .recruitment-card, .team-detail-modal, .study-card-tags, .study-detail-tags) :is(.tag-cloud, .tag-cloud-devops) { --service-filter-tag-background: #a181af; }
+:is(.members-tag-filter, .team-tag-filter, .member-card, .recruitment-card, .team-detail-modal, .study-card-tags, .study-detail-tags) .tag-devops { --service-filter-tag-background: #a17eba; }
+:is(.members-tag-filter, .team-tag-filter, .member-card, .recruitment-card, .team-detail-modal, .study-card-tags, .study-detail-tags) .tag-security { --service-filter-tag-background: #758f9f; }
+:is(.members-tag-filter, .team-tag-filter, .member-card, .recruitment-card, .team-detail-modal, .study-card-tags, .study-detail-tags) .tag-backend { --service-filter-tag-background: #6fb8aa; }
+:is(.members-tag-filter, .team-tag-filter, .member-card, .recruitment-card, .team-detail-modal, .study-card-tags, .study-detail-tags) .tag-architecture { --service-filter-tag-background: #808b89; }
+:is(.members-tag-filter, .team-tag-filter, .member-card, .recruitment-card, .team-detail-modal, .study-card-tags, .study-detail-tags) .tag-developer-tools { --service-filter-tag-background: #75aea4; }
+:is(.members-tag-filter, .team-tag-filter, .member-card, .recruitment-card, .team-detail-modal, .study-card-tags, .study-detail-tags) .tag-software-quality { --service-filter-tag-background: #579c8f; }
+:is(.members-tag-filter, .team-tag-filter, .member-card, .recruitment-card, .team-detail-modal, .study-card-tags, .study-detail-tags) .tag-open-source { --service-filter-tag-background: #7ba672; }
+:is(.members-tag-filter, .team-tag-filter, .member-card, .recruitment-card, .team-detail-modal, .study-card-tags, .study-detail-tags) .tag-development-organization { --service-filter-tag-background: #8ba0d6; }
+:is(.members-tag-filter, .team-tag-filter, .member-card, .recruitment-card, .team-detail-modal, .study-card-tags, .study-detail-tags) :is(.tag-industry-trends, .tag-industry-career) { --service-filter-tag-background: #9dc3d8; }
+
 @media (max-width: 767px) {
     .members-filter-panel {
         width: 100%;
@@ -1676,38 +1702,88 @@ section.members-current-section {
     color: var(--cta-text-color);
 }
 
-/* 최신 Tech Articles 태그 팔레트를 기존 서비스에서 재사용합니다. */
+/* Must match .ta-public .tag-button / .article-tag in techArticlesPublic.css.
+ * Changing only one side makes tags look different from screen to screen. */
 .service-tag {
-    color: #111827;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
     border: 0;
-    font-size: 11px;
-    font-weight: 600;
-    line-height: 1.25;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 500;
 }
 
-.service-tag.is-selected {
-    box-shadow: 0 0 0 2px rgba(248, 250, 252, 0.9);
+.tag-btn.service-tag {
+    min-height: 28px;
+    padding: 4px 12px;
+    cursor: pointer;
 }
 
-.service-tag-tone-01 { background: #c978a9; }
-.service-tag-tone-02 { background: #a99fb4; }
-.service-tag-tone-03 { background: #d9cde5; }
-.service-tag-tone-04 { background: #9b89a8; }
-.service-tag-tone-05 { background: #a684a7; }
-.service-tag-tone-06 { background: #a181af; }
-.service-tag-tone-07 { background: #a17eba; }
-.service-tag-tone-08 { background: #758f9f; }
-.service-tag-tone-09 { background: #6fb8aa; }
-.service-tag-tone-10 { background: #808b89; }
-.service-tag-tone-11 { background: #75aea4; }
-.service-tag-tone-12 { background: #579c8f; }
-.service-tag-tone-13 { background: #7ba672; }
-.service-tag-tone-14 { background: #8ba0d6; }
-.service-tag-tone-15 { background: #9dc3d8; }
+.service-tag.is-selected,
+.service-tag[aria-pressed="true"] {
+    box-shadow: 0 0 0 2px #60a5fa;
+}
 
-/* Apple의 390px 화면에서 확인한 32px 제목, 14px 버튼, 48px 내비게이션과
- * iOS의 17pt 기본·11pt 최소 글자 기준을 참고해 공개 화면의 모바일 밀도를
- * 한 단계 낮춥니다. 브랜드 헤더와 터치 영역은 TCP 구성에 맞춰 조금 더 여유를 둡니다. */
+/* Redeclared here because the originals are scoped under .ta-public. */
+.tag-ai-ml,
+.tag-data,
+.tag-data-db,
+.tag-cloud-devops {
+    color: #d8b4fe;
+    background: rgba(88, 28, 135, 0.8);
+}
+
+.tag-frontend {
+    color: #93c5fd;
+    background: rgba(30, 58, 138, 0.8);
+}
+
+.tag-backend {
+    color: #86efac;
+    background: rgba(20, 83, 45, 0.8);
+}
+
+.tag-mobile {
+    color: #f9a8d4;
+    background: rgba(131, 24, 67, 0.8);
+}
+
+.tag-security {
+    color: #fca5a5;
+    background: rgba(127, 29, 29, 0.8);
+}
+
+.tag-open-source {
+    color: #fde68a;
+    background: rgba(120, 53, 15, 0.8);
+}
+
+.tag-language-framework {
+    color: #a5f3fc;
+    background: rgba(21, 94, 117, 0.8);
+}
+
+.tag-architecture {
+    color: #c7d2fe;
+    background: rgba(49, 46, 129, 0.8);
+}
+
+.tag-blockchain-web3 {
+    color: #f0abfc;
+    background: rgba(112, 26, 117, 0.8);
+}
+
+.tag-industry-career {
+    color: #fed7aa;
+    background: rgba(124, 45, 18, 0.8);
+}
+
+/* Loosens mobile density on the public pages one step, following what Apple uses
+ * at 390px (32px headings, 14px buttons, 48px navigation) and the iOS type scale
+ * (17pt body, 11pt minimum). The brand header and touch targets get a little more
+ * room to suit the TCP layout. */
 @media (max-width: 479px) {
     .site-nav-row {
         height: 3.5rem;
@@ -2016,7 +2092,7 @@ section.members-current-section {
     }
 }
 
-/* 390px 폭에서도 멤버 목록을 두 열로 유지하도록 카드 내부 밀도를 줄입니다. */
+/* Tightens the card interior so the member list stays two columns at 390px. */
 @media (max-width: 479px) {
     .members-grid {
         gap: 0.75rem;
