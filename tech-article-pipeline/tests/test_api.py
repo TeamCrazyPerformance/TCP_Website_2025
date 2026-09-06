@@ -126,6 +126,15 @@ def test_api_auth_submission_replay_and_public_filter(normalized_payload):
         assert stats.json()["publication"]["PUBLISHED"] == 1
 
         today = datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat()
+        keyword_snapshot = {
+            "loadedAt": "2026-09-06T00:00:00+00:00",
+            "fingerprint": "test-fingerprint",
+            "totalCount": 2,
+            "coreKeywords": ["python"],
+            "dynamicKeywords": ["fastapi"],
+            "refreshPolicy": "PROCESS_START",
+        }
+        orchestrator.quality.keyword_snapshot = lambda: keyword_snapshot
         overview = client.get(
             "/internal/v1/admin/overview",
             params={"from": today, "to": today},
@@ -133,6 +142,7 @@ def test_api_auth_submission_replay_and_public_filter(normalized_payload):
         )
         assert overview.status_code == 200
         overview_body = overview.json()
+        assert overview_body["qualityKeywords"] == keyword_snapshot
         assert "pipelineVersion" not in str(overview_body)
         assert overview_body["moduleVersions"]["qualityEvaluator"]["moduleVersion"] == "9.1.0"
         assert overview_body["moduleVersions"]["aiSummarizer"] == {
@@ -202,47 +212,8 @@ def test_api_auth_submission_replay_and_public_filter(normalized_payload):
                 "administratorId": "admin-1",
             },
         )
-        assert recalculated.status_code == 200
-        assert recalculated.json()["status"] == "PENDING"
-        queued_article = repository.get_article(article["articleId"])
-        assert queued_article["recordVersion"] == before_recalculation["recordVersion"]
-        assert queued_article["publicationStatus"] == "PUBLISHED"
-        original_quality_result = repository.get_submission(created.json()["submissionId"])[
-            "quality_result"
-        ]
-        assert worker.process_once() is True
-        admin_article = repository.get_article(article["articleId"])
-        assert admin_article["publicationStatus"] == "PUBLISHED"
-        assert admin_article["qualityDecision"] == "REJECT"
-        assert admin_article["qualityRecalculationStatus"] == "ATTENTION_REQUIRED"
-        assert (
-            repository.get_submission(created.json()["submissionId"])["quality_result"]
-            == original_quality_result
-        )
-        recalculation_attention = client.get(
-            "/internal/v1/admin/articles?qualityRecalculationStatus=ATTENTION_REQUIRED",
-            headers={"Authorization": "Bearer test-service-token"},
-        )
-        assert recalculation_attention.status_code == 200
-        assert recalculation_attention.json()["totalCount"] == 1
-        assert (
-            recalculation_attention.json()["items"][0]["qualityRecalculationStatus"]
-            == "ATTENTION_REQUIRED"
-        )
-        assert (
-            client.get(
-                "/internal/v1/admin/articles?qualityRecalculationStatus=PASS",
-                headers={"Authorization": "Bearer test-service-token"},
-            ).json()["totalCount"]
-            == 0
-        )
-        assert (
-            client.get(
-                "/internal/v1/admin/articles?qualityVersionStatus=OUTDATED",
-                headers={"Authorization": "Bearer test-service-token"},
-            ).json()["totalCount"]
-            == 0
-        )
+        assert recalculated.status_code == 404
+        assert repository.get_article(article["articleId"]) == before_recalculation
 
         orchestrator.summarizer.module_version = "8.3.0"
         orchestrator.summarizer.model = "fake-model-2"

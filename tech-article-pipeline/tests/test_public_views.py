@@ -81,7 +81,7 @@ def test_public_detail_view_has_an_exact_allowlist_and_minimal_score():
     assert result["valueScore"] == {
         "overall": 88,
         "scale": {"min": 0, "max": 100},
-        "breakdown": [{"label": "개발 관련성", "contribution": 31.85}],
+        "breakdown": [{"label": "개발 관련성", "contribution": 31.85, "value": 91}],
     }
     serialized = str(result)
     for forbidden in (
@@ -90,7 +90,6 @@ def test_public_detail_view_has_an_exact_allowlist_and_minimal_score():
         "processingStatus",
         "relevance",
         "weight",
-        "'value':",
     ):
         assert forbidden not in serialized
 

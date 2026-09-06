@@ -14,8 +14,6 @@ import {
   getAdminTechArticleStats,
   getPublicationPolicy,
   isVersionConflict,
-  recalculateArticleQualitiesBulk,
-  recalculateArticleQuality,
   regenerateArticleSummariesBulk,
   regenerateArticleSummary,
   reprocessArticle,
@@ -116,6 +114,13 @@ function pendingQualityReview(article) {
 
 function canRetryProcessing(article) {
   return ["FAILED", "FAILED_AFTER_APPROVAL"].includes(resolveStage(article));
+}
+
+function canRegenerateSummary(article) {
+  return (
+    article?.processingStatus === "ENRICHED" &&
+    UPDATABLE_VERSION_STATUS.has(article.summaryVersionStatus)
+  );
 }
 
 function StatusBadge({ status }) {
@@ -343,7 +348,7 @@ function QualityVersionBadge({ article }) {
     <span className="quality-version-badge">
       {article.qualityVersionStatus === "UNTRACKED"
         ? "품질 평가 버전 미기록"
-        : "품질 점수 업데이트 필요"}
+        : "품질 평가 버전 다름"}
     </span>
   );
 }
@@ -578,6 +583,10 @@ function AdminTechArticles() {
   }, [notice]);
 
   const selectedRecords = useMemo(() => Object.values(selected), [selected]);
+  const canBulkRegenerate =
+    selectedRecords.length > 0 && selectedRecords.every(canRegenerateSummary);
+  const canBulkRetry =
+    selectedRecords.length > 0 && selectedRecords.every(canRetryProcessing);
   const availablePublicationActions = useMemo(
     () => ({
       PUBLISH: selectedRecords.some((article) =>
@@ -787,6 +796,42 @@ function AdminTechArticles() {
     }
   };
 
+  const runBulkReprocessing = async () => {
+    if (isMutating || !canBulkRetry) return;
+    const articles = [...selectedRecords];
+    const accepted = await askConfirmation({
+      title: `${articles.length}개 아티클을 재처리할까요?`,
+      description: "각 아티클의 마지막 실패 단계부터 다시 실행합니다.",
+      confirmLabel: "재처리",
+      tone: "success",
+    });
+    if (!accepted) return;
+    setIsMutating(true);
+    const succeeded = new Set();
+    const failures = [];
+    try {
+      for (const article of articles) {
+        try {
+          await reprocessArticle(article.articleId, {
+            action: "RETRY",
+            expectedRecordVersion: article.recordVersion,
+          });
+          succeeded.add(article.articleId);
+        } catch (error) {
+          failures.push(`${article.title}: ${techArticleErrorMessage(error)}`);
+        }
+      }
+      setSelected({});
+      setNotice({
+        type: failures.length ? "error" : "success",
+        message: `${succeeded.size}건을 재처리 대기열에 등록했습니다.${failures.length ? ` ${failures.length}건 실패: ${failures.join(" / ")}` : ""}`,
+      });
+      await Promise.all([loadInventory(), loadOverview()]);
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
   const runBulkAction = async (action) => {
     if (!selectedRecords.length) return;
     const { eligible, blocked } = partitionPublicationAction(
@@ -874,10 +919,8 @@ function AdminTechArticles() {
   };
 
   const runSummaryRegeneration = async (articlesToRegenerate) => {
-    const candidates = articlesToRegenerate.filter((article) =>
-      UPDATABLE_VERSION_STATUS.has(article.summaryVersionStatus),
-    );
-    const excluded = articlesToRegenerate.length - candidates.length;
+    if (isMutating || !articlesToRegenerate.every(canRegenerateSummary)) return;
+    const candidates = articlesToRegenerate;
     if (!candidates.length) {
       setNotice({
         type: "error",
@@ -888,14 +931,7 @@ function AdminTechArticles() {
     }
     const accepted = await askConfirmation({
       title: `${candidates.length}개 아티클의 AI 요약을 재생성할까요?`,
-      description: [
-        "현재 공개 내용과 공개 상태는 새 요약이 성공할 때까지 유지됩니다.",
-        excluded
-          ? `${excluded}건은 이미 최신 버전이거나 재생성할 수 없어 제외됩니다.`
-          : "",
-      ]
-        .filter(Boolean)
-        .join(" "),
+      description: "현재 공개 내용과 공개 상태는 새 요약이 성공할 때까지 유지됩니다.",
       confirmLabel: "재생성",
       tone: "success",
     });
@@ -964,105 +1000,6 @@ function AdminTechArticles() {
           message: techArticleErrorMessage(
             error,
             "AI 요약 재생성 요청을 완료하지 못했습니다.",
-          ),
-        });
-      }
-    } finally {
-      setIsMutating(false);
-    }
-  };
-
-  const runQualityRecalculation = async (articlesToRecalculate) => {
-    const candidates = articlesToRecalculate.filter((article) =>
-      UPDATABLE_VERSION_STATUS.has(article.qualityVersionStatus),
-    );
-    const excluded = articlesToRecalculate.length - candidates.length;
-    if (!candidates.length) {
-      setNotice({
-        type: "error",
-        message:
-          "버전이 기록되지 않았거나 최신 버전과 다른 품질 평가를 선택해 주세요.",
-      });
-      return;
-    }
-    const accepted = await askConfirmation({
-      title: `${candidates.length}개 아티클의 품질 점수를 재계산할까요?`,
-      description: [
-        "아티클에 저장된 품질 평가 정책을 유지한 채 최신 평가 모듈로 다시 계산합니다. 성공하면 최신 점수와 판정만 갱신하며 공개·처리·검토 상태는 바꾸지 않습니다. 새 판정이 통과가 아니면 품질 재검토 필요로 표시합니다.",
-        excluded
-          ? `${excluded}건은 이미 최신 버전이거나 재계산할 수 없어 제외됩니다.`
-          : "",
-      ]
-        .filter(Boolean)
-        .join(" "),
-      confirmLabel: "재계산",
-      tone: "success",
-    });
-    if (!accepted) return;
-
-    setIsMutating(true);
-    try {
-      const result =
-        candidates.length === 1
-          ? {
-              results: [
-                {
-                  id: candidates[0].articleId,
-                  status: "SUCCEEDED",
-                  data: await recalculateArticleQuality(
-                    candidates[0].articleId,
-                    { expectedRecordVersion: candidates[0].recordVersion },
-                  ),
-                },
-              ],
-              summary: { total: 1, succeeded: 1, failed: 0 },
-            }
-          : await recalculateArticleQualitiesBulk(
-              candidates.map((article) => ({
-                articleId: article.articleId,
-                expectedRecordVersion: article.recordVersion,
-              })),
-            );
-      const succeeded = new Set(
-        result.results
-          ?.filter((item) => item.status === "SUCCEEDED")
-          .map((item) => item.id),
-      );
-      const failed = result.summary?.failed || 0;
-      setDetail(null);
-      setNotice({
-        type: failed ? "error" : "success",
-        message: failed
-          ? `${result.summary.succeeded}건은 품질 점수 재계산 대기열에 등록했고, ${failed}건은 실패했습니다.`
-          : `${result.summary?.succeeded || candidates.length}건을 품질 점수 재계산 대기열에 등록했습니다.`,
-      });
-      const [freshResponse] = await Promise.all([
-        loadInventory(),
-        loadOverview(),
-      ]);
-      const freshById = new Map(
-        (freshResponse?.items || []).map((article) => [
-          article.articleId,
-          article,
-        ]),
-      );
-      setSelected((current) =>
-        Object.fromEntries(
-          Object.entries(current)
-            .filter(([id]) => !succeeded.has(id))
-            .map(([id, article]) => [id, freshById.get(id) || article]),
-        ),
-      );
-    } catch (error) {
-      if (isVersionConflict(error)) {
-        setDetail(null);
-        await refreshAfterConflict(techArticleErrorMessage(error));
-      } else {
-        setNotice({
-          type: "error",
-          message: techArticleErrorMessage(
-            error,
-            "품질 점수 재계산 요청을 완료하지 못했습니다.",
           ),
         });
       }
@@ -1371,7 +1308,7 @@ function AdminTechArticles() {
               }}
             >
               <option value="">모든 버전</option>
-              <option value="OUTDATED">업데이트 필요</option>
+              <option value="OUTDATED">현재 버전과 다름</option>
               <option value="UNTRACKED">버전 미기록</option>
             </select>
           </div>
@@ -1453,27 +1390,31 @@ function AdminTechArticles() {
                   <i className="fas fa-box-archive" aria-hidden="true"></i>보관
                 </button>
               )}
-              <button
-                className="bulk-action-button quality-recalculation"
-                type="button"
-                onClick={() => runQualityRecalculation(selectedRecords)}
-                disabled={isMutating}
-              >
-                <i className="fas fa-chart-simple" aria-hidden="true"></i>
-                품질 점수 재계산
-              </button>
-              <button
-                className="bulk-action-button summary-regeneration"
-                type="button"
-                onClick={() => runSummaryRegeneration(selectedRecords)}
-                disabled={isMutating}
-              >
-                <i
-                  className="fas fa-wand-magic-sparkles"
-                  aria-hidden="true"
-                ></i>
-                AI 요약 재생성
-              </button>
+              {canBulkRegenerate && (
+                <button
+                  className="bulk-action-button summary-regeneration"
+                  type="button"
+                  onClick={() => runSummaryRegeneration(selectedRecords)}
+                  disabled={isMutating}
+                >
+                  <i
+                    className="fas fa-wand-magic-sparkles"
+                    aria-hidden="true"
+                  ></i>
+                  AI 요약 재생성
+                </button>
+              )}
+              {canBulkRetry && (
+                <button
+                  className="bulk-action-button"
+                  type="button"
+                  onClick={runBulkReprocessing}
+                  disabled={isMutating}
+                >
+                  <i className="fas fa-rotate-right" aria-hidden="true"></i>
+                  재처리
+                </button>
+              )}
               <button
                 className="bulk-clear-button"
                 type="button"
@@ -2108,18 +2049,7 @@ function AdminTechArticles() {
                 재처리
               </button>
             )}
-            {UPDATABLE_VERSION_STATUS.has(detail?.qualityVersionStatus) && (
-              <button
-                className="btn-success"
-                type="button"
-                onClick={() => runQualityRecalculation([detail])}
-                disabled={isMutating}
-              >
-                <i className="fas fa-chart-simple" aria-hidden="true"></i>
-                품질 점수 재계산
-              </button>
-            )}
-            {UPDATABLE_VERSION_STATUS.has(detail?.summaryVersionStatus) && (
+            {canRegenerateSummary(detail) && (
               <button
                 className="btn-success"
                 type="button"

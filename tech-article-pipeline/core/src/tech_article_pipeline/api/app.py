@@ -25,7 +25,6 @@ from tech_article_pipeline.contracts.models import (
     NormalizedArticleCandidate,
     PublicationAction,
     PublicationPolicyPatch,
-    QualityRecalculationAction,
     QualityResolution,
     SummaryRegenerationAction,
 )
@@ -583,6 +582,11 @@ def create_app(
                 **module_versions,
             },
             "storage": overview["storage"],
+            "qualityKeywords": (
+                orchestrator.quality.keyword_snapshot()
+                if hasattr(orchestrator.quality, "keyword_snapshot")
+                else None
+            ),
             "statistics": {
                 "timezone": "Asia/Seoul",
                 "from": start_date.isoformat(),
@@ -743,19 +747,6 @@ def create_app(
             expected_version=command.expected_record_version,
             administrator_id=command.administrator_id,
             target_versions=_current_summary_versions(request.app.state.runtime),
-            max_attempts=request.app.state.settings.job_max_attempts,
-        )
-
-    @internal.post("/admin/articles/{article_id}/quality-recalculation")
-    async def recalculate_article_quality(
-        request: Request, article_id: str, command: QualityRecalculationAction
-    ) -> dict[str, Any]:
-        return await asyncio.to_thread(
-            request.app.state.runtime.repository.recalculate_quality,
-            article_id,
-            expected_version=command.expected_record_version,
-            administrator_id=command.administrator_id,
-            target_versions=_current_quality_versions(request.app.state.runtime),
             max_attempts=request.app.state.settings.job_max_attempts,
         )
 

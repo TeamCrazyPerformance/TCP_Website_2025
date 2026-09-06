@@ -155,16 +155,6 @@ export function regenerateArticleSummariesBulk(items) {
   return apiPost(`${ADMIN_BASE}/summary-regenerations/bulk`, { items });
 }
 
-export function recalculateArticleQuality(articleId, payload) {
-  return apiPost(
-    `${ADMIN_BASE}/${encodeURIComponent(articleId)}/quality-recalculation`,
-    payload,
-  );
-}
-
-export function recalculateArticleQualitiesBulk(items) {
-  return apiPost(`${ADMIN_BASE}/quality-recalculations/bulk`, { items });
-}
 
 export function resolveDuplicateReview(caseId, payload) {
   return apiPost(

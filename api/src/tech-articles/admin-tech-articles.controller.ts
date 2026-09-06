@@ -23,7 +23,6 @@ import {
   AdminOverviewQueryDto,
   ArticleReprocessingDto,
   ArticleIdParamDto,
-  BulkQualityRecalculationDto,
   BulkSummaryRegenerationDto,
   BulkDuplicateResolutionDto,
   BulkPublicationDto,
@@ -36,7 +35,6 @@ import {
   ProcessingReviewQueryDto,
   PublicationActionDto,
   PublicationPolicyDto,
-  QualityRecalculationDto,
   QualityResolutionDto,
   ReviewCaseIdParamDto,
   SummaryRegenerationDto,
@@ -228,28 +226,6 @@ export class AdminTechArticlesController {
     );
   }
 
-  @Post('quality-recalculations/bulk')
-  @HttpCode(HttpStatus.OK)
-  bulkQualityRecalculation(
-    @Body() dto: BulkQualityRecalculationDto,
-    @Req() request: AdminRequest,
-  ) {
-    return this.service.bulkQualityRecalculation(dto, request.user.userId);
-  }
-
-  @Post(':articleId/quality-recalculation')
-  @HttpCode(HttpStatus.ACCEPTED)
-  qualityRecalculation(
-    @Param() params: ArticleIdParamDto,
-    @Body() dto: QualityRecalculationDto,
-    @Req() request: AdminRequest,
-  ) {
-    return this.service.qualityRecalculation(
-      params.articleId,
-      dto,
-      request.user.userId,
-    );
-  }
 
   @Get(':articleId')
   detail(@Param() params: ArticleIdParamDto) {

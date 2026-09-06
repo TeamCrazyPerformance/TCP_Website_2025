@@ -5,7 +5,6 @@ import {
   AdminArticleQueryDto,
   ArticleReprocessingDto,
   BulkPublicationDto,
-  BulkQualityRecalculationDto,
   BulkSummaryRegenerationDto,
   CrawlRunDto,
   PublicArticleQueryDto,
@@ -147,21 +146,4 @@ describe('tech article DTO validation', () => {
     expect(await validate(invalidVersion)).not.toHaveLength(0);
   });
 
-  it('validates quality recalculation versions and unique bulk article ids', async () => {
-    const valid = plainToInstance(BulkQualityRecalculationDto, {
-      items: [
-        { articleId: 'article-1', expectedRecordVersion: 3 },
-        { articleId: 'article-2', expectedRecordVersion: 1 },
-      ],
-    });
-    const duplicate = plainToInstance(BulkQualityRecalculationDto, {
-      items: [
-        { articleId: 'article-1', expectedRecordVersion: 3 },
-        { articleId: 'article-1', expectedRecordVersion: 4 },
-      ],
-    });
-
-    expect(await validate(valid)).toHaveLength(0);
-    expect(await validate(duplicate)).not.toHaveLength(0);
-  });
 });

@@ -2776,6 +2776,14 @@ function handle(method, pathname, query, body, headers = {}) {
     return [
       200,
       {
+        qualityKeywords: {
+          loadedAt: "2026-09-06T00:00:00.000Z",
+          fingerprint: "mock-keyword-snapshot",
+          totalCount: 4,
+          coreKeywords: ["python", "javascript"],
+          dynamicKeywords: ["fastapi", "webgpu"],
+          refreshPolicy: "PROCESS_START",
+        },
         moduleVersions: {
           standards: {
             moduleVersion: "SEMVER",
@@ -3095,99 +3103,6 @@ function handle(method, pathname, query, body, headers = {}) {
     ];
   }
 
-  if (
-    method === "POST" &&
-    pathname === `${ADMIN_BASE}/quality-recalculations/bulk`
-  ) {
-    const items = body?.items || [];
-    const results = items.map((item) => {
-      const article = articles.find(
-        (candidate) => candidate.articleId === item.articleId,
-      );
-      if (!article)
-        return {
-          id: item.articleId,
-          status: "FAILED",
-          error: { code: "NOT_FOUND", message: "아티클을 찾을 수 없습니다." },
-        };
-      if (item.expectedRecordVersion !== article.recordVersion)
-        return {
-          id: item.articleId,
-          status: "FAILED",
-          error: { code: "VERSION_CONFLICT", message: "버전 충돌" },
-        };
-      if (!canUpdateVersion(qualityVersionStatus(article)))
-        return {
-          id: item.articleId,
-          status: "FAILED",
-          error: {
-            code: "INVALID_ARTICLE_ACTION",
-            message: "품질 점수를 재계산할 수 있는 상태가 아닙니다.",
-          },
-        };
-      article.processingVersions.qualityEvaluator = {
-        ...article.processingVersions.qualityEvaluator,
-        ...LATEST_QUALITY,
-        completedAt: new Date().toISOString(),
-      };
-      article.qualityRecalculationStatus = "PASS";
-      article.recordVersion += 1;
-      article.updatedAt = new Date().toISOString();
-      return {
-        id: item.articleId,
-        status: "SUCCEEDED",
-        data: { articleId: item.articleId, status: "QUEUED" },
-      };
-    });
-    const succeeded = results.filter(
-      (item) => item.status === "SUCCEEDED",
-    ).length;
-    return [
-      200,
-      {
-        results,
-        summary: {
-          total: results.length,
-          succeeded,
-          failed: results.length - succeeded,
-        },
-      },
-    ];
-  }
-  if (method === "POST" && pathname.endsWith("/quality-recalculation")) {
-    const articleId = decodeURIComponent(
-      pathname.slice(
-        ADMIN_BASE.length + 1,
-        pathname.length - "/quality-recalculation".length,
-      ),
-    );
-    const article = articles.find((item) => item.articleId === articleId);
-    if (!article)
-      return [404, { statusCode: 404, message: "아티클을 찾을 수 없습니다." }];
-    if (body?.expectedRecordVersion !== article.recordVersion)
-      return [
-        409,
-        { statusCode: 409, code: "VERSION_CONFLICT", message: "버전 충돌" },
-      ];
-    if (!canUpdateVersion(qualityVersionStatus(article)))
-      return [
-        422,
-        {
-          statusCode: 422,
-          code: "INVALID_ARTICLE_ACTION",
-          message: "품질 점수를 재계산할 수 있는 상태가 아닙니다.",
-        },
-      ];
-    article.processingVersions.qualityEvaluator = {
-      ...article.processingVersions.qualityEvaluator,
-      ...LATEST_QUALITY,
-      completedAt: new Date().toISOString(),
-    };
-    article.qualityRecalculationStatus = "PASS";
-    article.recordVersion += 1;
-    article.updatedAt = new Date().toISOString();
-    return [202, { articleId, status: "QUEUED" }];
-  }
 
   if (
     method === "POST" &&

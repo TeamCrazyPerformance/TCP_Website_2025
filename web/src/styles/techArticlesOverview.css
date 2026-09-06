@@ -345,3 +345,36 @@
     font-size: 18px;
   }
 }
+.ta-admin .overview-keywords {
+  padding: 20px;
+  background: var(--card-surface-background);
+  border: 1px solid var(--card-surface-border);
+  border-radius: 12px;
+}
+.ta-admin .overview-keyword-fingerprint {
+  overflow-wrap: anywhere;
+  color: #9ca3af;
+  font-size: 12px;
+}
+.ta-admin .overview-keywords details {
+  margin-top: 16px;
+}
+.ta-admin .overview-keywords summary {
+  cursor: pointer;
+}
+.ta-admin .overview-keywords ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 12px 0;
+  list-style: none;
+}
+.ta-admin .overview-keywords li {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #080d1a;
+  color: #cbd5e1;
+  font-size: 13px;
+}

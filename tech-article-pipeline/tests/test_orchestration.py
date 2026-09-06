@@ -529,146 +529,9 @@ def test_failed_summary_regeneration_preserves_public_article(normalized_payload
     assert repository.get_submission(submission["submissionId"])["state"] == "PUBLISHED"
 
 
-def test_quality_recalculation_updates_only_quality_result_after_success(
-    normalized_payload,
-):
-    repository, worker, submission = runtime(normalized_payload)
-    assert all(worker.process_once() for _ in range(3))
-    stored = repository.get_submission(submission["submissionId"])
-    article = repository.articles[stored["article_id"]]
-    original_quality_result = copy.deepcopy(stored["quality_result"])
-    original = {
-        key: copy.deepcopy(article.get(key))
-        for key in (
-            "processingStatus",
-            "reviewStatus",
-            "publicationStatus",
-            "publishedAt",
-            "summary",
-            "recordVersion",
-        )
-    }
-    next_quality = FakeQuality("REJECT")
-    next_quality.module_version = "9.2.0"
-    next_orchestrator = PipelineOrchestrator(
-        repository,
-        FakeAdmission(),
-        next_quality,
-        FakeSummarizer(),
-        job_max_attempts=1,
-    )
-    target = next_orchestrator.module_versions()["qualityEvaluator"]
-
-    outdated = repository.list_articles(
-        limit=10,
-        offset=0,
-        quality_version_status="OUTDATED",
-        current_quality_version=target,
-    )
-    assert [item["articleId"] for item in outdated] == [article["articleId"]]
-    queued = repository.recalculate_quality(
-        article["articleId"],
-        expected_version=article["recordVersion"],
-        administrator_id="admin-1",
-        target_versions=target,
-        max_attempts=1,
-    )
-    assert queued["status"] == "PENDING"
-    assert queued["recordVersion"] == original["recordVersion"]
-    queued_job = repository.get_job(queued["jobId"])
-    assert queued_job["purpose"] == "QUALITY_RECALCULATION"
-    assert queued_job["requestedBy"] == "admin-1"
-    assert queued_job["targetVersions"] == target
-    assert article["qualityDecision"] == "PASS"
-
-    assert DurableWorker(repository, next_orchestrator).process_once() is True
-
-    assert article["qualityDecision"] == "REJECT"
-    assert article["qualityScore"] == 88
-    assert article["qualityRecalculationStatus"] == "ATTENTION_REQUIRED"
-    assert article["processingVersions"]["qualityEvaluator"]["moduleVersion"] == "9.2.0"
-    assert (
-        article["processingVersions"]["qualityEvaluator"]["policyVersion"]
-        == normalized_payload["qualityPolicy"]["policyVersion"]
-    )
-    for key in (
-        "processingStatus",
-        "reviewStatus",
-        "publicationStatus",
-        "publishedAt",
-        "summary",
-    ):
-        assert article[key] == original[key]
-    assert article["recordVersion"] == original["recordVersion"] + 1
-    assert repository.get_submission(submission["submissionId"])["state"] == "PUBLISHED"
-    assert (
-        repository.get_submission(submission["submissionId"])["quality_result"]
-        == original_quality_result
-    )
-    assert [
-        item["articleId"]
-        for item in repository.list_articles(
-            limit=10,
-            offset=0,
-            quality_recalculation_status="ATTENTION_REQUIRED",
-        )
-    ] == [article["articleId"]]
-    assert (
-        repository.count_articles(
-            quality_version_status="OUTDATED",
-            current_quality_version=target,
-        )
-        == 0
-    )
 
 
-def test_quality_downgrade_does_not_block_summary_regeneration(normalized_payload):
-    repository, worker, submission = runtime(normalized_payload)
-    assert all(worker.process_once() for _ in range(3))
-    stored = repository.get_submission(submission["submissionId"])
-    article = repository.articles[stored["article_id"]]
-
-    next_quality = FakeQuality("REJECT")
-    next_quality.module_version = "9.2.0"
-    quality_orchestrator = PipelineOrchestrator(
-        repository,
-        FakeAdmission(),
-        next_quality,
-        FakeSummarizer(),
-        job_max_attempts=1,
-    )
-    repository.recalculate_quality(
-        article["articleId"],
-        expected_version=article["recordVersion"],
-        administrator_id="admin-1",
-        target_versions=quality_orchestrator.module_versions()["qualityEvaluator"],
-        max_attempts=1,
-    )
-    assert DurableWorker(repository, quality_orchestrator).process_once() is True
-
-    next_summarizer = FakeSummarizer()
-    next_summarizer.module_version = "8.3.0"
-    summary_orchestrator = PipelineOrchestrator(
-        repository,
-        FakeAdmission(),
-        next_quality,
-        next_summarizer,
-        job_max_attempts=1,
-    )
-    queued = repository.regenerate_summary(
-        article["articleId"],
-        expected_version=article["recordVersion"],
-        administrator_id="admin-1",
-        target_versions=summary_orchestrator.module_versions()["aiSummarizer"],
-        max_attempts=1,
-    )
-
-    assert DurableWorker(repository, summary_orchestrator).process_once() is True
-    assert repository.jobs[queued["jobId"]]["status"] == "SUCCEEDED"
-    assert article["publicationStatus"] == "PUBLISHED"
-
-
-def test_failed_quality_recalculation_preserves_public_article(normalized_payload):
+def test_retired_quality_recalculation_preserves_public_article(normalized_payload):
     repository, worker, submission = runtime(normalized_payload)
     assert all(worker.process_once() for _ in range(3))
     stored = repository.get_submission(submission["submissionId"])
@@ -695,6 +558,7 @@ def test_failed_quality_recalculation_preserves_public_article(normalized_payloa
     assert DurableWorker(repository, next_orchestrator).process_once() is True
 
     assert repository.jobs[queued["jobId"]]["status"] == "DEAD"
+    assert failing.calls == 0
     assert repository.jobs[queued["jobId"]]["purpose"] == "QUALITY_RECALCULATION"
     assert repository.get_processing_failure(article["articleId"]) is None
     assert article == original
@@ -703,37 +567,6 @@ def test_failed_quality_recalculation_preserves_public_article(normalized_payloa
     assert failed_submission["quality_result"] == original_quality_result
 
 
-def test_quality_recalculation_rejects_worker_with_different_target_version(
-    normalized_payload,
-):
-    repository, worker, submission = runtime(normalized_payload)
-    assert all(worker.process_once() for _ in range(3))
-    stored = repository.get_submission(submission["submissionId"])
-    article = repository.articles[stored["article_id"]]
-    original = copy.deepcopy(article)
-    next_quality = FakeQuality()
-    next_quality.module_version = "9.2.0"
-    next_orchestrator = PipelineOrchestrator(
-        repository,
-        FakeAdmission(),
-        next_quality,
-        FakeSummarizer(),
-        job_max_attempts=1,
-    )
-    queued = repository.recalculate_quality(
-        article["articleId"],
-        expected_version=article["recordVersion"],
-        administrator_id="admin-1",
-        target_versions={"moduleVersion": "9.3.0"},
-        max_attempts=1,
-    )
-
-    assert DurableWorker(repository, next_orchestrator).process_once() is True
-
-    job = repository.jobs[queued["jobId"]]
-    assert job["status"] == "DEAD"
-    assert job["error"]["code"] == "QUALITY_VERSION_MISMATCH"
-    assert article == original
 
 
 def test_summary_regeneration_rejects_a_worker_with_different_target_versions(

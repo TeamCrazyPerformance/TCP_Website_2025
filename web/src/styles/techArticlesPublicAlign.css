@@ -1499,3 +1499,9 @@
 .ta-public .score-meter::-moz-meter-bar {
   background: linear-gradient(90deg, #7f9bb8, var(--detail-score-accent));
 }
+.ta-public .score-breakdown dd .score-breakdown-raw {
+  color: #9ca3af;
+  font-size: 0.8em;
+  font-weight: 400;
+  white-space: nowrap;
+}

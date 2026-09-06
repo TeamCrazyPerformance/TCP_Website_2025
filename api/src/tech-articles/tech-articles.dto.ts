@@ -187,31 +187,6 @@ export class SummaryRegenerationDto {
   expectedRecordVersion: number;
 }
 
-export class QualityRecalculationDto {
-  @IsInt()
-  @Min(1)
-  expectedRecordVersion: number;
-}
-
-export class BulkQualityRecalculationItemDto extends QualityRecalculationDto {
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(64)
-  articleId: string;
-}
-
-export class BulkQualityRecalculationDto {
-  @IsArray()
-  @ArrayMinSize(1)
-  @ArrayMaxSize(50)
-  @ArrayUnique(
-    (item: BulkQualityRecalculationItemDto | null | undefined) =>
-      item?.articleId,
-  )
-  @ValidateNested({ each: true })
-  @Type(() => BulkQualityRecalculationItemDto)
-  items: BulkQualityRecalculationItemDto[];
-}
 
 export class BulkSummaryRegenerationItemDto extends SummaryRegenerationDto {
   @IsString()

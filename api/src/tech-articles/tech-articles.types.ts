@@ -23,6 +23,7 @@ export interface PublicValueScore {
   breakdown: Array<{
     label: string;
     contribution: number | null;
+    value?: number | null;
   }>;
 }
 

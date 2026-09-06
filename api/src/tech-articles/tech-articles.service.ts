@@ -5,7 +5,6 @@ import {
   AdminArticleStatsQueryDto,
   AdminOverviewQueryDto,
   ArticleReprocessingDto,
-  BulkQualityRecalculationDto,
   BulkSummaryRegenerationDto,
   BulkDuplicateResolutionDto,
   BulkPublicationDto,
@@ -17,7 +16,6 @@ import {
   PublicationActionDto,
   PublicationPolicyDto,
   PublicArticleQueryDto,
-  QualityRecalculationDto,
   QualityResolutionDto,
   SummaryRegenerationDto,
 } from './tech-articles.dto';
@@ -302,31 +300,6 @@ export class TechArticlesService {
     );
   }
 
-  qualityRecalculation(
-    articleId: string,
-    dto: QualityRecalculationDto,
-    administratorId: string,
-  ) {
-    return this.pipeline.post(
-      `/internal/v1/admin/articles/${encodeURIComponent(articleId)}/quality-recalculation`,
-      {
-        expectedRecordVersion: dto.expectedRecordVersion,
-        administratorId,
-      },
-    );
-  }
-
-  bulkQualityRecalculation(
-    dto: BulkQualityRecalculationDto,
-    administratorId: string,
-  ) {
-    return this.runBulk(
-      dto.items,
-      (item) => item.articleId,
-      (item) =>
-        this.qualityRecalculation(item.articleId, item, administratorId),
-    );
-  }
 
   async duplicateResolution(
     caseId: string,

@@ -60,11 +60,12 @@ describe("QualityScoreAxes", () => {
   it("uses the separate minimal breakdown contract in the public article view", () => {
     render(
       <PublicValueScoreBreakdown
-        breakdown={[{ label: "사용자 정의 축", contribution: 7.25 }]}
+        breakdown={[{ label: "사용자 정의 축", contribution: 7.25, value: 91 }]}
       />,
     );
 
     expect(screen.getByText("7.25")).toBeInTheDocument();
+    expect(screen.getByText(/91 \/ 100/)).toHaveClass("score-breakdown-raw");
     expect(screen.queryByText("100 / 100")).not.toBeInTheDocument();
     expect(screen.queryByText("최종 기여 점수")).not.toBeInTheDocument();
     expect(screen.queryByText(/가중치/)).not.toBeInTheDocument();

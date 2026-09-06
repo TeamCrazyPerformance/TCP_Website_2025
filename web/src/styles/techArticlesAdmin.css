@@ -3432,10 +3432,16 @@
 }
 .ta-admin .confirm-dialog {
   width: min(92vw, 460px);
-  height: auto;
+  height: fit-content;
+  max-height: min(86vh, 820px);
+  max-height: min(86dvh, 820px);
+  margin: auto;
+  inset: 0;
+  overflow-y: auto;
 }
 .ta-admin .confirm-dialog .dialog-panel {
   width: 100%;
+  max-height: none;
   padding: 26px;
   align-items: center;
   justify-content: center;

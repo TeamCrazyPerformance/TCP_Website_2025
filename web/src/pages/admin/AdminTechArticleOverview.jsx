@@ -122,6 +122,7 @@ function AdminTechArticleOverview() {
   const { maximum, ticks } = chartScale(daily);
   const storage = overview?.storage || {};
   const versions = overview?.moduleVersions || {};
+  const keywords = overview?.qualityKeywords;
 
   return (
     <AdminTechArticleContent>
@@ -349,6 +350,52 @@ function AdminTechArticleOverview() {
                 ),
               )}
             </dl>
+          </section>
+          <section
+            className="overview-section"
+            aria-labelledby="qualityKeywordsTitle"
+          >
+            <div className="overview-section-heading">
+              <div>
+                <h3 id="qualityKeywordsTitle">개발 관련성 평가 키워드</h3>
+                <p>
+                  현재 파이프라인 프로세스가 로드한 평가 키워드입니다. 모듈 로드
+                  시 수집되며 기존 아티클 점수는 유지됩니다.
+                </p>
+              </div>
+            </div>
+            {keywords ? (
+              <div className="overview-keywords">
+                <p>
+                  총 {keywords.totalCount}개 · 로드 시각{" "}
+                  {formatDateTime(keywords.loadedAt)}
+                </p>
+                <p className="overview-keyword-fingerprint">
+                  목록 식별값 <code>{keywords.fingerprint}</code>
+                </p>
+                {[
+                  ["기본 키워드", keywords.coreKeywords || []],
+                  ["동적 키워드", keywords.dynamicKeywords || []],
+                ].map(([label, words]) => (
+                  <details key={label}>
+                    <summary>
+                      {label} · {words.length}개
+                    </summary>
+                    {words.length ? (
+                      <ul>
+                        {words.map((word) => (
+                          <li key={word}>{word}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>현재 적용된 키워드가 없습니다.</p>
+                    )}
+                  </details>
+                ))}
+              </div>
+            ) : (
+              <p>실행 중인 평가기의 키워드 정보를 확인할 수 없습니다.</p>
+            )}
           </section>
         </>
       )}

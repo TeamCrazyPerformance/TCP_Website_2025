@@ -69,6 +69,12 @@ class PipelineOrchestrator:
         return result
 
     def _quality(self, job: JobRecord, submission: dict[str, Any]) -> dict[str, Any]:
+        if job.purpose == JobPurpose.QUALITY_RECALCULATION:
+            raise StageExecutionError({
+                "code": "QUALITY_RECALCULATION_RETIRED",
+                "message": "Quality recalculation is no longer supported.",
+                "retryable": False,
+            })
         payload = submission["payload"]
         article_id = submission.get("article_id") or submission.get("articleId")
         if not article_id:
@@ -89,18 +95,6 @@ class PipelineOrchestrator:
         evaluation = result["qualityEvaluation"]
         if evaluation["status"] == "FAILED":
             raise StageExecutionError(evaluation["error"])
-        if job.purpose == JobPurpose.QUALITY_RECALCULATION:
-            actual_versions = {"moduleVersion": evaluation.get("evaluatorVersion")}
-            if job.target_versions and actual_versions != job.target_versions:
-                raise StageExecutionError(
-                    {
-                        "code": "QUALITY_VERSION_MISMATCH",
-                        "message": "The worker does not match the requested quality evaluator version.",
-                        "retryable": True,
-                    }
-                )
-            self.repository.mark_quality_recalculation_result(job.submission_id, result)
-            return result
         self.repository.mark_quality_result(job.submission_id, result)
         if evaluation["decision"] == "PASS":
             self.repository.enqueue(

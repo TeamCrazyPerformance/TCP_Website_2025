@@ -8,8 +8,6 @@ import {
   getAdminTechArticles,
   getCrawlRuns,
   getTechArticles,
-  recalculateArticleQualitiesBulk,
-  recalculateArticleQuality,
   regenerateArticleSummariesBulk,
   regenerateArticleSummary,
   reprocessArticle,
@@ -206,24 +204,6 @@ test("AI 요약 재생성 단건과 일괄 요청을 관리자 API로 보낸다"
   );
 });
 
-test("품질 점수 재계산 단건과 일괄 요청을 관리자 API로 보낸다", async () => {
-  apiPost.mockResolvedValue({ status: "PENDING" });
-  const item = { articleId: "article 1", expectedRecordVersion: 4 };
-
-  await recalculateArticleQuality(item.articleId, {
-    expectedRecordVersion: item.expectedRecordVersion,
-  });
-  expect(apiPost).toHaveBeenCalledWith(
-    "/api/v1/admin/tech-articles/article%201/quality-recalculation",
-    { expectedRecordVersion: 4 },
-  );
-
-  await recalculateArticleQualitiesBulk([item]);
-  expect(apiPost).toHaveBeenLastCalledWith(
-    "/api/v1/admin/tech-articles/quality-recalculations/bulk",
-    { items: [item] },
-  );
-});
 
 test("공개 목록이 소스를 반복 쿼리로 전달한다", async () => {
   apiGet.mockResolvedValue({ items: [] });

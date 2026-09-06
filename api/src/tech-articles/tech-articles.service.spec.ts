@@ -120,13 +120,13 @@ describe('TechArticlesService', () => {
         valueScore: {
           overall: 88,
           scale: { min: 0, max: 100 },
-          breakdown: [{ label: '실무 활용성', contribution: 36.8 }],
+          breakdown: [{ label: '실무 활용성', contribution: 36.8, value: 92 }],
         },
       }),
     );
     expect(result).not.toHaveProperty('evaluation');
     expect(JSON.stringify(result)).not.toMatch(
-      /schemaVersion|decision|usefulness|weight|"value":/,
+      /schemaVersion|decision|usefulness|weight/,
     );
   });
 
@@ -382,27 +382,6 @@ describe('TechArticlesService', () => {
     );
   });
 
-  it('injects the authenticated administrator into quality recalculation', async () => {
-    pipeline.post.mockResolvedValue({
-      articleId: 'article-1',
-      jobId: 'job-1',
-      status: 'PENDING',
-    });
-
-    await service.qualityRecalculation(
-      'article-1',
-      { expectedRecordVersion: 3 },
-      'admin-7',
-    );
-
-    expect(pipeline.post).toHaveBeenCalledWith(
-      '/internal/v1/admin/articles/article-1/quality-recalculation',
-      {
-        expectedRecordVersion: 3,
-        administratorId: 'admin-7',
-      },
-    );
-  });
 
   it('projects rejected articles as a dedicated review queue', async () => {
     pipeline.get.mockResolvedValue({
