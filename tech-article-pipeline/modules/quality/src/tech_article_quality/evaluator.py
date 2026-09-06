@@ -59,6 +59,7 @@ class QualityEvaluator:
 
     def __init__(self, *, clock: Clock = _utcnow) -> None:
         self._clock = clock
+        self.module_version = EVALUATOR_VERSION
 
     def evaluate(self, input_data: Mapping[str, Any]) -> dict[str, Any]:
         article_id = input_data.get("articleId", "") if isinstance(input_data, Mapping) else ""
@@ -263,7 +264,9 @@ class QualityEvaluator:
                 "temperature": 0.1,
                 "response_format": {"type": "json_object"},
             }
-            req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
+            req = urllib.request.Request(
+                url, data=json.dumps(payload).encode("utf-8"), headers=headers
+            )
             with urllib.request.urlopen(req, timeout=5) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
                 res_text = res_data["choices"][0]["message"]["content"]

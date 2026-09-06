@@ -1,9 +1,15 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Protocol
 
-from tech_article_pipeline.contracts import CrawlJobRecord, JobRecord, PublicationPolicy, Stage
+from tech_article_pipeline.contracts import (
+    CrawlJobRecord,
+    JobPurpose,
+    JobRecord,
+    PublicationPolicy,
+    Stage,
+)
 
 NEW_ARTICLE_WINDOW_HOURS = 24
 
@@ -136,11 +142,19 @@ class PipelineRepository(Protocol):
 
     def mark_quality_result(self, submission_id: str, result: dict[str, Any]) -> None: ...
 
+    def mark_quality_recalculation_result(
+        self, submission_id: str, result: dict[str, Any]
+    ) -> None: ...
+
     def mark_enrichment_result(
         self,
         submission_id: str,
         result: dict[str, Any],
         publication_policy: PublicationPolicy,
+    ) -> None: ...
+
+    def mark_summary_regeneration_result(
+        self, submission_id: str, result: dict[str, Any]
     ) -> None: ...
 
     def enqueue(
@@ -150,6 +164,9 @@ class PipelineRepository(Protocol):
         *,
         max_attempts: int,
         unique_key: str,
+        purpose: JobPurpose = JobPurpose.PIPELINE,
+        requested_by: str | None = None,
+        target_versions: dict[str, str] | None = None,
     ) -> str: ...
 
     def complete_job(self, job: JobRecord, result: dict[str, Any]) -> None: ...
@@ -202,6 +219,11 @@ class PipelineRepository(Protocol):
         publication_status: str | None = None,
         stage: str | None = None,
         status_mismatch: bool = False,
+        quality_recalculation_status: str | None = None,
+        quality_version_status: str | None = None,
+        current_quality_version: dict[str, str] | None = None,
+        summary_version_status: str | None = None,
+        current_summary_version: dict[str, str] | None = None,
         sort: str = "NEWEST",
     ) -> list[dict[str, Any]]: ...
 
@@ -212,15 +234,24 @@ class PipelineRepository(Protocol):
         publication_status: str | None = None,
         stage: str | None = None,
         status_mismatch: bool = False,
+        quality_recalculation_status: str | None = None,
+        quality_version_status: str | None = None,
+        current_quality_version: dict[str, str] | None = None,
+        summary_version_status: str | None = None,
+        current_summary_version: dict[str, str] | None = None,
     ) -> int: ...
 
     def get_article(self, article_id: str) -> dict[str, Any] | None: ...
+
+    def get_processing_failure(self, article_id: str) -> dict[str, Any] | None: ...
 
     def record_article_view(self, article_id: str, *, member: bool) -> None: ...
 
     def article_stats(
         self, *, keyword: str | None = None, publication_status: str | None = None
     ) -> dict[str, Any]: ...
+
+    def admin_overview(self, *, start_date: date, end_date: date) -> dict[str, Any]: ...
 
     def list_review_queue(
         self,
@@ -258,6 +289,26 @@ class PipelineRepository(Protocol):
         action: str,
         expected_version: int,
         administrator_id: str,
+        max_attempts: int,
+    ) -> dict[str, Any]: ...
+
+    def regenerate_summary(
+        self,
+        article_id: str,
+        *,
+        expected_version: int,
+        administrator_id: str,
+        target_versions: dict[str, str],
+        max_attempts: int,
+    ) -> dict[str, Any]: ...
+
+    def recalculate_quality(
+        self,
+        article_id: str,
+        *,
+        expected_version: int,
+        administrator_id: str,
+        target_versions: dict[str, str],
         max_attempts: int,
     ) -> dict[str, Any]: ...
 

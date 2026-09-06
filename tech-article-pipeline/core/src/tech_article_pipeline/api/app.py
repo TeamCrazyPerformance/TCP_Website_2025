@@ -6,7 +6,9 @@ import json
 import logging
 import os
 from contextlib import asynccontextmanager, suppress
+from datetime import date, datetime, timedelta
 from typing import Annotated, Any, Literal
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, Response
@@ -23,7 +25,9 @@ from tech_article_pipeline.contracts.models import (
     NormalizedArticleCandidate,
     PublicationAction,
     PublicationPolicyPatch,
+    QualityRecalculationAction,
     QualityResolution,
+    SummaryRegenerationAction,
 )
 from tech_article_pipeline.persistence.base import (
     STAGE_NAMES,
@@ -113,6 +117,42 @@ def _crawl_run_read(run: dict[str, Any]) -> dict[str, Any]:
             if isinstance(item, dict)
         ]
     return result
+
+
+def _current_summary_versions(runtime: Runtime) -> dict[str, str]:
+    configured = runtime.orchestrator.module_versions().get("aiSummarizer") or {}
+    return {
+        "moduleVersion": str(configured.get("moduleVersion") or "unknown"),
+        "model": str(configured.get("model") or "unknown"),
+        "promptVersion": str(configured.get("promptVersion") or "unknown"),
+    }
+
+
+def _current_quality_versions(runtime: Runtime) -> dict[str, str]:
+    configured = runtime.orchestrator.module_versions().get("qualityEvaluator") or {}
+    return {"moduleVersion": str(configured.get("moduleVersion") or "unknown")}
+
+
+def _quality_version_status(article: dict[str, Any], target_versions: dict[str, str]) -> str:
+    if article.get("processingStatus") != "ENRICHED" or not article.get("qualityDecision"):
+        return "NOT_ELIGIBLE"
+    applied = (article.get("processingVersions") or {}).get("qualityEvaluator") or {}
+    if not applied.get("moduleVersion"):
+        return "UNTRACKED"
+    if applied.get("moduleVersion") == target_versions.get("moduleVersion"):
+        return "CURRENT"
+    return "OUTDATED"
+
+
+def _summary_version_status(article: dict[str, Any], target_versions: dict[str, str]) -> str:
+    if article.get("processingStatus") != "ENRICHED" or not article.get("summaryMarkdown"):
+        return "NOT_ELIGIBLE"
+    applied = (article.get("processingVersions") or {}).get("aiSummarizer") or {}
+    if any(not applied.get(key) for key in target_versions):
+        return "UNTRACKED"
+    if all(applied.get(key) == value for key, value in target_versions.items()):
+        return "CURRENT"
+    return "OUTDATED"
 
 
 def create_app(
@@ -406,8 +446,25 @@ def create_app(
         ),
         stage: str | None = Query(default=None, pattern=r"^(" + "|".join(STAGE_NAMES) + r")$"),
         status_mismatch: bool = Query(default=False, alias="statusMismatch"),
+        quality_recalculation_status: str | None = Query(
+            default=None,
+            alias="qualityRecalculationStatus",
+            pattern=r"^(PASS|ATTENTION_REQUIRED)$",
+        ),
+        quality_version_status: str | None = Query(
+            default=None,
+            alias="qualityVersionStatus",
+            pattern=r"^(OUTDATED|UNTRACKED)$",
+        ),
+        summary_version_status: str | None = Query(
+            default=None,
+            alias="summaryVersionStatus",
+            pattern=r"^(OUTDATED|UNTRACKED)$",
+        ),
         sort: str = Query(default="NEWEST", pattern=r"^(NEWEST|OLDEST|SCORE_DESC|SCORE_ASC)$"),
     ) -> dict[str, Any]:
+        quality_target = _current_quality_versions(request.app.state.runtime)
+        summary_target = _current_summary_versions(request.app.state.runtime)
         items, total_count = await asyncio.gather(
             asyncio.to_thread(
                 request.app.state.runtime.repository.list_articles,
@@ -417,6 +474,11 @@ def create_app(
                 publication_status=publication_status,
                 stage=stage,
                 status_mismatch=status_mismatch,
+                quality_recalculation_status=quality_recalculation_status,
+                quality_version_status=quality_version_status,
+                current_quality_version=quality_target,
+                summary_version_status=summary_version_status,
+                current_summary_version=summary_target,
                 sort=sort,
             ),
             asyncio.to_thread(
@@ -425,9 +487,24 @@ def create_app(
                 publication_status=publication_status,
                 stage=stage,
                 status_mismatch=status_mismatch,
+                quality_recalculation_status=quality_recalculation_status,
+                quality_version_status=quality_version_status,
+                current_quality_version=quality_target,
+                summary_version_status=summary_version_status,
+                current_summary_version=summary_target,
             ),
         )
-        return {"items": items, "limit": limit, "offset": offset, "totalCount": total_count}
+        for article in items:
+            article["qualityVersionStatus"] = _quality_version_status(article, quality_target)
+            article["summaryVersionStatus"] = _summary_version_status(article, summary_target)
+        return {
+            "items": items,
+            "limit": limit,
+            "offset": offset,
+            "totalCount": total_count,
+            "qualityTarget": quality_target,
+            "summaryTarget": summary_target,
+        }
 
     @internal.get("/admin/articles/stats")
     async def admin_article_stats(
@@ -445,6 +522,87 @@ def create_app(
             publication_status=publication_status,
         )
 
+    @internal.get("/admin/overview")
+    async def admin_overview(
+        request: Request,
+        from_date: Annotated[date | None, Query(alias="from")] = None,
+        to_date: Annotated[date | None, Query(alias="to")] = None,
+    ) -> dict[str, Any]:
+        today = datetime.now(ZoneInfo("Asia/Seoul")).date()
+        end_date = to_date or today
+        start_date = from_date or (end_date - timedelta(days=13))
+        if start_date > end_date:
+            raise HTTPException(
+                status_code=422,
+                detail={"code": "INVALID_OVERVIEW_RANGE", "message": "from must not exceed to."},
+            )
+        if (end_date - start_date).days >= 90:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "code": "OVERVIEW_RANGE_TOO_LARGE",
+                    "message": "Range is limited to 90 days.",
+                },
+            )
+        overview = await asyncio.to_thread(
+            request.app.state.runtime.repository.admin_overview,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        orchestrator = request.app.state.runtime.orchestrator
+        module_versions = (
+            orchestrator.module_versions()
+            if hasattr(orchestrator, "module_versions")
+            else {
+                "qualityEvaluator": {"moduleVersion": "unknown"},
+                "aiSummarizer": {
+                    "moduleVersion": "unknown",
+                    "model": "unknown",
+                    "promptVersion": "unknown",
+                },
+            }
+        )
+        crawl_orchestrator = getattr(request.app.state.runtime, "crawl_orchestrator", None)
+        crawler_versions = (
+            crawl_orchestrator.module_versions()
+            if crawl_orchestrator is not None and hasattr(crawl_orchestrator, "module_versions")
+            else []
+        )
+        source_names = {source["sourceId"]: source["name"] for source in crawl_source_catalog()}
+        return {
+            "moduleVersions": {
+                "standards": {
+                    "moduleVersion": "SEMVER",
+                    "model": "PROVIDER_MODEL_ID",
+                    "promptVersion": "EXPLICIT_IDENTIFIER",
+                },
+                "crawlers": [
+                    {**item, "sourceName": source_names.get(item["sourceId"], item["sourceId"])}
+                    for item in crawler_versions
+                ],
+                **module_versions,
+            },
+            "storage": overview["storage"],
+            "statistics": {
+                "timezone": "Asia/Seoul",
+                "from": start_date.isoformat(),
+                "to": end_date.isoformat(),
+                "definitions": {
+                    "collectedCount": {
+                        "label": "신규 수집·등록",
+                        "basedOn": "crawl_items.produced_at",
+                        "description": "해당 KST 일자에 크롤링 결과로 신규 등록된 고유 아티클 수",
+                    },
+                    "processedCount": {
+                        "label": "AI 요약 완료",
+                        "basedOn": "article_processing_results.completed_at",
+                        "description": "해당 KST 일자에 품질 평가를 통과하고 AI 요약 생성에 성공한 고유 아티클 수",
+                    },
+                },
+                "daily": overview["daily"],
+            },
+        }
+
     @internal.get("/admin/articles/{article_id}")
     async def admin_article(request: Request, article_id: str) -> dict[str, Any]:
         article = await asyncio.to_thread(
@@ -452,6 +610,19 @@ def create_app(
         )
         if article is None:
             raise HTTPException(status_code=404, detail={"code": "ARTICLE_NOT_FOUND"})
+        article["processingFailure"] = (
+            await asyncio.to_thread(
+                request.app.state.runtime.repository.get_processing_failure, article_id
+            )
+            if article.get("processingStatus") == "PROCESSING_FAILED"
+            else None
+        )
+        quality_target = _current_quality_versions(request.app.state.runtime)
+        summary_target = _current_summary_versions(request.app.state.runtime)
+        article["qualityVersionStatus"] = _quality_version_status(article, quality_target)
+        article["qualityTarget"] = quality_target
+        article["summaryVersionStatus"] = _summary_version_status(article, summary_target)
+        article["summaryTarget"] = summary_target
         return article
 
     @internal.get("/admin/reviews/{kind}")
@@ -559,6 +730,32 @@ def create_app(
             action=command.action,
             expected_version=command.expected_record_version,
             administrator_id=command.administrator_id,
+            max_attempts=request.app.state.settings.job_max_attempts,
+        )
+
+    @internal.post("/admin/articles/{article_id}/summary-regeneration")
+    async def regenerate_article_summary(
+        request: Request, article_id: str, command: SummaryRegenerationAction
+    ) -> dict[str, Any]:
+        return await asyncio.to_thread(
+            request.app.state.runtime.repository.regenerate_summary,
+            article_id,
+            expected_version=command.expected_record_version,
+            administrator_id=command.administrator_id,
+            target_versions=_current_summary_versions(request.app.state.runtime),
+            max_attempts=request.app.state.settings.job_max_attempts,
+        )
+
+    @internal.post("/admin/articles/{article_id}/quality-recalculation")
+    async def recalculate_article_quality(
+        request: Request, article_id: str, command: QualityRecalculationAction
+    ) -> dict[str, Any]:
+        return await asyncio.to_thread(
+            request.app.state.runtime.repository.recalculate_quality,
+            article_id,
+            expected_version=command.expected_record_version,
+            administrator_id=command.administrator_id,
+            target_versions=_current_quality_versions(request.app.state.runtime),
             max_attempts=request.app.state.settings.job_max_attempts,
         )
 

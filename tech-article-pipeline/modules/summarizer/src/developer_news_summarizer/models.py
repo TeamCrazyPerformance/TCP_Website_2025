@@ -48,9 +48,7 @@ class QualityEvaluation(ContractModel):
 class GenerationOptions(ContractModel):
     output_language: str = Field(alias="outputLanguage", pattern=r"^[A-Za-z]{2}$")
     maximum_summary_length: int = Field(alias="maximumSummaryLength", ge=1)
-    maximum_one_line_summary_length: int = Field(
-        alias="maximumOneLineSummaryLength", ge=1
-    )
+    maximum_one_line_summary_length: int = Field(alias="maximumOneLineSummaryLength", ge=1)
     maximum_tag_count: int = Field(alias="maximumTagCount", ge=0)
     translate_title: bool = Field(alias="translateTitle")
     translate_content: bool = Field(alias="translateContent")
@@ -64,9 +62,7 @@ class GenerationOptions(ContractModel):
 class DeveloperNewsInput(ContractModel):
     article_id: str = Field(alias="articleId", min_length=1)
     article: Article
-    quality_evaluation: QualityEvaluation | None = Field(
-        alias="qualityEvaluation", default=None
-    )
+    quality_evaluation: QualityEvaluation | None = Field(alias="qualityEvaluation", default=None)
     generation_options: GenerationOptions = Field(alias="generationOptions")
 
 
@@ -119,6 +115,7 @@ class ErrorPayload(ContractModel):
 class GenerationResult(ContractModel):
     status: Literal["SUCCESS", "FAILED"]
     generated_at: str = Field(alias="generatedAt")
+    summarizer_version: str = Field(alias="summarizerVersion")
     model: str
     prompt_version: str = Field(alias="promptVersion")
     input_token_count: int = Field(alias="inputTokenCount", ge=0)

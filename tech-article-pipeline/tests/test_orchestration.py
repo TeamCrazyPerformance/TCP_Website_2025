@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 from datetime import UTC, datetime, timedelta
@@ -39,6 +40,7 @@ class FakeAdmission:
 class FakeQuality:
     def __init__(self, decision="PASS"):
         self.decision = decision
+        self.module_version = "9.1.0"
 
     def evaluate(self, input_data):
         return {
@@ -46,6 +48,8 @@ class FakeQuality:
             "qualityEvaluation": {
                 "status": "SUCCESS",
                 "decision": self.decision,
+                "evaluatorVersion": self.module_version,
+                "policyVersion": input_data["qualityPolicy"]["policyVersion"],
                 "score": {"overall": 88, "dimensions": {}},
                 "error": None,
             },
@@ -70,6 +74,9 @@ class FakeSummarizer:
         self.retryable = retryable
         self.error_code = error_code
         self.calls = 0
+        self.module_version = "8.2.0"
+        self.model = "fake-model-1"
+        self.prompt_version = "fake-prompt-v3"
 
     def process(self, input_data):
         self.calls += 1
@@ -79,6 +86,9 @@ class FakeSummarizer:
                 "enrichment": None,
                 "generation": {
                     "status": "FAILED",
+                    "summarizerVersion": self.module_version,
+                    "model": self.model,
+                    "promptVersion": self.prompt_version,
                     "error": {
                         "code": self.error_code,
                         "message": "timeout",
@@ -96,7 +106,13 @@ class FakeSummarizer:
                 "summary": "개발자를 위한 충분히 자세한 기사 요약입니다.",
                 "localizedContent": None,
             },
-            "generation": {"status": "SUCCESS", "error": None},
+            "generation": {
+                "status": "SUCCESS",
+                "summarizerVersion": self.module_version,
+                "model": self.model,
+                "promptVersion": self.prompt_version,
+                "error": None,
+            },
         }
 
 
@@ -305,6 +321,15 @@ def test_failed_enrichment_can_be_requeued_and_completed(normalized_payload):
     stored = repository.get_submission(submission["submissionId"])
     article = repository.articles[stored["article_id"]]
     assert article["processingStatus"] == "PROCESSING_FAILED"
+    failure = repository.get_processing_failure(article["articleId"])
+    assert failure is not None
+    assert failure["stage"] == "ENRICHMENT"
+    assert failure["code"] == "MODEL_TIMEOUT"
+    assert failure["message"] == "timeout"
+    assert failure["retryable"] is False
+    assert failure["attemptCount"] == 1
+    assert failure["maxAttempts"] == 1
+    assert failure["failedAt"] is not None
     result = repository.reprocess_article(
         article["articleId"],
         action="RETRY",
@@ -319,6 +344,438 @@ def test_failed_enrichment_can_be_requeued_and_completed(normalized_payload):
     assert len(repository.list_public_articles(limit=10, offset=0)) == 1
 
 
+def test_summary_regeneration_updates_only_summary_after_success(normalized_payload):
+    repository, worker, submission = runtime(normalized_payload)
+    assert all(worker.process_once() for _ in range(3))
+    stored = repository.get_submission(submission["submissionId"])
+    article = repository.articles[stored["article_id"]]
+    original = {
+        "processingStatus": article["processingStatus"],
+        "reviewStatus": article["reviewStatus"],
+        "publicationStatus": article["publicationStatus"],
+        "publishedAt": article["publishedAt"],
+        "summary": article["summary"],
+        "recordVersion": article["recordVersion"],
+    }
+    next_summarizer = FakeSummarizer()
+    next_summarizer.module_version = "8.3.0"
+    next_summarizer.model = "fake-model-2"
+    next_summarizer.prompt_version = "fake-prompt-v4"
+    next_orchestrator = PipelineOrchestrator(
+        repository,
+        FakeAdmission(),
+        FakeQuality(),
+        next_summarizer,
+        job_max_attempts=1,
+    )
+    target = next_orchestrator.module_versions()["aiSummarizer"]
+
+    outdated = repository.list_articles(
+        limit=10,
+        offset=0,
+        summary_version_status="OUTDATED",
+        current_summary_version=target,
+    )
+    assert [item["articleId"] for item in outdated] == [article["articleId"]]
+    queued = repository.regenerate_summary(
+        article["articleId"],
+        expected_version=article["recordVersion"],
+        administrator_id="admin-1",
+        target_versions=target,
+        max_attempts=1,
+    )
+    assert queued["status"] == "PENDING"
+    assert queued["recordVersion"] == original["recordVersion"]
+    queued_job = repository.get_job(queued["jobId"])
+    assert queued_job["purpose"] == "SUMMARY_REGENERATION"
+    assert queued_job["requestedBy"] == "admin-1"
+    assert queued_job["targetVersions"] == target
+    assert article["processingStatus"] == original["processingStatus"]
+    assert article["publicationStatus"] == original["publicationStatus"]
+    assert article["summary"] == original["summary"]
+
+    assert DurableWorker(repository, next_orchestrator).process_once() is True
+
+    assert article["processingStatus"] == original["processingStatus"]
+    assert article["reviewStatus"] == original["reviewStatus"]
+    assert article["publicationStatus"] == original["publicationStatus"]
+    assert article["publishedAt"] == original["publishedAt"]
+    assert article["recordVersion"] == original["recordVersion"] + 1
+    assert article["processingVersions"]["aiSummarizer"] == {
+        **target,
+        "completedAt": article["processingVersions"]["aiSummarizer"]["completedAt"],
+    }
+    assert (
+        repository.count_articles(
+            summary_version_status="OUTDATED",
+            current_summary_version=target,
+        )
+        == 0
+    )
+
+
+def test_untracked_versions_are_separate_update_candidates(normalized_payload):
+    repository, worker, submission = runtime(normalized_payload)
+    assert all(worker.process_once() for _ in range(3))
+    stored = repository.get_submission(submission["submissionId"])
+    article = repository.articles[stored["article_id"]]
+    article["processingVersions"]["qualityEvaluator"] = None
+    article["processingVersions"]["aiSummarizer"] = None
+    quality_target = worker.orchestrator.module_versions()["qualityEvaluator"]
+    summary_target = worker.orchestrator.module_versions()["aiSummarizer"]
+
+    assert (
+        repository.list_articles(
+            limit=10,
+            offset=0,
+            quality_version_status="OUTDATED",
+            current_quality_version=quality_target,
+        )
+        == []
+    )
+    assert (
+        repository.list_articles(
+            limit=10,
+            offset=0,
+            summary_version_status="OUTDATED",
+            current_summary_version=summary_target,
+        )
+        == []
+    )
+    assert [
+        item["articleId"]
+        for item in repository.list_articles(
+            limit=10,
+            offset=0,
+            quality_version_status="UNTRACKED",
+            current_quality_version=quality_target,
+        )
+    ] == [article["articleId"]]
+    assert [
+        item["articleId"]
+        for item in repository.list_articles(
+            limit=10,
+            offset=0,
+            summary_version_status="UNTRACKED",
+            current_summary_version=summary_target,
+        )
+    ] == [article["articleId"]]
+
+    summary_job = repository.regenerate_summary(
+        article["articleId"],
+        expected_version=article["recordVersion"],
+        administrator_id="admin-1",
+        target_versions=summary_target,
+        max_attempts=1,
+    )
+    quality_job = repository.recalculate_quality(
+        article["articleId"],
+        expected_version=article["recordVersion"],
+        administrator_id="admin-1",
+        target_versions=quality_target,
+        max_attempts=1,
+    )
+    assert summary_job["status"] == "PENDING"
+    assert quality_job["status"] == "PENDING"
+
+
+def test_failed_summary_regeneration_preserves_public_article(normalized_payload):
+    repository, worker, submission = runtime(normalized_payload)
+    assert all(worker.process_once() for _ in range(3))
+    stored = repository.get_submission(submission["submissionId"])
+    article = repository.articles[stored["article_id"]]
+    original = {
+        key: copy.deepcopy(article.get(key))
+        for key in (
+            "localizedTitle",
+            "tags",
+            "oneLineSummary",
+            "summary",
+            "localizedContent",
+            "processingStatus",
+            "reviewStatus",
+            "publicationStatus",
+            "publishedAt",
+            "recordVersion",
+            "processingVersions",
+        )
+    }
+    failing = FakeSummarizer(failures=1, retryable=False)
+    failing.module_version = "8.3.0"
+    failing.model = "fake-model-2"
+    failing.prompt_version = "fake-prompt-v4"
+    next_orchestrator = PipelineOrchestrator(
+        repository,
+        FakeAdmission(),
+        FakeQuality(),
+        failing,
+        job_max_attempts=1,
+    )
+    queued = repository.regenerate_summary(
+        article["articleId"],
+        expected_version=article["recordVersion"],
+        administrator_id="admin-1",
+        target_versions=next_orchestrator.module_versions()["aiSummarizer"],
+        max_attempts=1,
+    )
+
+    assert DurableWorker(repository, next_orchestrator).process_once() is True
+
+    assert repository.jobs[queued["jobId"]]["status"] == "DEAD"
+    assert repository.jobs[queued["jobId"]]["purpose"] == "SUMMARY_REGENERATION"
+    assert repository.get_processing_failure(article["articleId"]) is None
+    for key, value in original.items():
+        assert article.get(key) == value
+    assert repository.get_submission(submission["submissionId"])["state"] == "PUBLISHED"
+
+
+def test_quality_recalculation_updates_only_quality_result_after_success(
+    normalized_payload,
+):
+    repository, worker, submission = runtime(normalized_payload)
+    assert all(worker.process_once() for _ in range(3))
+    stored = repository.get_submission(submission["submissionId"])
+    article = repository.articles[stored["article_id"]]
+    original_quality_result = copy.deepcopy(stored["quality_result"])
+    original = {
+        key: copy.deepcopy(article.get(key))
+        for key in (
+            "processingStatus",
+            "reviewStatus",
+            "publicationStatus",
+            "publishedAt",
+            "summary",
+            "recordVersion",
+        )
+    }
+    next_quality = FakeQuality("REJECT")
+    next_quality.module_version = "9.2.0"
+    next_orchestrator = PipelineOrchestrator(
+        repository,
+        FakeAdmission(),
+        next_quality,
+        FakeSummarizer(),
+        job_max_attempts=1,
+    )
+    target = next_orchestrator.module_versions()["qualityEvaluator"]
+
+    outdated = repository.list_articles(
+        limit=10,
+        offset=0,
+        quality_version_status="OUTDATED",
+        current_quality_version=target,
+    )
+    assert [item["articleId"] for item in outdated] == [article["articleId"]]
+    queued = repository.recalculate_quality(
+        article["articleId"],
+        expected_version=article["recordVersion"],
+        administrator_id="admin-1",
+        target_versions=target,
+        max_attempts=1,
+    )
+    assert queued["status"] == "PENDING"
+    assert queued["recordVersion"] == original["recordVersion"]
+    queued_job = repository.get_job(queued["jobId"])
+    assert queued_job["purpose"] == "QUALITY_RECALCULATION"
+    assert queued_job["requestedBy"] == "admin-1"
+    assert queued_job["targetVersions"] == target
+    assert article["qualityDecision"] == "PASS"
+
+    assert DurableWorker(repository, next_orchestrator).process_once() is True
+
+    assert article["qualityDecision"] == "REJECT"
+    assert article["qualityScore"] == 88
+    assert article["qualityRecalculationStatus"] == "ATTENTION_REQUIRED"
+    assert article["processingVersions"]["qualityEvaluator"]["moduleVersion"] == "9.2.0"
+    assert (
+        article["processingVersions"]["qualityEvaluator"]["policyVersion"]
+        == normalized_payload["qualityPolicy"]["policyVersion"]
+    )
+    for key in (
+        "processingStatus",
+        "reviewStatus",
+        "publicationStatus",
+        "publishedAt",
+        "summary",
+    ):
+        assert article[key] == original[key]
+    assert article["recordVersion"] == original["recordVersion"] + 1
+    assert repository.get_submission(submission["submissionId"])["state"] == "PUBLISHED"
+    assert (
+        repository.get_submission(submission["submissionId"])["quality_result"]
+        == original_quality_result
+    )
+    assert [
+        item["articleId"]
+        for item in repository.list_articles(
+            limit=10,
+            offset=0,
+            quality_recalculation_status="ATTENTION_REQUIRED",
+        )
+    ] == [article["articleId"]]
+    assert (
+        repository.count_articles(
+            quality_version_status="OUTDATED",
+            current_quality_version=target,
+        )
+        == 0
+    )
+
+
+def test_quality_downgrade_does_not_block_summary_regeneration(normalized_payload):
+    repository, worker, submission = runtime(normalized_payload)
+    assert all(worker.process_once() for _ in range(3))
+    stored = repository.get_submission(submission["submissionId"])
+    article = repository.articles[stored["article_id"]]
+
+    next_quality = FakeQuality("REJECT")
+    next_quality.module_version = "9.2.0"
+    quality_orchestrator = PipelineOrchestrator(
+        repository,
+        FakeAdmission(),
+        next_quality,
+        FakeSummarizer(),
+        job_max_attempts=1,
+    )
+    repository.recalculate_quality(
+        article["articleId"],
+        expected_version=article["recordVersion"],
+        administrator_id="admin-1",
+        target_versions=quality_orchestrator.module_versions()["qualityEvaluator"],
+        max_attempts=1,
+    )
+    assert DurableWorker(repository, quality_orchestrator).process_once() is True
+
+    next_summarizer = FakeSummarizer()
+    next_summarizer.module_version = "8.3.0"
+    summary_orchestrator = PipelineOrchestrator(
+        repository,
+        FakeAdmission(),
+        next_quality,
+        next_summarizer,
+        job_max_attempts=1,
+    )
+    queued = repository.regenerate_summary(
+        article["articleId"],
+        expected_version=article["recordVersion"],
+        administrator_id="admin-1",
+        target_versions=summary_orchestrator.module_versions()["aiSummarizer"],
+        max_attempts=1,
+    )
+
+    assert DurableWorker(repository, summary_orchestrator).process_once() is True
+    assert repository.jobs[queued["jobId"]]["status"] == "SUCCEEDED"
+    assert article["publicationStatus"] == "PUBLISHED"
+
+
+def test_failed_quality_recalculation_preserves_public_article(normalized_payload):
+    repository, worker, submission = runtime(normalized_payload)
+    assert all(worker.process_once() for _ in range(3))
+    stored = repository.get_submission(submission["submissionId"])
+    article = repository.articles[stored["article_id"]]
+    original = copy.deepcopy(article)
+    original_quality_result = copy.deepcopy(stored["quality_result"])
+    failing = FlakyQuality()
+    failing.module_version = "9.2.0"
+    next_orchestrator = PipelineOrchestrator(
+        repository,
+        FakeAdmission(),
+        failing,
+        FakeSummarizer(),
+        job_max_attempts=1,
+    )
+    queued = repository.recalculate_quality(
+        article["articleId"],
+        expected_version=article["recordVersion"],
+        administrator_id="admin-1",
+        target_versions=next_orchestrator.module_versions()["qualityEvaluator"],
+        max_attempts=1,
+    )
+
+    assert DurableWorker(repository, next_orchestrator).process_once() is True
+
+    assert repository.jobs[queued["jobId"]]["status"] == "DEAD"
+    assert repository.jobs[queued["jobId"]]["purpose"] == "QUALITY_RECALCULATION"
+    assert repository.get_processing_failure(article["articleId"]) is None
+    assert article == original
+    failed_submission = repository.get_submission(submission["submissionId"])
+    assert failed_submission["state"] == "PUBLISHED"
+    assert failed_submission["quality_result"] == original_quality_result
+
+
+def test_quality_recalculation_rejects_worker_with_different_target_version(
+    normalized_payload,
+):
+    repository, worker, submission = runtime(normalized_payload)
+    assert all(worker.process_once() for _ in range(3))
+    stored = repository.get_submission(submission["submissionId"])
+    article = repository.articles[stored["article_id"]]
+    original = copy.deepcopy(article)
+    next_quality = FakeQuality()
+    next_quality.module_version = "9.2.0"
+    next_orchestrator = PipelineOrchestrator(
+        repository,
+        FakeAdmission(),
+        next_quality,
+        FakeSummarizer(),
+        job_max_attempts=1,
+    )
+    queued = repository.recalculate_quality(
+        article["articleId"],
+        expected_version=article["recordVersion"],
+        administrator_id="admin-1",
+        target_versions={"moduleVersion": "9.3.0"},
+        max_attempts=1,
+    )
+
+    assert DurableWorker(repository, next_orchestrator).process_once() is True
+
+    job = repository.jobs[queued["jobId"]]
+    assert job["status"] == "DEAD"
+    assert job["error"]["code"] == "QUALITY_VERSION_MISMATCH"
+    assert article == original
+
+
+def test_summary_regeneration_rejects_a_worker_with_different_target_versions(
+    normalized_payload,
+):
+    repository, worker, submission = runtime(normalized_payload)
+    assert all(worker.process_once() for _ in range(3))
+    stored = repository.get_submission(submission["submissionId"])
+    article = repository.articles[stored["article_id"]]
+    original_summary = article["summary"]
+    original_version = article["recordVersion"]
+    next_summarizer = FakeSummarizer()
+    next_summarizer.module_version = "8.3.0"
+    next_orchestrator = PipelineOrchestrator(
+        repository,
+        FakeAdmission(),
+        FakeQuality(),
+        next_summarizer,
+        job_max_attempts=1,
+    )
+    target = {
+        **next_orchestrator.module_versions()["aiSummarizer"],
+        "promptVersion": "prompt-loaded-after-request",
+    }
+    queued = repository.regenerate_summary(
+        article["articleId"],
+        expected_version=article["recordVersion"],
+        administrator_id="admin-1",
+        target_versions=target,
+        max_attempts=1,
+    )
+
+    assert DurableWorker(repository, next_orchestrator).process_once() is True
+
+    job = repository.jobs[queued["jobId"]]
+    assert job["status"] == "DEAD"
+    assert job["error"]["code"] == "SUMMARY_VERSION_MISMATCH"
+    assert article["summary"] == original_summary
+    assert article["recordVersion"] == original_version
+    assert article["publicationStatus"] == "PUBLISHED"
+
+
 def test_failed_quality_evaluation_can_be_requeued_and_completed(normalized_payload):
     repository, worker, submission = runtime(
         normalized_payload,
@@ -331,6 +788,15 @@ def test_failed_quality_evaluation_can_be_requeued_and_completed(normalized_payl
     stored = repository.get_submission(submission["submissionId"])
     article = repository.articles[stored["article_id"]]
     assert article["processingStatus"] == "PROCESSING_FAILED"
+    failure = repository.get_processing_failure(article["articleId"])
+    assert failure is not None
+    assert failure["stage"] == "QUALITY"
+    assert failure["code"] == "INTERNAL_ERROR"
+    assert failure["message"] == "Pipeline worker failed unexpectedly."
+    assert failure["retryable"] is True
+    assert failure["attemptCount"] == 1
+    assert failure["maxAttempts"] == 1
+    assert "details" not in failure
     result = repository.reprocess_article(
         article["articleId"],
         action="RETRY",

@@ -76,7 +76,9 @@ def test_mysql_projection_matches_rich_memory_projection_shape():
         "original_published_at": now,
         "canonical_url": "https://www.infoq.com/article-1",
         "quality_score": 88,
-        "quality_decision": "PASS",
+        "quality_decision": "REJECT",
+        "quality_evaluation": '{"decision":"REJECT","score":{"overall":42,"dimensions":{"relevance":40}}}',
+        "quality_recalculation_status": "ATTENTION_REQUIRED",
         "localized_title": "번역 제목",
         "tags": '["AI"]',
         "one_line_summary": "한 줄",
@@ -103,7 +105,9 @@ def test_mysql_projection_matches_rich_memory_projection_shape():
     assert projected["source"]["type"] == "RSS"
     assert projected["originalLanguage"] == {"code": "en", "label": "영어"}
     assert projected["summaryMarkdown"] == "상세 요약"
-    assert projected["evaluation"]["score"]["dimensions"]["relevance"] == 90
+    assert projected["evaluation"]["score"]["dimensions"]["relevance"] == 40
+    assert projected["qualityDecision"] == "REJECT"
+    assert projected["qualityRecalculationStatus"] == "ATTENTION_REQUIRED"
     assert projected["qualityReview"] == {
         "caseId": "quality-case-1",
         "caseVersion": 4,
@@ -248,6 +252,7 @@ def test_mysql_public_queries_select_only_public_columns():
     detail_query, _ = detail_pool.connection.cursor_instance.executed
     detail_select = detail_query.split("FROM articles a", maxsplit=1)[0].lower()
     assert detail["score"]["overall"] == 88
+    assert "json_extract(a.quality_evaluation" in detail_select
     assert "json_extract(ps.quality_result" in detail_select
     for forbidden in (
         "authors",

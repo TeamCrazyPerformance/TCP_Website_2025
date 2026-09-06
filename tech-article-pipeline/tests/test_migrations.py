@@ -1,4 +1,7 @@
+import inspect
 from pathlib import Path
+
+from tech_article_pipeline.persistence.mysql import MySQLPipelineRepository
 
 ROOT = Path(__file__).parents[1]
 
@@ -46,3 +49,58 @@ def test_crawl_operations_migration_persists_trigger_and_history_indexes():
     assert "idx_crawl_run_source" in sql
     assert "idx_crawl_run_trigger" in sql
     assert "completed_at = COALESCE" in sql
+
+
+def test_processing_metadata_is_stored_directly_on_articles_without_backfill():
+    sql = (ROOT / "migrations" / "006_article_processing_metadata.sql").read_text(encoding="utf-8")
+    assert "ALTER TABLE articles" in sql
+    assert "crawler_version" in sql
+    assert "quality_evaluator_version" in sql
+    assert "quality_policy_version" in sql
+    assert "quality_evaluation JSON" in sql
+    assert "quality_recalculation_status" in sql
+    assert "ATTENTION_REQUIRED" in sql
+    assert "summarizer_version" in sql
+    assert "summary_model" in sql
+    assert "summary_prompt_version" in sql
+    assert "completed_at DATETIME(6)" in sql
+    assert "idx_processing_result_completion" in sql
+    assert "information_schema.COLUMNS" in sql
+    assert "PREPARE processing_result_statement" in sql
+    assert "PREPARE article_metadata_statement" in sql
+    assert "PREPARE article_quality_evaluation_statement" in sql
+    assert "PREPARE quality_recalculation_status_statement" in sql
+    assert "article_processing_provenance" not in sql
+    assert "UPDATE articles" not in sql
+    assert "pipeline_submissions" not in sql
+
+
+def test_selective_reprocessing_migration_tracks_both_job_purposes():
+    sql = (ROOT / "migrations" / "007_selective_reprocessing_jobs.sql").read_text(encoding="utf-8")
+    assert "ADD COLUMN purpose" in sql
+    assert "SUMMARY_REGENERATION" in sql
+    assert "QUALITY_RECALCULATION" in sql
+    assert "ADD COLUMN requested_by" in sql
+    assert "ADD COLUMN target_versions JSON" in sql
+    assert "idx_pipeline_job_purpose" in sql
+    assert "information_schema.COLUMNS" in sql
+    assert "PREPARE reprocessing_job_statement" in sql
+    assert "DROP CHECK" not in sql
+
+
+def test_mysql_runtime_uses_article_version_columns_without_provenance_join():
+    source = (ROOT / "core/src/tech_article_pipeline/persistence/mysql.py").read_text(
+        encoding="utf-8"
+    )
+    assert "article_processing_provenance" not in source
+    assert "a.quality_evaluator_version" in source
+    assert "a.summarizer_version" in source
+    assert "a.summary_model" in source
+    assert "a.summary_prompt_version" in source
+
+
+def test_quality_recalculation_preserves_the_original_submission_result():
+    source = inspect.getsource(MySQLPipelineRepository.mark_quality_recalculation_result)
+    assert "UPDATE pipeline_submissions" not in source
+    assert "quality_evaluation = %s" in source
+    assert "quality_recalculation_status = %s" in source

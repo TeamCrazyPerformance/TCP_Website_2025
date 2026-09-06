@@ -21,6 +21,9 @@ class CrawlOrchestrator:
         self.repository = repository
         self.registry = registry
 
+    def module_versions(self) -> list[dict[str, str]]:
+        return self.registry.module_versions()
+
     def execute(self, job: CrawlJobRecord) -> dict[str, Any]:
         run = self.repository.get_crawl_run(job.crawl_run_id)
         if run is None:
@@ -77,9 +80,7 @@ class CrawlOrchestrator:
         }
 
     @staticmethod
-    def _candidate(
-        native: dict[str, Any], request: dict[str, Any]
-    ) -> NormalizedArticleCandidate:
+    def _candidate(native: dict[str, Any], request: dict[str, Any]) -> NormalizedArticleCandidate:
         normalization = native["normalization"]
         if normalization.get("status") != "SUCCESS" or not native.get("article"):
             raise ValueError("source normalizer did not produce a successful article")
@@ -109,9 +110,7 @@ class CrawlOrchestrator:
         return NormalizedArticleCandidate.model_validate(payload)
 
     @staticmethod
-    def _has_retryable_failure(
-        items: list[dict[str, Any]], completion: dict[str, Any]
-    ) -> bool:
+    def _has_retryable_failure(items: list[dict[str, Any]], completion: dict[str, Any]) -> bool:
         run_error = completion.get("error")
         if isinstance(run_error, dict):
             return bool(run_error.get("retryable"))

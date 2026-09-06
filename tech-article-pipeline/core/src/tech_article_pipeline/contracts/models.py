@@ -17,6 +17,12 @@ class Stage(StrEnum):
     ENRICHMENT = "ENRICHMENT"
 
 
+class JobPurpose(StrEnum):
+    PIPELINE = "PIPELINE"
+    SUMMARY_REGENERATION = "SUMMARY_REGENERATION"
+    QUALITY_RECALCULATION = "QUALITY_RECALCULATION"
+
+
 class CrawlJobStatus(StrEnum):
     PENDING = "PENDING"
     RUNNING = "RUNNING"
@@ -282,6 +288,9 @@ class JobRecord(ContractModel):
     job_id: str = Field(alias="jobId")
     submission_id: str = Field(alias="submissionId")
     stage: Stage
+    purpose: JobPurpose = JobPurpose.PIPELINE
+    requested_by: str | None = Field(alias="requestedBy", default=None)
+    target_versions: dict[str, str] | None = Field(alias="targetVersions", default=None)
     status: JobStatus
     attempt_count: int = Field(alias="attemptCount", ge=0)
     max_attempts: int = Field(alias="maxAttempts", ge=1)
@@ -312,6 +321,16 @@ class PublicationAction(ContractModel):
 
 class ArticleProcessingAction(ContractModel):
     action: Literal["RETRY", "APPROVE_QUALITY"]
+    expected_record_version: int = Field(alias="expectedRecordVersion", ge=1)
+    administrator_id: str = Field(alias="administratorId", min_length=1)
+
+
+class SummaryRegenerationAction(ContractModel):
+    expected_record_version: int = Field(alias="expectedRecordVersion", ge=1)
+    administrator_id: str = Field(alias="administratorId", min_length=1)
+
+
+class QualityRecalculationAction(ContractModel):
     expected_record_version: int = Field(alias="expectedRecordVersion", ge=1)
     administrator_id: str = Field(alias="administratorId", min_length=1)
 
