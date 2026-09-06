@@ -1505,3 +1505,16 @@
   font-weight: 400;
   white-space: nowrap;
 }
+
+.ta-public .tag-button,
+.ta-public .search-desktop-filter .tag-button,
+.ta-public .search-category-filter .tag-button,
+.ta-public .category-filter-panel .tag-button,
+.ta-public .article-tag,
+.ta-public .article-card .article-tag,
+.ta-public .detail-tags .article-tag {
+  min-height: 22px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  line-height: 16px;
+}

@@ -7,6 +7,8 @@ import PublicPageHero from '../components/public/PublicPageHero';
 import TagMultiSelect from '../components/public/TagMultiSelect';
 import { useScrollReveal } from '../hooks/useScrollReveal';
 
+import { createTagColors } from '../utils/tagPalette';
+
 function Members() {
   const [members, setMembers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -157,6 +159,9 @@ function Members() {
     .filter((member) => member.status === 'alumni')
     .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
 
+  const tagColors = useMemo(() => createTagColors(availableTags), [availableTags]);
+  const memberTagStyle = (tag) => ({ '--service-filter-tag-background': tagColors.get(tag) });
+
   const handleTagClick = (tag) => {
     setActiveTags((currentTags) =>
       currentTags.includes(tag)
@@ -205,6 +210,8 @@ function Members() {
               onToggle={handleTagClick}
               onReset={() => setActiveTags([])}
               getTagClassName={tagColorClass}
+              getTagStyle={memberTagStyle}
+              collapsedRows={2}
             />
           </div>
         </div>
@@ -280,6 +287,7 @@ function Members() {
                       <span
                         key={tagIndex}
                         className={tagColorClass(tag)}
+                        style={memberTagStyle(tag)}
                       >
                         {tag}
                       </span>
@@ -385,6 +393,7 @@ function Members() {
                       <span
                         key={tagIndex}
                         className={tagColorClass(tag)}
+                        style={memberTagStyle(tag)}
                       >
                         {tag}
                       </span>

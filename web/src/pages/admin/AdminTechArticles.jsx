@@ -26,6 +26,7 @@ import { SafeMarkdown } from "../../components/tech-articles/TechArticleCommon";
 import { getPageTokens } from "../../components/tech-articles/TechArticlePagination";
 import { QualityEvaluationPanel } from "../../components/tech-articles/ArticleQualityPanel";
 import { useV9ConfirmDialog } from "../../components/tech-articles/V9ConfirmDialog";
+import { v9TagClassName } from "../../components/tech-articles/techArticleTags";
 import {
   MISMATCH_FILTER,
   STAGE_EXIT,
@@ -319,7 +320,7 @@ function ArticleTags({ tags = [] }) {
   return (
     <div className="admin-article-tags">
       {tags.map((tag) => (
-        <span className="article-tag" key={tag}>
+        <span className={`article-tag ${v9TagClassName(tag)}`} key={tag}>
           {tag}
         </span>
       ))}
@@ -1512,7 +1513,6 @@ function AdminTechArticles() {
                             {article.title || "제목 없음"}
                           </p>
                           <VersionBadges article={article} />
-                          <ArticleTags tags={article.tags} />
                         </td>
                         <td className="admin-source-cell">
                           <strong>

@@ -1652,6 +1652,24 @@ section.members-current-section {
     color: #fff;
 }
 
+:is(.members-tag-filter, .team-tag-filter) .service-tag-filter-expand {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 8px 8px 4px;
+    color: #9ca3af;
+    font-size: 12px;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+}
+:is(.members-tag-filter, .team-tag-filter) .service-tag-filter-expand:hover {
+    color: #e5e7eb;
+}
+
 .team-tag-filter {
     margin-top: 1rem;
 }

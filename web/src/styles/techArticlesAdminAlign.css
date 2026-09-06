@@ -1,5 +1,80 @@
 
 
+.ta-admin .admin-article-tags .article-tag.tag-ai-ml {
+  color: #111827;
+  background: #c978a9;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-frontend {
+  color: #111827;
+  background: #a99fb4;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-mobile {
+  color: #111827;
+  background: #d9cde5;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-language-framework {
+  color: #111827;
+  background: #9b89a8;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-data-db {
+  color: #111827;
+  background: #a684a7;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-cloud {
+  color: #111827;
+  background: #a181af;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-devops {
+  color: #111827;
+  background: #a17eba;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-security {
+  color: #111827;
+  background: #758f9f;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-backend {
+  color: #111827;
+  background: #6fb8aa;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-architecture {
+  color: #111827;
+  background: #808b89;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-developer-tools {
+  color: #111827;
+  background: #75aea4;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-software-quality {
+  color: #111827;
+  background: #579c8f;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-open-source {
+  color: #111827;
+  background: #7ba672;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-development-organization {
+  color: #111827;
+  background: #8ba0d6;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-industry-trends {
+  color: #111827;
+  background: #9dc3d8;
+}
+
 .ta-admin h1 {
   margin: 0.67em 0;
   font-size: 2em;

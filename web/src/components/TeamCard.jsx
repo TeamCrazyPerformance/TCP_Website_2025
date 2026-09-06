@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { tagColorClass, isExpired } from '../utils/helpers';
 
-const TeamCard = React.memo(({ team, currentUser, applicationStatus, onOpenDetail, onEdit, onDelete, onStatusChange, isMyPage = false }) => {
+const TeamCard = React.memo(({ team, currentUser, applicationStatus, onOpenDetail, onEdit, onDelete, onStatusChange, isMyPage = false, getTagStyle }) => {
   const expired = isExpired(team.deadline);
   // On My Page, every team under "teams I am recruiting for" is one I lead
   // Compare as strings to avoid a type mismatch
@@ -66,6 +66,7 @@ const TeamCard = React.memo(({ team, currentUser, applicationStatus, onOpenDetai
             <span
               key={`${team.id}-tg-${idx}`}
               className={tagColorClass(tg)}
+              style={getTagStyle?.(tg)}
             >
               {tg}
             </span>

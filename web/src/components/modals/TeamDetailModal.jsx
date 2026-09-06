@@ -5,7 +5,7 @@ import { isExpired, tagColorClass } from '../../utils/helpers';
 import { apiGet, apiPost, apiDelete } from '../../api/client';
 import '../../styles/teamDetailModal.css';
 
-export default function TeamDetailModal({ isOpen, onClose, team, onApplicationStatusChange, isMyPage = false, isAdminView = false }) {
+export default function TeamDetailModal({ isOpen, onClose, team, onApplicationStatusChange, isMyPage = false, isAdminView = false, getTagStyle }) {
   const { user } = useAuth();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [selectedRoleId, setSelectedRoleId] = useState(null);
@@ -282,6 +282,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
                 <span
                   key={`tech-${idx}`}
                   className={tagColorClass(tech)}
+                  style={getTagStyle?.(tech)}
                 >
                   {tech}
                 </span>

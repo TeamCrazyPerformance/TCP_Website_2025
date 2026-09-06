@@ -7,6 +7,7 @@ import TagMultiSelect from '../components/public/TagMultiSelect';
 import { useScrollReveal } from '../hooks/useScrollReveal';
 import TeamCard from '../components/TeamCard';
 import { parseTags, tagColorClass } from '../utils/helpers';
+import { createTagColors } from '../utils/tagPalette';
 import { apiGet, apiPatch, apiDelete } from '../api/client';
 import { initialTeams as developmentTeams } from '../data/teams';
 
@@ -156,6 +157,9 @@ export default function Team() {
       .sort(([a, countA], [b, countB]) => countB - countA || a.localeCompare(b, 'ko'))
       .map(([tag]) => tag);
   }, [teams]);
+
+  const tagColors = useMemo(() => createTagColors(availableTags), [availableTags]);
+  const teamTagStyle = (tag) => ({ '--service-filter-tag-background': tagColors.get(tag) });
 
   useEffect(() => {
     setActiveTags((current) => {
@@ -499,6 +503,8 @@ export default function Team() {
           onToggle={handleTagClick}
           onReset={() => setActiveTags([])}
           getTagClassName={tagColorClass}
+          getTagStyle={teamTagStyle}
+          collapsedRows={2}
         />
           </div>
 
@@ -522,6 +528,7 @@ export default function Team() {
           !errorMessage &&
           filteredTeams.map((team) => (
             <TeamCard
+              getTagStyle={teamTagStyle}
               key={team.id}
               team={team}
               currentUser={user}
@@ -545,6 +552,7 @@ export default function Team() {
       />
 
       <TeamDetailModal
+        getTagStyle={teamTagStyle}
         isOpen={isDetailModalOpen}
         onClose={handleCloseDetail}
         team={selectedTeam}
