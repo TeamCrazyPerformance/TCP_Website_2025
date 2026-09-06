@@ -172,6 +172,7 @@ class QualityEvaluator:
                         technicalDepth=technical_depth,
                         timeliness=timeliness,
                         articleQuality=article_quality,
+                        communityBonus=bonus if bonus > 0 else None,
                     ),
                     axes=axes,
                 ),
