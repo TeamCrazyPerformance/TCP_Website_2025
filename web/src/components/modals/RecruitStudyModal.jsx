@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import FormInput from '../ui/FormInput';
 import FormTextarea from '../ui/FormTextarea';
 import { apiPost } from '../../api/client';
 import { formatBirthDate, formatPeriodDate } from '../../utils/dateFormatter';
+import { parseTags } from '../../utils/helpers';
+import '../../styles/studyRecruitModal.css';
 
 export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
     const normalizeBoolean = (value) => value === true || value === 1 || value === '1' || value === 'true';
@@ -23,6 +25,7 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const handleSafeCloseRef = useRef(() => {});
 
     useEffect(() => {
         if (isOpen) {
@@ -56,10 +59,33 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
         onClose();
     };
 
+    useEffect(() => {
+        if (!isOpen) return undefined;
+
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+        };
+    }, [isOpen]);
+
+    useEffect(() => {
+        if (!isOpen) return undefined;
+
+        const handleKeyDown = (event) => {
+            if (event.key === 'Escape') handleSafeCloseRef.current();
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen]);
+
+    handleSafeCloseRef.current = handleSafeClose;
+
     const handleDateChange = (e) => {
         const { name, value } = e.target;
-        // periodStart/periodEnd는 YYYY.MM.DD 형식 (백엔드 요구사항)
-        // deadline은 YYYY-MM-DD 형식 (ISO 날짜)
+        // periodStart/periodEnd use YYYY.MM.DD as the backend expects
+        // deadline uses the ISO YYYY-MM-DD form
         const formatted = (name === 'periodStart' || name === 'periodEnd')
             ? formatPeriodDate(value)
             : formatBirthDate(value);
@@ -109,9 +135,7 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                     title: form.title,
                     period: `${form.periodStart} ~ ${form.periodEnd}`,
                     description: form.description,
-                    tags: form.tags
-                        ? form.tags.split(',').map((tag) => tag.trim()).filter(Boolean)
-                        : ['스터디'],
+                    tags: parseTags(form.tags).length ? parseTags(form.tags) : ['스터디'],
                     is_public: normalizeBoolean(newStudy?.is_public ?? form.is_public),
                 };
                 onAddStudy(mapped);
@@ -130,26 +154,39 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
 
     return (
         <div
-            className="modal active"
-            onClick={(e) => { if (e.target.className.includes('modal')) handleSafeClose(); }}
+            className="modal active study-recruit-modal"
+            onClick={(e) => { if (e.target === e.currentTarget) handleSafeClose(); }}
         >
-            <div className="modal-content">
-                <button className="close-modal" onClick={handleSafeClose}>
-                    <i className="fas fa-times" />
-                </button>
+            <section
+                className="modal-content study-recruit-sheet"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="studyRecruitTitle"
+                aria-describedby="studyRecruitDescription"
+            >
+                <header className="study-recruit-header">
+                    <div className="study-recruit-heading">
+                        <h2 id="studyRecruitTitle" className="orbitron gradient-text">
+                            스터디 개설하기
+                        </h2>
+                        <p id="studyRecruitDescription">
+                            별표 표시된 항목을 채운 뒤 개설해 주세요.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        className="close-modal study-recruit-close"
+                        onClick={handleSafeClose}
+                        aria-label="스터디 개설 창 닫기"
+                    >
+                        <i className="fas fa-times" aria-hidden="true" />
+                    </button>
+                </header>
 
-                <div className="mb-6">
-                    <h3 className="orbitron text-xl font-bold gradient-text text-left">
-                        스터디 개설하기
-                    </h3>
-                </div>
-
-                <div className="flex-1 min-h-0 overflow-y-auto pr-2 -mr-2">
-                    <form onSubmit={handleSubmit} className="space-y-6 pb-2">
-
-                        {/* Title */}
+                <form className="study-recruit-form" onSubmit={handleSubmit}>
+                    <div className="study-recruit-scroll">
                         <FormInput
-                            label={<>스터디 제목 <span className="text-red-500">*</span></>}
+                            label={<>스터디 제목 <span className="study-recruit-required">*</span></>}
                             name="title"
                             value={form.title}
                             onChange={onForm}
@@ -157,10 +194,9 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                             placeholder="스터디 주제를 입력하세요"
                         />
 
-                        {/* Start Year & Member Count */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="study-recruit-grid">
                             <FormInput
-                                label={<>시작 연도 <span className="text-red-500">*</span></>}
+                                label={<>시작 연도 <span className="study-recruit-required">*</span></>}
                                 name="startYear"
                                 type="number"
                                 value={form.startYear}
@@ -168,7 +204,7 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                                 required
                             />
                             <FormInput
-                                label={<>모집 인원 (본인 포함) <span className="text-red-500">*</span></>}
+                                label={<>모집 인원 (본인 포함) <span className="study-recruit-required">*</span></>}
                                 name="recruitCount"
                                 type="number"
                                 min="1"
@@ -179,12 +215,11 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                             />
                         </div>
 
-                        {/* Period */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
-                                스터디 기간 (시작 ~ 종료) <span className="text-red-500">*</span>
-                            </label>
-                            <div className="flex gap-2 items-center">
+                            <span className="study-recruit-label">
+                                스터디 기간 <span className="study-recruit-required">*</span>
+                            </span>
+                            <div className="study-recruit-range">
                                 <input
                                     type="text"
                                     name="periodStart"
@@ -192,11 +227,12 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                                     onChange={handleDateChange}
                                     required
                                     className="form-input"
-                                    style={{ maxWidth: '45%' }}
                                     placeholder="YYYY.MM.DD"
+                                    inputMode="numeric"
+                                    aria-label="스터디 시작일"
                                     maxLength={10}
                                 />
-                                <span className="text-gray-400">~</span>
+                                <span aria-hidden="true">~</span>
                                 <input
                                     type="text"
                                     name="periodEnd"
@@ -204,26 +240,26 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                                     onChange={handleDateChange}
                                     required
                                     className="form-input"
-                                    style={{ maxWidth: '45%' }}
                                     placeholder="YYYY.MM.DD"
+                                    inputMode="numeric"
+                                    aria-label="스터디 종료일"
                                     maxLength={10}
                                 />
                             </div>
                         </div>
 
-                        {/* Deadline */}
                         <FormInput
-                            label={<>모집 마감일 <span className="text-red-500">*</span></>}
+                            label={<>모집 마감일 <span className="study-recruit-required">*</span></>}
                             name="deadline"
                             value={form.deadline}
                             onChange={handleDateChange}
                             required
                             placeholder="YYYY-MM-DD"
+                            inputMode="numeric"
                             maxLength={10}
                         />
 
-                        {/* Way & Place */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="study-recruit-grid">
                             <FormInput
                                 label="진행 방식"
                                 name="way"
@@ -239,6 +275,7 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                                 placeholder="예: 디스코드, 도서관"
                             />
                         </div>
+
                         <FormInput
                             label="주기"
                             name="cycle"
@@ -247,48 +284,35 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                             placeholder="예: 주 1회, 격주"
                         />
 
-                        {/* Tags */}
                         <FormInput
                             label="태그"
                             name="tags"
                             value={form.tags}
                             onChange={onForm}
-                            placeholder="예: #React, #Java (쉼표로 구분)"
+                            placeholder="예: React, TypeScript (쉼표로 구분)"
                         />
 
-                        {/* Public Toggle */}
-                        <div className="w-full" style={{ textAlign: 'left' }}>
-                            <label className="block text-left text-sm font-medium text-gray-300 mb-2">
-                                공개 여부 (일반 회원 지원 가능)
-                            </label>
-                            <div
-                                className="h-10"
-                                style={{
-                                    width: '100%',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'flex-start',
-                                    gap: '0.75rem',
-                                    textAlign: 'left',
-                                }}
-                            >
+                        <div>
+                            <span className="study-recruit-label">공개 여부</span>
+                            <div className="study-recruit-toggle-row">
                                 <button
                                     type="button"
-                                    className={`toggle-switch border-0 p-0 ${normalizeBoolean(form.is_public) ? 'active' : ''}`}
+                                    className={`toggle-switch ${normalizeBoolean(form.is_public) ? 'active' : ''}`}
                                     onClick={() => setForm((prev) => ({ ...prev, is_public: !normalizeBoolean(prev.is_public) }))}
                                     aria-pressed={normalizeBoolean(form.is_public)}
                                     aria-label="공개 여부 토글"
-                                    style={{ margin: 0, flexShrink: 0 }}
-                                ></button>
-                                <span className="text-sm font-medium text-gray-300">
+                                />
+                                <span className="study-recruit-toggle-state">
                                     {normalizeBoolean(form.is_public) ? '공개' : '비공개'}
                                 </span>
                             </div>
+                            <p className="study-recruit-hint">
+                                공개로 두면 TCP 회원 누구나 이 스터디를 보고 지원할 수 있습니다.
+                            </p>
                         </div>
 
-                        {/* Description */}
                         <FormTextarea
-                            label={<>스터디 소개 <span className="text-red-500">*</span></>}
+                            label={<>스터디 소개 <span className="study-recruit-required">*</span></>}
                             name="description"
                             value={form.description}
                             onChange={onForm}
@@ -296,28 +320,26 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                             placeholder="스터디 목표, 진행 방식 등을 상세히 작성해주세요"
                             rows={5}
                         />
+                    </div>
 
-                        {/* Actions */}
-                        <div className="flex justify-end gap-3 pt-6 border-t border-gray-800">
-                            <button
-                                type="button"
-                                onClick={handleSafeClose}
-                                className="px-6 py-2 border border-gray-600 rounded-lg hover:border-gray-400 text-gray-300 transition-colors"
-                            >
-                                취소
-                            </button>
-                            <button
-                                type="submit"
-                                className="cta-button px-8 py-2 rounded-lg font-bold text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                                disabled={isSubmitting}
-                            >
-                                {isSubmitting ? '처리 중...' : '스터디 개설하기'}
-                            </button>
-                        </div>
-
-                    </form>
-                </div>
-            </div>
+                    <footer className="study-recruit-footer">
+                        <button
+                            type="button"
+                            className="study-recruit-cancel"
+                            onClick={handleSafeClose}
+                        >
+                            취소
+                        </button>
+                        <button
+                            type="submit"
+                            className="study-recruit-submit"
+                            disabled={isSubmitting}
+                        >
+                            {isSubmitting ? '처리 중...' : '스터디 개설하기'}
+                        </button>
+                    </footer>
+                </form>
+            </section>
         </div>
     );
 }

@@ -6,6 +6,7 @@ import MarkdownIt from 'markdown-it';
 import '../styles/studyDetail.css';
 import BackToListLink from '../components/public/BackToListLink';
 import { resolveStudyRole, STUDY_ROLE } from '../utils/studyRoles';
+import { parseTags, tagColorClass } from '../utils/helpers';
 
 const md = new MarkdownIt({ html: true, linkify: true, breaks: true });
 const normalizeBoolean = (value) => value === true || value === 1 || value === '1' || value === 'true';
@@ -28,7 +29,7 @@ const mapStudy = (data) => ({
     ['MEMBER', 'LEADER', 'NOMINEE'].includes(member.role)
   ).length,
   description: data.study_description,
-  tags: data.tag ? data.tag.split(',').map((tag) => tag.trim()) : ['스터디'],
+  tags: parseTags(data.tag).length ? parseTags(data.tag) : ['스터디'],
   isPublic: normalizeBoolean(data.is_public),
   leader: data.leader ? {
     id: data.leader.user_id,
@@ -170,6 +171,23 @@ export default function StudyDetail() {
   useEffect(() => {
     loadStudy();
   }, [loadStudy]);
+
+  useEffect(() => {
+    if (!selectedProgress) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setSelectedProgress(null);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedProgress]);
 
   const filteredMembers = useMemo(() => {
     if (!memberSearch.trim()) return members;
@@ -348,15 +366,11 @@ export default function StudyDetail() {
               </div>
               <p className="study-detail-description whitespace-pre-wrap">{study.description}</p>
               <div className="study-detail-tags">
-                {study.tags.map((tag, index) => {
-                  const colors = ['tag-blue', 'tag-purple', 'tag-green', 'tag-yellow', 'tag-red'];
-                  const colorClass = colors[index % colors.length];
-                  return (
-                    <span key={tag} className={`tag ${colorClass}`}>
-                      {tag}
-                    </span>
-                  );
-                })}
+                {study.tags.map((tag) => (
+                  <span key={tag} className={tagColorClass(tag)}>
+                    {tag}
+                  </span>
+                ))}
               </div>
             </div>
             <div className="study-detail-action-wrap">
@@ -419,7 +433,7 @@ export default function StudyDetail() {
               {canManage && (
                 <Link
                   to={`/study/${id}/progress/write`}
-                  className="cta-button px-4 py-2 rounded-lg font-bold text-white hover:text-black transition-colors inline-flex items-center"
+                  className="cta-button primary-cta-text px-4 py-2 rounded-lg font-bold transition-colors inline-flex items-center"
                 >
                   <i className="fas fa-plus mr-2"></i> 새 글 작성
                 </Link>
@@ -430,7 +444,7 @@ export default function StudyDetail() {
             {progress.length > 0 ? (
               <div className="study-detail-week-grid">
                 {progress.map((item) => (
-                  <div key={item.id} className="week-card study-detail-week-card relative group" onClick={() => setSelectedProgress(item)}>
+                  <div key={item.id} className="week-card study-detail-week-card" onClick={() => setSelectedProgress(item)}>
                     <div className="flex items-center justify-between mb-3">
                       <span className="tag tag-blue text-xs">Week {item.weekNo || '?'}</span>
                       <span className="text-sm text-gray-400">
@@ -438,50 +452,49 @@ export default function StudyDetail() {
                       </span>
                     </div>
 
-                    <h3 className="text-lg font-bold mb-2 text-white line-clamp-2">{item.title}</h3>
+                    <h3 className="text-lg font-bold mb-2 text-white study-detail-week-title">{item.title}</h3>
 
                     {/* Content Preview - strip HTML tags if needed or just show substring */}
-                    <div className="text-sm text-gray-400 mb-3 line-clamp-3">
+                    <div className="text-sm text-gray-400 mb-3 study-detail-week-excerpt">
                       {item.content.replace(/<[^>]*>?/gm, '')}
                     </div>
 
-                    {/* Hover Content / Actions */}
-                    <div className="hover-content absolute inset-x-0 bottom-0 p-6 bg-gray-800/90 backdrop-blur-sm rounded-b-xl border-t border-gray-700">
-                      {canManage ? (
-                        <div className="flex justify-between items-center">
-                          <div className="flex gap-2">
-                            <Link
-                              to={`/study/${id}/progress/${item.id}/edit`}
-                              className="text-xs px-3 py-1 rounded border border-gray-500 hover:border-white text-gray-300 hover:text-white transition-colors"
-                            >
-                              <i className="fas fa-pen mr-1"></i>편집
-                            </Link>
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                handleDeleteProgress(item.id);
-                              }}
-                              className="text-xs px-3 py-1 rounded border border-red-900 hover:border-red-500 text-red-400 hover:text-red-300 transition-colors"
-                            >
-                              <i className="fas fa-trash mr-1"></i>삭제
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-xs text-gray-300">클릭하여 자세히 보기</p>
-                      )}
-                    </div>
-
-                    <div className="mt-4 flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        {item.resources && item.resources.length > 0 && (
+                    <div className="study-detail-week-footer">
+                      <span className="study-detail-week-meta">
+                        {item.resources && item.resources.length > 0 ? (
                           <>
-                            <i className="fas fa-paperclip text-blue-400"></i>
-                            <span className="text-xs text-gray-400">{item.resources.length}개 첨부</span>
+                            <i className="fas fa-paperclip text-blue-400" aria-hidden="true"></i>
+                            <span>{item.resources.length}개 첨부</span>
                           </>
+                        ) : (
+                          <span>클릭하여 자세히 보기</span>
                         )}
-                      </div>
+                      </span>
+
+                      {canManage && (
+                        <div className="study-detail-week-actions">
+                          <Link
+                            to={`/study/${id}/progress/${item.id}/edit`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-xs px-3 py-1 rounded border border-gray-500 hover:border-white text-gray-300 hover:text-white transition-colors"
+                            aria-label={`Week ${item.weekNo || '?'} 진행사항 편집`}
+                          >
+                            <i className="fas fa-pen mr-1" aria-hidden="true"></i>편집
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleDeleteProgress(item.id);
+                            }}
+                            className="text-xs px-3 py-1 rounded border border-red-900 hover:border-red-500 text-red-400 hover:text-red-300 transition-colors"
+                            aria-label={`Week ${item.weekNo || '?'} 진행사항 삭제`}
+                          >
+                            <i className="fas fa-trash mr-1" aria-hidden="true"></i>삭제
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -513,7 +526,7 @@ export default function StudyDetail() {
                     placeholder="이름, 역할, 전공으로 검색..."
                   />
                 </div>
-                <button className="cta-button px-6 py-3 rounded-lg font-bold text-white hover:text-black transition-colors flex items-center justify-center shrink-0">
+                <button className="cta-button primary-cta-text px-6 py-3 rounded-lg font-bold transition-colors flex items-center justify-center shrink-0">
                   <i className="fas fa-search mr-2"></i> 검색
                 </button>
               </div>
@@ -542,24 +555,21 @@ export default function StudyDetail() {
                     <div className="text-xs text-gray-400 mb-2">
                       {member.major || '전공 미입력'} {member.studentNumber ? `${member.studentNumber}학번` : ''}
                     </div>
-                    <p className="text-sm text-gray-300 mb-3">
-                      {member.bio || `안녕하세요, ${member.name}입니다.`}
-                    </p>
-                    <div className="flex flex-wrap gap-1">
+                    {member.bio && (
+                      <p className="text-sm text-gray-300 mb-3">{member.bio}</p>
+                    )}
+                    <div className="study-detail-member-footer">
                       <span className="tag tag-devops text-xs">{member.role || 'MEMBER'}</span>
-                    </div>
-
-                    {canManage && member.id !== currentUser?.id && (
-                      <div className="flex justify-end mt-3">
+                      {canManage && member.id !== currentUser?.id && (
                         <button
                           type="button"
                           onClick={() => handleRemoveMember(member.id)}
-                          className="text-xs px-3 py-1 rounded border border-red-800 hover:border-red-500 text-red-400 hover:text-red-300 transition-colors"
+                          className="study-detail-member-remove text-xs px-3 py-1 rounded border border-red-800 hover:border-red-500 text-red-400 hover:text-red-300 transition-colors"
                         >
                           내보내기
                         </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -571,86 +581,87 @@ export default function StudyDetail() {
       {/* Article Modal */}
       {selectedProgress && (
         <div
-          className="modal active"
+          className="modal active study-progress-modal"
           onClick={(e) => { if (e.target === e.currentTarget) setSelectedProgress(null); }}
         >
-          <div className="modal-content" style={{ overflowY: 'auto' }}>
-            <button
-              onClick={() => setSelectedProgress(null)}
-              className="close-modal"
-            >
-              <i className="fas fa-times"></i>
-            </button>
-
-            <article>
-              <header className="mb-6">
-                <div className="mb-4">
-                  <span className="tag tag-blue px-3 py-1 rounded-full text-xs">
+          <article
+            className="modal-content study-progress-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="studyProgressTitle"
+          >
+            <header className="study-progress-header">
+              <div className="study-progress-heading">
+                <div className="study-progress-eyebrow">
+                  <span className="tag tag-blue text-xs">
                     Week {selectedProgress.weekNo || '?'}
                   </span>
                 </div>
-                <h1 className="text-2xl md:text-3xl font-bold mb-4 gradient-text">
-                  {selectedProgress.title}
-                </h1>
-
-                <div className="article-meta rounded-lg p-4 mb-6">
-                  <div className="flex flex-wrap items-center justify-between text-sm text-gray-300">
-                    <div className="flex items-center space-x-4 mb-2 md:mb-0">
-                      <div className="flex items-center space-x-2">
-                        <i className="fas fa-user text-blue-400"></i>
-                        <span>스터디장: {study.leader ? study.leader.name : '알 수 없음'}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <i className="fas fa-calendar text-purple-400"></i>
-                        <span>
-                          {selectedProgress.progressDate
-                            ? new Date(selectedProgress.progressDate).toISOString().split('T')[0].replace(/-/g, '.')
-                            : ''}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </header>
-
-              <div className="article-content rounded-lg p-6 mb-6">
-                <div
-                  className="article-body text-gray-200 text-left"
-                  dangerouslySetInnerHTML={{
-                    __html: DOMPurify.sanitize(md.render(selectedProgress.content || '')),
-                  }}
-                />
+                <h2 id="studyProgressTitle">{selectedProgress.title}</h2>
+                <p className="study-progress-meta">
+                  <span>
+                    <i className="fas fa-user text-blue-400" aria-hidden="true"></i>
+                    스터디장 {study.leader ? study.leader.name : '알 수 없음'}
+                  </span>
+                  {selectedProgress.progressDate && (
+                    <span>
+                      <i className="fas fa-calendar text-purple-400" aria-hidden="true"></i>
+                      {new Date(selectedProgress.progressDate).toISOString().split('T')[0].replace(/-/g, '.')}
+                    </span>
+                  )}
+                </p>
               </div>
+              <button
+                type="button"
+                className="close-modal study-progress-close"
+                onClick={() => setSelectedProgress(null)}
+                aria-label="진행사항 닫기"
+              >
+                <i className="fas fa-times" aria-hidden="true"></i>
+              </button>
+            </header>
 
-              {/* Attachments */}
+            <div className="study-progress-scroll">
+              <div
+                className="article-body"
+                dangerouslySetInnerHTML={{
+                  __html: DOMPurify.sanitize(md.render(selectedProgress.content || '')),
+                }}
+              />
+
               {selectedProgress.resources && selectedProgress.resources.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-bold text-white mb-4">📎 첨부 파일</h3>
-                  <div className="space-y-3">
+                <section className="study-progress-attachments">
+                  <h3>
+                    <i className="fas fa-paperclip" aria-hidden="true"></i>
+                    첨부 파일 {selectedProgress.resources.length}
+                  </h3>
+                  <div className="study-progress-attachment-list">
                     {selectedProgress.resources.map((resource) => (
                       <button
                         key={resource.id}
+                        type="button"
                         onClick={() => handleDownload(resource.id, resource.name)}
-                        className="attachment-item flex items-center space-x-3 p-3 rounded-lg w-full text-left"
+                        className="study-progress-attachment"
                       >
-                        <i className={`fas ${resource.format === 'pdf' ? 'fa-file-pdf text-red-400'
-                          : resource.format === 'docx' ? 'fa-file-word text-blue-400'
-                          : resource.format === 'pptx' ? 'fa-file-powerpoint text-orange-400'
-                          : resource.format === 'md' ? 'fa-file-code text-green-400'
-                            : 'fa-file text-gray-400'
-                          } text-lg`}></i>
-                        <div className="flex-1">
-                          <p className="font-medium text-white">{resource.name}</p>
-                          <p className="text-sm text-gray-400 uppercase">{resource.format}</p>
-                        </div>
-                        <i className="fas fa-download text-gray-400"></i>
+                        <i
+                          className={`fas ${resource.format === 'pdf' ? 'fa-file-pdf text-red-400'
+                            : resource.format === 'docx' ? 'fa-file-word text-blue-400'
+                              : resource.format === 'pptx' ? 'fa-file-powerpoint text-orange-400'
+                                : resource.format === 'md' ? 'fa-file-code text-green-400'
+                                  : 'fa-file text-gray-400'
+                            } text-lg`}
+                          aria-hidden="true"
+                        ></i>
+                        <span className="study-progress-attachment-name">{resource.name}</span>
+                        <span className="study-progress-attachment-format">{resource.format}</span>
+                        <i className="fas fa-download text-gray-400" aria-hidden="true"></i>
                       </button>
                     ))}
                   </div>
-                </div>
+                </section>
               )}
-            </article>
-          </div>
+            </div>
+          </article>
         </div>
       )}
       </div>

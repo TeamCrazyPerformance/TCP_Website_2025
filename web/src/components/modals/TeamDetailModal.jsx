@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import InfoRow from '../ui/InfoRow';
-import { isExpired } from '../../utils/helpers';
+import { isExpired, tagColorClass } from '../../utils/helpers';
 import { apiGet, apiPost, apiDelete } from '../../api/client';
 import '../../styles/teamDetailModal.css';
 
@@ -22,7 +22,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
     setApplicationStatus(null);
   }, [team]);
 
-  // 지원 상태 조회
+  // Load application status
   useEffect(() => {
     const fetchApplicationStatus = async () => {
       if (!user || !team?.id) return;
@@ -35,7 +35,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
           setSelectedRoleId(data.applicationInfo.appliedRole.id);
         }
       } catch (error) {
-        // 401 에러는 무시 (비로그인 상태)
+        // Ignore 401: the visitor is signed out
         if (error.response?.status !== 401) {
           console.error('Failed to fetch application status:', error);
         }
@@ -55,7 +55,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
     });
   };
 
-  // 지원하기 핸들러
+  // Apply handler
   const handleApply = async () => {
     if (!user) {
       alert('로그인이 필요합니다.');
@@ -71,7 +71,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
     try {
       await apiPost(`/api/v1/teams/${team.id}/apply`, { roleId: selectedRoleId });
       
-      // 상태 업데이트
+      // Update local state
       const roleInfo = team.rolesRaw?.find(r => r.id === selectedRoleId);
       const newStatus = {
         hasApplied: true,
@@ -84,7 +84,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
       };
       setApplicationStatus(newStatus);
       
-      // 부모 컴포넌트에 상태 변경 알림
+      // Notify the parent of the change
       if (onApplicationStatusChange) {
         onApplicationStatusChange(team.id, newStatus);
       }
@@ -97,7 +97,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
     }
   };
 
-  // 지원 취소 핸들러
+  // Cancel application handler
   const handleCancelApplication = async () => {
     if (!window.confirm('정말 지원을 취소하시겠습니까?')) return;
 
@@ -112,7 +112,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
       setApplicationStatus(newStatus);
       setSelectedRoleId(null);
       
-      // 부모 컴포넌트에 상태 변경 알림
+      // Notify the parent of the change
       if (onApplicationStatusChange) {
         onApplicationStatusChange(team.id, newStatus);
       }
@@ -218,7 +218,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
                     alt={team.leader.name}
                     className="w-12 h-12 rounded-full border-2 border-accent-blue"
                     onError={(e) => {
-                      e.target.onerror = null; // 무한 루프 방지
+                      e.target.onerror = null; // Guard against an infinite loop
                       e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="48" height="48"%3E%3Crect width="48" height="48" fill="%23A8C5E6"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="20" fill="white"%3EL%3C/text%3E%3C/svg%3E';
                     }}
                   />
@@ -281,7 +281,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
               {team.techStack?.map((tech, idx) => (
                 <span
                   key={`tech-${idx}`}
-                  className="team-detail-chip px-2 py-1 text-xs"
+                  className={tagColorClass(tech)}
                 >
                   {tech}
                 </span>
@@ -371,7 +371,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
             </div>
           </section>
 
-          {/* 지원자 정보 - 리더인 경우에만 표시 */}
+          {/* Applicants, shown to the leader only */}
           {team.applicants && team.applicants.length > 0 && (
             <section className="team-detail-content-section">
               <h4 className="font-semibold text-white flex items-center">
@@ -419,7 +419,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
             </section>
           )}
 
-          {/* 역할 선택 - 로그인 사용자 & 리더 아님 & 지원하지 않은 경우만 표시 */}
+          {/* Role picker, for signed-in non-leaders who have not applied yet */}
           {!isAdminView && user && !isLeader && !applicationStatus?.hasApplied && team.status === '모집중' && !isExpired(team.deadline) && (
             <section className="team-detail-content-section">
               <h4 className="font-semibold text-white flex items-center">
@@ -441,7 +441,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
             </section>
           )}
 
-          {/* 이미 지원한 경우 정보 표시 */}
+          {/* Already applied */}
           {!isAdminView && applicationStatus?.hasApplied && applicationStatus.applicationInfo?.appliedRole && (
             <section className="team-detail-content-section">
               <h4 className="font-semibold text-white flex items-center">
@@ -465,7 +465,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
               닫기
             </button>
 
-            {/* 로그인하지 않은 경우 */}
+            {/* Signed out */}
             {!isAdminView && !user && team.status === '모집중' && !isExpired(team.deadline) && (
               <button
                 onClick={() => {
@@ -479,7 +479,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
               </button>
             )}
 
-            {/* 로그인한 경우 */}
+            {/* Signed in */}
             {!isAdminView && user && team.status === '모집중' && !isExpired(team.deadline) && (
               <>
                 {isLeader && !isMyPage ? (
@@ -516,7 +516,7 @@ export default function TeamDetailModal({ isOpen, onClose, team, onApplicationSt
               </>
             )}
 
-            {/* 모집 마감 또는 기한 만료 */}
+            {/* Recruiting closed or past the deadline */}
             {!isAdminView && (team.status !== '모집중' || isExpired(team.deadline)) && (
               <button
                 disabled

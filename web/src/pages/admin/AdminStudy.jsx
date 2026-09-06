@@ -331,7 +331,7 @@ const AdminStudy = () => {
                                                     {study.tag ? (
                                                         <div className="flex flex-wrap gap-1">
                                                             {study.tag.split(',').map((t, idx) => (
-                                                                <span key={idx} className="px-2 py-0.5 bg-blue-600/30 text-blue-300 rounded text-xs">
+                                                                <span key={idx} className="px-2 py-0.5 bg-blue-600 bg-opacity-30 text-blue-300 rounded text-xs">
                                                                     {t.trim()}
                                                                 </span>
                                                             ))}
@@ -352,7 +352,7 @@ const AdminStudy = () => {
                                                 <td className="p-4" onClick={(e) => e.stopPropagation()}>
                                                     <button
                                                         onClick={() => handleDeleteStudy(study.id, study.study_name)}
-                                                        className="text-red-500 hover:text-red-400 p-2 rounded hover:bg-red-500/10 transition-colors"
+                                                        className="text-red-500 hover:text-red-400 p-2 rounded hover:bg-red-500 hover:bg-opacity-10 transition-colors"
                                                         title="스터디 삭제"
                                                     >
                                                         <i className="fas fa-trash"></i>

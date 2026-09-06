@@ -151,7 +151,7 @@ body,
 
 .accordion-content.active {
   max-height: 1000px;
-  /* 충분히 큰 값으로 설정하여 내용이 잘리지 않도록 합니다. */
+  /* Large enough that the content is never clipped. */
 }
 
 .accordion-body {
@@ -297,22 +297,6 @@ body,
   overflow: hidden;
 }
 
-.member-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 5px;
-  background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
-  transform: translateY(-100%);
-  transition: transform 0.3s ease-out;
-}
-
-.member-card:hover::before {
-  transform: translateY(0);
-}
-
 .member-card .img-container {
   width: 120px;
   height: 120px;
@@ -336,7 +320,7 @@ body,
 /* Modal Styles */
 .modal {
   display: none;
-  /* 기본적으로 숨김. React에서 isModalOpen 상태로 제어 */
+  /* Hidden by default; React toggles it with isModalOpen */
   position: fixed;
   z-index: 1000;
   left: 0;
@@ -346,12 +330,12 @@ body,
   background-color: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(5px);
   justify-content: center;
-  /* Flexbox 속성으로 중앙 정렬 */
+  /* Centered with flexbox */
   align-items: center;
-  /* Flexbox 속성으로 중앙 정렬 */
+  /* Centered with flexbox */
 }
 
-/* React에서 isModalOpen이 true일 때 'active' 클래스를 조건부로 추가하여 display: flex를 만듭니다. */
+/* React adds 'active' when isModalOpen is true, which switches this to display: flex. */
 .modal.active {
   display: flex;
 }
@@ -363,12 +347,12 @@ body,
   width: 90%;
   max-width: 600px;
   max-height: 90vh;
-  /* 모달이 화면을 넘지 않도록 최대 높이 설정 */
+  /* Cap the height so the modal never exceeds the viewport */
   overflow-y: auto;
-  /* 내용이 넘칠 경우 스크롤 허용 */
+  /* Scroll when the content overflows */
   position: relative;
   animation: fadeInScale 0.3s ease-out;
-  /* 모달 열릴 때 애니메이션 */
+  /* Entry animation */
 }
 
 /* Modal Open Animation */
@@ -413,7 +397,7 @@ body,
 
 .form-input::placeholder {
   color: #9ca3af;
-  /* placeholder 색상 추가 */
+  /* Placeholder color */
 }
 
 .form-textarea {
@@ -426,6 +410,25 @@ body,
   color: #e5e7eb;
   /* Tailwind gray-200 */
   line-height: 1.7;
+  /* Keeps long pasted URLs from overflowing the modal. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.article-body a {
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+.article-body pre,
+.article-body table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.article-body img {
+  max-width: 100%;
+  height: auto;
 }
 
 .article-body * {
@@ -592,7 +595,7 @@ body,
   width: 1.25rem;
   height: 1.25rem;
   accent-color: var(--accent-blue);
-  /* 체크박스 색상 */
+  /* Checkbox color */
 }
 
 .required::after {
@@ -644,7 +647,7 @@ body,
   border: 1px solid var(--card-surface-border);
   transition: all 0.3s ease;
   cursor: pointer;
-  /* 클릭 가능하도록 커서 변경 */
+  /* Show a pointer so it reads as clickable */
 }
 
 .study-item:hover {
@@ -653,7 +656,7 @@ body,
   box-shadow: var(--card-surface-shadow);
 }
 
-/* Tag Styles (Study 페이지 전용) */
+/* Tag styles, used by the study pages */
 .tag {
   display: inline-block;
   padding: 4px 8px;
@@ -732,7 +735,7 @@ body,
   background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
   border: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
-  /* 로그인 카드 뒷 배경 블러 효과 */
+  /* Blur behind the login card */
 }
 
 .register-card {
@@ -743,7 +746,7 @@ body,
 
 .input-field {
   background: rgba(42, 42, 42, 0.5);
-  /* light-gray의 50% 투명도 */
+  /* light-gray at 50% opacity */
   border: 1px solid rgba(255, 255, 255, 0.1);
   transition: all 0.3s ease;
 }
@@ -902,7 +905,7 @@ body,
 
 .slide-down.show {
   max-height: 300px;
-  /* 충분히 큰 값으로 설정 */
+  /* Large enough to fit any content */
 }
 
 .btn-disabled {
@@ -1049,29 +1052,25 @@ body,
   /* from-purple-500 to-pink-500 */
 }
 
-/* 기존 .nav-link 스타일 아래에 추가 */
+/* Added below the existing .nav-link rules */
 
 /* New active state for nav-link */
 .nav-link.active {
   color: #ffffff;
-  /* 텍스트를 흰색으로 */
+  /* White text */
 }
 
-/* 활성 상태일 때 밑줄도 100% 나오도록 설정 */
+/* Full-width underline while active */
 .nav-link.active::after {
   width: 100%;
 }
 
-/* 기존 nav-link에 text-gray-300이 기본으로 적용되어 있으므로, 
-   active 클래스가 있을 때는 text-gray-300을 오버라이드해야 합니다.
-   이를 위해 조건부 클래스 적용 시 'active'를 먼저, 'text-gray-300'을 나중에 배치합니다. */
-/* Header.jsx에서 Link 컴포넌트의 className을 다음과 같이 수정합니다:
+/* .nav-link carries text-gray-300 by default, so the active state has to override it.
+   Apply the classes conditionally instead of together:
    className={`nav-link orbitron text-sm font-medium ${isActive('/about') ? 'active' : 'text-gray-300'} hover:text-white`}
-   이렇게 하면 active일 때만 'active' 클래스가 추가되고, 아닐 때만 'text-gray-300'이 적용됩니다.
-   active 클래스에 color: #ffffff가 직접 정의되어 있으므로 문제없이 작동합니다.
-*/
+   .active declares color: #ffffff directly, so it wins once text-gray-300 is dropped. */
 
-/* announcement_write.html 전용 스타일 */
+/* Styles for announcement_write.html */
 .form-card {
   background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1293,17 +1292,6 @@ input[type="date"] {
   background-color: var(--light-gray);
   transform: translateY(-3px);
   box-shadow: 0 10px 20px rgba(168, 197, 230, 0.15);
-}
-
-.week-card:hover .hover-content {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.hover-content {
-  opacity: 0;
-  transform: translateY(10px);
-  transition: all 0.3s ease;
 }
 
 /* Domain Specific Tags */

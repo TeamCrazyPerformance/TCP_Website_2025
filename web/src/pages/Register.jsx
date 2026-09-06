@@ -4,11 +4,12 @@ import logo from '../logo.svg';
 import { apiPost } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { formatBirthDate } from '../utils/dateFormatter';
+import '../styles/authPages.css';
 
 function Register() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  // 폼 입력 필드 상태 관리
+  // Form field state
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -23,16 +24,16 @@ function Register() {
   const [techStack, setTechStack] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
 
-  // 비밀번호 가시성 상태
+  // Password visibility
   const [showPassword, setShowPassword] = useState(false);
 
-  // 체크박스 상태
-  const [termsAgreed, setTermsAgreed] = useState(false); // 이용약관 동의
+  // Checkbox state
+  const [termsAgreed, setTermsAgreed] = useState(false); // Terms agreement
 
-  // 추가 정보 입력 펼침 상태
+  // Optional details expanded
   const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
 
-  // 유효성 검사 관련 상태
+  // Validation state
   const [usernameAvailability, setUsernameAvailability] = useState(null); // 'available', 'taken', 'checking'
   const [usernameMessage, setUsernameMessage] = useState('');
   const [emailAvailability, setEmailAvailability] = useState(null); // 'available', 'taken', 'checking'
@@ -50,15 +51,15 @@ function Register() {
   const [signupButtonEnabled, setSignupButtonEnabled] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 전화번호 자동 형식화 함수
+  // Formats a phone number as it is typed
   const formatPhoneNumber = (value) => {
-    // 숫자만 추출
+    // Digits only
     const numbers = value.replace(/[^0-9]/g, '');
 
-    // 최대 11자리까지만 허용
+    // Cap at 11 digits
     const limited = numbers.slice(0, 11);
 
-    // 서울 지역번호 (02)인 경우
+    // Seoul area code (02)
     if (limited.startsWith('02')) {
       if (limited.length <= 2) {
         return limited;
@@ -71,7 +72,7 @@ function Register() {
       }
     }
 
-    // 일반 전화번호 (010, 011, 031 등 3자리 지역/통신사 번호)
+    // Three-digit area or carrier prefixes such as 010, 011, 031
     if (limited.length <= 3) {
       return limited;
     } else if (limited.length <= 6) {
@@ -96,7 +97,7 @@ function Register() {
   };
 
 
-  // 아이디 중복 확인 로직 (API 호출)
+  // Username availability check
   useEffect(() => {
     if (username.length === 0) {
       setUsernameAvailability(null);
@@ -140,7 +141,7 @@ function Register() {
     return () => clearTimeout(timeoutId);
   }, [username]);
 
-  // 이메일 중복 확인 로직 (API 호출)
+  // Email availability check
   useEffect(() => {
     if (email.length === 0) {
       setEmailAvailability(null);
@@ -154,7 +155,7 @@ function Register() {
       return;
     }
 
-    // 이메일 형식 검증 (영문, 숫자, 허용된 특수문자만)
+    // Email format check: letters, digits and the allowed symbols only
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(email)) {
       setEmailAvailability(null);
@@ -186,7 +187,7 @@ function Register() {
     return () => clearTimeout(timeoutId);
   }, [email]);
 
-  // 학번 유효성 검사 (8자리 숫자)
+  // Student number must be 8 digits
   useEffect(() => {
     if (studentNumber.length === 0) {
       setStudentNumberValid(null);
@@ -196,7 +197,7 @@ function Register() {
     setStudentNumberValid(isValid);
   }, [studentNumber]);
 
-  // 비밀번호 강도 검사 (각 조건별 체크)
+  // Password strength, checked rule by rule
   useEffect(() => {
     setPasswordStrength({
       minLength: password.length >= 8,
@@ -208,7 +209,7 @@ function Register() {
     });
   }, [password]);
 
-  // 비밀번호 일치 확인
+  // Passwords must match
   useEffect(() => {
     if (confirmPassword.length === 0) {
       setPasswordMatch(null);
@@ -217,21 +218,21 @@ function Register() {
     setPasswordMatch(password === confirmPassword);
   }, [password, confirmPassword]);
 
-  // 회원가입 버튼 활성화/비활성화 로직 (termsAgreed에 따라)
+  // The submit button follows termsAgreed
   useEffect(() => {
     setSignupButtonEnabled(termsAgreed);
   }, [termsAgreed]);
 
-  // 비밀번호 가시성 토글
+  // Toggle password visibility
   const togglePasswordVisibility = () => {
     setShowPassword((prev) => !prev);
   };
 
-  // 폼 제출 핸들러
+  // Submit handler
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 필수 항목 검사 (아이디, 비밀번호, 이메일, 이름, 전화번호만 필수)
+    // Required fields: username, password, email, name and phone number
     if (
       !username ||
       !password ||
@@ -253,7 +254,7 @@ function Register() {
       return;
     }
 
-    // 비밀번호 강도 검사
+    // Password strength
     const passwordRegex =
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(password)) {
@@ -271,7 +272,7 @@ function Register() {
       return;
     }
 
-    // 필수 필드
+    // Required fields
     const payload = {
       username,
       password,
@@ -280,7 +281,7 @@ function Register() {
       email,
     };
 
-    // 선택 필드 (값이 있을 때만 추가)
+    // Optional fields, sent only when filled in
     if (studentNumber) payload.student_number = studentNumber;
     if (major) payload.major = major;
     if (joinYear) payload.join_year = Number(joinYear);
@@ -299,7 +300,7 @@ function Register() {
       setSignupButtonEnabled(false);
       const data = await apiPost('/api/v1/auth/register', payload);
       login(data.user, data.access_token);
-      // 환영 모달을 위한 플래그 설정
+      // Flag the welcome modal for the next screen
       sessionStorage.setItem('showWelcomeModal', 'true');
       navigate('/');
     } catch (error) {
@@ -313,11 +314,11 @@ function Register() {
   return (
     <>
       {/* Register Form Section */}
-      <section className="pt-24 pb-16 min-h-screen flex items-center">
+      <section className="auth-page auth-register public-page-unified-background">
         <div className="container mx-auto px-4">
-          <div className="register-card max-w-2xl mx-auto rounded-2xl shadow-lg p-10 card-hover">
+          <div className="register-card max-w-2xl mx-auto">
             {/* Top Branding */}
-            <div className="text-center mb-8">
+            <div className="auth-heading text-center mb-8">
               <div className="w-16 h-16 mx-auto mb-4">
                 <img
                   src={logo}
@@ -329,7 +330,9 @@ function Register() {
                 회원가입
               </h2>
               <p className="orbitron text-gray-400 mt-2">
-                Team Crazy Performance에 오신 것을 환영합니다. TCP 부원이 아니더라도 회원가입이 가능합니다.
+                Team Crazy Performance에 오신 것을 환영합니다.
+                <br />
+                TCP 부원이 아니더라도 회원가입이 가능합니다.
               </p>
             </div>
 
@@ -554,7 +557,8 @@ function Register() {
                 <button
                   type="button"
                   onClick={() => setShowAdditionalInfo(!showAdditionalInfo)}
-                  className="flex items-center gap-2 text-purple-400 hover:text-purple-300 transition-colors text-sm font-medium"
+                  className="auth-additional-toggle flex items-center gap-2 text-sm font-medium"
+                  aria-expanded={showAdditionalInfo}
                 >
                   <i className={`fas fa-chevron-${showAdditionalInfo ? 'up' : 'down'}`}></i>
                   추가 정보 입력 (선택)
@@ -715,7 +719,7 @@ function Register() {
               )}
 
               {/* Terms Agreement Checkbox */}
-              <div className="bg-gray-800 p-4 rounded-lg">
+              <div className="auth-terms">
                 <label className="flex items-start text-left">
                   <input
                     type="checkbox"

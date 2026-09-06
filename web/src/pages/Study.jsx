@@ -4,6 +4,7 @@ import { apiGet } from '../api/client';
 import RecruitStudyModal from '../components/modals/RecruitStudyModal';
 import PublicPageHero from '../components/public/PublicPageHero';
 import { useScrollReveal } from '../hooks/useScrollReveal';
+import { parseTags, tagColorClass } from '../utils/helpers';
 
 function Study() {
   const navigate = useNavigate();
@@ -38,12 +39,10 @@ function Study() {
 
   const handleOpenRecruit = () => {
     setIsRecruitModalOpen(true);
-    document.body.style.overflow = 'hidden';
   };
 
   const handleCloseRecruit = () => {
     setIsRecruitModalOpen(false);
-    document.body.style.overflow = 'auto';
   };
 
   const handleAddStudy = (newStudy) => {
@@ -63,9 +62,7 @@ function Study() {
           title: study.study_name,
           period: study.period || `${study.start_year}년`,
           description: study.study_description || '',
-          tags: study.tag
-            ? study.tag.split(',').map((tag) => tag.trim()).filter(Boolean)
-            : ['스터디'],
+          tags: parseTags(study.tag).length ? parseTags(study.tag) : ['스터디'],
           is_public: normalizeBoolean(study.is_public),
         }));
         if (isMounted) {
@@ -113,49 +110,6 @@ function Study() {
     `${selectedYear}:${filteredStudies.map((study) => study.id).join(',')}`,
   );
 
-  const getTagClassName = (tagType) => {
-    switch (tagType) {
-      case '알고리즘':
-      case '코딩테스트':
-      case '심화':
-      case 'Java':
-      case '프로그래밍':
-      case 'C언어':
-      case '입문':
-      case '자료구조':
-        return 'tag-blue';
-      case '웹개발':
-      case '풀스택':
-      case 'Next.js':
-      case '모바일':
-      case 'iOS':
-      case 'Swift':
-      case '백엔드':
-      case 'Spring':
-      case '프론트엔드':
-      case 'React':
-        return 'tag-purple';
-      case 'DevOps':
-      case '클라우드':
-      case 'Kubernetes':
-      case '데이터분석':
-      case '파이썬':
-      case '초급':
-        return 'tag-green';
-      case 'AI':
-      case '머신러닝':
-      case '생성형AI':
-      case '데이터베이스':
-      case 'SQL':
-        return 'tag-yellow';
-      case '게임개발':
-      case 'Unity':
-      case 'C#':
-        return 'tag-red';
-      default:
-        return 'tag-gray';
-    }
-  };
 
   return (
     <>
@@ -241,7 +195,7 @@ function Study() {
                   <div className="study-card-meta-row">
                     <p className="study-card-period text-gray-400 text-left">{study.period}</p>
                     {normalizeBoolean(study.is_public) && (
-                      <span className="study-card-visibility inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-300 whitespace-nowrap">
+                      <span className="study-card-visibility inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-green-500 bg-opacity-20 text-green-300 whitespace-nowrap">
                         <i className="fas fa-unlock-alt mr-1"></i>
                         공개 스터디
                       </span>
@@ -250,11 +204,11 @@ function Study() {
                   <p className="study-card-summary text-sm text-gray-500 text-left">
                     {(study.description || '').substring(0, 80)}...
                   </p>
-                  <div className="study-card-tags flex flex-wrap mt-3">
+                  <div className="study-card-tags mt-3">
                     {(study.tags || []).map((tag, tagIndex) => (
                       <span
                         key={tagIndex}
-                        className={`tag ${getTagClassName(tag)}`}
+                        className={tagColorClass(tag)}
                       >
                         {tag}
                       </span>

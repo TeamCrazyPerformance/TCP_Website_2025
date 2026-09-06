@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { apiGet } from '../api/client';
 import defaultProfileImage from '../logo.svg';
 import { allMembers as developmentMembers } from '../data/members';
-import { tagColorClass } from '../utils/helpers';
+import { parseTags, tagColorClass } from '../utils/helpers';
 import PublicPageHero from '../components/public/PublicPageHero';
 import TagMultiSelect from '../components/public/TagMultiSelect';
 import { useScrollReveal } from '../hooks/useScrollReveal';
@@ -25,11 +25,11 @@ function Members() {
         const mapped = (data || []).map((user) => {
           const image = user.profile_image;
 
-          // education_status에 따라 구분
+          // Split by education_status
           const status =
             user.education_status === '졸업' ? 'alumni' : 'current';
 
-          // 포트폴리오 링크가 절대 URL인지 확인 (http:// 또는 https://로 시작)
+          // Check whether the portfolio link is an absolute URL
           const portfolioUrl = user.portfolio_link &&
             (user.portfolio_link.startsWith('http://') || user.portfolio_link.startsWith('https://'))
             ? user.portfolio_link
@@ -38,16 +38,16 @@ function Members() {
               : null;
 
           return {
-            // 항상 공개되는 필드
+            // Always public fields
             name: user.name,
             profileImageUrl: image,
             description: user.self_description,
             status,
             educationStatus: user.education_status,
 
-            // 공개 여부에 따라 조건부로 포함되는 필드
+            // Fields included only when the member made them public
             ...(user.email && { email: user.email }),
-            ...(user.tech_stack && { tags: user.tech_stack }),
+            tags: parseTags(user.tech_stack),
             ...(user.github_username && {
               githubUrl: `https://github.com/${user.github_username}`
             }),
@@ -55,14 +55,12 @@ function Members() {
             ...(user.current_company && { currentCompany: user.current_company }),
 
 
-            // tech_stack이 없으면 빈 배열로 설정 (필터링 로직을 위해)
-            ...(!user.tech_stack && { tags: [] }),
           };
         });
         if (isMounted) {
           const visibleMembers =
             process.env.NODE_ENV === 'development' && mapped.length === 0
-              ? developmentMembers
+              ? developmentMembers.map((member) => ({ ...member, tags: parseTags(member.tags) }))
               : mapped;
           setMembers(visibleMembers);
           setErrorMessage('');
@@ -70,7 +68,7 @@ function Members() {
       } catch (error) {
         if (isMounted) {
           if (process.env.NODE_ENV === 'development') {
-            setMembers(developmentMembers);
+            setMembers(developmentMembers.map((member) => ({ ...member, tags: parseTags(member.tags) })));
             setErrorMessage('');
           } else {
             setErrorMessage(error.message || '멤버 정보를 불러오지 못했습니다.');
@@ -94,6 +92,28 @@ function Members() {
     '.scroll-fade',
     `${searchTerm}:${activeTags.join(',')}:${members.length}`,
   );
+
+  const availableTags = useMemo(() => {
+    const counts = new Map();
+    members.forEach((member) => {
+      member.tags.forEach((tag) => {
+        counts.set(tag, (counts.get(tag) || 0) + 1);
+      });
+    });
+
+    return [...counts.entries()]
+      .sort(([tagA, countA], [tagB, countB]) =>
+        countB - countA || tagA.localeCompare(tagB, 'ko')
+      )
+      .map(([tag]) => tag);
+  }, [members]);
+
+  useEffect(() => {
+    setActiveTags((currentTags) => {
+      const kept = currentTags.filter((tag) => availableTags.includes(tag));
+      return kept.length === currentTags.length ? currentTags : kept;
+    });
+  }, [availableTags]);
 
   const filteredMembers = useMemo(() => {
     return members.filter((member) => {
@@ -126,11 +146,11 @@ function Members() {
   const currentMembers = filteredMembers
     .filter((member) => member.status === 'current')
     .sort((a, b) => {
-      // 1순위: 재학이 휴학보다 위
+      // First: enrolled ranks above on leave
       const statusOrder = (s) => (s === '재학' ? 0 : 1);
       const statusDiff = statusOrder(a.educationStatus) - statusOrder(b.educationStatus);
       if (statusDiff !== 0) return statusDiff;
-      // 2순위: 가나다 → 알파벳 순
+      // Then: Korean alphabetical, then Latin
       return a.name.localeCompare(b.name, 'ko');
     });
   const alumniMembers = filteredMembers
@@ -180,7 +200,7 @@ function Members() {
             <TagMultiSelect
               className="members-tag-filter"
               ariaLabel="멤버 태그 필터"
-              tags={['React', 'JavaScript', 'Node.js', 'Python', 'Swift', 'Java', 'Flutter', 'Vue.js', 'AI/ML']}
+              tags={availableTags}
               selectedTags={activeTags}
               onToggle={handleTagClick}
               onReset={() => setActiveTags([])}
@@ -259,7 +279,7 @@ function Members() {
                     {member.tags.map((tag, tagIndex) => (
                       <span
                         key={tagIndex}
-                        className={`px-2 py-1 rounded-full ${tagColorClass(tag)}`}
+                        className={tagColorClass(tag)}
                       >
                         {tag}
                       </span>
@@ -364,7 +384,7 @@ function Members() {
                     {member.tags.map((tag, tagIndex) => (
                       <span
                         key={tagIndex}
-                        className={`px-2 py-1 rounded-full ${tagColorClass(tag)}`}
+                        className={tagColorClass(tag)}
                       >
                         {tag}
                       </span>

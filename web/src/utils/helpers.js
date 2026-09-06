@@ -1,36 +1,62 @@
+const normalizeTag = (tag) => String(tag ?? '').trim().replace(/^#+/, '').trim();
+
+// Colors live in App.css. This map only decides which field a tag belongs to.
+const TAG_CATEGORY = {
+  'tag-ai-ml': [
+    'AI', 'AI/ML', '머신러닝', '딥러닝', '생성형AI', 'Machine Learning',
+    'TensorFlow', 'PyTorch', '데이터분석', '데이터',
+  ],
+  'tag-data-db': [
+    '데이터베이스', 'SQL', 'MySQL', 'PostgreSQL', 'MongoDB', 'Redis',
+  ],
+  'tag-frontend': [
+    '프론트엔드', '웹개발', 'React', 'Next.js', 'Vue.js', 'Svelte',
+    'JavaScript', 'CSS', 'HTML', 'UI/UX',
+  ],
+  'tag-backend': [
+    '백엔드', '서버', '네트워크', 'Node.js', 'Node.JS', 'NestJS', 'Express',
+    'Spring', 'Django', 'FastAPI', 'GraphQL',
+  ],
+  'tag-mobile': [
+    '모바일', 'iOS', 'Android', 'Swift', 'Kotlin', 'Flutter', 'React Native',
+  ],
+  'tag-language-framework': [
+    '프로그래밍', '프로그래밍 언어', 'Java', 'Python', '파이썬', 'TypeScript',
+    'C', 'C++', 'C#', 'Go', 'Rust', '알고리즘', '자료구조', '코딩테스트',
+  ],
+  'tag-cloud-devops': [
+    '클라우드', 'DevOps', '데브옵스', '인프라', 'AWS', 'GCP', 'Azure',
+    'Docker', 'Kubernetes', 'CI/CD',
+  ],
+  'tag-security': ['보안', 'Security', '해킹'],
+  'tag-open-source': ['오픈소스', '초보환영', '입문', '초급'],
+  'tag-architecture': ['소프트웨어 아키텍처', '아키텍처', '설계', '심화', '풀스택'],
+  'tag-industry-career': [
+    '해커톤', '공모전', '프로젝트', '스터디', '취업', '커리어', '산업 동향',
+  ],
+};
+
+const TAG_CLASS_BY_NAME = new Map(
+  Object.entries(TAG_CATEGORY).flatMap(([className, tags]) =>
+    tags.map((tag) => [tag.toLowerCase(), className]),
+  ),
+);
+
+// Same fallback as v9TagClassName on the tech articles page.
+const DEFAULT_TAG_CLASS = 'tag-architecture';
+
 export const tagColorClass = (tag) => {
-  const map = {
-    AI: 'service-tag-tone-01',
-    'AI/ML': 'service-tag-tone-01',
-    TensorFlow: 'service-tag-tone-01',
-    PyTorch: 'service-tag-tone-01',
-    'Machine Learning': 'service-tag-tone-01',
-    React: 'service-tag-tone-02',
-    JavaScript: 'service-tag-tone-04',
-    TypeScript: 'service-tag-tone-08',
-    CSS: 'service-tag-tone-10',
-    프론트엔드: 'service-tag-tone-02',
-    'Vue.js': 'service-tag-tone-11',
-    Swift: 'service-tag-tone-03',
-    Flutter: 'service-tag-tone-07',
-    Kotlin: 'service-tag-tone-12',
-    모바일: 'service-tag-tone-03',
-    Java: 'service-tag-tone-06',
-    Python: 'service-tag-tone-05',
-    알고리즘: 'service-tag-tone-04',
-    MySQL: 'service-tag-tone-12',
-    'Data Science': 'service-tag-tone-13',
-    AWS: 'service-tag-tone-06',
-    Django: 'service-tag-tone-14',
-    Spring: 'service-tag-tone-15',
-    'Node.js': 'service-tag-tone-09',
-    백엔드: 'service-tag-tone-09',
-    프로젝트: 'service-tag-tone-10',
-    초보환영: 'service-tag-tone-13',
-    공모전: 'service-tag-tone-14',
-    해커톤: 'service-tag-tone-15',
-  };
-  return `service-tag ${map[tag] || 'service-tag-tone-10'}`;
+  const name = normalizeTag(tag).toLowerCase();
+  return `service-tag ${TAG_CLASS_BY_NAME.get(name) || DEFAULT_TAG_CLASS}`;
+};
+
+// The create form used to suggest "#React", so stored tags may carry a leading #.
+export const parseTags = (value) => {
+  if (Array.isArray(value)) {
+    return [...new Set(value.map(normalizeTag).filter(Boolean))];
+  }
+  if (typeof value !== 'string') return [];
+  return [...new Set(value.split(',').map(normalizeTag).filter(Boolean))];
 };
 
 export const isExpired = (deadline) => {

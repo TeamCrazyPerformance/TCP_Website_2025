@@ -1,21 +1,22 @@
-import React, { useState, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom"; // React Router Link 임포트
-import logo from "../logo.svg"; // src 폴더에 있는 logo.svg를 상대 경로로 임포트
+import React, { useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom"; // React Router Link
+import logo from "../logo.svg"; // logo.svg from src, by relative path
 import { apiPost } from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import "../styles/authPages.css";
 
 function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
-  // 아이디, 비밀번호 상태 관리
+  // Username and password state
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 폼 제출 핸들러
+  // Submit handler
   const handleSubmit = async (e) => {
-    e.preventDefault(); // 기본 폼 제출 동작 방지
+    e.preventDefault(); // Prevent the default form submission
 
     if (!username || !password) {
       alert("아이디와 비밀번호를 모두 입력해주세요.");
@@ -40,40 +41,14 @@ function Login() {
     }
   };
 
-  // 인풋 필드 포커스 효과 (선택 사항: CSS로만 처리하는 경우 불필요)
-  // 여기서는 기존 HTML의 JS 효과를 재현하기 위해 useEffect를 사용합니다.
-  useEffect(() => {
-    const inputFields = document.querySelectorAll(".input-field");
-
-    const handleFocus = (event) => {
-      event.target.parentElement.style.transform = "scale(1.02)";
-    };
-
-    const handleBlur = (event) => {
-      event.target.parentElement.style.transform = "scale(1)";
-    };
-
-    inputFields.forEach((input) => {
-      input.addEventListener("focus", handleFocus);
-      input.addEventListener("blur", handleBlur);
-    });
-
-    return () => {
-      inputFields.forEach((input) => {
-        input.removeEventListener("focus", handleFocus);
-        input.removeEventListener("blur", handleBlur);
-      });
-    };
-  }, []); // 컴포넌트 마운트 시 한 번만 실행
-
   return (
     <>
       {/* Login Section */}
-      <section className="pt-24 pb-16 min-h-screen flex items-center justify-center">
+      <section className="auth-page auth-login public-page-unified-background">
         <div className="container mx-auto px-4">
           <div className="max-w-md mx-auto">
             {/* Header */}
-            <div className="text-center mb-8">
+            <div className="auth-heading text-center mb-8">
               <div className="w-16 h-16 mx-auto mb-4 flex items-center justify-center">
                 <img
                   src={logo}
@@ -82,15 +57,12 @@ function Login() {
                 />
               </div>
               <h1 className="orbitron text-3xl font-bold gradient-text mb-2">
-                TCP 로그인
+                로그인
               </h1>
-              <p className="orbitron text-gray-400">
-                Team Crazy Performance에 오신 것을 환영합니다
-              </p>
             </div>
 
             {/* Login Form */}
-            <div className="login-card p-8 rounded-2xl card-hover">
+            <div className="login-card">
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="login-credentials">
                   {/* Username Input */}
@@ -104,6 +76,7 @@ function Login() {
                     <div className="login-input-shell relative">
                       <input
                         type="text"
+                        autoComplete="username"
                         id="username"
                         aria-label="아이디"
                         className="input-field w-full px-4 py-3 rounded-lg text-white placeholder-gray-400"
@@ -127,6 +100,7 @@ function Login() {
                     <div className="login-input-shell relative">
                       <input
                         type="password"
+                        autoComplete="current-password"
                         id="password"
                         aria-label="비밀번호"
                         className="input-field w-full px-4 py-3 rounded-lg text-white placeholder-gray-400"
@@ -190,7 +164,7 @@ function Login() {
             </div>
 
             {/* Additional Info */}
-            <div className="text-center mt-8 text-sm text-gray-400">
+            <div className="auth-footer text-center mt-8 text-sm text-gray-400">
               <p>
                 TCP 부원이 되고싶으신가요?{" "}
                 <Link
@@ -200,7 +174,7 @@ function Login() {
                   지금 지원하세요
                 </Link>
               </p>{" "}
-              {/* 가입 링크 */}
+              {/* Sign-up link */}
               <p className="mt-2">
                 문의사항:{" "}
                 <span className="text-blue-400">seoultech.tcp@gmail.com</span>

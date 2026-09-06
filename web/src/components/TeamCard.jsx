@@ -4,10 +4,10 @@ import { tagColorClass, isExpired } from '../utils/helpers';
 
 const TeamCard = React.memo(({ team, currentUser, applicationStatus, onOpenDetail, onEdit, onDelete, onStatusChange, isMyPage = false }) => {
   const expired = isExpired(team.deadline);
-  // 마이페이지의 "내가 모집중인 팀"은 항상 내가 리더
-  // 타입 불일치를 방지하기 위해 String으로 변환하여 비교
+  // On My Page, every team under "teams I am recruiting for" is one I lead
+  // Compare as strings to avoid a type mismatch
   const isLeader = team.teamCategory === 'recruiting' || team.teamCategory === 'completed' || (currentUser?.id && team.leaderId && String(currentUser.id) === String(team.leaderId));
-  // 마이페이지에서는 본인 팀이면 항상 활성화, 그 외에는 모집중이고 마감 안된 것만 활성화
+  // My Page always enables my own teams; elsewhere only open, unexpired ones are enabled
   const disabled = isMyPage && isLeader ? false : (team.status !== '모집중' || expired);
   const hasApplied = applicationStatus?.hasApplied || false;
 
@@ -65,7 +65,7 @@ const TeamCard = React.memo(({ team, currentUser, applicationStatus, onOpenDetai
           {team.tags?.map((tg, idx) => (
             <span
               key={`${team.id}-tg-${idx}`}
-              className={`px-2 py-1 rounded-full text-xs ${tagColorClass(tg)}`}
+              className={tagColorClass(tg)}
             >
               {tg}
             </span>

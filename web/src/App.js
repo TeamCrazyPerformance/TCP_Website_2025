@@ -19,6 +19,7 @@ import Recruitment from "./pages/Recruitment";
 import Announcement from "./pages/Announcement";
 import AnnouncementWrite from "./pages/AnnouncementWrite";
 import AnnouncementArticle from "./pages/AnnouncementArticle";
+import RequireRole from "./components/auth/RequireRole";
 import Study from "./pages/Study";
 import StudyWrite from "./pages/StudyWrite";
 import StudyDetail from "./pages/StudyDetail";
@@ -123,8 +124,22 @@ function AppContent() {
         <Route path="/members" element={<Members />} />
         <Route path="/recruitment" element={<Recruitment />} />
         <Route path="/announcement" element={<Announcement />} />
-        <Route path="/announcement/write" element={<AnnouncementWrite />} />
-        <Route path="/announcement/edit/:id" element={<AnnouncementWrite />} />
+        <Route
+          path="/announcement/write"
+          element={
+            <RequireRole roles={["ADMIN"]}>
+              <AnnouncementWrite />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/announcement/edit/:id"
+          element={
+            <RequireRole roles={["ADMIN"]}>
+              <AnnouncementWrite />
+            </RequireRole>
+          }
+        />
         <Route path="/announcement/:id" element={<AnnouncementArticle />} />
         <Route path="/study" element={<Study />} />
         <Route path="/study/write" element={<StudyWrite />} />
