@@ -55,6 +55,9 @@ export function getAdminTechArticles({
   publicationStatus,
   stage,
   statusMismatch,
+  qualityRecalculationStatus,
+  qualityVersionStatus,
+  summaryVersionStatus,
   sort = "NEWEST",
 } = {}) {
   return apiGet(
@@ -65,6 +68,9 @@ export function getAdminTechArticles({
       publicationStatus,
       stage,
       statusMismatch,
+      qualityRecalculationStatus,
+      qualityVersionStatus,
+      summaryVersionStatus,
       sort,
     }),
   );
@@ -74,6 +80,10 @@ export function getAdminTechArticleStats({ keyword, publicationStatus } = {}) {
   return apiGet(
     withQuery(`${ADMIN_BASE}/stats`, { keyword, publicationStatus }),
   );
+}
+
+export function getAdminTechArticleOverview({ from, to } = {}) {
+  return apiGet(withQuery(`${ADMIN_BASE}/overview`, { from, to }));
 }
 
 export function getAdminTechArticle(articleId) {
@@ -132,6 +142,28 @@ export function reprocessArticle(articleId, payload) {
     `${ADMIN_BASE}/${encodeURIComponent(articleId)}/reprocessing`,
     payload,
   );
+}
+
+export function regenerateArticleSummary(articleId, payload) {
+  return apiPost(
+    `${ADMIN_BASE}/${encodeURIComponent(articleId)}/summary-regeneration`,
+    payload,
+  );
+}
+
+export function regenerateArticleSummariesBulk(items) {
+  return apiPost(`${ADMIN_BASE}/summary-regenerations/bulk`, { items });
+}
+
+export function recalculateArticleQuality(articleId, payload) {
+  return apiPost(
+    `${ADMIN_BASE}/${encodeURIComponent(articleId)}/quality-recalculation`,
+    payload,
+  );
+}
+
+export function recalculateArticleQualitiesBulk(items) {
+  return apiPost(`${ADMIN_BASE}/quality-recalculations/bulk`, { items });
 }
 
 export function resolveDuplicateReview(caseId, payload) {

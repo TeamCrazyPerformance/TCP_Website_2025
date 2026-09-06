@@ -1,12 +1,17 @@
 import { apiGet, apiPost } from "./client";
 import {
   getAdminTechArticleStats,
+  getAdminTechArticleOverview,
   getQualityReviews,
   getTechArticle,
   getTechArticleSources,
   getAdminTechArticles,
   getCrawlRuns,
   getTechArticles,
+  recalculateArticleQualitiesBulk,
+  recalculateArticleQuality,
+  regenerateArticleSummariesBulk,
+  regenerateArticleSummary,
   reprocessArticle,
   startCrawlRun,
   techArticleErrorMessage,
@@ -103,6 +108,28 @@ test("관리자 목록이 단계와 표시 오류를 서버 쿼리로 보낸다"
   expect(apiGet).toHaveBeenLastCalledWith(
     "/api/v1/admin/tech-articles?page=1&pageSize=20&statusMismatch=true&sort=NEWEST",
   );
+
+  await getAdminTechArticles({ summaryVersionStatus: "OUTDATED" });
+  expect(apiGet).toHaveBeenLastCalledWith(
+    "/api/v1/admin/tech-articles?page=1&pageSize=20&summaryVersionStatus=OUTDATED&sort=NEWEST",
+  );
+
+  await getAdminTechArticles({ qualityVersionStatus: "OUTDATED" });
+  expect(apiGet).toHaveBeenLastCalledWith(
+    "/api/v1/admin/tech-articles?page=1&pageSize=20&qualityVersionStatus=OUTDATED&sort=NEWEST",
+  );
+
+  await getAdminTechArticles({
+    qualityRecalculationStatus: "ATTENTION_REQUIRED",
+  });
+  expect(apiGet).toHaveBeenLastCalledWith(
+    "/api/v1/admin/tech-articles?page=1&pageSize=20&qualityRecalculationStatus=ATTENTION_REQUIRED&sort=NEWEST",
+  );
+
+  await getAdminTechArticles({ summaryVersionStatus: "UNTRACKED" });
+  expect(apiGet).toHaveBeenLastCalledWith(
+    "/api/v1/admin/tech-articles?page=1&pageSize=20&summaryVersionStatus=UNTRACKED&sort=NEWEST",
+  );
 });
 
 test("단계를 고르지 않으면 쿼리에 실리지 않는다", async () => {
@@ -131,6 +158,16 @@ test("통계도 목록과 같은 조건으로 센다", async () => {
   expect(apiGet).toHaveBeenLastCalledWith("/api/v1/admin/tech-articles/stats");
 });
 
+test("Overview 기간을 관리자 API로 보낸다", async () => {
+  apiGet.mockResolvedValue({});
+
+  await getAdminTechArticleOverview({ from: "2026-08-23", to: "2026-09-05" });
+
+  expect(apiGet).toHaveBeenCalledWith(
+    "/api/v1/admin/tech-articles/overview?from=2026-08-23&to=2026-09-05",
+  );
+});
+
 test("품질 미달 큐와 재처리 요청을 관리자 API로 보낸다", async () => {
   apiGet.mockResolvedValue({ items: [] });
   apiPost.mockResolvedValue({ articleId: "article-1" });
@@ -147,6 +184,44 @@ test("품질 미달 큐와 재처리 요청을 관리자 API로 보낸다", asyn
   expect(apiPost).toHaveBeenCalledWith(
     "/api/v1/admin/tech-articles/article%201/reprocessing",
     { action: "RETRY", expectedRecordVersion: 4 },
+  );
+});
+
+test("AI 요약 재생성 단건과 일괄 요청을 관리자 API로 보낸다", async () => {
+  apiPost.mockResolvedValue({ status: "PENDING" });
+  const item = { articleId: "article 1", expectedRecordVersion: 4 };
+
+  await regenerateArticleSummary(item.articleId, {
+    expectedRecordVersion: item.expectedRecordVersion,
+  });
+  expect(apiPost).toHaveBeenCalledWith(
+    "/api/v1/admin/tech-articles/article%201/summary-regeneration",
+    { expectedRecordVersion: 4 },
+  );
+
+  await regenerateArticleSummariesBulk([item]);
+  expect(apiPost).toHaveBeenLastCalledWith(
+    "/api/v1/admin/tech-articles/summary-regenerations/bulk",
+    { items: [item] },
+  );
+});
+
+test("품질 점수 재계산 단건과 일괄 요청을 관리자 API로 보낸다", async () => {
+  apiPost.mockResolvedValue({ status: "PENDING" });
+  const item = { articleId: "article 1", expectedRecordVersion: 4 };
+
+  await recalculateArticleQuality(item.articleId, {
+    expectedRecordVersion: item.expectedRecordVersion,
+  });
+  expect(apiPost).toHaveBeenCalledWith(
+    "/api/v1/admin/tech-articles/article%201/quality-recalculation",
+    { expectedRecordVersion: 4 },
+  );
+
+  await recalculateArticleQualitiesBulk([item]);
+  expect(apiPost).toHaveBeenLastCalledWith(
+    "/api/v1/admin/tech-articles/quality-recalculations/bulk",
+    { items: [item] },
   );
 });
 

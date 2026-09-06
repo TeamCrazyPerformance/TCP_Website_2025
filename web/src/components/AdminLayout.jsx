@@ -75,6 +75,8 @@ function AdminLayout() {
     if (path === "/admin/main") return "Main Page Content";
     if (path === "/admin/recruitment") return "Recruitment Page Management";
     if (path === "/admin/tech-articles") return "Tech Articles · All Articles";
+    if (path === "/admin/tech-articles/overview")
+      return "Tech Articles · Pipeline Status";
     if (path === "/admin/tech-articles/reviews/duplicates")
       return "Tech Articles · Suspected Duplicates";
     if (

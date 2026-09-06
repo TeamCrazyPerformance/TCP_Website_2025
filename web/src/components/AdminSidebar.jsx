@@ -81,6 +81,13 @@ function AdminSidebar({ isOpen = false }) {
             Tech Articles
           </h3>
           <Link
+            to="/admin/tech-articles/overview"
+            className={`sidebar-link ${isActive("/admin/tech-articles/overview") ? "bg-gray-700 text-white" : ""}`}
+          >
+            <i className="fas fa-chart-column"></i>
+            <span className="ml-2">Pipeline Status</span>
+          </Link>
+          <Link
             to="/admin/tech-articles"
             className={`sidebar-link ${isActive("/admin/tech-articles") ? "bg-gray-700 text-white" : ""}`}
           >

@@ -21,6 +21,12 @@ const PUBLIC_ARTICLE_COUNT = Math.min(
   Number(process.env.MOCK_PUBLIC_ARTICLE_COUNT || 106),
   ARTICLE_COUNT,
 );
+const LATEST_QUALITY = Object.freeze({ moduleVersion: "2.2.6" });
+const LATEST_AI_SUMMARY = Object.freeze({
+  moduleVersion: "1.0.0",
+  model: "gemini-3.5-flash-lite",
+  promptVersion: "dev-news-summary-v16",
+});
 
 /* ------------------------------------------------------------------ *
  * 결정론적 난수 (실행할 때마다 같은 더미 데이터가 나오도록)
@@ -776,6 +782,33 @@ articles.forEach((article, index) => {
   article.publishedAt = null;
 });
 
+articles.forEach((article, index) => {
+  const summaryCurrent = index % 4 === 0;
+  const qualityCurrent = index % 3 === 0;
+  article.processingVersions = {
+    qualityEvaluator:
+      article.processingStatus === "ENRICHED"
+        ? {
+            moduleVersion: qualityCurrent
+              ? LATEST_QUALITY.moduleVersion
+              : "2.1.0",
+            policyVersion: "quality-policy-v1",
+            completedAt: article.normalizedAt,
+          }
+        : null,
+    aiSummarizer:
+      article.processingStatus === "ENRICHED"
+        ? {
+            ...LATEST_AI_SUMMARY,
+            promptVersion: summaryCurrent
+              ? LATEST_AI_SUMMARY.promptVersion
+              : "dev-news-summary-v15",
+            completedAt: article.updatedAt,
+          }
+        : null,
+  };
+});
+
 // NEW 배지가 로컬에서 보이도록 공개된 아티클 몇 건의 수집 시각을 최근으로
 // 맞춘다. 목 데이터의 기준 시각은 고정이라 그냥 두면 전부 12시간을 넘긴다.
 articles
@@ -986,6 +1019,30 @@ for (const seed of articles
   resolvedApprovals.add(seed.articleId);
 }
 
+const processingFailures = new Map(
+  articles
+    .filter((article) => article.processingStatus === "PROCESSING_FAILED")
+    .map((article) => {
+      const enrichmentFailed = resolvedApprovals.has(article.articleId);
+      return [
+        article.articleId,
+        {
+          stage: enrichmentFailed ? "ENRICHMENT" : "QUALITY",
+          code: enrichmentFailed
+            ? "MODEL_TIMEOUT"
+            : "QUALITY_SERVICE_UNAVAILABLE",
+          message: enrichmentFailed
+            ? "AI 요약 모델의 응답 시간이 초과되었습니다."
+            : "품질 평가 서비스에 연결하지 못했습니다.",
+          retryable: true,
+          attemptCount: 3,
+          maxAttempts: 3,
+          failedAt: article.updatedAt,
+        },
+      ];
+    }),
+);
+
 // tech_article_pipeline.persistence.mysql.STAGE_PREDICATES 와 같은 판정입니다.
 // 한쪽만 고치면 화면이 목 서버에서만 다르게 보입니다.
 function articleStage(a) {
@@ -1038,6 +1095,32 @@ const viewCounts = new Map();
 const viewCountsOf = (id) =>
   viewCounts.get(id) || { member: 0, guest: 0, lastViewedAt: null };
 
+const summaryVersionStatus = (article) => {
+  if (article.processingStatus !== "ENRICHED" || !article.summaryMarkdown)
+    return "NOT_ELIGIBLE";
+  const applied = article.processingVersions?.aiSummarizer;
+  if (!applied?.moduleVersion || !applied?.model || !applied?.promptVersion)
+    return "UNTRACKED";
+  return applied?.moduleVersion === LATEST_AI_SUMMARY.moduleVersion &&
+    applied?.model === LATEST_AI_SUMMARY.model &&
+    applied?.promptVersion === LATEST_AI_SUMMARY.promptVersion
+    ? "CURRENT"
+    : "OUTDATED";
+};
+
+const qualityVersionStatus = (article) => {
+  if (article.processingStatus !== "ENRICHED" || !article.qualityDecision)
+    return "NOT_ELIGIBLE";
+  const applied = article.processingVersions?.qualityEvaluator;
+  if (!applied?.moduleVersion) return "UNTRACKED";
+  return applied?.moduleVersion === LATEST_QUALITY.moduleVersion
+    ? "CURRENT"
+    : "OUTDATED";
+};
+
+const canUpdateVersion = (status) =>
+  status === "OUTDATED" || status === "UNTRACKED";
+
 // 조회수가 화면에 보이도록 몇 건 시드한다. 비회원 열람이 회원 열람보다 많은
 // 아티클을 하나 넣어 두 숫자를 나눠 보여주는 이유가 드러나게 한다.
 articles.slice(0, 5).forEach((a, index) => {
@@ -1054,6 +1137,10 @@ const adminItem = (a) => ({
   evaluation: evaluationOf(a),
   score: a.valueScore,
   stage: articleStage(a),
+  qualityVersionStatus: qualityVersionStatus(a),
+  qualityTarget: LATEST_QUALITY,
+  summaryVersionStatus: summaryVersionStatus(a),
+  summaryTarget: LATEST_AI_SUMMARY,
   qualityReview: (() => {
     const review = qualityCases.find((item) => item.articleId === a.articleId);
     return review
@@ -2539,6 +2626,91 @@ function handle(method, pathname, query, body, headers = {}) {
     ];
   }
 
+  if (method === "GET" && pathname === `${ADMIN_BASE}/overview`) {
+    const to = query.get("to") || new Date().toISOString().slice(0, 10);
+    const fallbackFrom = new Date(`${to}T00:00:00+09:00`);
+    fallbackFrom.setDate(fallbackFrom.getDate() - 13);
+    const from = query.get("from") || fallbackFrom.toISOString().slice(0, 10);
+    const days = [];
+    for (
+      let cursor = new Date(`${from}T00:00:00+09:00`);
+      cursor <= new Date(`${to}T00:00:00+09:00`);
+      cursor.setDate(cursor.getDate() + 1)
+    ) {
+      const date = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Seoul",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(cursor);
+      const onDate = (value) =>
+        value &&
+        new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Asia/Seoul",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(new Date(value)) === date;
+      days.push({
+        date,
+        collectedCount: articles.filter((article) =>
+          onDate(article.collectedAt),
+        ).length,
+        processedCount: articles.filter((article) =>
+          onDate(article.processingVersions?.aiSummarizer?.completedAt),
+        ).length,
+      });
+    }
+    return [
+      200,
+      {
+        moduleVersions: {
+          standards: {
+            moduleVersion: "SEMVER",
+            model: "PROVIDER_MODEL_ID",
+            promptVersion: "EXPLICIT_IDENTIFIER",
+          },
+          crawlers: SOURCES.map((source) => ({
+            sourceId: source.id,
+            sourceName: source.name,
+            moduleVersion: source.id === "sdtimes" ? "1.1.0" : "1.0.0",
+          })),
+          qualityEvaluator: LATEST_QUALITY,
+          aiSummarizer: {
+            ...LATEST_AI_SUMMARY,
+          },
+        },
+        storage: {
+          available: true,
+          dataBytes: 91_226_112,
+          indexBytes: 18_874_368,
+          totalBytes: 110_100_480,
+          measuredAt: new Date().toISOString(),
+        },
+        statistics: {
+          timezone: "Asia/Seoul",
+          from,
+          to,
+          definitions: {
+            collectedCount: {
+              label: "신규 수집·등록",
+              basedOn: "crawl_items.produced_at",
+              description:
+                "해당 KST 일자에 크롤링 결과로 신규 등록된 고유 아티클 수",
+            },
+            processedCount: {
+              label: "AI 요약 완료",
+              basedOn: "article_processing_results.completed_at",
+              description:
+                "해당 KST 일자에 품질 평가를 통과하고 AI 요약 생성에 성공한 고유 아티클 수",
+            },
+          },
+          daily: days,
+        },
+      },
+    ];
+  }
+
   /* ---------- 관리자: 통계 ---------- */
   if (method === "GET" && pathname === `${ADMIN_BASE}/stats`) {
     // 목록과 같은 조건으로 셉니다. 단계(stage)는 넣지 않습니다 — 넣으면 고른
@@ -2811,6 +2983,190 @@ function handle(method, pathname, query, body, headers = {}) {
     ];
   }
 
+  if (
+    method === "POST" &&
+    pathname === `${ADMIN_BASE}/quality-recalculations/bulk`
+  ) {
+    const items = body?.items || [];
+    const results = items.map((item) => {
+      const article = articles.find(
+        (candidate) => candidate.articleId === item.articleId,
+      );
+      if (!article)
+        return {
+          id: item.articleId,
+          status: "FAILED",
+          error: { code: "NOT_FOUND", message: "아티클을 찾을 수 없습니다." },
+        };
+      if (item.expectedRecordVersion !== article.recordVersion)
+        return {
+          id: item.articleId,
+          status: "FAILED",
+          error: { code: "VERSION_CONFLICT", message: "버전 충돌" },
+        };
+      if (!canUpdateVersion(qualityVersionStatus(article)))
+        return {
+          id: item.articleId,
+          status: "FAILED",
+          error: {
+            code: "INVALID_ARTICLE_ACTION",
+            message: "품질 점수를 재계산할 수 있는 상태가 아닙니다.",
+          },
+        };
+      article.processingVersions.qualityEvaluator = {
+        ...article.processingVersions.qualityEvaluator,
+        ...LATEST_QUALITY,
+        completedAt: new Date().toISOString(),
+      };
+      article.qualityRecalculationStatus = "PASS";
+      article.recordVersion += 1;
+      article.updatedAt = new Date().toISOString();
+      return {
+        id: item.articleId,
+        status: "SUCCEEDED",
+        data: { articleId: item.articleId, status: "QUEUED" },
+      };
+    });
+    const succeeded = results.filter(
+      (item) => item.status === "SUCCEEDED",
+    ).length;
+    return [
+      200,
+      {
+        results,
+        summary: {
+          total: results.length,
+          succeeded,
+          failed: results.length - succeeded,
+        },
+      },
+    ];
+  }
+  if (method === "POST" && pathname.endsWith("/quality-recalculation")) {
+    const articleId = decodeURIComponent(
+      pathname.slice(
+        ADMIN_BASE.length + 1,
+        pathname.length - "/quality-recalculation".length,
+      ),
+    );
+    const article = articles.find((item) => item.articleId === articleId);
+    if (!article)
+      return [404, { statusCode: 404, message: "아티클을 찾을 수 없습니다." }];
+    if (body?.expectedRecordVersion !== article.recordVersion)
+      return [
+        409,
+        { statusCode: 409, code: "VERSION_CONFLICT", message: "버전 충돌" },
+      ];
+    if (!canUpdateVersion(qualityVersionStatus(article)))
+      return [
+        422,
+        {
+          statusCode: 422,
+          code: "INVALID_ARTICLE_ACTION",
+          message: "품질 점수를 재계산할 수 있는 상태가 아닙니다.",
+        },
+      ];
+    article.processingVersions.qualityEvaluator = {
+      ...article.processingVersions.qualityEvaluator,
+      ...LATEST_QUALITY,
+      completedAt: new Date().toISOString(),
+    };
+    article.qualityRecalculationStatus = "PASS";
+    article.recordVersion += 1;
+    article.updatedAt = new Date().toISOString();
+    return [202, { articleId, status: "QUEUED" }];
+  }
+
+  if (
+    method === "POST" &&
+    pathname === `${ADMIN_BASE}/summary-regenerations/bulk`
+  ) {
+    const items = body?.items || [];
+    const results = items.map((item) => {
+      const article = articles.find(
+        (candidate) => candidate.articleId === item.articleId,
+      );
+      if (!article)
+        return {
+          id: item.articleId,
+          status: "FAILED",
+          error: { code: "NOT_FOUND", message: "아티클을 찾을 수 없습니다." },
+        };
+      if (item.expectedRecordVersion !== article.recordVersion)
+        return {
+          id: item.articleId,
+          status: "FAILED",
+          error: { code: "VERSION_CONFLICT", message: "버전 충돌" },
+        };
+      if (!canUpdateVersion(summaryVersionStatus(article)))
+        return {
+          id: item.articleId,
+          status: "FAILED",
+          error: {
+            code: "INVALID_ARTICLE_ACTION",
+            message: "AI 요약을 재생성할 수 있는 상태가 아닙니다.",
+          },
+        };
+      article.processingVersions.aiSummarizer = {
+        ...LATEST_AI_SUMMARY,
+        completedAt: new Date().toISOString(),
+      };
+      article.recordVersion += 1;
+      article.updatedAt = new Date().toISOString();
+      return {
+        id: item.articleId,
+        status: "SUCCEEDED",
+        data: { articleId: item.articleId, status: "QUEUED" },
+      };
+    });
+    const succeeded = results.filter(
+      (item) => item.status === "SUCCEEDED",
+    ).length;
+    return [
+      200,
+      {
+        results,
+        summary: {
+          total: results.length,
+          succeeded,
+          failed: results.length - succeeded,
+        },
+      },
+    ];
+  }
+  if (method === "POST" && pathname.endsWith("/summary-regeneration")) {
+    const articleId = decodeURIComponent(
+      pathname.slice(
+        ADMIN_BASE.length + 1,
+        pathname.length - "/summary-regeneration".length,
+      ),
+    );
+    const article = articles.find((item) => item.articleId === articleId);
+    if (!article)
+      return [404, { statusCode: 404, message: "아티클을 찾을 수 없습니다." }];
+    if (body?.expectedRecordVersion !== article.recordVersion)
+      return [
+        409,
+        { statusCode: 409, code: "VERSION_CONFLICT", message: "버전 충돌" },
+      ];
+    if (!canUpdateVersion(summaryVersionStatus(article)))
+      return [
+        422,
+        {
+          statusCode: 422,
+          code: "INVALID_ARTICLE_ACTION",
+          message: "AI 요약을 재생성할 수 있는 상태가 아닙니다.",
+        },
+      ];
+    article.processingVersions.aiSummarizer = {
+      ...LATEST_AI_SUMMARY,
+      completedAt: new Date().toISOString(),
+    };
+    article.recordVersion += 1;
+    article.updatedAt = new Date().toISOString();
+    return [202, { articleId, status: "QUEUED" }];
+  }
+
   /* ---------- 관리자: 검수 판정 ---------- */
   if (
     method === "POST" &&
@@ -2874,13 +3230,27 @@ function handle(method, pathname, query, body, headers = {}) {
     const status = query.get("publicationStatus");
     const stage = query.get("stage");
     const mismatchOnly = query.get("statusMismatch") === "true";
+    const qualityRecalculationFilter = query.get("qualityRecalculationStatus");
+    const qualityFilter = query.get("qualityVersionStatus");
+    const summaryFilter = query.get("summaryVersionStatus");
     const sort = query.get("sort") || "NEWEST";
     // 서버와 같은 순서로 거릅니다 — 거른 뒤에 페이지를 자릅니다.
     let rows = articles
       .filter(matches)
       .filter((a) => !status || a.publicationStatus === status)
       .filter((a) => !stage || articleStage(a) === stage)
-      .filter((a) => !mismatchOnly || hasStatusMismatch(a));
+      .filter((a) => !mismatchOnly || hasStatusMismatch(a))
+      .filter(
+        (a) =>
+          !qualityRecalculationFilter ||
+          a.qualityRecalculationStatus === qualityRecalculationFilter,
+      )
+      .filter(
+        (a) => !qualityFilter || qualityVersionStatus(a) === qualityFilter,
+      )
+      .filter(
+        (a) => !summaryFilter || summaryVersionStatus(a) === summaryFilter,
+      );
     if (sort === "OLDEST")
       rows = [...rows].sort(
         (x, y) => new Date(x.updatedAt) - new Date(y.updatedAt),
@@ -2890,7 +3260,14 @@ function handle(method, pathname, query, body, headers = {}) {
     else if (sort === "SCORE_ASC")
       rows = [...rows].sort((x, y) => x.valueScore - y.valueScore);
     else rows = [...rows].sort(byNewest);
-    return [200, paginate(rows.map(adminItem), page, pageSize)];
+    return [
+      200,
+      {
+        ...paginate(rows.map(adminItem), page, pageSize),
+        qualityTarget: LATEST_QUALITY,
+        summaryTarget: LATEST_AI_SUMMARY,
+      },
+    ];
   }
   if (method === "GET" && pathname.startsWith(`${ADMIN_BASE}/`)) {
     const id = decodeURIComponent(pathname.slice(ADMIN_BASE.length + 1));
@@ -2903,6 +3280,10 @@ function handle(method, pathname, query, body, headers = {}) {
         ...adminItem(found),
         latestCrawlItemId: `item-${found.articleId}`,
         evaluation: evaluationOf(found), // 관리자 상세는 dimensions 중첩 형태
+        processingFailure:
+          found.processingStatus === "PROCESSING_FAILED"
+            ? processingFailures.get(found.articleId) || null
+            : null,
       },
     ];
   }
