@@ -96,6 +96,20 @@ export interface PipelineArticle {
   qualityDecision?: string | null;
   evaluation?: QualityEvaluation | null;
   processingStatus?: string;
+  qualityRecalculationStatus?: 'PASS' | 'ATTENTION_REQUIRED' | null;
+  qualityVersionStatus?: 'CURRENT' | 'OUTDATED' | 'UNTRACKED' | 'NOT_ELIGIBLE';
+  qualityTarget?: QualityVersions | null;
+  summaryVersionStatus?: 'CURRENT' | 'OUTDATED' | 'UNTRACKED' | 'NOT_ELIGIBLE';
+  summaryTarget?: SummaryVersions | null;
+  processingFailure?: {
+    stage?: string | null;
+    code?: string | null;
+    message?: string | null;
+    retryable?: boolean | null;
+    attemptCount?: number | null;
+    maxAttempts?: number | null;
+    failedAt?: string | null;
+  } | null;
   stage?: string;
   duplicateStatus?: string;
   qualityReview?: {
@@ -107,4 +121,31 @@ export interface PipelineArticle {
   publishedAt?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+  processingVersions?: {
+    crawler?: {
+      moduleVersion?: string | null;
+      completedAt?: string | null;
+    } | null;
+    qualityEvaluator?: {
+      moduleVersion?: string | null;
+      policyVersion?: string | null;
+      completedAt?: string | null;
+    } | null;
+    aiSummarizer?: {
+      moduleVersion?: string | null;
+      model?: string | null;
+      promptVersion?: string | null;
+      completedAt?: string | null;
+    } | null;
+  };
+}
+
+export interface QualityVersions {
+  moduleVersion?: string | null;
+}
+
+export interface SummaryVersions {
+  moduleVersion?: string | null;
+  model?: string | null;
+  promptVersion?: string | null;
 }

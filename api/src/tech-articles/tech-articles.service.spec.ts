@@ -160,6 +160,129 @@ describe('TechArticlesService', () => {
     expect(result.items[0]).not.toHaveProperty('content');
   });
 
+  it('keeps processing failure details in admin detail only', async () => {
+    const processingFailure = {
+      stage: 'ENRICHMENT',
+      code: 'MODEL_TIMEOUT',
+      message: 'AI model timed out.',
+      retryable: true,
+      attemptCount: 3,
+      maxAttempts: 3,
+      failedAt: '2026-09-05T01:02:03Z',
+    };
+    pipeline.get.mockResolvedValue({
+      articleId: 'article-failed',
+      processingStatus: 'PROCESSING_FAILED',
+      processingFailure,
+      content: 'must-not-leak',
+    });
+
+    const result = await service.adminDetail('article-failed');
+
+    expect(result.processingFailure).toEqual(processingFailure);
+    expect(result).not.toHaveProperty('content');
+  });
+
+  it('requests the admin overview with an explicit date range', async () => {
+    pipeline.get.mockResolvedValue({ statistics: { daily: [] } });
+
+    await service.overview({ from: '2026-08-23', to: '2026-09-05' });
+
+    expect(pipeline.get).toHaveBeenCalledWith('/internal/v1/admin/overview', {
+      from: '2026-08-23',
+      to: '2026-09-05',
+    });
+  });
+
+  it('forwards the outdated summary filter and current target versions', async () => {
+    const summaryTarget = {
+      moduleVersion: '1.1.0',
+      model: 'gemini-3.5-flash-lite',
+      promptVersion: 'dev-news-summary-v17',
+    };
+    pipeline.get.mockResolvedValue({
+      totalCount: 1,
+      summaryTarget,
+      items: [
+        {
+          articleId: 'article-1',
+          summaryVersionStatus: 'OUTDATED',
+        },
+      ],
+    });
+
+    const result = await service.listAdmin({
+      page: 1,
+      pageSize: 20,
+      sort: 'NEWEST',
+      summaryVersionStatus: 'OUTDATED',
+    });
+
+    expect(pipeline.get).toHaveBeenCalledWith(
+      '/internal/v1/admin/articles',
+      expect.objectContaining({ summaryVersionStatus: 'OUTDATED' }),
+    );
+    expect(result.summaryTarget).toEqual(summaryTarget);
+    expect(result.items[0].summaryVersionStatus).toBe('OUTDATED');
+  });
+
+  it('forwards the outdated quality filter and current target version', async () => {
+    const qualityTarget = { moduleVersion: '2.3.0' };
+    pipeline.get.mockResolvedValue({
+      totalCount: 1,
+      qualityTarget,
+      items: [
+        {
+          articleId: 'article-1',
+          qualityVersionStatus: 'OUTDATED',
+        },
+      ],
+    });
+
+    const result = await service.listAdmin({
+      page: 1,
+      pageSize: 20,
+      sort: 'NEWEST',
+      qualityVersionStatus: 'OUTDATED',
+    });
+
+    expect(pipeline.get).toHaveBeenCalledWith(
+      '/internal/v1/admin/articles',
+      expect.objectContaining({ qualityVersionStatus: 'OUTDATED' }),
+    );
+    expect(result.qualityTarget).toEqual(qualityTarget);
+    expect(result.items[0].qualityVersionStatus).toBe('OUTDATED');
+  });
+
+  it('forwards the quality recalculation result filter', async () => {
+    pipeline.get.mockResolvedValue({
+      totalCount: 1,
+      items: [
+        {
+          articleId: 'article-1',
+          qualityRecalculationStatus: 'ATTENTION_REQUIRED',
+        },
+      ],
+    });
+
+    const result = await service.listAdmin({
+      page: 1,
+      pageSize: 20,
+      sort: 'NEWEST',
+      qualityRecalculationStatus: 'ATTENTION_REQUIRED',
+    });
+
+    expect(pipeline.get).toHaveBeenCalledWith(
+      '/internal/v1/admin/articles',
+      expect.objectContaining({
+        qualityRecalculationStatus: 'ATTENTION_REQUIRED',
+      }),
+    );
+    expect(result.items[0].qualityRecalculationStatus).toBe(
+      'ATTENTION_REQUIRED',
+    );
+  });
+
   it('keeps bulk output ordered and reports item failures', async () => {
     pipeline.post
       .mockResolvedValueOnce({ articleId: 'a', recordVersion: 2 })
@@ -231,6 +354,50 @@ describe('TechArticlesService', () => {
       '/internal/v1/admin/articles/article-1/reprocessing',
       {
         action: 'RETRY',
+        expectedRecordVersion: 3,
+        administratorId: 'admin-7',
+      },
+    );
+  });
+
+  it('injects the authenticated administrator into summary regeneration', async () => {
+    pipeline.post.mockResolvedValue({
+      articleId: 'article-1',
+      jobId: 'job-1',
+      status: 'PENDING',
+    });
+
+    await service.summaryRegeneration(
+      'article-1',
+      { expectedRecordVersion: 3 },
+      'admin-7',
+    );
+
+    expect(pipeline.post).toHaveBeenCalledWith(
+      '/internal/v1/admin/articles/article-1/summary-regeneration',
+      {
+        expectedRecordVersion: 3,
+        administratorId: 'admin-7',
+      },
+    );
+  });
+
+  it('injects the authenticated administrator into quality recalculation', async () => {
+    pipeline.post.mockResolvedValue({
+      articleId: 'article-1',
+      jobId: 'job-1',
+      status: 'PENDING',
+    });
+
+    await service.qualityRecalculation(
+      'article-1',
+      { expectedRecordVersion: 3 },
+      'admin-7',
+    );
+
+    expect(pipeline.post).toHaveBeenCalledWith(
+      '/internal/v1/admin/articles/article-1/quality-recalculation',
+      {
         expectedRecordVersion: 3,
         administratorId: 'admin-7',
       },

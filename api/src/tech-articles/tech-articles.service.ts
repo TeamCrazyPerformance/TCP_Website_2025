@@ -3,7 +3,10 @@ import { randomUUID } from 'crypto';
 import {
   AdminArticleQueryDto,
   AdminArticleStatsQueryDto,
+  AdminOverviewQueryDto,
   ArticleReprocessingDto,
+  BulkQualityRecalculationDto,
+  BulkSummaryRegenerationDto,
   BulkDuplicateResolutionDto,
   BulkPublicationDto,
   BulkQualityResolutionDto,
@@ -14,7 +17,9 @@ import {
   PublicationActionDto,
   PublicationPolicyDto,
   PublicArticleQueryDto,
+  QualityRecalculationDto,
   QualityResolutionDto,
+  SummaryRegenerationDto,
 } from './tech-articles.dto';
 import { TechArticlePipelineClient } from './tech-article-pipeline.client';
 import {
@@ -30,6 +35,8 @@ import {
   PipelineArticle,
   PipelinePublicDetailArticle,
   PipelinePublicListArticle,
+  QualityVersions,
+  SummaryVersions,
   SourceProjection,
 } from './tech-articles.types';
 
@@ -86,6 +93,8 @@ interface PipelinePage<T> {
   items: T[];
   totalCount: number;
   lastCrawledAt?: string | null;
+  qualityTarget?: QualityVersions | null;
+  summaryTarget?: SummaryVersions | null;
 }
 
 export interface BulkResult {
@@ -160,6 +169,9 @@ export class TechArticlesService {
         publicationStatus: query.publicationStatus,
         stage: query.stage,
         statusMismatch: query.statusMismatch || undefined,
+        qualityRecalculationStatus: query.qualityRecalculationStatus,
+        qualityVersionStatus: query.qualityVersionStatus,
+        summaryVersionStatus: query.summaryVersionStatus,
         sort: query.sort,
       },
     );
@@ -170,6 +182,8 @@ export class TechArticlesService {
         query.page,
         query.pageSize,
       ),
+      qualityTarget: upstream.qualityTarget ?? null,
+      summaryTarget: upstream.summaryTarget ?? null,
     };
   }
 
@@ -177,6 +191,13 @@ export class TechArticlesService {
     return this.pipeline.get('/internal/v1/admin/articles/stats', {
       keyword: query.keyword,
       publicationStatus: query.publicationStatus,
+    });
+  }
+
+  overview(query: AdminOverviewQueryDto = {}) {
+    return this.pipeline.get('/internal/v1/admin/overview', {
+      from: query.from,
+      to: query.to,
     });
   }
 
@@ -253,6 +274,57 @@ export class TechArticlesService {
         expectedRecordVersion: dto.expectedRecordVersion,
         administratorId,
       },
+    );
+  }
+
+  summaryRegeneration(
+    articleId: string,
+    dto: SummaryRegenerationDto,
+    administratorId: string,
+  ) {
+    return this.pipeline.post(
+      `/internal/v1/admin/articles/${encodeURIComponent(articleId)}/summary-regeneration`,
+      {
+        expectedRecordVersion: dto.expectedRecordVersion,
+        administratorId,
+      },
+    );
+  }
+
+  bulkSummaryRegeneration(
+    dto: BulkSummaryRegenerationDto,
+    administratorId: string,
+  ) {
+    return this.runBulk(
+      dto.items,
+      (item) => item.articleId,
+      (item) => this.summaryRegeneration(item.articleId, item, administratorId),
+    );
+  }
+
+  qualityRecalculation(
+    articleId: string,
+    dto: QualityRecalculationDto,
+    administratorId: string,
+  ) {
+    return this.pipeline.post(
+      `/internal/v1/admin/articles/${encodeURIComponent(articleId)}/quality-recalculation`,
+      {
+        expectedRecordVersion: dto.expectedRecordVersion,
+        administratorId,
+      },
+    );
+  }
+
+  bulkQualityRecalculation(
+    dto: BulkQualityRecalculationDto,
+    administratorId: string,
+  ) {
+    return this.runBulk(
+      dto.items,
+      (item) => item.articleId,
+      (item) =>
+        this.qualityRecalculation(item.articleId, item, administratorId),
     );
   }
 
@@ -576,6 +648,11 @@ export class TechArticlesService {
       crawledAt: article.collectedAt,
       normalizedAt: article.normalizedAt,
       processingStatus: article.processingStatus,
+      qualityRecalculationStatus: article.qualityRecalculationStatus,
+      qualityVersionStatus: article.qualityVersionStatus,
+      qualityTarget: article.qualityTarget,
+      summaryVersionStatus: article.summaryVersionStatus,
+      summaryTarget: article.summaryTarget,
       stage: article.stage,
       duplicateStatus: article.duplicateStatus,
       qualityReview: article.qualityReview ?? null,
@@ -584,6 +661,10 @@ export class TechArticlesService {
       publishedAt: article.publishedAt,
       createdAt: article.createdAt,
       updatedAt: article.updatedAt,
+      processingVersions: article.processingVersions,
+      ...(Object.prototype.hasOwnProperty.call(article, 'processingFailure')
+        ? { processingFailure: article.processingFailure ?? null }
+        : {}),
     };
   }
 
