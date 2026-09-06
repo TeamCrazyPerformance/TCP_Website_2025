@@ -663,7 +663,6 @@
 }
 .ta-public .source-notice p + p {
   margin-top: 8px;
-  color: var(--gray-500);
 }
 .ta-public .text-blue {
   color: #93c5fd;

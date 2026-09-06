@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from datetime import datetime
 from types import SimpleNamespace
+from zoneinfo import ZoneInfo
 
 from fastapi.testclient import TestClient
 from tech_article_pipeline.api import create_app
@@ -8,7 +10,7 @@ from tech_article_pipeline.orchestration import PipelineOrchestrator
 from tech_article_pipeline.persistence.memory import MemoryPipelineRepository
 from tech_article_pipeline.settings import Settings
 from tech_article_pipeline.worker import DurableWorker
-from test_orchestration import FakeAdmission, FakeQuality, FakeSummarizer
+from test_orchestration import FakeAdmission, FakeQuality, FakeSummarizer, FlakyQuality
 
 
 def test_api_auth_submission_replay_and_public_filter(normalized_payload):
@@ -123,7 +125,165 @@ def test_api_auth_submission_replay_and_public_filter(normalized_payload):
         )
         assert stats.json()["publication"]["PUBLISHED"] == 1
 
+        today = datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat()
+        overview = client.get(
+            "/internal/v1/admin/overview",
+            params={"from": today, "to": today},
+            headers={"Authorization": "Bearer test-service-token"},
+        )
+        assert overview.status_code == 200
+        overview_body = overview.json()
+        assert "pipelineVersion" not in str(overview_body)
+        assert overview_body["moduleVersions"]["qualityEvaluator"]["moduleVersion"] == "9.1.0"
+        assert overview_body["moduleVersions"]["aiSummarizer"] == {
+            "moduleVersion": "8.2.0",
+            "model": "fake-model-1",
+            "promptVersion": "fake-prompt-v3",
+        }
+        assert overview_body["statistics"]["timezone"] == "Asia/Seoul"
+        assert (
+            overview_body["statistics"]["definitions"]["collectedCount"]["label"]
+            == "신규 수집·등록"
+        )
+        assert (
+            overview_body["statistics"]["definitions"]["processedCount"]["label"] == "AI 요약 완료"
+        )
+        assert overview_body["statistics"]["daily"][0]["processedCount"] == 1
+
         admin_article = admin.json()["items"][0]
+        assert admin_article["processingVersions"]["qualityEvaluator"]["moduleVersion"] == "9.1.0"
+        assert (
+            admin_article["processingVersions"]["aiSummarizer"]["promptVersion"] == "fake-prompt-v3"
+        )
+
+        stored_versions = repository.articles[article["articleId"]]["processingVersions"]
+        tracked_quality = stored_versions["qualityEvaluator"]
+        tracked_summary = stored_versions["aiSummarizer"]
+        stored_versions["qualityEvaluator"] = None
+        stored_versions["aiSummarizer"] = None
+        untracked_quality = client.get(
+            "/internal/v1/admin/articles?qualityVersionStatus=UNTRACKED",
+            headers={"Authorization": "Bearer test-service-token"},
+        )
+        untracked_summary = client.get(
+            "/internal/v1/admin/articles?summaryVersionStatus=UNTRACKED",
+            headers={"Authorization": "Bearer test-service-token"},
+        )
+        assert untracked_quality.status_code == 200
+        assert untracked_quality.json()["items"][0]["qualityVersionStatus"] == "UNTRACKED"
+        assert untracked_summary.status_code == 200
+        assert untracked_summary.json()["items"][0]["summaryVersionStatus"] == "UNTRACKED"
+        assert (
+            client.get(
+                "/internal/v1/admin/articles?summaryVersionStatus=OUTDATED",
+                headers={"Authorization": "Bearer test-service-token"},
+            ).json()["totalCount"]
+            == 0
+        )
+        stored_versions["qualityEvaluator"] = tracked_quality
+        stored_versions["aiSummarizer"] = tracked_summary
+
+        orchestrator.quality.module_version = "9.2.0"
+        orchestrator.quality.decision = "REJECT"
+        outdated_quality = client.get(
+            "/internal/v1/admin/articles?qualityVersionStatus=OUTDATED",
+            headers={"Authorization": "Bearer test-service-token"},
+        )
+        assert outdated_quality.status_code == 200
+        assert outdated_quality.json()["totalCount"] == 1
+        assert outdated_quality.json()["items"][0]["qualityVersionStatus"] == "OUTDATED"
+        assert outdated_quality.json()["qualityTarget"] == {"moduleVersion": "9.2.0"}
+        before_recalculation = repository.get_article(article["articleId"])
+        recalculated = client.post(
+            f"/internal/v1/admin/articles/{article['articleId']}/quality-recalculation",
+            headers={"Authorization": "Bearer test-service-token"},
+            json={
+                "expectedRecordVersion": admin_article["recordVersion"],
+                "administratorId": "admin-1",
+            },
+        )
+        assert recalculated.status_code == 200
+        assert recalculated.json()["status"] == "PENDING"
+        queued_article = repository.get_article(article["articleId"])
+        assert queued_article["recordVersion"] == before_recalculation["recordVersion"]
+        assert queued_article["publicationStatus"] == "PUBLISHED"
+        original_quality_result = repository.get_submission(created.json()["submissionId"])[
+            "quality_result"
+        ]
+        assert worker.process_once() is True
+        admin_article = repository.get_article(article["articleId"])
+        assert admin_article["publicationStatus"] == "PUBLISHED"
+        assert admin_article["qualityDecision"] == "REJECT"
+        assert admin_article["qualityRecalculationStatus"] == "ATTENTION_REQUIRED"
+        assert (
+            repository.get_submission(created.json()["submissionId"])["quality_result"]
+            == original_quality_result
+        )
+        recalculation_attention = client.get(
+            "/internal/v1/admin/articles?qualityRecalculationStatus=ATTENTION_REQUIRED",
+            headers={"Authorization": "Bearer test-service-token"},
+        )
+        assert recalculation_attention.status_code == 200
+        assert recalculation_attention.json()["totalCount"] == 1
+        assert (
+            recalculation_attention.json()["items"][0]["qualityRecalculationStatus"]
+            == "ATTENTION_REQUIRED"
+        )
+        assert (
+            client.get(
+                "/internal/v1/admin/articles?qualityRecalculationStatus=PASS",
+                headers={"Authorization": "Bearer test-service-token"},
+            ).json()["totalCount"]
+            == 0
+        )
+        assert (
+            client.get(
+                "/internal/v1/admin/articles?qualityVersionStatus=OUTDATED",
+                headers={"Authorization": "Bearer test-service-token"},
+            ).json()["totalCount"]
+            == 0
+        )
+
+        orchestrator.summarizer.module_version = "8.3.0"
+        orchestrator.summarizer.model = "fake-model-2"
+        orchestrator.summarizer.prompt_version = "fake-prompt-v4"
+        outdated = client.get(
+            "/internal/v1/admin/articles?summaryVersionStatus=OUTDATED",
+            headers={"Authorization": "Bearer test-service-token"},
+        )
+        assert outdated.status_code == 200
+        assert outdated.json()["totalCount"] == 1
+        assert outdated.json()["items"][0]["summaryVersionStatus"] == "OUTDATED"
+        assert outdated.json()["summaryTarget"] == {
+            "moduleVersion": "8.3.0",
+            "model": "fake-model-2",
+            "promptVersion": "fake-prompt-v4",
+        }
+        before_regeneration = repository.get_article(article["articleId"])
+        regenerated = client.post(
+            f"/internal/v1/admin/articles/{article['articleId']}/summary-regeneration",
+            headers={"Authorization": "Bearer test-service-token"},
+            json={
+                "expectedRecordVersion": admin_article["recordVersion"],
+                "administratorId": "admin-1",
+            },
+        )
+        assert regenerated.status_code == 200
+        assert regenerated.json()["status"] == "PENDING"
+        queued_article = repository.get_article(article["articleId"])
+        assert queued_article["recordVersion"] == before_regeneration["recordVersion"]
+        assert queued_article["publicationStatus"] == "PUBLISHED"
+        assert queued_article["summaryMarkdown"] == before_regeneration["summaryMarkdown"]
+        assert worker.process_once() is True
+        admin_article = repository.get_article(article["articleId"])
+        assert admin_article["publicationStatus"] == "PUBLISHED"
+        assert (
+            client.get(
+                "/internal/v1/admin/articles?summaryVersionStatus=OUTDATED",
+                headers={"Authorization": "Bearer test-service-token"},
+            ).json()["totalCount"]
+            == 0
+        )
 
         hidden = client.post(
             f"/internal/v1/admin/articles/{article['articleId']}/publication",
@@ -170,3 +330,115 @@ def test_api_rejects_idempotency_key_with_different_body(normalized_payload):
         response = client.post("/internal/v1/normalized-articles", json=changed, headers=headers)
         assert response.status_code == 409
         assert response.json()["detail"]["code"] == "IDEMPOTENCY_KEY_REUSE"
+
+
+def test_admin_detail_exposes_safe_processing_failure(normalized_payload):
+    repository = MemoryPipelineRepository()
+    admission = FakeAdmission()
+    orchestrator = PipelineOrchestrator(
+        repository,
+        admission,
+        FlakyQuality(),
+        FakeSummarizer(),
+        job_max_attempts=1,
+    )
+    worker = DurableWorker(repository, orchestrator)
+    runtime = SimpleNamespace(
+        repository=repository,
+        admission=admission,
+        orchestrator=orchestrator,
+        worker=worker,
+    )
+    settings = Settings("x", 3306, "x", "x", "x", "token", backend="memory")
+    app = create_app(settings=settings, runtime=runtime, start_worker=False)
+    headers = {"Authorization": "Bearer token", "Idempotency-Key": "failure-detail"}
+
+    with TestClient(app) as client:
+        submitted = client.post(
+            "/internal/v1/normalized-articles", json=normalized_payload, headers=headers
+        )
+        assert submitted.status_code == 202
+        assert worker.process_once() is True
+        assert worker.process_once() is True
+
+        inventory = client.get(
+            "/internal/v1/admin/articles",
+            headers={"Authorization": "Bearer token"},
+        )
+        article = inventory.json()["items"][0]
+        assert article["processingStatus"] == "PROCESSING_FAILED"
+        assert "processingFailure" not in article
+
+        detail = client.get(
+            f"/internal/v1/admin/articles/{article['articleId']}",
+            headers={"Authorization": "Bearer token"},
+        )
+        assert detail.status_code == 200
+        assert detail.json()["processingFailure"] == {
+            "stage": "QUALITY",
+            "code": "INTERNAL_ERROR",
+            "message": "Pipeline worker failed unexpectedly.",
+            "retryable": True,
+            "attemptCount": 1,
+            "maxAttempts": 1,
+            "failedAt": detail.json()["processingFailure"]["failedAt"],
+        }
+        assert detail.json()["processingFailure"]["failedAt"] is not None
+        assert "details" not in detail.json()["processingFailure"]
+
+
+def test_api_lists_and_overrides_quality_rejections(normalized_payload):
+    repository = MemoryPipelineRepository()
+    admission = FakeAdmission()
+    summarizer = FakeSummarizer()
+    orchestrator = PipelineOrchestrator(
+        repository,
+        admission,
+        FakeQuality("REJECT"),
+        summarizer,
+        job_max_attempts=3,
+    )
+    worker = DurableWorker(repository, orchestrator)
+    runtime = SimpleNamespace(
+        repository=repository,
+        admission=admission,
+        orchestrator=orchestrator,
+        worker=worker,
+    )
+    settings = Settings("x", 3306, "x", "x", "x", "token", backend="memory")
+    app = create_app(settings=settings, runtime=runtime, start_worker=False)
+    headers = {
+        "Authorization": "Bearer token",
+        "Idempotency-Key": "quality-reject",
+    }
+    with TestClient(app) as client:
+        created = client.post(
+            "/internal/v1/normalized-articles",
+            json=normalized_payload,
+            headers=headers,
+        )
+        assert created.status_code == 202
+        assert worker.process_once() is True
+        assert worker.process_once() is True
+
+        auth = {"Authorization": "Bearer token"}
+        queue = client.get(
+            "/internal/v1/admin/reviews/rejected",
+            headers=auth,
+        )
+        assert queue.status_code == 200
+        article = queue.json()["items"][0]
+
+        approved = client.post(
+            f"/internal/v1/admin/articles/{article['articleId']}/reprocessing",
+            headers=auth,
+            json={
+                "action": "APPROVE_QUALITY",
+                "expectedRecordVersion": article["recordVersion"],
+                "administratorId": "admin-1",
+            },
+        )
+        assert approved.status_code == 200
+        assert approved.json()["processingStatus"] == "ENRICHMENT_PENDING"
+        assert worker.process_once() is True
+        assert len(repository.list_public_articles(limit=10, offset=0)) == 1

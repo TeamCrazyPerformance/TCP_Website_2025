@@ -20,7 +20,11 @@ import { UserRole } from '../members/entities/enums/user-role.enum';
 import {
   AdminArticleQueryDto,
   AdminArticleStatsQueryDto,
+  AdminOverviewQueryDto,
+  ArticleReprocessingDto,
   ArticleIdParamDto,
+  BulkQualityRecalculationDto,
+  BulkSummaryRegenerationDto,
   BulkDuplicateResolutionDto,
   BulkPublicationDto,
   BulkQualityResolutionDto,
@@ -32,8 +36,10 @@ import {
   ProcessingReviewQueryDto,
   PublicationActionDto,
   PublicationPolicyDto,
+  QualityRecalculationDto,
   QualityResolutionDto,
   ReviewCaseIdParamDto,
+  SummaryRegenerationDto,
 } from './tech-articles.dto';
 import { TechArticlesService } from './tech-articles.service';
 
@@ -57,6 +63,11 @@ export class AdminTechArticlesController {
     return this.service.stats(query);
   }
 
+  @Get('overview')
+  overview(@Query() query: AdminOverviewQueryDto) {
+    return this.service.overview(query);
+  }
+
   @Get('reviews/duplicates')
   duplicateReviews(@Query() query: DuplicateReviewQueryDto) {
     return this.service.reviews('duplicate', query);
@@ -65,6 +76,11 @@ export class AdminTechArticlesController {
   @Get('reviews/quality')
   qualityReviews(@Query() query: ProcessingReviewQueryDto) {
     return this.service.reviews('quality', query);
+  }
+
+  @Get('reviews/rejected')
+  rejectedReviews(@Query() query: ProcessingReviewQueryDto) {
+    return this.service.reviews('rejected', query);
   }
 
   @Get('reviews/publication')
@@ -169,6 +185,66 @@ export class AdminTechArticlesController {
     @Req() request: AdminRequest,
   ) {
     return this.service.publicationAction(
+      params.articleId,
+      dto,
+      request.user.userId,
+    );
+  }
+
+  @Post(':articleId/reprocessing')
+  @HttpCode(HttpStatus.OK)
+  reprocessArticle(
+    @Param() params: ArticleIdParamDto,
+    @Body() dto: ArticleReprocessingDto,
+    @Req() request: AdminRequest,
+  ) {
+    return this.service.reprocessArticle(
+      params.articleId,
+      dto,
+      request.user.userId,
+    );
+  }
+
+  @Post('summary-regenerations/bulk')
+  @HttpCode(HttpStatus.OK)
+  bulkSummaryRegeneration(
+    @Body() dto: BulkSummaryRegenerationDto,
+    @Req() request: AdminRequest,
+  ) {
+    return this.service.bulkSummaryRegeneration(dto, request.user.userId);
+  }
+
+  @Post(':articleId/summary-regeneration')
+  @HttpCode(HttpStatus.ACCEPTED)
+  summaryRegeneration(
+    @Param() params: ArticleIdParamDto,
+    @Body() dto: SummaryRegenerationDto,
+    @Req() request: AdminRequest,
+  ) {
+    return this.service.summaryRegeneration(
+      params.articleId,
+      dto,
+      request.user.userId,
+    );
+  }
+
+  @Post('quality-recalculations/bulk')
+  @HttpCode(HttpStatus.OK)
+  bulkQualityRecalculation(
+    @Body() dto: BulkQualityRecalculationDto,
+    @Req() request: AdminRequest,
+  ) {
+    return this.service.bulkQualityRecalculation(dto, request.user.userId);
+  }
+
+  @Post(':articleId/quality-recalculation')
+  @HttpCode(HttpStatus.ACCEPTED)
+  qualityRecalculation(
+    @Param() params: ArticleIdParamDto,
+    @Body() dto: QualityRecalculationDto,
+    @Req() request: AdminRequest,
+  ) {
+    return this.service.qualityRecalculation(
       params.articleId,
       dto,
       request.user.userId,

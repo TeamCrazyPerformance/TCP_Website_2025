@@ -27,7 +27,6 @@ from .models import (
 
 Clock = Callable[[], datetime]
 EVALUATOR_VERSION = "2.2.6"
-
 # 개편된 4대 평가 축 정의 (개발 관련성 35%, 기술적 깊이 30%, 최신성 25%, 기사 품질 10%)
 QUALITY_AXES = (
     {"key": "relevance", "label": "개발 관련성", "weight": 0.35},
@@ -36,179 +35,9 @@ QUALITY_AXES = (
     {"key": "articleQuality", "label": "기사 품질", "weight": 0.10},
 )
 
-DEVELOPER_KEYWORDS = frozenset(
-    {
-        "python",
-        "java",
-        "javascript",
-        "typescript",
-        "golang",
-        "rust",
-        "kotlin",
-        "swift",
-        "php",
-        "ruby",
-        "scala",
-        "dart",
-        "elixir",
-        "zig",
-        "lua",
-        "haskell",
-        "clojure",
-        "react",
-        "vue",
-        "next.js",
-        "nuxt",
-        "angular",
-        "svelte",
-        "tailwind",
-        "webpack",
-        "vite",
-        "redux",
-        "zustand",
-        "webassembly",
-        "three.js",
-        "webgl",
-        "docker",
-        "kubernetes",
-        "k8s",
-        "aws",
-        "gcp",
-        "azure",
-        "terraform",
-        "ansible",
-        "ci/cd",
-        "jenkins",
-        "github actions",
-        "nginx",
-        "istio",
-        "serverless",
-        "helm",
-        "prometheus",
-        "grafana",
-        "postgresql",
-        "mysql",
-        "redis",
-        "mongodb",
-        "elasticsearch",
-        "kafka",
-        "rabbitmq",
-        "sqlite",
-        "spark",
-        "airflow",
-        "vector db",
-        "milvus",
-        "pinecone",
-        "cassandra",
-        "dynamodb",
-        "clickhouse",
-        "duckdb",
-        "ai",
-        "llm",
-        "deepmind",
-        "openai",
-        "gpt",
-        "langchain",
-        "rag",
-        "pytorch",
-        "tensorflow",
-        "huggingface",
-        "machine learning",
-        "deep learning",
-        "neural network",
-        "fine-tuning",
-        "transformer",
-        "ollama",
-        "architecture",
-        "refactoring",
-        "clean code",
-        "design pattern",
-        "domain driven design",
-        "ddd",
-        "test driven development",
-        "tdd",
-        "code review",
-        "security",
-        "oauth",
-        "performance tuning",
-        "memory leak",
-        "profiling",
-        "concurrency",
-        "async",
-        "multithreading",
-        "pytest",
-        "junit",
-        "jest",
-        "cypress",
-        "playwright",
-        # [QA 피드백 반영] 대폭 확장된 로우레벨 시스템 / 네트워크 / 성능 최적화 키워드
-        "dns",
-        "cache",
-        "memory",
-        "optimization",
-        "socket",
-        "bpf",
-        "ebpf",
-        "kernel",
-        "linux",
-        "buffer",
-        "allocation",
-        "latency",
-        "throughput",
-        "tcp",
-        "udp",
-        "packet",
-        "network",
-        "process",
-        "thread",
-        "pointer",
-        "struct",
-        "algorithm",
-        "hash table",
-        "lru",
-        "trie",
-        "system",
-        "benchmark",
-        "profiling",
-        "garbage collection",
-        "gc",
-        "cpu",
-        "concurrency",
-        "io",
-        "non-blocking",
-        "event loop",
-        "epoll",
-        "kqueue",
-        "개발",
-        "개발자",
-        "프로그래밍",
-        "파이썬",
-        "자바",
-        "자바스크립트",
-        "타입스크립트",
-        "리액트",
-        "데이터베이스",
-        "클라우드",
-        "컨테이너",
-        "쿠버네티스",
-        "도커",
-        "인공지능",
-        "머신러닝",
-        "딥러닝",
-        "보안",
-        "네트워크",
-        "아키텍처",
-        "오픈소스",
-        "배포",
-        "테스트",
-        "성능",
-        "서버",
-        "프론트엔드",
-        "백엔드",
-        "모바일",
-        "운영체제",
-    }
-)
+from .keywords_manager import get_combined_developer_keywords
+
+DEVELOPER_KEYWORDS = get_combined_developer_keywords()
 
 NON_ARTICLE_PATTERN = re.compile(
     r"\b(subscribe|learning center|webinars archives|archive|showcase|landscape|sponsors?)\b",
@@ -278,10 +107,11 @@ class QualityEvaluator:
             "timeliness": timeliness,
             "articleQuality": article_quality,
         }
+        bonus = self.calculate_community_engagement_bonus(request)
         overall = round(
             sum(dimension_values[axis["key"]] * float(axis["weight"]) for axis in QUALITY_AXES)
         )
-        overall = max(0, min(100, overall))
+        overall = max(0, min(100, overall + bonus))
         axes = [
             ScoreAxis(
                 key=str(axis["key"]),
@@ -307,11 +137,15 @@ class QualityEvaluator:
             else:
                 decision = "PASS"
                 reason = f"품질 기준점({policy.minimum_evaluation_score}점) 이상입니다."
+                if bonus > 0:
+                    reason += f" (개발자 호응 보너스 +{bonus}점 적용)"
         else:
             rejection_codes.append("LOW_EVALUATION_SCORE")
             if overall >= policy.review_lower_bound:
                 decision = "REVIEW_REQUIRED"
                 reason = "품질 점수가 검토 가능 범위에 있어 관리자 판단이 필요합니다."
+                if bonus > 0:
+                    reason += f" (개발자 호응 보너스 +{bonus}점 적용)"
             else:
                 decision = "REJECT"
                 reason = "품질 점수가 최소 검토 범위보다 낮습니다."
@@ -338,6 +172,7 @@ class QualityEvaluator:
                         technicalDepth=technical_depth,
                         timeliness=timeliness,
                         articleQuality=article_quality,
+                        communityBonus=bonus if bonus > 0 else None,
                     ),
                     axes=axes,
                 ),
@@ -384,14 +219,14 @@ class QualityEvaluator:
                 model_name = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={effective_key}"
                 prompt = (
-                    "Evaluate the technical depth of this engineering article on a scale of 0 to 100 based on these 4 rubrics:\n"
-                    "1. Code & Command Precision (0-30 pts): Contains code snippets, shell commands, or config schemas.\n"
-                    "2. Systems & Architectural Insight (0-30 pts): Discusses low-level internals, memory, protocols, or architecture.\n"
-                    "3. Production Problem-Solving (0-30 pts): Explains root cause analysis, performance tuning, benchmarks, or scalability.\n"
-                    "4. Professional Specificity (0-10 pts): Uses precise domain-specific engineering vocabulary instead of marketing hype.\n\n"
+                    "Evaluate the technical depth and engineering value of this tech article on a scale of 0 to 100 based on these 4 rubrics:\n"
+                    "1. Technical Utility & Open-Source/Tooling News (0-30 pts): Discusses useful open-source tools, CLI utilities, libraries, frameworks, or developer productivity announcements.\n"
+                    "2. Systems & Architectural Insight (0-30 pts): Explains low-level internals, memory allocation, network protocols, system architecture, or code/config schemas.\n"
+                    "3. Production Engineering & Problem-Solving (0-30 pts): Details real-world outage root-cause analysis, performance tuning, benchmarks, or scalability challenges.\n"
+                    "4. Engineering Specificity & Rigor (0-10 pts): Uses precise domain-specific engineering vocabulary instead of high-level marketing hype.\n\n"
                     f"Title: {article.title}\n"
                     f"Content: {article.content[:1500]}\n\n"
-                    f'Return JSON only: {{"depth_score": number, "reasoning": "brief explanation"}}'
+                    f'Return JSON format only: {{"depth_score": number, "reasoning": "brief explanation"}}'
                 )
                 payload = {
                     "contents": [{"parts": [{"text": prompt}]}],
@@ -419,14 +254,14 @@ class QualityEvaluator:
                 "Authorization": f"Bearer {effective_key}",
             }
             prompt = (
-                "Evaluate the technical depth of this engineering article on a scale of 0 to 100 based on these 4 rubrics:\n"
-                "1. Code & Command Precision (0-30 pts): Contains code snippets, shell commands, or config schemas.\n"
-                "2. Systems & Architectural Insight (0-30 pts): Discusses low-level internals, memory, protocols, or architecture.\n"
-                "3. Production Problem-Solving (0-30 pts): Explains root cause analysis, performance tuning, benchmarks, or scalability.\n"
-                "4. Professional Specificity (0-10 pts): Uses precise domain-specific engineering vocabulary instead of marketing hype.\n\n"
+                "Evaluate the technical depth and engineering value of this tech article on a scale of 0 to 100 based on these 4 rubrics:\n"
+                "1. Technical Utility & Open-Source/Tooling News (0-30 pts): Discusses useful open-source tools, CLI utilities, libraries, frameworks, or developer productivity announcements.\n"
+                "2. Systems & Architectural Insight (0-30 pts): Explains low-level internals, memory allocation, network protocols, system architecture, or code/config schemas.\n"
+                "3. Production Engineering & Problem-Solving (0-30 pts): Details real-world outage root-cause analysis, performance tuning, benchmarks, or scalability challenges.\n"
+                "4. Engineering Specificity & Rigor (0-10 pts): Uses precise domain-specific engineering vocabulary instead of high-level marketing hype.\n\n"
                 f"Title: {article.title}\n"
                 f"Content: {article.content[:1500]}\n\n"
-                f'Return JSON only: {{"depth_score": number, "reasoning": "brief explanation"}}'
+                f'Return JSON format only: {{"depth_score": number, "reasoning": "brief explanation"}}'
             )
             payload = {
                 "model": "gpt-4o-mini",
@@ -480,6 +315,64 @@ class QualityEvaluator:
             length_score = 25
 
         return min(100, meta_score + length_score)
+
+    @staticmethod
+    def calculate_community_engagement_bonus(request: QualityEvaluationRequest) -> int:
+        """
+        개발자 반응 지수 보너스 (+0 ~ +10점)
+        - 반응 데이터 미지원 소스(Cloudflare, Tailscale, Rust, DeepMind 등): 0점 (가산 없음)
+        - 반응 데이터 지원 소스(GitHub Trending, HuggingFace, InfoQ 등): 정밀 임계값 적용
+        """
+        source_id = request.source.source_id.strip().lower()
+        article = request.article
+
+        # 1. GitHub Trending (starsToday / stars)
+        if source_id == "github-trending":
+            stars_today = getattr(article, "stars_today", None) or getattr(article, "starsToday", None)
+            if stars_today is None and hasattr(article, "extra") and isinstance(article.extra, dict):
+                stars_today = article.extra.get("starsToday") or article.extra.get("stars_today")
+            if isinstance(stars_today, (int, float)):
+                if stars_today >= 300:
+                    return 10
+                elif stars_today >= 150:
+                    return 7
+                elif stars_today >= 50:
+                    return 4
+            return 0
+
+        # 2. Hugging Face Blog (likes)
+        if source_id == "hugging-face-blog":
+            likes = getattr(article, "likes", None)
+            if likes is None and hasattr(article, "extra") and isinstance(article.extra, dict):
+                likes = article.extra.get("likes")
+            if isinstance(likes, (int, float)):
+                if likes >= 50:
+                    return 10
+                elif likes >= 20:
+                    return 7
+                elif likes >= 5:
+                    return 4
+            return 0
+
+        # 3. InfoQ / SD Times (views / comments)
+        if source_id in {"infoq", "sdtimes"}:
+            views = getattr(article, "views", None)
+            comments = getattr(article, "comments", None)
+            if hasattr(article, "extra") and isinstance(article.extra, dict):
+                views = views or article.extra.get("views")
+                comments = comments or article.extra.get("comments")
+            v_val = views if isinstance(views, (int, float)) else 0
+            c_val = comments if isinstance(comments, (int, float)) else 0
+            if v_val >= 5000 or c_val >= 10:
+                return 10
+            elif v_val >= 2000 or c_val >= 5:
+                return 7
+            elif v_val >= 800 or c_val >= 2:
+                return 4
+            return 0
+
+        # 4. 기타 반응 데이터 미지원 소스 -> 0점 (가산 없음)
+        return 0
 
     @staticmethod
     def _spam_suspected(content: str) -> bool:

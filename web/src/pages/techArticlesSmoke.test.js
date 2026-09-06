@@ -99,6 +99,34 @@ beforeEach(() => {
     publication: {},
     reviews: {},
   });
+  api.getAdminTechArticleOverview.mockResolvedValue({
+    moduleVersions: {
+      crawlers: [],
+      qualityEvaluator: { moduleVersion: "2.2.6" },
+      aiSummarizer: {
+        moduleVersion: "1.0.0",
+        model: "gemini-test",
+        promptVersion: "prompt-v1",
+      },
+    },
+    storage: {
+      available: true,
+      dataBytes: 1024,
+      indexBytes: 512,
+      totalBytes: 1536,
+      measuredAt: "2026-09-05T00:00:00Z",
+    },
+    statistics: {
+      daily: [
+        {
+          date: "2026-09-05",
+          collectedCount: 4,
+          processedCount: 3,
+        },
+      ],
+      definitions: {},
+    },
+  });
   api.getDuplicateReviews.mockResolvedValue({
     items: [],
     pagination: PAGINATION,
@@ -108,6 +136,24 @@ beforeEach(() => {
     pagination: PAGINATION,
   });
   api.getPublicationPolicy.mockResolvedValue({ policy: "REVIEW", version: 1 });
+  api.regenerateArticleSummary.mockResolvedValue({
+    articleId: "article-outdated",
+    jobId: "job-summary-1",
+    status: "PENDING",
+  });
+  api.regenerateArticleSummariesBulk.mockResolvedValue({
+    results: [],
+    summary: { total: 0, succeeded: 0, failed: 0 },
+  });
+  api.recalculateArticleQuality.mockResolvedValue({
+    articleId: "article-quality-outdated",
+    jobId: "job-quality-1",
+    status: "PENDING",
+  });
+  api.recalculateArticleQualitiesBulk.mockResolvedValue({
+    results: [],
+    summary: { total: 0, succeeded: 0, failed: 0 },
+  });
   api.getCrawlSources.mockResolvedValue({ items: [] });
   api.getCrawlRuns.mockResolvedValue({
     items: [],
@@ -821,7 +867,9 @@ describe("공개 화면", () => {
     await waitFor(() =>
       expect(scrollTo).toHaveBeenCalledWith({ top: 660, behavior: "auto" }),
     );
-    expect(sessionStorage.length).toBe(0);
+    expect(
+      sessionStorage.getItem("tcp.tech-articles.list-return.v1"),
+    ).toBeNull();
 
     Object.defineProperty(Element.prototype, "getBoundingClientRect", {
       configurable: true,
@@ -839,6 +887,32 @@ describe("공개 화면", () => {
     expect(container.querySelector(".back-to-list-link")).toHaveAttribute(
       "href",
       "/tech-articles",
+    );
+  });
+
+  test("같은 세션에서 다시 연 상세는 조회수를 재집계하지 않는다", async () => {
+    api.getTechArticle.mockResolvedValue({
+      id: "article-1",
+      title: "세션 조회 테스트",
+      summaryMarkdown: "요약",
+      tags: [],
+      source: { name: "InfoQ", domain: "infoq.com" },
+    });
+    const TechArticleDetail = require("./TechArticleDetail").default;
+
+    const firstRender = renderWithAuth(<TechArticleDetail />);
+    await waitFor(() =>
+      expect(api.getTechArticle).toHaveBeenCalledWith("article-1", {
+        recordView: true,
+      }),
+    );
+    firstRender.unmount();
+
+    renderWithAuth(<TechArticleDetail />);
+    await waitFor(() =>
+      expect(api.getTechArticle).toHaveBeenLastCalledWith("article-1", {
+        recordView: false,
+      }),
     );
   });
 
@@ -1105,6 +1179,27 @@ describe("공개 화면", () => {
 });
 
 describe("관리자 화면", () => {
+  test("Overview에서 저장량과 모듈 버전을 요청해 표시한다", async () => {
+    asAdmin();
+    const AdminTechArticleOverview =
+      require("./admin/AdminTechArticleOverview").default;
+    renderWithAuth(<AdminTechArticleOverview />);
+
+    await waitFor(() =>
+      expect(api.getAdminTechArticleOverview).toHaveBeenCalled(),
+    );
+    expect(screen.getByText("Disk Usage")).toBeInTheDocument();
+    expect(screen.getByText("gemini-test")).toBeInTheDocument();
+    expect(screen.getByText("일별 수집 및 처리 현황")).toBeInTheDocument();
+    expect(
+      screen.getByTitle("2026-09-05 신규 수집·등록 4개"),
+    ).toHaveTextContent("4");
+    expect(screen.getByTitle("2026-09-05 AI 요약 완료 3개")).toHaveTextContent(
+      "3",
+    );
+    expect(screen.queryByText(/pipelineVersion/i)).not.toBeInTheDocument();
+  });
+
   test("전체 아티클이 .ta-admin 스코프로 렌더되고 목록·통계를 요청한다", async () => {
     asAdmin();
     const AdminTechArticles = require("./admin/AdminTechArticles").default;
@@ -1134,6 +1229,399 @@ describe("관리자 화면", () => {
     expect(api.getCrawlSources).not.toHaveBeenCalled();
   });
 
+  test("전체 아티클의 품질검토 대기 건을 기존 승인 API로 통과시킨다", async () => {
+    asAdmin();
+    api.getAdminTechArticles.mockResolvedValue({
+      items: [
+        {
+          articleId: "article-review-1",
+          title: "품질검토 대기 아티클",
+          processingStatus: "QUALITY_EVALUATED",
+          reviewStatus: "PENDING",
+          publicationStatus: "UNPUBLISHED",
+          qualityReview: { caseId: "quality-case-1", caseVersion: 3 },
+          tags: [],
+        },
+      ],
+      pagination: { ...PAGINATION, totalCount: 1 },
+    });
+    api.resolveQualityReview.mockResolvedValue({
+      caseId: "quality-case-1",
+      status: "RESOLVED_APPROVE",
+      caseVersion: 4,
+    });
+    api.getAdminTechArticle.mockResolvedValue({
+      articleId: "article-review-1",
+      title: "품질검토 대기 아티클",
+      processingStatus: "QUALITY_EVALUATED",
+      reviewStatus: "PENDING",
+      publicationStatus: "UNPUBLISHED",
+      recordVersion: 2,
+      qualityReview: { caseId: "quality-case-1", caseVersion: 3 },
+      tags: [],
+    });
+    const AdminTechArticles = require("./admin/AdminTechArticles").default;
+    renderWithAuth(<AdminTechArticles />);
+
+    expect(
+      screen.queryByRole("button", { name: "품질 통과" }),
+    ).not.toBeInTheDocument();
+    const detailButtons = await screen.findAllByRole("button", {
+      name: "상세",
+    });
+    fireEvent.click(detailButtons[0]);
+    const articleDialog = await screen.findByRole("dialog", {
+      name: "아티클 상세 정보",
+    });
+    expect(
+      await within(articleDialog).findByRole("button", {
+        name: "품질 탈락",
+      }),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      within(articleDialog).getByRole("button", { name: "품질 통과" }),
+    );
+    const confirmation = await screen.findByRole("dialog", {
+      name: "품질 통과로 판정할까요?",
+    });
+    fireEvent.click(
+      within(confirmation).getByRole("button", { name: "품질 통과" }),
+    );
+
+    await waitFor(() =>
+      expect(api.resolveQualityReview).toHaveBeenCalledWith("quality-case-1", {
+        action: "APPROVE",
+        expectedCaseVersion: 3,
+      }),
+    );
+    expect(
+      await screen.findByText(
+        "품질 통과 처리를 완료하고 AI 요약 단계로 전달했습니다.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  test("전체 아티클의 선택은 단계 필터를 바꾸면 해제된다", async () => {
+    asAdmin();
+    api.getAdminTechArticles.mockResolvedValue({
+      items: [
+        {
+          articleId: "article-selected",
+          title: "선택된 아티클",
+          processingStatus: "QUALITY_EVALUATED",
+          reviewStatus: "PENDING",
+          publicationStatus: "UNPUBLISHED",
+          tags: [],
+        },
+      ],
+      pagination: { ...PAGINATION, totalCount: 1 },
+    });
+    api.getAdminTechArticleStats.mockResolvedValue({
+      totalCount: 1,
+      publication: { UNPUBLISHED: 1 },
+      reviews: {},
+      stages: { QUALITY_REVIEW: 1 },
+      stageOldest: {},
+      statusMismatch: 0,
+    });
+    const AdminTechArticles = require("./admin/AdminTechArticles").default;
+    renderWithAuth(<AdminTechArticles />);
+
+    const checkboxes = await screen.findAllByLabelText("선택된 아티클 선택");
+    fireEvent.click(checkboxes[0]);
+    const selectionBar = screen
+      .getByText("1개 선택됨")
+      .closest(".selection-action-bar");
+    expect(selectionBar).not.toBeNull();
+    expect(
+      within(selectionBar).queryByRole("button", { name: "공개" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(selectionBar).queryByRole("button", { name: "비공개" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(selectionBar).queryByRole("button", { name: "보관" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryAllByRole("button", { name: "보관" })).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole("button", { name: /품질 검토/ }));
+    await waitFor(() =>
+      expect(screen.queryByText("1개 선택됨")).not.toBeInTheDocument(),
+    );
+  });
+
+  test("업데이트가 필요한 AI 요약을 필터링하고 선택 재생성한다", async () => {
+    asAdmin();
+    const outdatedArticle = {
+      articleId: "article-outdated",
+      title: "이전 요약 버전 아티클",
+      processingStatus: "ENRICHED",
+      reviewStatus: "APPROVED",
+      publicationStatus: "PUBLISHED",
+      recordVersion: 7,
+      summaryVersionStatus: "OUTDATED",
+      tags: [],
+    };
+    api.getAdminTechArticles.mockResolvedValue({
+      items: [outdatedArticle],
+      pagination: { ...PAGINATION, totalCount: 1 },
+    });
+    const AdminTechArticles = require("./admin/AdminTechArticles").default;
+    renderWithAuth(<AdminTechArticles />);
+
+    const summaryBadges = await screen.findAllByText("AI 요약 업데이트 필요");
+    expect(summaryBadges.length).toBeGreaterThan(0);
+    summaryBadges.forEach((badge) =>
+      expect(badge.querySelector("i")).toBeNull(),
+    );
+    fireEvent.change(screen.getByLabelText("AI 요약 버전"), {
+      target: { value: "OUTDATED" },
+    });
+    await waitFor(() =>
+      expect(api.getAdminTechArticles).toHaveBeenLastCalledWith(
+        expect.objectContaining({ summaryVersionStatus: "OUTDATED" }),
+      ),
+    );
+
+    fireEvent.click(
+      (await screen.findAllByLabelText("이전 요약 버전 아티클 선택"))[0],
+    );
+    fireEvent.click(screen.getByRole("button", { name: "AI 요약 재생성" }));
+    const confirmation = await screen.findByRole("dialog", {
+      name: "1개 아티클의 AI 요약을 재생성할까요?",
+    });
+    expect(
+      within(confirmation).getByText(
+        "현재 공개 내용과 공개 상태는 새 요약이 성공할 때까지 유지됩니다.",
+      ),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      within(confirmation).getByRole("button", { name: "재생성" }),
+    );
+
+    await waitFor(() =>
+      expect(api.regenerateArticleSummary).toHaveBeenCalledWith(
+        "article-outdated",
+        { expectedRecordVersion: 7 },
+      ),
+    );
+  });
+
+  test("업데이트가 필요한 품질 평가를 필터링하고 선택 재계산한다", async () => {
+    asAdmin();
+    const outdatedArticle = {
+      articleId: "article-quality-outdated",
+      title: "이전 품질 버전 아티클",
+      processingStatus: "ENRICHED",
+      reviewStatus: "APPROVED",
+      publicationStatus: "PUBLISHED",
+      recordVersion: 8,
+      qualityVersionStatus: "OUTDATED",
+      tags: [],
+    };
+    api.getAdminTechArticles.mockResolvedValue({
+      items: [outdatedArticle],
+      pagination: { ...PAGINATION, totalCount: 1 },
+    });
+    const AdminTechArticles = require("./admin/AdminTechArticles").default;
+    renderWithAuth(<AdminTechArticles />);
+
+    const qualityBadges = await screen.findAllByText("품질 점수 업데이트 필요");
+    expect(qualityBadges.length).toBeGreaterThan(0);
+    qualityBadges.forEach((badge) =>
+      expect(badge.querySelector("i")).toBeNull(),
+    );
+    fireEvent.change(screen.getByLabelText("품질 평가 버전"), {
+      target: { value: "OUTDATED" },
+    });
+    await waitFor(() =>
+      expect(api.getAdminTechArticles).toHaveBeenLastCalledWith(
+        expect.objectContaining({ qualityVersionStatus: "OUTDATED" }),
+      ),
+    );
+
+    fireEvent.click(
+      (await screen.findAllByLabelText("이전 품질 버전 아티클 선택"))[0],
+    );
+    fireEvent.click(screen.getByRole("button", { name: "품질 점수 재계산" }));
+    const confirmation = await screen.findByRole("dialog", {
+      name: "1개 아티클의 품질 점수를 재계산할까요?",
+    });
+    expect(
+      within(confirmation).getByText(/저장된 품질 평가 정책을 유지/),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      within(confirmation).getByRole("button", { name: "재계산" }),
+    );
+
+    await waitFor(() =>
+      expect(api.recalculateArticleQuality).toHaveBeenCalledWith(
+        "article-quality-outdated",
+        { expectedRecordVersion: 8 },
+      ),
+    );
+  });
+
+  test("재계산 후 재검토가 필요한 아티클을 표시하고 필터링한다", async () => {
+    asAdmin();
+    api.getAdminTechArticles.mockResolvedValue({
+      items: [
+        {
+          articleId: "article-quality-attention",
+          title: "품질 재검토 대상 아티클",
+          processingStatus: "ENRICHED",
+          reviewStatus: "APPROVED",
+          publicationStatus: "PUBLISHED",
+          recordVersion: 9,
+          qualityDecision: "REJECT",
+          qualityRecalculationStatus: "ATTENTION_REQUIRED",
+          tags: [],
+        },
+      ],
+      pagination: { ...PAGINATION, totalCount: 1 },
+    });
+    const AdminTechArticles = require("./admin/AdminTechArticles").default;
+    renderWithAuth(<AdminTechArticles />);
+
+    expect(
+      (await screen.findAllByText("품질 재검토 필요")).length,
+    ).toBeGreaterThan(0);
+    fireEvent.change(screen.getByLabelText("재계산 결과"), {
+      target: { value: "ATTENTION_REQUIRED" },
+    });
+
+    await waitFor(() =>
+      expect(api.getAdminTechArticles).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          qualityRecalculationStatus: "ATTENTION_REQUIRED",
+        }),
+      ),
+    );
+  });
+
+  test("버전 미기록 아티클을 별도로 필터링하고 최신화할 수 있다", async () => {
+    asAdmin();
+    const untrackedArticle = {
+      articleId: "article-untracked",
+      title: "버전 미기록 아티클",
+      processingStatus: "ENRICHED",
+      reviewStatus: "APPROVED",
+      publicationStatus: "PUBLISHED",
+      recordVersion: 9,
+      qualityVersionStatus: "UNTRACKED",
+      summaryVersionStatus: "UNTRACKED",
+      tags: [],
+    };
+    api.getAdminTechArticles.mockResolvedValue({
+      items: [untrackedArticle],
+      pagination: { ...PAGINATION, totalCount: 1 },
+    });
+    const AdminTechArticles = require("./admin/AdminTechArticles").default;
+    renderWithAuth(<AdminTechArticles />);
+
+    expect(
+      (await screen.findAllByText("품질 평가 버전 미기록")).length,
+    ).toBeGreaterThan(0);
+    expect(
+      (await screen.findAllByText("AI 요약 버전 미기록")).length,
+    ).toBeGreaterThan(0);
+    fireEvent.change(screen.getByLabelText("AI 요약 버전"), {
+      target: { value: "UNTRACKED" },
+    });
+    await waitFor(() =>
+      expect(api.getAdminTechArticles).toHaveBeenLastCalledWith(
+        expect.objectContaining({ summaryVersionStatus: "UNTRACKED" }),
+      ),
+    );
+
+    fireEvent.click(
+      (await screen.findAllByLabelText("버전 미기록 아티클 선택"))[0],
+    );
+    fireEvent.click(screen.getByRole("button", { name: "AI 요약 재생성" }));
+    expect(
+      await screen.findByRole("dialog", {
+        name: "1개 아티클의 AI 요약을 재생성할까요?",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  test.each(["FAILED", "FAILED_AFTER_APPROVAL"])(
+    "%s 기사 상세에서 실패 단계를 재처리한다",
+    async (stage) => {
+      asAdmin();
+      const failedArticle = {
+        articleId: `article-${stage.toLowerCase()}`,
+        title: "처리 실패 아티클",
+        processingStatus: "PROCESSING_FAILED",
+        stage,
+        reviewStatus: stage === "FAILED" ? "NOT_REQUIRED" : "APPROVED",
+        publicationStatus: "UNPUBLISHED",
+        recordVersion: 7,
+        tags: [],
+        processingFailure: {
+          stage: stage === "FAILED" ? "QUALITY" : "ENRICHMENT",
+          code:
+            stage === "FAILED"
+              ? "QUALITY_SERVICE_UNAVAILABLE"
+              : "MODEL_TIMEOUT",
+          message: "외부 처리 서비스의 응답 시간이 초과되었습니다.",
+          retryable: true,
+          attemptCount: 3,
+          maxAttempts: 3,
+          failedAt: "2026-09-05T01:02:03Z",
+        },
+      };
+      api.getAdminTechArticles.mockResolvedValue({
+        items: [failedArticle],
+        pagination: { ...PAGINATION, totalCount: 1 },
+      });
+      api.getAdminTechArticle.mockResolvedValue(failedArticle);
+      api.reprocessArticle.mockResolvedValue({
+        articleId: failedArticle.articleId,
+        processingStatus: "ENRICHMENT_PENDING",
+        recordVersion: 8,
+      });
+      const AdminTechArticles = require("./admin/AdminTechArticles").default;
+      renderWithAuth(<AdminTechArticles />);
+
+      const detailButtons = await screen.findAllByRole("button", {
+        name: "상세",
+      });
+      fireEvent.click(detailButtons[0]);
+      const retry = await screen.findByRole("button", { name: "재처리" });
+      const failureHeading = screen.getByRole("heading", {
+        name: "처리 실패 원인",
+      });
+      const failureSection = failureHeading.closest("section");
+      expect(failureSection).not.toBeNull();
+      expect(
+        within(failureSection).getByText(
+          stage === "FAILED" ? "품질 평가" : "AI 요약 생성",
+        ),
+      ).toBeInTheDocument();
+      expect(within(failureSection).getByText("3 / 3회")).toBeInTheDocument();
+      expect(
+        within(failureSection).getByText(
+          "재시도 가능한 오류였지만 자동 재시도 횟수를 모두 사용했습니다.",
+        ),
+      ).toBeInTheDocument();
+      fireEvent.click(retry);
+      const confirmation = await screen.findByRole("dialog", {
+        name: "실패한 처리를 다시 실행할까요?",
+      });
+      fireEvent.click(
+        within(confirmation).getByRole("button", { name: "재처리" }),
+      );
+
+      await waitFor(() =>
+        expect(api.reprocessArticle).toHaveBeenCalledWith(
+          failedArticle.articleId,
+          { action: "RETRY", expectedRecordVersion: 7 },
+        ),
+      );
+    },
+  );
+
   test("크롤링 관리 화면은 이력을 먼저 보여 주고 실행 폼을 아래에 항상 둔다", async () => {
     asAdmin();
     const AdminCrawlOperations =
@@ -1148,8 +1636,11 @@ describe("관리자 화면", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText("크롤링 실행 이력")).toBeInTheDocument();
 
-    const runner = container.querySelector("#asyncCrawlRunner");
-    expect(runner).not.toBeNull();
+    const runner = await waitFor(() => {
+      const element = container.querySelector("#asyncCrawlRunner");
+      expect(element).not.toBeNull();
+      return element;
+    });
     expect(
       screen.getByRole("heading", { name: "비동기 수집 실행" }),
     ).toBeInTheDocument();
@@ -1175,7 +1666,7 @@ describe("관리자 화면", () => {
     expect(api.getQualityReviews).not.toHaveBeenCalled();
   });
 
-  test.each([["quality"], ["publication"]])(
+  test.each([["quality"], ["rejected"], ["publication"]])(
     "아티클 검토(%s 탭)가 해당 큐를 요청한다",
     async (kind) => {
       asAdmin();
@@ -1191,4 +1682,56 @@ describe("관리자 화면", () => {
       expect(api.getDuplicateReviews).not.toHaveBeenCalled();
     },
   );
+
+  test("품질 미달 상세에서 관리자 통과 처리를 실행한다", async () => {
+    asAdmin();
+    api.getQualityReviews.mockResolvedValue({
+      items: [
+        {
+          articleId: "article-rejected",
+          title: "품질 미달 아티클",
+          processingStatus: "QUALITY_REJECTED",
+          reviewStatus: "NOT_REQUIRED",
+          publicationStatus: "UNPUBLISHED",
+          recordVersion: 5,
+          reason: "기술 내용이 부족합니다.",
+          source: { name: "InfoQ", articleUrl: "https://infoq.com/rejected" },
+          tags: [],
+          queuedAt: "2026-09-04T00:00:00Z",
+        },
+      ],
+      pagination: { ...PAGINATION, totalCount: 1 },
+    });
+    api.reprocessArticle.mockResolvedValue({
+      articleId: "article-rejected",
+      processingStatus: "ENRICHMENT_PENDING",
+      recordVersion: 6,
+    });
+    const Reviews = require("./admin/AdminTechArticleReviews").default;
+    renderWithAuth(<Reviews kind="rejected" />);
+
+    const detailButtons = await screen.findAllByRole("button", {
+      name: "상세",
+    });
+    fireEvent.click(detailButtons[0]);
+    const detailDialog = await screen.findByRole("dialog", {
+      name: "품질 미달 상세",
+    });
+    fireEvent.click(
+      within(detailDialog).getByRole("button", { name: "품질 통과" }),
+    );
+    const confirmation = await screen.findByRole("dialog", {
+      name: "품질 미달 판정을 통과로 변경할까요?",
+    });
+    fireEvent.click(
+      within(confirmation).getByRole("button", { name: "품질 통과" }),
+    );
+
+    await waitFor(() =>
+      expect(api.reprocessArticle).toHaveBeenCalledWith("article-rejected", {
+        action: "APPROVE_QUALITY",
+        expectedRecordVersion: 5,
+      }),
+    );
+  });
 });

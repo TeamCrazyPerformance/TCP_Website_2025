@@ -9,12 +9,10 @@ import {
 import "./App.css";
 import "./index.css";
 
-// Shared components
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import { AuthProvider } from "./context/AuthContext";
 
-// Page components
 import About from "./pages/About";
 import Members from "./pages/Members";
 import Recruitment from "./pages/Recruitment";
@@ -36,7 +34,6 @@ import Terms from "./pages/Terms";
 import OpenSourceCredits from "./pages/OpenSourceCredits";
 import EasterEgg from "./pages/EasterEgg";
 
-// My page components
 import MyPageLayout from "./components/MyPageLayout";
 import Profile from "./pages/mypage/Profile";
 import MyPageSettings from "./pages/mypage/MyPageSettings";
@@ -45,7 +42,6 @@ import MyStudies from "./pages/mypage/MyStudies";
 import MyTeams from "./pages/mypage/MyTeams";
 import Withdraw from "./pages/mypage/Withdraw";
 
-// Admin page components
 import AdminLayout from "./components/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminMainContent from "./pages/admin/AdminMainContent";
@@ -58,12 +54,14 @@ import AdminPermission from "./pages/admin/AdminPermission";
 import AdminStudy from "./pages/admin/AdminStudy";
 import AdminTeam from "./pages/admin/AdminTeam";
 import AdminServer from "./pages/admin/AdminServer";
-// Lazy-loaded: a static import would merge the v9 scoped CSS into main.css.
+// 전용 CSS가 main.css에 합쳐지지 않도록 Tech Articles 화면을 지연 로딩한다.
 const TechArticles = lazy(() => import("./pages/TechArticles"));
 const TechArticleDetail = lazy(() => import("./pages/TechArticleDetail"));
 
-// Lazy-loaded for the same reason, splitting out roughly 100KB of scoped CSS.
 const AdminTechArticles = lazy(() => import("./pages/admin/AdminTechArticles"));
+const AdminTechArticleOverview = lazy(
+  () => import("./pages/admin/AdminTechArticleOverview"),
+);
 const AdminTechArticleReviews = lazy(
   () => import("./pages/admin/AdminTechArticleReviews"),
 );
@@ -71,7 +69,7 @@ const AdminCrawlOperations = lazy(
   () => import("./pages/admin/AdminCrawlOperations"),
 );
 
-// Chunk fallback for public pages. pt-24 clears the fixed shared header.
+// 고정 헤더와 겹치지 않도록 로딩 화면의 상단 여백을 확보한다.
 function PublicChunkFallback() {
   return (
     <section className="pt-24 pb-16 min-h-screen flex items-center justify-center">
@@ -83,7 +81,6 @@ function PublicChunkFallback() {
   );
 }
 
-// Chunk fallback for admin pages, matching the AdminLayout spinner.
 function AdminChunkFallback() {
   return (
     <div className="flex items-center justify-center py-20">
@@ -95,17 +92,14 @@ function AdminChunkFallback() {
   );
 }
 
-// All logic lives in AppContent
 function AppContent() {
   const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
 
-  // Scroll to top on route change
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
-  // Tech article pages use the shared Header/Footer like every other public page
   const isNonCommonLayout =
     location.pathname.startsWith("/mypage") ||
     location.pathname.startsWith("/admin");
@@ -184,7 +178,6 @@ function AppContent() {
         <Route path="/opensource" element={<OpenSourceCredits />} />
         <Route path="/easter-egg" element={<EasterEgg />} />
 
-        {/* My page nested routes */}
         <Route path="/mypage" element={<MyPageLayout />}>
           <Route index element={<Profile />} />
           <Route path="settings" element={<MyPageSettings />} />
@@ -194,7 +187,6 @@ function AppContent() {
           <Route path="withdraw" element={<Withdraw />} />
         </Route>
 
-        {/* Admin pages (nested routes) */}
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="main" element={<AdminMainContent />} />
@@ -212,6 +204,14 @@ function AppContent() {
             element={
               <Suspense fallback={<AdminChunkFallback />}>
                 <AdminTechArticles />
+              </Suspense>
+            }
+          />
+          <Route
+            path="tech-articles/overview"
+            element={
+              <Suspense fallback={<AdminChunkFallback />}>
+                <AdminTechArticleOverview />
               </Suspense>
             }
           />
@@ -240,6 +240,14 @@ function AppContent() {
             }
           />
           <Route
+            path="tech-articles/reviews/rejected"
+            element={
+              <Suspense fallback={<AdminChunkFallback />}>
+                <AdminTechArticleReviews kind="rejected" />
+              </Suspense>
+            }
+          />
+          <Route
             path="tech-articles/crawls"
             element={
               <Suspense fallback={<AdminChunkFallback />}>
@@ -254,7 +262,6 @@ function AppContent() {
   );
 }
 
-// App only renders the Router
 function App() {
   return (
     <AuthProvider>

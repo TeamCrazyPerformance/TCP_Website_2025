@@ -22,12 +22,12 @@
 
 인증 없이 공개된 기술 아티클 티저를 조회한다.
 
-| Query | 기본값 | 제약 |
-| --- | --- | --- |
-| `page` | `1` | 1 이상 |
-| `pageSize` | `20` | 1~100 |
-| `keyword` | 없음 | 최대 100자, 제목·AI 한 줄 요약 검색 |
-| `tags` | 없음 | 같은 키를 반복하며 최대 15개, OR 조건 |
+| Query      | 기본값 | 제약                                  |
+| ---------- | ------ | ------------------------------------- |
+| `page`     | `1`    | 1 이상                                |
+| `pageSize` | `20`   | 1~100                                 |
+| `keyword`  | 없음   | 최대 100자, 제목·AI 한 줄 요약 검색   |
+| `tags`     | 없음   | 같은 키를 반복하며 최대 15개, OR 조건 |
 
 ```json
 {
@@ -45,7 +45,12 @@
       "isNew": true
     }
   ],
-  "pagination": { "totalCount": 1, "currentPage": 1, "totalPages": 1, "pageSize": 20 },
+  "pagination": {
+    "totalCount": 1,
+    "currentPage": 1,
+    "totalPages": 1,
+    "pageSize": 20
+  },
   "lastCrawledAt": "2026-08-15T01:00:00Z"
 }
 ```
@@ -96,9 +101,7 @@
   "valueScore": {
     "overall": 88,
     "scale": { "min": 0, "max": 100 },
-    "breakdown": [
-      { "label": "개발 관련성", "contribution": 31.85 }
-    ]
+    "breakdown": [{ "label": "개발 관련성", "contribution": 31.85 }]
   }
 }
 ```
@@ -114,28 +117,35 @@
 
 - `GET /api/v1/tech-articles`: `page`, `pageSize`, `keyword`, `tags`(반복),
   `sources`(반복). 소스는 파이프라인 카탈로그로 검증하며, 모르는 값이면 422 입니다.
-  각 항목의 `isNew` 는 수집 후 24시간 이내인지를 서버가 판정한 값입니다 —
+  각 항목의 `isNew` 는 수집과 원문 발행이 모두 24시간 이내인지를 서버가 판정한 값입니다 —
   기준을 프런트에 두면 바꿀 때마다 재배포해야 합니다.
 - `GET /api/v1/tech-articles/sources`: 소스 선택기용 목록(`id`, `name`, `domain`,
   `category`, 공개 건수 `count`). 소스는 계속 늘어나므로 목록 응답에 얹지 않고
   `tags` 와 같은 방식으로 따로 둡니다.
-- 아티클 상세(`GET /api/v1/tech-articles/{articleId}`)는 조회수를 집계합니다.
-  미들웨어가 **응답이 끝난 뒤 상태와 가드의 회원 판정을 함께 보고** 셉니다.
+- 아티클 상세(`GET /api/v1/tech-articles/{articleId}`)는 `recordView=true`일 때만
+  조회수를 집계합니다. 공개 화면은 같은 브라우저 세션의 첫 열람에만 이 값을 보내
+  새로고침을 중복 집계하지 않습니다. 미들웨어가 **응답이 끝난 뒤 상태와 가드의
+  회원 판정을 함께 보고** 셉니다.
 
-  | 응답 | 판정 | 이유 |
-  |---|---|---|
-  | `200`·`304` + `MEMBER` | 회원 열람 | 정상 회원 토큰으로 상세를 읽었습니다 |
-  | `200`·`304` + `GUEST` | 비회원 열람 | 로그인 없이 실제 요약 본문을 읽었습니다 |
-  | `401` | 세지 않음 | 만료·위조·로그아웃 토큰. 갱신 후 재시도와 중복 집계하지 않습니다 |
-  | `404`·`5xx` | 세지 않음 | 비공개·보관·없는 아티클이거나 우리 쪽 실패 |
+  | 응답                   | 판정        | 이유                                                             |
+  | ---------------------- | ----------- | ---------------------------------------------------------------- |
+  | `200`·`304` + `MEMBER` | 회원 열람   | 정상 회원 토큰으로 상세를 읽었습니다                             |
+  | `200`·`304` + `GUEST`  | 비회원 열람 | 로그인 없이 실제 요약 본문을 읽었습니다                          |
+  | `401`                  | 세지 않음   | 만료·위조·로그아웃 토큰. 갱신 후 재시도와 중복 집계하지 않습니다 |
+  | `404`·`5xx`            | 세지 않음   | 비공개·보관·없는 아티클이거나 우리 쪽 실패                       |
 
   가드는 성공한 요청에만 `MEMBER|GUEST` 판정을 남깁니다. 사용자별 이력은 남기지
   않으며, 집계는 관리자 응답(`viewCounts`)에만 실리고 공개 응답에는 없습니다.
+
 - `GET /api/v1/admin/tech-articles`: `page`, `pageSize`, `keyword`, `publicationStatus`,
   `stage=INGESTED|QUALITY_REVIEW|ENRICHING|PUBLICATION_REVIEW|COMPLETED|FAILED_AFTER_APPROVAL|FAILED|QUALITY_REJECTED`,
-  `statusMismatch=true`, `sort=NEWEST|OLDEST|SCORE_DESC|SCORE_ASC`. `stage` 와
+  `statusMismatch=true`, `qualityRecalculationStatus=PASS|ATTENTION_REQUIRED`,
+  `qualityVersionStatus=OUTDATED|UNTRACKED`,
+  `summaryVersionStatus=OUTDATED|UNTRACKED`,
+  `sort=NEWEST|OLDEST|SCORE_DESC|SCORE_ASC`. `stage` 와
   `statusMismatch` 는 선택이며, 없으면 전체를 돌려줍니다. 둘은 별개 축이라 함께
-  쓸 수 있습니다. 각 항목에는 같은 규칙으로 계산된 `stage` 가 함께 옵니다.
+  쓸 수 있습니다. 각 항목에는 같은 규칙으로 계산된 `stage` 가 함께 옵니다. 품질검토
+  대기 항목에는 승인 요청에 필요한 `qualityReview: { caseId, caseVersion }`도 포함됩니다.
 - `GET /api/v1/admin/tech-articles/stats`: `keyword`, `publicationStatus` 를 받습니다.
   **목록과 같은 조건으로 세야 칩 숫자와 목록 총계가 같은 모집단을 가리킵니다.**
   단계(`stage`)는 받지 않습니다 — 넣으면 고른 단계만 남고 나머지 칩이 0 이 됩니다.
@@ -144,10 +154,26 @@
   그리고 `reviews`(검수 큐 개수)입니다. 앞의 넷은 위 필터를 따르고, `reviews` 는
   다른 테이블이라 항상 전체입니다. `stageOldest` 는 `updated_at` 기준이라 "마지막 수정"
   시각이며 "단계 진입" 시각의 하한으로만 읽어야 합니다.
+- `GET /api/v1/admin/tech-articles/overview`: `from`, `to`(KST 기준 `YYYY-MM-DD`,
+  기본 14일, 최대 90일)를 받습니다. Tech Articles MySQL의 데이터·인덱스 크기와
+  측정 시각, 소스별 크롤러·품질 평가·AI 요약 모듈 버전, 일별 신규 수집·등록 건수와
+  AI 요약 완료 건수를 반환합니다. 실행 모듈은 SemVer를 사용하며 AI 모델 식별자와
+  프롬프트 버전은 별도 필드로 관리합니다. `pipelineVersion`은 제공하지 않습니다.
 - `GET /api/v1/admin/tech-articles/:articleId`: 원문을 제외한 관리자 상세 projection.
+  `processingVersions`에서 해당 아티클에 실제 적용된 크롤러·품질 평가·AI 요약 모듈,
+  품질 정책, 모델, 프롬프트 버전과 각 단계 완료 시각을 확인할 수 있습니다. 처리 실패
+  상태라면 `processingFailure`에 마지막 실패 단계, 오류 코드와 설명, 재시도 가능 여부,
+  시도 횟수와 실패 시각을 제공합니다. `qualityVersionStatus`와 `qualityTarget`으로 현재
+  품질 평가 모듈과 다른지, `summaryVersionStatus`와 `summaryTarget`으로 현재 실행 중인 AI
+  요약 모듈·모델·프롬프트와 다른지도 확인할 수 있습니다. `UNTRACKED`는 적용 버전을
+  추정할 수 없는 기존 아티클을 뜻합니다. 내부 예외 상세는 노출하지 않습니다.
+  품질 재계산은 아티클의 최신 평가와 `qualityRecalculationStatus`만 갱신하며, 최초
+  파이프라인 통과 근거와 공개·처리·검토 상태는 바꾸지 않습니다. 최신 판정이
+  `REVIEW_REQUIRED` 또는 `REJECT`이면 `ATTENTION_REQUIRED`로 조회할 수 있습니다.
 - `GET /api/v1/admin/tech-articles/reviews/duplicates`: `filter=JACCARD`,
   `sort=NEWEST|SIMILARITY_DESC`.
-- `GET /api/v1/admin/tech-articles/reviews/quality` 및 `/reviews/publication`:
+- `GET /api/v1/admin/tech-articles/reviews/quality`, `/reviews/rejected`,
+  `/reviews/publication`:
   `filter=RSS|WEB_CRAWL|API`, `sort=NEWEST`.
 
 모든 목록은 공통 페이지 메타데이터를 반환한다. 검수 항목에는 후속 요청에 필요한
@@ -182,6 +208,43 @@ JWT와 서버 시각으로 생성한다.
 `PROCESSING_FAILED`로 변경될 수 있다. 원래 `REVIEW_REQUIRED` 판정과 세부 품질 점수는
 관리자 조회를 위해 그대로 보존된다.
 
+### 품질 미달 승인·실패 재처리
+
+- `POST /api/v1/admin/tech-articles/:articleId/reprocessing`
+
+```json
+{ "action": "RETRY", "expectedRecordVersion": 3 }
+```
+
+`APPROVE_QUALITY`는 `QUALITY_REJECTED` 기사만 허용하며 관리자 승인 이력을 남긴 뒤
+AI 요약 단계로 전달한다. 자동 품질 판정과 점수는 덮어쓰지 않는다. `RETRY`는
+`PROCESSING_FAILED` 기사만 허용하며 마지막으로 실패한 품질 평가 또는 AI 요약 작업을
+새 작업으로 등록한다. 두 작업 모두 레코드 버전이 다르면 409, 현재 상태와 액션이 맞지
+않으면 422를 반환한다.
+
+### 선택적 AI 요약 재생성
+
+- `POST /api/v1/admin/tech-articles/:articleId/summary-regeneration`
+- `POST /api/v1/admin/tech-articles/summary-regenerations/bulk`
+
+현재 AI 요약 모듈·모델·프롬프트 버전과 다르거나 적용 버전이 기록되지 않은
+`ENRICHED` 아티클만 받습니다. 단건 본문은
+`{"expectedRecordVersion": 3}`이며 일괄 본문은 같은 필드와 `articleId`를 가진 항목을
+최대 50개까지 받습니다. 요청 시 기존 요약, 처리·검토·공개 상태와 공개 시각은 변경하지
+않습니다. 새 요약이 목표 버전으로 성공했을 때만 요약 관련 필드와 실제 적용 버전을
+원자적으로 교체합니다. 재생성 실패도 기존 아티클을 `PROCESSING_FAILED`로 바꾸지 않습니다.
+
+### 선택적 품질 점수 재계산
+
+- `POST /api/v1/admin/tech-articles/:articleId/quality-recalculation`
+- `POST /api/v1/admin/tech-articles/quality-recalculations/bulk`
+
+현재 품질 평가 모듈 버전과 다르거나 적용 버전이 기록되지 않은 `ENRICHED` 아티클 중
+저장된 품질 평가 결과가 있는 항목만 받습니다. 요청 본문과 일괄 제한은 AI 요약 재생성과
+같습니다. 각 아티클에 저장된 품질 평가
+정책을 그대로 사용하며, 요청과 실패 시 기존 점수·요약·처리·검토·공개 상태를 보존합니다.
+목표 평가 모듈로 성공했을 때만 품질 결과·점수·판정과 실제 적용 버전을 원자적으로 교체합니다.
+
 Bulk 본문은 `{"items": [...]}`이며 최대 50개, ID 중복 금지다. 유효한 요청은 일부 항목이
 실패해도 HTTP 200을 반환하고 입력 순서대로 다음 결과를 제공한다.
 
@@ -189,7 +252,11 @@ Bulk 본문은 `{"items": [...]}`이며 최대 50개, ID 중복 금지다. 유�
 {
   "results": [
     { "id": "article-1", "status": "SUCCEEDED", "data": {} },
-    { "id": "article-2", "status": "FAILED", "error": { "statusCode": 409, "code": "VERSION_CONFLICT" } }
+    {
+      "id": "article-2",
+      "status": "FAILED",
+      "error": { "statusCode": 409, "code": "VERSION_CONFLICT" }
+    }
   ],
   "summary": { "total": 2, "succeeded": 1, "failed": 1 }
 }

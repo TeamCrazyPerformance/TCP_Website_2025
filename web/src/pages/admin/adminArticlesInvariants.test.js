@@ -1,4 +1,3 @@
-
 const fs = require("fs");
 const path = require("path");
 
@@ -14,32 +13,44 @@ describe("공개 토글 가드", () => {
     expect((SOURCE.match(/<PublishControl/g) || []).length).toBe(2);
   });
 
-  test("토글이 처리 상태로 비활성화된다", () => {
-    expect(SOURCE).toMatch(/const blockReason = publishBlockReason\(article\)/);
-    expect(SOURCE).toMatch(/disabled=\{isMutating \|\| blocked\}/);
-  });
-
-  test("이미 공개된 아티클을 내리는 길은 막지 않는다", () => {
+  test("토글이 현재 단계와 공개 상태에서 허용되는 작업만 실행한다", () => {
     expect(SOURCE).toMatch(
-      /const blocked = !published && Boolean\(blockReason\)/,
+      /const blocked = !canApplyPublicationAction\(article, action\)/,
     );
+    expect(SOURCE).toMatch(/disabled=\{isMutating \|\| blocked\}/);
+    expect(SOURCE).toMatch(/onToggle\(article, action\)/);
   });
 
   test("단건 실행에도 서버 호출 전 가드가 있다", () => {
     expect(SOURCE).toMatch(
-      /action === "PUBLISH" && !canPublishArticle\(article\)/,
+      /if \(!canApplyPublicationAction\(article, action\)\)/,
     );
   });
 
-  test("일괄 공개가 대상을 분리하고 제외 건수를 알린다", () => {
-    expect(SOURCE).toMatch(/partitionPublishable\(selectedRecords\)/);
+  test("행 단위 보관 버튼도 허용된 상태에만 노출한다", () => {
+    expect(
+      (SOURCE.match(/canApplyPublicationAction\(article, "ARCHIVE"\)/g) || [])
+        .length,
+    ).toBeGreaterThanOrEqual(2);
+  });
+
+  test("모든 일괄 공개 상태 작업이 허용 대상을 분리하고 제외 건수를 알린다", () => {
+    expect(SOURCE).toMatch(
+      /partitionPublicationAction\([\s\S]*selectedRecords/,
+    );
     expect(SOURCE).toMatch(/blocked\.length[\s\S]{0,200}제외/);
     expect(SOURCE).toMatch(/제외했습니다/);
   });
 
-  test("일괄 요청 본문이 선택 전체가 아니라 공개 가능 건만 담는다", () => {
-    expect(SOURCE).toMatch(/publishable\.map\(\(article\) => \(\{/);
+  test("일괄 요청 본문이 선택 전체가 아니라 허용된 건만 담는다", () => {
+    expect(SOURCE).toMatch(/eligible\.map\(\(article\) => \(\{/);
     expect(SOURCE).not.toMatch(/selectedRecords\.map\(\(article\) => \(\{/);
+  });
+
+  test("허용되는 공개 상태 작업만 선택 도구에 노출한다", () => {
+    expect(SOURCE).toMatch(/availablePublicationActions\.PUBLISH/);
+    expect(SOURCE).toMatch(/availablePublicationActions\.HIDE/);
+    expect(SOURCE).toMatch(/availablePublicationActions\.ARCHIVE/);
   });
 
   test("상태 라벨을 공용 어휘에서 가져온다", () => {
@@ -49,6 +60,60 @@ describe("공개 토글 가드", () => {
     expect(SOURCE).not.toMatch(/value=\{detail\.processingStatus\}/);
     expect(SOURCE).not.toMatch(/value=\{detail\.reviewStatus\}/);
     expect(SOURCE).not.toMatch(/value=\{detail\.publicationStatus\}/);
+  });
+});
+
+describe("전체 목록 상세 작업", () => {
+  test("대기 중인 품질검토 건에만 판정 작업을 준비한다", () => {
+    expect(SOURCE).toMatch(/function pendingQualityReview\(article\)/);
+    expect(SOURCE).toMatch(/resolveStage\(article\) !== "QUALITY_REVIEW"/);
+    expect(SOURCE).toMatch(/!review\?\.caseId/);
+    expect(SOURCE).toMatch(/!Number\.isInteger\(review\.caseVersion\)/);
+  });
+
+  test("기존 검토 큐와 같은 판정 API와 낙관적 잠금 버전을 사용한다", () => {
+    expect(SOURCE).toMatch(/resolveQualityReview\(review\.caseId, \{/);
+    expect(SOURCE).toMatch(/resolvePendingQualityReview\(detail, "APPROVE"\)/);
+    expect(SOURCE).toMatch(/resolvePendingQualityReview\(detail, "REJECT"\)/);
+    expect(SOURCE).toMatch(/expectedCaseVersion: review\.caseVersion/);
+  });
+
+  test("목록에는 판정 버튼이 없고 상세 창에만 통과와 탈락이 있다", () => {
+    const list = SOURCE.slice(
+      SOURCE.indexOf('<table className="article-table'),
+      SOURCE.indexOf("<dialog"),
+    );
+    const detail = SOURCE.slice(SOURCE.indexOf("<dialog"));
+    expect(list).not.toContain("품질 통과");
+    expect(list).not.toContain("품질 탈락");
+    expect(detail).toContain("품질 통과");
+    expect(detail).toContain("품질 탈락");
+  });
+
+  test("품질 미달과 처리 실패는 상세 창에서 재처리 API를 사용한다", () => {
+    expect(SOURCE).toMatch(/runReprocessing\(detail, "APPROVE_QUALITY"\)/);
+    expect(SOURCE).toMatch(/runReprocessing\(detail, "RETRY"\)/);
+    expect(SOURCE).toMatch(/reprocessArticle\(article\.articleId, \{/);
+    expect(SOURCE).toMatch(/"FAILED", "FAILED_AFTER_APPROVAL"/);
+  });
+
+  test("검색·필터·정렬·단계가 바뀌면 기존 선택을 지운다", () => {
+    const clearSelection = SOURCE.slice(
+      SOURCE.indexOf("setSelected({});"),
+      SOURCE.indexOf("setSelected({});") + 220,
+    );
+    for (const dependency of [
+      "keyword",
+      "page",
+      "publicationStatus",
+      "qualityRecalculationStatus",
+      "qualityVersionStatus",
+      "sort",
+      "stageFilter",
+      "summaryVersionStatus",
+    ]) {
+      expect(clearSelection).toContain(dependency);
+    }
   });
 });
 
@@ -69,16 +134,16 @@ describe("파이프라인 단계 표시", () => {
     expect(SOURCE).not.toMatch(/<strong>\{publishedCount\}<\/strong>/);
     expect(SOURCE).not.toMatch(/<strong>\{hiddenCount\}<\/strong>/);
     expect(ALIGN_CSS).toMatch(/\.queue-stat-inline \{[\s\S]*?color: #f3f4f6;/);
-    expect(ALIGN_CSS).toMatch(/\.queue-stat-inline \{[\s\S]*?font-weight: 400;/);
+    expect(ALIGN_CSS).toMatch(
+      /\.queue-stat-inline \{[\s\S]*?font-weight: 400;/,
+    );
     expect(ALIGN_CSS).not.toMatch(/\.queue-stat-item\.is-published/);
     expect(ALIGN_CSS).not.toMatch(/\.queue-stat-item\.is-unpublished/);
   });
 
   test("검토 큐 카드 제목이 등록 아티클 카드와 같은 위계를 쓴다", () => {
     for (const title of ["판정 대기", "품질 검토", "공개 검토"]) {
-      expect(REVIEWS).toContain(
-        `<p className="queue-stat-title">${title}</p>`,
-      );
+      expect(REVIEWS).toContain(`<p className="queue-stat-title">${title}</p>`);
     }
     expect(ALIGN_CSS).toMatch(
       /\.overview-card-title,\s*\.ta-admin \.queue-stat-card \.queue-stat-title \{[\s\S]*?font-size: 16px;/,
@@ -86,7 +151,9 @@ describe("파이프라인 단계 표시", () => {
   });
 
   test("공개 정책 제목과 선택 영역 사이에 작은 간격이 있다", () => {
-    expect(SOURCE).toMatch(/<form className="policy-form" onSubmit=\{savePolicy\}>/);
+    expect(SOURCE).toMatch(
+      /<form className="policy-form" onSubmit=\{savePolicy\}>/,
+    );
     expect(ALIGN_CSS).toMatch(
       /\.policy-card \.policy-form \{\s*margin-top: 12px;/,
     );
@@ -118,13 +185,15 @@ describe("파이프라인 단계 표시", () => {
     );
     expect(SOURCE).toMatch(/statusMismatch: stageFilter === MISMATCH_FILTER/);
     expect(SOURCE).toMatch(
-      /\[keyword, page, publicationStatus, sort, stageFilter\]/,
+      /\[\s*keyword,\s*page,\s*publicationStatus,\s*qualityRecalculationStatus,\s*qualityVersionStatus,\s*sort,\s*stageFilter,\s*summaryVersionStatus,?\s*\]/,
     );
   });
 
   test("페이지를 넘겨도 단계 필터가 풀리지 않는다", () => {
     expect(SOURCE).not.toMatch(/setStageFilter\(""\)/);
-    expect(SOURCE).toMatch(/setPage\(1\);[\s\S]{0,60}\[stageFilter, keyword/);
+    expect(SOURCE).toMatch(
+      /setPage\(1\);[\s\S]{0,180}\[\s*stageFilter,\s*keyword,/,
+    );
   });
 });
 
@@ -323,9 +392,10 @@ describe("품질 평가 근거 공유", () => {
     }
   });
 
-  test("검토 큐 두 탭 모두 원문 링크를 보여준다", () => {
+  test("검토 큐의 품질·품질 미달·공개 상세가 원문 링크를 보여준다", () => {
     expect((REVIEWS.match(/<OriginalSourceLink/g) || []).length).toBe(2);
     expect(REVIEWS).toMatch(/detail\.source\?\.articleUrl/);
+    expect(REVIEWS).toMatch(/kind === "quality" \|\| kind === "rejected"/);
   });
 
   test("중복 검토가 양쪽 원문 링크를 모두 보여준다", () => {
@@ -355,12 +425,12 @@ const ALIGN_CSS = fs.readFileSync(
 );
 
 describe("숫자 서체", () => {
-  test("orbitron 은 라틴 눈썹과 제목에만 남는다", () => {
+  test("orbitron 은 제목에만 남는다", () => {
     for (const source of [SOURCE, REVIEWS]) {
       const uses = source.match(/className="[^"]*orbitron[^"]*"/g) || [];
       expect(uses.length).toBeGreaterThan(0);
       for (const use of uses) {
-        expect(use).toMatch(/section-eyebrow|gradient-text/);
+        expect(use).toMatch(/gradient-text/);
       }
     }
   });

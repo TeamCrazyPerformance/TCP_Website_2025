@@ -96,11 +96,12 @@ through less than 92%.
   reason, signals, axis keys, raw axis values, and weights do not cross this boundary.
 - `GET /public/articles` — also supports `sources` (repeatable). Unknown ids return
   422 `INVALID_ARTICLE_SOURCE`. Every item carries `isNew`, true when the article was
-  collected within `NEW_ARTICLE_WINDOW_HOURS` (24). The public list is ordered by the
+  both collected and originally published within `NEW_ARTICLE_WINDOW_HOURS` (24).
+  The public list is ordered by the
   `originalPublishedAt` service timestamp. Source-provided publication time is used
   normally; GitHub Trending uses its UTC crawl observation time because that source
-  has no original publication timestamp. The `isNew` flag remains based on collection
-  time rather than this source-specific fallback.
+  has no original publication timestamp, so its UTC crawl observation time is used for
+  both publication freshness and collection freshness.
 - `POST /public/articles/{articleId}/view?member=true|false` — bumps the per-article
   counter. Operations-only aggregate; no per-user history is stored, so it is not
   personal data. Unknown ids match no row in `articles`, so the insert affects nothing
@@ -115,6 +116,8 @@ through less than 92%.
   `FAILED_AFTER_APPROVAL` reads `quality_review_cases`, not `review_status`.
   `statusMismatch=true` narrows to articles whose `review_status` is `APPROVED` on a
   processing status that cannot produce it; it is a separate axis from `stage`.
+  Items awaiting quality review include the pending `qualityReview.caseId` and
+  `qualityReview.caseVersion` required for optimistic resolution.
   `GET /admin/articles/stats` adds `stages` (a count per stage over every article, zero
   counts included), `stageOldest` (oldest `updated_at` per stage, a lower bound for how
   long an article has sat there), and `statusMismatch`. It accepts `keyword` and
@@ -122,13 +125,28 @@ through less than 92%.
   accept `stage`. The `reviews` queue counts come from other tables and stay unfiltered.
   `sort` also accepts `OLDEST`.
 - `GET /admin/articles` — supports `keyword`, `publicationStatus`, and
-  `NEWEST|SCORE_DESC|SCORE_ASC`; returns `totalCount`.
+  `NEWEST|SCORE_DESC|SCORE_ASC`; returns `totalCount`. The optional
+  `qualityRecalculationStatus=PASS|ATTENTION_REQUIRED` filter separates articles whose
+  latest recalculation passed from articles whose latest decision requires an administrator
+  to review it. Recalculation updates the article's latest evaluation but preserves the
+  original pipeline submission result and all publication, processing, and review states.
+  The optional
+  `qualityVersionStatus=OUTDATED|UNTRACKED` filter compares each completed article's
+  directly stored evaluator version with the currently loaded evaluator. The optional
+  `summaryVersionStatus=OUTDATED|UNTRACKED` filter compares each eligible article's
+  directly stored summarizer module, model, and prompt versions with the current target.
+  `UNTRACKED` means a legacy result has no complete applied-version stamp; it is never
+  inferred from an unrelated submission. Responses include the current `qualityTarget`
+  and `summaryTarget`, plus each item's computed statuses.
 - `GET /admin/articles/stats` and `GET /admin/articles/{articleId}`
-- `GET /admin/reviews/duplicate|quality|publication`
+- `GET /admin/reviews/duplicate|quality|rejected|publication`
 - `GET /admin/crawl-sources`
 - `POST /admin/reviews/duplicate/{caseId}/resolution`
 - `POST /admin/reviews/quality/{caseId}/resolution`
 - `POST /admin/articles/{articleId}/publication`
+- `POST /admin/articles/{articleId}/reprocessing`
+- `POST /admin/articles/{articleId}/quality-recalculation`
+- `POST /admin/articles/{articleId}/summary-regeneration`
 - `GET|PATCH /admin/settings/publication-policy`
 
 Duplicate resolution bodies follow the admission module contract, including
@@ -141,6 +159,35 @@ enrichment. It does not overwrite the stored `REVIEW_REQUIRED` quality decision.
 The orchestrator derives an effective `PASS` for the strict summarizer contract
 and forwards only the overall quality score; the original decision and dimension
 scores remain available in the persisted quality result and admin projections.
+
+Article reprocessing accepts an expected article record version and one of two actions.
+`APPROVE_QUALITY` is limited to `QUALITY_REJECTED`; it records a resolved administrator
+approval while preserving the automatic `REJECT` result, then queues enrichment.
+`RETRY` is limited to `PROCESSING_FAILED`; it finds the latest dead quality or enrichment
+job and creates a new job for that stage. A mismatched state returns
+`INVALID_ARTICLE_ACTION`, and a stale record version returns `VERSION_CONFLICT`.
+
+Admin article detail includes `processingFailure` only for the current
+`PROCESSING_FAILED` state. It projects the latest dead quality or enrichment job's stage,
+safe error code and message, retryability, attempt counts, and failure time. Internal error
+details are not exposed, and admin inventory list items remain unchanged.
+
+Quality recalculation is a separate quality job purpose. It is limited to completed
+articles with a stored quality result whose evaluator version is untracked or differs
+from the currently loaded evaluator. It reuses the article's stored quality policy.
+Enqueueing and failure preserve the existing score, summary, and lifecycle state;
+success atomically replaces the quality result, score, decision, and applied-version
+fields on the article.
+
+Summary regeneration is a separate enrichment job purpose rather than a normal pipeline
+retry. It is allowed only for an `ENRICHED` article with an existing summary and stored
+quality result whose applied summarizer version is untracked or differs from the current
+module, model, or prompt target. Enqueueing and failed attempts preserve the existing
+summary, processing/review/publication states, publication time, and applied-version
+fields. A successful job verifies its actual three-part version against the requested
+target, then atomically replaces the summary-derived fields and version stamp on the
+article. Jobs retain the requesting administrator and target versions for audit;
+regeneration failures are excluded from the normal processing-failure projection.
 
 The publication policy setting is `IMMEDIATE|REVIEW`, defaults to `IMMEDIATE`,
 and uses an optional expected version on PATCH for optimistic concurrency.

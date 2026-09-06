@@ -74,18 +74,19 @@ function AdminLayout() {
     if (path === "/admin") return "Dashboard";
     if (path === "/admin/main") return "Main Page Content";
     if (path === "/admin/recruitment") return "Recruitment Page Management";
-    // Tech Articles 관리 화면. 검토 화면은 품질·공개 두 탭을 한 화면에서 다룬다.
     if (path === "/admin/tech-articles") return "Tech Articles · All Articles";
+    if (path === "/admin/tech-articles/overview")
+      return "Tech Articles · Pipeline Status";
     if (path === "/admin/tech-articles/reviews/duplicates")
       return "Tech Articles · Suspected Duplicates";
     if (
       path === "/admin/tech-articles/reviews/quality" ||
-      path === "/admin/tech-articles/reviews/publication"
+      path === "/admin/tech-articles/reviews/publication" ||
+      path === "/admin/tech-articles/reviews/rejected"
     )
       return "Tech Articles · Article Review";
     if (path === "/admin/tech-articles/crawls")
       return "Tech Articles · Crawl Operations";
-    // ... 다른 관리 페이지 제목들
     return "Admin Panel";
   };
 

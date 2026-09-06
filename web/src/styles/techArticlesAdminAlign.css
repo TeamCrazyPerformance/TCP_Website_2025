@@ -81,8 +81,8 @@
 }
 
 .ta-admin .widget-card {
-  background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--card-surface-background);
+  border: 1px solid var(--card-surface-border);
   border-radius: 0.75rem;
 }
 
@@ -102,8 +102,8 @@
   margin-bottom: 1.5rem;
   padding: 1.5rem;
   flex-direction: column;
-  background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
-  border: 1px solid rgba(168, 197, 230, 0.28);
+  background: var(--card-surface-background);
+  border: 1px solid var(--card-surface-border);
   border-radius: 0.75rem;
 }
 
@@ -1040,7 +1040,6 @@
 .ta-admin .publish-control > span,
 .ta-admin .row-action,
 .ta-admin .admin-page-button,
-.ta-admin .section-eyebrow,
 .ta-admin .overview-card-heading .overview-caption,
 .ta-admin .policy-scope-badge,
 .ta-admin .btn-small,

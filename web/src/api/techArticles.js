@@ -40,8 +40,12 @@ export function getTechArticleSources() {
   return apiGet(`${PUBLIC_BASE}/sources`);
 }
 
-export function getTechArticle(articleId) {
-  return apiGet(`${PUBLIC_BASE}/${encodeURIComponent(articleId)}`);
+export function getTechArticle(articleId, { recordView = false } = {}) {
+  return apiGet(
+    withQuery(`${PUBLIC_BASE}/${encodeURIComponent(articleId)}`, {
+      recordView: recordView ? true : undefined,
+    }),
+  );
 }
 
 export function getAdminTechArticles({
@@ -51,6 +55,9 @@ export function getAdminTechArticles({
   publicationStatus,
   stage,
   statusMismatch,
+  qualityRecalculationStatus,
+  qualityVersionStatus,
+  summaryVersionStatus,
   sort = "NEWEST",
 } = {}) {
   return apiGet(
@@ -61,6 +68,9 @@ export function getAdminTechArticles({
       publicationStatus,
       stage,
       statusMismatch,
+      qualityRecalculationStatus,
+      qualityVersionStatus,
+      summaryVersionStatus,
       sort,
     }),
   );
@@ -70,6 +80,10 @@ export function getAdminTechArticleStats({ keyword, publicationStatus } = {}) {
   return apiGet(
     withQuery(`${ADMIN_BASE}/stats`, { keyword, publicationStatus }),
   );
+}
+
+export function getAdminTechArticleOverview({ from, to } = {}) {
+  return apiGet(withQuery(`${ADMIN_BASE}/overview`, { from, to }));
 }
 
 export function getAdminTechArticle(articleId) {
@@ -98,7 +112,7 @@ export function getQualityReviews(
   kind,
   { page = 1, pageSize = 20, keyword, filter, sort = "NEWEST" } = {},
 ) {
-  if (!["quality", "publication"].includes(kind)) {
+  if (!["quality", "rejected", "publication"].includes(kind)) {
     throw new Error("지원하지 않는 검수 큐입니다.");
   }
   return apiGet(
@@ -121,6 +135,35 @@ export function changeArticlePublication(articleId, payload) {
 
 export function changeArticlePublicationBulk(items) {
   return apiPost(`${ADMIN_BASE}/publication-actions/bulk`, { items });
+}
+
+export function reprocessArticle(articleId, payload) {
+  return apiPost(
+    `${ADMIN_BASE}/${encodeURIComponent(articleId)}/reprocessing`,
+    payload,
+  );
+}
+
+export function regenerateArticleSummary(articleId, payload) {
+  return apiPost(
+    `${ADMIN_BASE}/${encodeURIComponent(articleId)}/summary-regeneration`,
+    payload,
+  );
+}
+
+export function regenerateArticleSummariesBulk(items) {
+  return apiPost(`${ADMIN_BASE}/summary-regenerations/bulk`, { items });
+}
+
+export function recalculateArticleQuality(articleId, payload) {
+  return apiPost(
+    `${ADMIN_BASE}/${encodeURIComponent(articleId)}/quality-recalculation`,
+    payload,
+  );
+}
+
+export function recalculateArticleQualitiesBulk(items) {
+  return apiPost(`${ADMIN_BASE}/quality-recalculations/bulk`, { items });
 }
 
 export function resolveDuplicateReview(caseId, payload) {

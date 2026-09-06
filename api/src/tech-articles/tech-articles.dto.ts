@@ -12,6 +12,7 @@ import {
   IsString,
   Max,
   MaxLength,
+  Matches,
   Min,
   MinLength,
   ValidateIf,
@@ -93,6 +94,18 @@ export class AdminArticleStatsQueryDto {
   publicationStatus?: string;
 }
 
+export class AdminOverviewQueryDto {
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  @IsOptional()
+  from?: string;
+
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  @IsOptional()
+  to?: string;
+}
+
 export class AdminArticleQueryDto extends PageQueryDto {
   @IsIn(['UNPUBLISHED', 'SCHEDULED', 'PUBLISHED', 'HIDDEN', 'ARCHIVED'])
   @IsOptional()
@@ -107,6 +120,18 @@ export class AdminArticleQueryDto extends PageQueryDto {
   @IsBoolean()
   @IsOptional()
   statusMismatch?: boolean;
+
+  @IsIn(['PASS', 'ATTENTION_REQUIRED'])
+  @IsOptional()
+  qualityRecalculationStatus?: 'PASS' | 'ATTENTION_REQUIRED';
+
+  @IsIn(['OUTDATED', 'UNTRACKED'])
+  @IsOptional()
+  qualityVersionStatus?: 'OUTDATED' | 'UNTRACKED';
+
+  @IsIn(['OUTDATED', 'UNTRACKED'])
+  @IsOptional()
+  summaryVersionStatus?: 'OUTDATED' | 'UNTRACKED';
 
   @IsIn(['NEWEST', 'OLDEST', 'SCORE_DESC', 'SCORE_ASC'])
   @IsOptional()
@@ -145,6 +170,67 @@ export class PublicationActionDto {
   @MaxLength(500)
   @IsOptional()
   reason = '';
+}
+
+export class ArticleReprocessingDto {
+  @IsIn(['RETRY', 'APPROVE_QUALITY'])
+  action: 'RETRY' | 'APPROVE_QUALITY';
+
+  @IsInt()
+  @Min(1)
+  expectedRecordVersion: number;
+}
+
+export class SummaryRegenerationDto {
+  @IsInt()
+  @Min(1)
+  expectedRecordVersion: number;
+}
+
+export class QualityRecalculationDto {
+  @IsInt()
+  @Min(1)
+  expectedRecordVersion: number;
+}
+
+export class BulkQualityRecalculationItemDto extends QualityRecalculationDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(64)
+  articleId: string;
+}
+
+export class BulkQualityRecalculationDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(50)
+  @ArrayUnique(
+    (item: BulkQualityRecalculationItemDto | null | undefined) =>
+      item?.articleId,
+  )
+  @ValidateNested({ each: true })
+  @Type(() => BulkQualityRecalculationItemDto)
+  items: BulkQualityRecalculationItemDto[];
+}
+
+export class BulkSummaryRegenerationItemDto extends SummaryRegenerationDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(64)
+  articleId: string;
+}
+
+export class BulkSummaryRegenerationDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(50)
+  @ArrayUnique(
+    (item: BulkSummaryRegenerationItemDto | null | undefined) =>
+      item?.articleId,
+  )
+  @ValidateNested({ each: true })
+  @Type(() => BulkSummaryRegenerationItemDto)
+  items: BulkSummaryRegenerationItemDto[];
 }
 
 export class BulkPublicationItemDto extends PublicationActionDto {

@@ -23,6 +23,9 @@ test("목 서버의 NEW 기준이 파이프라인과 같다", () => {
   expect(numericConstant(mockSource, "NEW_ARTICLE_WINDOW_HOURS")).toBe(
     numericConstant(pipelineSource, "NEW_ARTICLE_WINDOW_HOURS"),
   );
+  expect(mockSource).toMatch(
+    /isNewArticle\(a\.collectedAt,\s*a\.originalPublishedAt\)/,
+  );
 });
 
 test("목 서버가 만드는 태그 개수가 파이프라인 상한을 넘지 않는다", () => {
@@ -67,4 +70,15 @@ test("목 서버 공개 목록이 운영 Tech Articles와 유사한 데이터 �
   expect(
     (mockSource.match(/articleId: "article-202608/g) || []).length,
   ).toBeGreaterThanOrEqual(20);
+});
+
+test("목 서버 관리자 목록이 품질검토 승인 식별자를 제공한다", () => {
+  const mockSource = fs.readFileSync(
+    path.resolve(__dirname, "../../tools/mock-tech-articles-api.mjs"),
+    "utf8",
+  );
+
+  expect(mockSource).toMatch(
+    /qualityReview:[\s\S]{0,260}caseId: review\.caseId,[\s\S]{0,80}caseVersion: review\.caseVersion/,
+  );
 });
