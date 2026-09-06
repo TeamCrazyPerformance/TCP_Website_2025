@@ -24,6 +24,7 @@ import {
 import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { StudyService } from './study.service';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 
 import { GetStudiesQueryDto } from './dto/request/get-studies-query.dto';
 import { CreateStudyDto } from './dto/request/create-study.dto';
@@ -45,12 +46,12 @@ import { StudyResourceResponseDto } from './dto/response/study-resource.response
 import { SearchAvailableMembersQueryDto } from './dto/request/search-available-members-query.dto';
 import { SearchAvailableMembersResponseDto } from './dto/response/search-available-members-response.dto';
 import { AuthGuard } from '@nestjs/passport';
-import { Roles } from 'src/auth/decorators/roles.decorator';
-import { UserRole } from 'src/members/entities/enums/user-role.enum';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '../members/entities/enums/user-role.enum';
 import { StudyRolesGuard } from './guards/study-roles.guard';
 import { StudyRoles } from './decorators/study-roles.decorator';
 import { StudyMemberRole } from './entities/enums/study-member-role.enum';
-import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 @Controller('api/v1/study')
 export class StudyController {
@@ -62,14 +63,20 @@ export class StudyController {
    * @returns A promise that resolves to an array of study summary DTOs.
    */
   @Get()
+  @UseGuards(OptionalJwtAuthGuard)
   findAll(
     @Query(new ValidationPipe({ transform: true })) query: GetStudiesQueryDto,
+    @Req() req: { user?: { userId?: string } },
+    @Res({ passthrough: true }) res: Response,
   ): Promise<StudyResponseDto[]> {
-    return this.studyService.findAll(query.year);
+    // Response differs by auth state, so a shared cache must never serve it.
+    res.vary('Authorization');
+    res.setHeader('Cache-Control', 'private, no-store');
+    return this.studyService.findAll(query.year, Boolean(req.user));
   }
 
   /**
-   * @description Retrieves detailed information for a specific study. (스터디원, 스터디장, 관리자)
+   * @description Retrieves detailed information for a specific study. (member, leader, admin)
    * @param id The ID of the study to retrieve.
    * @returns A promise that resolves to a detailed DTO of the study.
    */

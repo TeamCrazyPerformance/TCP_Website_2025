@@ -11,6 +11,7 @@ import {
 import type { Response } from 'express';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, LessThan, QueryRunner, In } from 'typeorm';
+import type { FindOptionsWhere } from 'typeorm';
 import { Study } from './entities/study.entity';
 import { User } from '../members/entities/user.entity';
 import { UserRole } from '../members/entities/enums/user-role.enum';
@@ -53,18 +54,25 @@ export class StudyService {
   /**
    * @description Retrieves a list of studies, with an option to filter by year.
    * @param year The optional year to filter the studies by.
+   * @param includePrivate Whether to include private studies. Only true for authenticated requests.
    * @returns A promise that resolves to an array of study summary DTOs.
    */
-  async findAll(year?: number): Promise<StudyResponseDto[]> {
-    const findOptions = {
-      where: {},
-    };
+  async findAll(
+    year?: number,
+    includePrivate = false,
+  ): Promise<StudyResponseDto[]> {
+    // Only names and descriptions ship here, but a private study must not even be listed.
+    const where: FindOptionsWhere<Study> = {};
 
     if (year) {
-      findOptions.where = { start_year: year };
+      where.start_year = year;
     }
 
-    const studies = await this.studyRepository.find(findOptions);
+    if (!includePrivate) {
+      where.is_public = true;
+    }
+
+    const studies = await this.studyRepository.find({ where });
 
     return studies.map((study) => ({
       id: study.id,

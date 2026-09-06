@@ -9,18 +9,19 @@ import {
 import "./App.css";
 import "./index.css";
 
-// 공통 컴포넌트 임포트
+// Shared components
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import { AuthProvider } from "./context/AuthContext";
 
-// 페이지 컴포넌트 임포트
+// Page components
 import About from "./pages/About";
 import Members from "./pages/Members";
 import Recruitment from "./pages/Recruitment";
 import Announcement from "./pages/Announcement";
 import AnnouncementWrite from "./pages/AnnouncementWrite";
 import AnnouncementArticle from "./pages/AnnouncementArticle";
+import RequireRole from "./components/auth/RequireRole";
 import Study from "./pages/Study";
 import StudyWrite from "./pages/StudyWrite";
 import StudyDetail from "./pages/StudyDetail";
@@ -35,7 +36,7 @@ import Terms from "./pages/Terms";
 import OpenSourceCredits from "./pages/OpenSourceCredits";
 import EasterEgg from "./pages/EasterEgg";
 
-// 마이페이지 관련 컴포넌트 임포트
+// My page components
 import MyPageLayout from "./components/MyPageLayout";
 import Profile from "./pages/mypage/Profile";
 import MyPageSettings from "./pages/mypage/MyPageSettings";
@@ -44,7 +45,7 @@ import MyStudies from "./pages/mypage/MyStudies";
 import MyTeams from "./pages/mypage/MyTeams";
 import Withdraw from "./pages/mypage/Withdraw";
 
-// 관리자 페이지 관련 컴포넌트 임포트
+// Admin page components
 import AdminLayout from "./components/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminMainContent from "./pages/admin/AdminMainContent";
@@ -57,11 +58,11 @@ import AdminPermission from "./pages/admin/AdminPermission";
 import AdminStudy from "./pages/admin/AdminStudy";
 import AdminTeam from "./pages/admin/AdminTeam";
 import AdminServer from "./pages/admin/AdminServer";
-// TA 공개 화면 지연 로딩. 정적 import 로 두면 v9 스코프 CSS 가 main.css 에 합쳐진다.
+// Lazy-loaded: a static import would merge the v9 scoped CSS into main.css.
 const TechArticles = lazy(() => import("./pages/TechArticles"));
 const TechArticleDetail = lazy(() => import("./pages/TechArticleDetail"));
 
-// TA 관리 화면 지연 로딩. 같은 이유(v9 스코프 CSS 약 100KB 분리).
+// Lazy-loaded for the same reason, splitting out roughly 100KB of scoped CSS.
 const AdminTechArticles = lazy(() => import("./pages/admin/AdminTechArticles"));
 const AdminTechArticleReviews = lazy(
   () => import("./pages/admin/AdminTechArticleReviews"),
@@ -70,7 +71,7 @@ const AdminCrawlOperations = lazy(
   () => import("./pages/admin/AdminCrawlOperations"),
 );
 
-// 공개 화면 청크 로딩 표시. 공용 Header 가 fixed 이므로 pt-24 확보.
+// Chunk fallback for public pages. pt-24 clears the fixed shared header.
 function PublicChunkFallback() {
   return (
     <section className="pt-24 pb-16 min-h-screen flex items-center justify-center">
@@ -82,7 +83,7 @@ function PublicChunkFallback() {
   );
 }
 
-// 관리자 청크 로딩 표시. AdminLayout 로딩 표시와 같은 형태.
+// Chunk fallback for admin pages, matching the AdminLayout spinner.
 function AdminChunkFallback() {
   return (
     <div className="flex items-center justify-center py-20">
@@ -94,7 +95,7 @@ function AdminChunkFallback() {
   );
 }
 
-// 모든 로직을 AppContent 컴포넌트로 이동
+// All logic lives in AppContent
 function AppContent() {
   const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
@@ -104,7 +105,7 @@ function AppContent() {
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
-  // TA 공개 화면도 다른 공개 페이지와 같이 공용 Header/Footer 사용
+  // Tech article pages use the shared Header/Footer like every other public page
   const isNonCommonLayout =
     location.pathname.startsWith("/mypage") ||
     location.pathname.startsWith("/admin");
@@ -129,8 +130,22 @@ function AppContent() {
         <Route path="/members" element={<Members />} />
         <Route path="/recruitment" element={<Recruitment />} />
         <Route path="/announcement" element={<Announcement />} />
-        <Route path="/announcement/write" element={<AnnouncementWrite />} />
-        <Route path="/announcement/edit/:id" element={<AnnouncementWrite />} />
+        <Route
+          path="/announcement/write"
+          element={
+            <RequireRole roles={["ADMIN"]}>
+              <AnnouncementWrite />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/announcement/edit/:id"
+          element={
+            <RequireRole roles={["ADMIN"]}>
+              <AnnouncementWrite />
+            </RequireRole>
+          }
+        />
         <Route path="/announcement/:id" element={<AnnouncementArticle />} />
         <Route path="/study" element={<Study />} />
         <Route path="/study/write" element={<StudyWrite />} />
@@ -169,7 +184,7 @@ function AppContent() {
         <Route path="/opensource" element={<OpenSourceCredits />} />
         <Route path="/easter-egg" element={<EasterEgg />} />
 
-        {/* 마이페이지 중첩 라우트 */}
+        {/* My page nested routes */}
         <Route path="/mypage" element={<MyPageLayout />}>
           <Route index element={<Profile />} />
           <Route path="settings" element={<MyPageSettings />} />
@@ -179,7 +194,7 @@ function AppContent() {
           <Route path="withdraw" element={<Withdraw />} />
         </Route>
 
-        {/* Admin Pages (중첩 라우트) */}
+        {/* Admin pages (nested routes) */}
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="main" element={<AdminMainContent />} />
@@ -239,7 +254,7 @@ function AppContent() {
   );
 }
 
-// App 컴포넌트는 Router만 렌더링
+// App only renders the Router
 function App() {
   return (
     <AuthProvider>
