@@ -59,7 +59,6 @@ class QualityEvaluator:
 
     def __init__(self, *, clock: Clock = _utcnow) -> None:
         self._clock = clock
-        self.module_version = EVALUATOR_VERSION
 
     def evaluate(self, input_data: Mapping[str, Any]) -> dict[str, Any]:
         article_id = input_data.get("articleId", "") if isinstance(input_data, Mapping) else ""
@@ -108,10 +107,11 @@ class QualityEvaluator:
             "timeliness": timeliness,
             "articleQuality": article_quality,
         }
+        bonus = self.calculate_community_engagement_bonus(request)
         overall = round(
             sum(dimension_values[axis["key"]] * float(axis["weight"]) for axis in QUALITY_AXES)
         )
-        overall = max(0, min(100, overall))
+        overall = max(0, min(100, overall + bonus))
         axes = [
             ScoreAxis(
                 key=str(axis["key"]),
@@ -137,11 +137,15 @@ class QualityEvaluator:
             else:
                 decision = "PASS"
                 reason = f"품질 기준점({policy.minimum_evaluation_score}점) 이상입니다."
+                if bonus > 0:
+                    reason += f" (개발자 호응 보너스 +{bonus}점 적용)"
         else:
             rejection_codes.append("LOW_EVALUATION_SCORE")
             if overall >= policy.review_lower_bound:
                 decision = "REVIEW_REQUIRED"
                 reason = "품질 점수가 검토 가능 범위에 있어 관리자 판단이 필요합니다."
+                if bonus > 0:
+                    reason += f" (개발자 호응 보너스 +{bonus}점 적용)"
             else:
                 decision = "REJECT"
                 reason = "품질 점수가 최소 검토 범위보다 낮습니다."
@@ -264,9 +268,7 @@ class QualityEvaluator:
                 "temperature": 0.1,
                 "response_format": {"type": "json_object"},
             }
-            req = urllib.request.Request(
-                url, data=json.dumps(payload).encode("utf-8"), headers=headers
-            )
+            req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
             with urllib.request.urlopen(req, timeout=5) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
                 res_text = res_data["choices"][0]["message"]["content"]
@@ -312,6 +314,64 @@ class QualityEvaluator:
             length_score = 25
 
         return min(100, meta_score + length_score)
+
+    @staticmethod
+    def calculate_community_engagement_bonus(request: QualityEvaluationRequest) -> int:
+        """
+        개발자 반응 지수 보너스 (+0 ~ +10점)
+        - 반응 데이터 미지원 소스(Cloudflare, Tailscale, Rust, DeepMind 등): 0점 (가산 없음)
+        - 반응 데이터 지원 소스(GitHub Trending, HuggingFace, InfoQ 등): 정밀 임계값 적용
+        """
+        source_id = request.source.source_id.strip().lower()
+        article = request.article
+
+        # 1. GitHub Trending (starsToday / stars)
+        if source_id == "github-trending":
+            stars_today = getattr(article, "stars_today", None) or getattr(article, "starsToday", None)
+            if stars_today is None and hasattr(article, "extra") and isinstance(article.extra, dict):
+                stars_today = article.extra.get("starsToday") or article.extra.get("stars_today")
+            if isinstance(stars_today, (int, float)):
+                if stars_today >= 300:
+                    return 10
+                elif stars_today >= 150:
+                    return 7
+                elif stars_today >= 50:
+                    return 4
+            return 0
+
+        # 2. Hugging Face Blog (likes)
+        if source_id == "hugging-face-blog":
+            likes = getattr(article, "likes", None)
+            if likes is None and hasattr(article, "extra") and isinstance(article.extra, dict):
+                likes = article.extra.get("likes")
+            if isinstance(likes, (int, float)):
+                if likes >= 50:
+                    return 10
+                elif likes >= 20:
+                    return 7
+                elif likes >= 5:
+                    return 4
+            return 0
+
+        # 3. InfoQ / SD Times (views / comments)
+        if source_id in {"infoq", "sdtimes"}:
+            views = getattr(article, "views", None)
+            comments = getattr(article, "comments", None)
+            if hasattr(article, "extra") and isinstance(article.extra, dict):
+                views = views or article.extra.get("views")
+                comments = comments or article.extra.get("comments")
+            v_val = views if isinstance(views, (int, float)) else 0
+            c_val = comments if isinstance(comments, (int, float)) else 0
+            if v_val >= 5000 or c_val >= 10:
+                return 10
+            elif v_val >= 2000 or c_val >= 5:
+                return 7
+            elif v_val >= 800 or c_val >= 2:
+                return 4
+            return 0
+
+        # 4. 기타 반응 데이터 미지원 소스 -> 0점 (가산 없음)
+        return 0
 
     @staticmethod
     def _spam_suspected(content: str) -> bool:
