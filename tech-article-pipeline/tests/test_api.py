@@ -142,7 +142,13 @@ def test_api_auth_submission_replay_and_public_filter(normalized_payload):
         )
         assert overview.status_code == 200
         overview_body = overview.json()
-        assert overview_body["qualityKeywords"] == keyword_snapshot
+        assert overview_body["qualityKeywords"] == {
+            **keyword_snapshot,
+            "status": "AVAILABLE",
+            "warnings": [],
+            "coreCount": 1,
+            "dynamicCount": 1,
+        }
         assert "pipelineVersion" not in str(overview_body)
         assert overview_body["moduleVersions"]["qualityEvaluator"]["moduleVersion"] == "9.1.0"
         assert overview_body["moduleVersions"]["aiSummarizer"] == {
@@ -159,6 +165,27 @@ def test_api_auth_submission_replay_and_public_filter(normalized_payload):
             overview_body["statistics"]["definitions"]["processedCount"]["label"] == "AI 요약 완료"
         )
         assert overview_body["statistics"]["daily"][0]["processedCount"] == 1
+
+        orchestrator.quality.keyword_snapshot = lambda: {
+            **keyword_snapshot,
+            "totalCount": 1,
+            "dynamicKeywords": [],
+        }
+        keyword_warning = client.get(
+            "/internal/v1/admin/overview",
+            params={"from": today, "to": today},
+            headers={"Authorization": "Bearer test-service-token"},
+        )
+        assert keyword_warning.status_code == 200
+        assert keyword_warning.json()["qualityKeywords"] == {
+            **keyword_snapshot,
+            "totalCount": 1,
+            "dynamicKeywords": [],
+            "status": "AVAILABLE",
+            "warnings": ["DYNAMIC_KEYWORDS_EMPTY"],
+            "coreCount": 1,
+            "dynamicCount": 0,
+        }
 
         admin_article = admin.json()["items"][0]
         assert admin_article["processingVersions"]["qualityEvaluator"]["moduleVersion"] == "9.1.0"
@@ -192,6 +219,15 @@ def test_api_auth_submission_replay_and_public_filter(normalized_payload):
         )
         stored_versions["qualityEvaluator"] = tracked_quality
         stored_versions["aiSummarizer"] = tracked_summary
+
+        orchestrator.quality.module_version = "unknown"
+        unknown_quality_target = client.get(
+            "/internal/v1/admin/articles?qualityVersionStatus=OUTDATED",
+            headers={"Authorization": "Bearer test-service-token"},
+        )
+        assert unknown_quality_target.status_code == 200
+        assert unknown_quality_target.json()["totalCount"] == 0
+        assert unknown_quality_target.json()["qualityTarget"] == {"moduleVersion": "unknown"}
 
         orchestrator.quality.module_version = "9.2.0"
         orchestrator.quality.decision = "REJECT"

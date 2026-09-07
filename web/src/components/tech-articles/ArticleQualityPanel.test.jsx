@@ -1,6 +1,9 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { QualityScoreAxes } from "./ArticleQualityPanel";
+import {
+  QualityEvaluationPanel,
+  QualityScoreAxes,
+} from "./ArticleQualityPanel";
 import PublicValueScoreBreakdown from "./PublicValueScoreBreakdown";
 
 describe("QualityScoreAxes", () => {
@@ -34,6 +37,24 @@ describe("QualityScoreAxes", () => {
       "실무 활용성",
     ]);
     expect(screen.getByText("가중치 40% · 기여 36.8")).toBeInTheDocument();
+  });
+
+  it("shows the community bonus in the administrator quality detail", () => {
+    render(
+      <QualityEvaluationPanel
+        evaluation={{
+          decision: "PASS",
+          score: {
+            overall: 87,
+            axes: [],
+            dimensions: { communityBonus: 7 },
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByText("개발자 호응 보너스")).toBeInTheDocument();
+    expect(screen.getByText("+7점")).toBeInTheDocument();
   });
 
   it("displays the server contribution instead of recalculating it", () => {

@@ -116,4 +116,32 @@ describe('projectQualityEvaluation', () => {
       }),
     ]);
   });
+
+  it('keeps the community bonus in the operational administrator shape', () => {
+    const result = projectQualityEvaluation(
+      {
+        score: {
+          overall: 87,
+          dimensions: {
+            relevance: 90,
+            technicalDepth: 80,
+            timeliness: 85,
+            articleQuality: 70,
+            communityBonus: 7,
+          },
+        },
+      },
+      null,
+      { includeOperational: true, legacyShape: 'dimensions' },
+    );
+
+    expect(
+      (
+        (result?.score as Record<string, unknown>).dimensions as Record<
+          string,
+          unknown
+        >
+      ).communityBonus,
+    ).toBe(7);
+  });
 });

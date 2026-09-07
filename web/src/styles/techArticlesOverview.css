@@ -356,6 +356,27 @@
   color: #9ca3af;
   font-size: 12px;
 }
+.ta-admin .overview-keyword-status {
+  padding: 4px 9px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.ta-admin .overview-keyword-status.is-available {
+  color: #86efac;
+  background: rgba(20, 83, 45, 0.55);
+}
+.ta-admin .overview-keyword-status.needs-attention,
+.ta-admin .overview-keyword-warning {
+  color: #fcd34d;
+}
+.ta-admin .overview-keyword-status.needs-attention {
+  background: rgba(120, 53, 15, 0.55);
+}
+.ta-admin .overview-keyword-warning {
+  margin: 12px 0 0;
+  font-size: 13px;
+}
 .ta-admin .overview-keywords details {
   margin-top: 16px;
 }

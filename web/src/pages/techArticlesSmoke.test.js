@@ -116,6 +116,18 @@ beforeEach(() => {
       totalBytes: 1536,
       measuredAt: "2026-09-05T00:00:00Z",
     },
+    qualityKeywords: {
+      status: "AVAILABLE",
+      warnings: [],
+      loadedAt: "2026-09-05T00:00:00Z",
+      fingerprint: "test-keywords",
+      totalCount: 2,
+      coreCount: 1,
+      dynamicCount: 1,
+      coreKeywords: ["python"],
+      dynamicKeywords: ["fastapi"],
+      refreshPolicy: "PROCESS_START",
+    },
     statistics: {
       daily: [
         {
@@ -1181,6 +1193,8 @@ describe("관리자 화면", () => {
     );
     expect(screen.getByText("Disk Usage")).toBeInTheDocument();
     expect(screen.getByText("gemini-test")).toBeInTheDocument();
+    expect(screen.getByText("개발 관련성 평가 키워드")).toBeInTheDocument();
+    expect(screen.getByText("정상")).toBeInTheDocument();
     expect(screen.getByText("일별 수집 및 처리 현황")).toBeInTheDocument();
     expect(
       screen.getByTitle("2026-09-05 신규 수집·등록 4개"),

@@ -23,17 +23,22 @@ class PipelineOrchestrator:
         summarizer: SummarizerPort,
         *,
         job_max_attempts: int = 3,
+        quality_module_version: str | None = None,
     ) -> None:
         self.repository = repository
         self.admission = admission
         self.quality = quality
         self.summarizer = summarizer
         self.job_max_attempts = job_max_attempts
+        self.quality_module_version = quality_module_version
 
     def module_versions(self) -> dict[str, dict[str, str]]:
         return {
             "qualityEvaluator": {
-                "moduleVersion": str(getattr(self.quality, "module_version", "unknown")),
+                "moduleVersion": str(
+                    self.quality_module_version
+                    or getattr(self.quality, "module_version", "unknown")
+                ),
             },
             "aiSummarizer": {
                 "moduleVersion": str(getattr(self.summarizer, "module_version", "unknown")),

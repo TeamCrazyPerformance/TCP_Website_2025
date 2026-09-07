@@ -122,6 +122,7 @@ export function QualityEvaluationPanel({
 }) {
   const score = evaluation?.score;
   const overall = score?.overall ?? fallbackScore;
+  const communityBonus = finiteNumber(score?.dimensions?.communityBonus);
   if (!evaluation && overall == null) return null;
 
   return (
@@ -143,6 +144,12 @@ export function QualityEvaluationPanel({
           )}
         </div>
         <QualityScoreAxes score={score} />
+        {communityBonus !== null && communityBonus > 0 && (
+          <div className="quality-community-bonus">
+            <span>개발자 호응 보너스</span>
+            <strong>+{communityBonus}점</strong>
+          </div>
+        )}
         {evaluation?.reason && (
           <p className="quality-reason">{evaluation.reason}</p>
         )}

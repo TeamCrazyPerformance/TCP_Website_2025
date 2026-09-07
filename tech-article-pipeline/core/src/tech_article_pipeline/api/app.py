@@ -135,12 +135,72 @@ def _current_quality_versions(runtime: Runtime) -> dict[str, str]:
 def _quality_version_status(article: dict[str, Any], target_versions: dict[str, str]) -> str:
     if article.get("processingStatus") != "ENRICHED" or not article.get("qualityDecision"):
         return "NOT_ELIGIBLE"
+    target_version = target_versions.get("moduleVersion")
+    if not target_version or target_version == "unknown":
+        return "NOT_ELIGIBLE"
     applied = (article.get("processingVersions") or {}).get("qualityEvaluator") or {}
     if not applied.get("moduleVersion"):
         return "UNTRACKED"
-    if applied.get("moduleVersion") == target_versions.get("moduleVersion"):
+    if applied.get("moduleVersion") == target_version:
         return "CURRENT"
     return "OUTDATED"
+
+
+def _quality_keywords_read(orchestrator: Any) -> dict[str, Any]:
+    unavailable = {
+        "status": "UNAVAILABLE",
+        "warnings": ["KEYWORD_SNAPSHOT_UNAVAILABLE"],
+        "loadedAt": None,
+        "fingerprint": None,
+        "totalCount": 0,
+        "coreCount": 0,
+        "dynamicCount": 0,
+        "coreKeywords": [],
+        "dynamicKeywords": [],
+        "refreshPolicy": None,
+    }
+    quality = getattr(orchestrator, "quality", None)
+    if quality is None or not hasattr(quality, "keyword_snapshot"):
+        return unavailable
+    try:
+        snapshot = quality.keyword_snapshot()
+    except Exception:
+        _LOGGER.exception("Failed to read the active quality keyword snapshot")
+        return unavailable
+    if not isinstance(snapshot, dict):
+        return unavailable
+    core = snapshot.get("coreKeywords")
+    dynamic = snapshot.get("dynamicKeywords")
+    total = snapshot.get("totalCount")
+    loaded_at = snapshot.get("loadedAt")
+    fingerprint = snapshot.get("fingerprint")
+    valid = (
+        isinstance(core, list)
+        and all(isinstance(item, str) and item for item in core)
+        and isinstance(dynamic, list)
+        and all(isinstance(item, str) and item for item in dynamic)
+        and isinstance(total, int)
+        and total == len(core) + len(dynamic)
+        and isinstance(loaded_at, str)
+        and bool(loaded_at)
+        and isinstance(fingerprint, str)
+        and bool(fingerprint)
+    )
+    if not valid:
+        return unavailable
+    warnings = [] if dynamic else ["DYNAMIC_KEYWORDS_EMPTY"]
+    return {
+        "status": "AVAILABLE",
+        "warnings": warnings,
+        "loadedAt": loaded_at,
+        "fingerprint": fingerprint,
+        "totalCount": total,
+        "coreCount": len(core),
+        "dynamicCount": len(dynamic),
+        "coreKeywords": core,
+        "dynamicKeywords": dynamic,
+        "refreshPolicy": snapshot.get("refreshPolicy"),
+    }
 
 
 def _summary_version_status(article: dict[str, Any], target_versions: dict[str, str]) -> str:
@@ -464,6 +524,15 @@ def create_app(
     ) -> dict[str, Any]:
         quality_target = _current_quality_versions(request.app.state.runtime)
         summary_target = _current_summary_versions(request.app.state.runtime)
+        if quality_version_status and quality_target["moduleVersion"] == "unknown":
+            return {
+                "items": [],
+                "limit": limit,
+                "offset": offset,
+                "totalCount": 0,
+                "qualityTarget": quality_target,
+                "summaryTarget": summary_target,
+            }
         items, total_count = await asyncio.gather(
             asyncio.to_thread(
                 request.app.state.runtime.repository.list_articles,
@@ -582,11 +651,7 @@ def create_app(
                 **module_versions,
             },
             "storage": overview["storage"],
-            "qualityKeywords": (
-                orchestrator.quality.keyword_snapshot()
-                if hasattr(orchestrator.quality, "keyword_snapshot")
-                else None
-            ),
+            "qualityKeywords": _quality_keywords_read(orchestrator),
             "statistics": {
                 "timezone": "Asia/Seoul",
                 "from": start_date.isoformat(),

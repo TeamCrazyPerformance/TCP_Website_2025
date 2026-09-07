@@ -123,6 +123,10 @@ function AdminTechArticleOverview() {
   const storage = overview?.storage || {};
   const versions = overview?.moduleVersions || {};
   const keywords = overview?.qualityKeywords;
+  const keywordAvailable = keywords?.status === "AVAILABLE";
+  const keywordWarnings = Array.isArray(keywords?.warnings)
+    ? keywords.warnings
+    : [];
 
   return (
     <AdminTechArticleContent>
@@ -363,8 +367,19 @@ function AdminTechArticleOverview() {
                   시 수집되며 기존 아티클 점수는 유지됩니다.
                 </p>
               </div>
+              <span
+                className={`overview-keyword-status ${
+                  keywordAvailable && keywordWarnings.length === 0
+                    ? "is-available"
+                    : "needs-attention"
+                }`}
+              >
+                {keywordAvailable && keywordWarnings.length === 0
+                  ? "정상"
+                  : "확인 필요"}
+              </span>
             </div>
-            {keywords ? (
+            {keywordAvailable ? (
               <div className="overview-keywords">
                 <p>
                   총 {keywords.totalCount}개 · 로드 시각{" "}
@@ -373,6 +388,12 @@ function AdminTechArticleOverview() {
                 <p className="overview-keyword-fingerprint">
                   목록 식별값 <code>{keywords.fingerprint}</code>
                 </p>
+                {keywordWarnings.includes("DYNAMIC_KEYWORDS_EMPTY") && (
+                  <p className="overview-keyword-warning" role="status">
+                    동적 키워드가 비어 있습니다. 외부 키워드 수집 상태를 확인해
+                    주세요.
+                  </p>
+                )}
                 {[
                   ["기본 키워드", keywords.coreKeywords || []],
                   ["동적 키워드", keywords.dynamicKeywords || []],
@@ -394,7 +415,9 @@ function AdminTechArticleOverview() {
                 ))}
               </div>
             ) : (
-              <p>실행 중인 평가기의 키워드 정보를 확인할 수 없습니다.</p>
+              <p className="overview-keyword-warning" role="status">
+                실행 중인 평가기의 키워드 상태를 확인할 수 없습니다.
+              </p>
             )}
           </section>
         </>

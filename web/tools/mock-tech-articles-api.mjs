@@ -2777,9 +2777,13 @@ function handle(method, pathname, query, body, headers = {}) {
       200,
       {
         qualityKeywords: {
+          status: "AVAILABLE",
+          warnings: [],
           loadedAt: "2026-09-06T00:00:00.000Z",
           fingerprint: "mock-keyword-snapshot",
           totalCount: 4,
+          coreCount: 2,
+          dynamicCount: 2,
           coreKeywords: ["python", "javascript"],
           dynamicKeywords: ["fastapi", "webgpu"],
           refreshPolicy: "PROCESS_START",

@@ -157,6 +157,18 @@ def runtime(
     return repository, worker, submission
 
 
+def test_orchestrator_prefers_explicit_quality_module_version():
+    orchestrator = PipelineOrchestrator(
+        MemoryPipelineRepository(),
+        FakeAdmission(),
+        FakeQuality(),
+        FakeSummarizer(),
+        quality_module_version="2.2.6",
+    )
+
+    assert orchestrator.module_versions()["qualityEvaluator"] == {"moduleVersion": "2.2.6"}
+
+
 def test_unique_pass_enrichment_immediately_publishes(normalized_payload):
     repository, worker, submission = runtime(normalized_payload)
 
