@@ -228,7 +228,9 @@ describe('스터디 화면 UI 정리', () => {
 
     for (const source of [list, detail]) {
       expect(source).toContain("from '../utils/helpers'");
+      expect(source).toContain("from '../utils/tagPalette'");
       expect(source).toMatch(/tagColorClass\(tag\)/);
+      expect(source).toMatch(/tagColorStyle\(tag\)/);
       expect(source).toContain('parseTags(');
       expect(source).not.toContain('getTagClassName');
       expect(source).not.toMatch(/colors\[index % colors\.length\]/);

@@ -5,6 +5,7 @@ import RecruitStudyModal from '../components/modals/RecruitStudyModal';
 import PublicPageHero from '../components/public/PublicPageHero';
 import { useScrollReveal } from '../hooks/useScrollReveal';
 import { parseTags, tagColorClass } from '../utils/helpers';
+import { tagColorStyle } from '../utils/tagPalette';
 
 function Study() {
   const navigate = useNavigate();
@@ -209,6 +210,7 @@ function Study() {
                       <span
                         key={tagIndex}
                         className={tagColorClass(tag)}
+                        style={tagColorStyle(tag)}
                       >
                         {tag}
                       </span>

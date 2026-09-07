@@ -7,6 +7,7 @@ import '../styles/studyDetail.css';
 import BackToListLink from '../components/public/BackToListLink';
 import { resolveStudyRole, STUDY_ROLE } from '../utils/studyRoles';
 import { parseTags, tagColorClass } from '../utils/helpers';
+import { tagColorStyle } from '../utils/tagPalette';
 
 const md = new MarkdownIt({ html: true, linkify: true, breaks: true });
 const normalizeBoolean = (value) => value === true || value === 1 || value === '1' || value === 'true';
@@ -367,7 +368,11 @@ export default function StudyDetail() {
               <p className="study-detail-description whitespace-pre-wrap">{study.description}</p>
               <div className="study-detail-tags">
                 {study.tags.map((tag) => (
-                  <span key={tag} className={tagColorClass(tag)}>
+                  <span
+                    key={tag}
+                    className={tagColorClass(tag)}
+                    style={tagColorStyle(tag)}
+                  >
                     {tag}
                   </span>
                 ))}
