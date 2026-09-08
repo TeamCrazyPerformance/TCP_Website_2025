@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import math
 import os
@@ -36,10 +35,9 @@ QUALITY_AXES = (
     {"key": "articleQuality", "label": "기사 품질", "weight": 0.10},
 )
 
-from .keywords_manager import CORE_IMMUTABLE_KEYWORDS, get_combined_developer_keywords
+from .keywords_manager import get_combined_developer_keywords
 
 DEVELOPER_KEYWORDS = get_combined_developer_keywords()
-KEYWORDS_LOADED_AT = datetime.now(UTC).isoformat()
 
 NON_ARTICLE_PATTERN = re.compile(
     r"\b(subscribe|learning center|webinars archives|archive|showcase|landscape|sponsors?)\b",
@@ -61,19 +59,6 @@ class QualityEvaluator:
 
     def __init__(self, *, clock: Clock = _utcnow) -> None:
         self._clock = clock
-
-    def keyword_snapshot(self) -> dict[str, Any]:
-        keywords = sorted(DEVELOPER_KEYWORDS)
-        core = sorted(DEVELOPER_KEYWORDS & CORE_IMMUTABLE_KEYWORDS)
-        dynamic = sorted(DEVELOPER_KEYWORDS - CORE_IMMUTABLE_KEYWORDS)
-        return {
-            "loadedAt": KEYWORDS_LOADED_AT,
-            "fingerprint": hashlib.sha256("\n".join(keywords).encode()).hexdigest(),
-            "totalCount": len(keywords),
-            "coreKeywords": core,
-            "dynamicKeywords": dynamic,
-            "refreshPolicy": "PROCESS_START",
-        }
 
     def evaluate(self, input_data: Mapping[str, Any]) -> dict[str, Any]:
         article_id = input_data.get("articleId", "") if isinstance(input_data, Mapping) else ""
@@ -200,19 +185,25 @@ class QualityEvaluator:
 
     @staticmethod
     def evaluate_developer_relevance(article: Article) -> int:
-        """TF-IDF Sigmoid (math.tanh) 키워드 밀도 알고리즘 (가중치 35%)"""
+        """TF-IDF Sigmoid (math.tanh) 토큰 밀도 알고리즘 (가중치 35%)"""
         if NON_ARTICLE_PATTERN.search(article.title):
             return 0
         if len(article.content.strip()) < 200:
             return 0
         text = f"{article.title} {article.content}".lower()
-        tokens = TOKEN_PATTERN.findall(text)
+        tokens = [token.lower() for token in TOKEN_PATTERN.findall(text)]
         if not tokens:
             return 0
+        token_counts = Counter(tokens)
         tf_sum = 0.0
         for keyword in DEVELOPER_KEYWORDS:
-            count = text.count(keyword)
-            if count:
+            kw = keyword.lower()
+            if " " in kw or "-" in kw:
+                pattern = re.compile(r"\b" + re.escape(kw) + r"\b", re.IGNORECASE)
+                count = len(pattern.findall(text))
+            else:
+                count = token_counts.get(kw, 0)
+            if count > 0:
                 tf_sum += 1.0 + math.log(count)
         return round(100.0 * math.tanh(75.0 * (tf_sum / len(tokens))))
 
