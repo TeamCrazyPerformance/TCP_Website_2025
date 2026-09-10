@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 import urllib.request
 import zlib
 from typing import Set
@@ -104,18 +105,59 @@ def fetch_stackoverflow_popular_tags(limit: int = 150) -> set[str]:
 
 
 KEYWORD_JSON_PATH = os.path.join(os.path.dirname(__file__), "keywords.json")
+KEYWORD_HISTORY_PATH = os.path.join(os.path.dirname(__file__), "keywords_history.json")
+CACHE_TTL_SECONDS = 86_400  # 24시간 (하루 1회 자정 동기화 주기)
+
+
+def record_keyword_history_diff(old_keywords: set[str], new_keywords: set[str]) -> None:
+    """키워드 사전 갱신 시 변경점(추가된 키워드, 제거된 키워드, 수집 날짜)을 keywords_history.json에 자동 기록"""
+    old_dynamic = set(old_keywords) - CORE_IMMUTABLE_KEYWORDS
+    new_dynamic = set(new_keywords) - CORE_IMMUTABLE_KEYWORDS
+
+    added = sorted(list(new_dynamic - old_dynamic))
+    removed = sorted(list(old_dynamic - new_dynamic))
+
+    now_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+
+    entry = {
+        "timestamp": now_str,
+        "total_count": len(new_keywords),
+        "added_count": len(added),
+        "removed_count": len(removed),
+        "added_keywords": added,
+        "removed_keywords": removed,
+        "summary": f"추가된 키워드: {len(added)}개 | 제거된 키워드: {len(removed)}개",
+    }
+
+    history_list = []
+    if os.path.exists(KEYWORD_HISTORY_PATH):
+        try:
+            with open(KEYWORD_HISTORY_PATH, "r", encoding="utf-8") as f:
+                history_list = json.load(f).get("history", [])
+        except Exception:
+            history_list = []
+
+    history_list.insert(0, entry)
+
+    with open(KEYWORD_HISTORY_PATH, "w", encoding="utf-8") as f:
+        json.dump({"history": history_list}, f, ensure_ascii=False, indent=2)
+
 
 def save_keywords_to_json(combined_keywords: frozenset[str] | set[str]) -> str:
-    """모듈 디렉터리 내부 keywords.json 에 키워드 동적 영구 저장"""
+    """모듈 디렉터리 내부 keywords.json 에 키워드 동적 영구 저장 및 히스토리 기록"""
+    old_keywords = load_keywords_from_json() or set()
+    new_keywords = set(combined_keywords)
+
     core_list = sorted(list(CORE_IMMUTABLE_KEYWORDS))
-    dynamic_list = sorted(list(set(combined_keywords) - CORE_IMMUTABLE_KEYWORDS))
-    all_combined = sorted(list(combined_keywords))
+    dynamic_list = sorted(list(new_keywords - CORE_IMMUTABLE_KEYWORDS))
+    all_combined = sorted(list(new_keywords))
 
     payload = {
         "metadata": {
             "total_count": len(all_combined),
             "core_count": len(core_list),
             "dynamic_count": len(dynamic_list),
+            "updated_at": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
         },
         "layer_1_core_immutable_keywords": core_list,
         "layer_2_dynamic_trending_keywords": dynamic_list,
@@ -123,14 +165,45 @@ def save_keywords_to_json(combined_keywords: frozenset[str] | set[str]) -> str:
     }
     with open(KEYWORD_JSON_PATH, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
+
+    # 히스토리 변경점 자동 기록
+    record_keyword_history_diff(set(old_keywords), new_keywords)
+
     return KEYWORD_JSON_PATH
+
+
+def load_keywords_from_json() -> frozenset[str] | None:
+    """keywords.json 파일이 존재하면 읽어서 frozenset으로 반환"""
+    if os.path.exists(KEYWORD_JSON_PATH):
+        try:
+            with open(KEYWORD_JSON_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                all_keywords = data.get("all_combined_keywords") or (
+                    data.get("layer_1_core_immutable_keywords", [])
+                    + data.get("layer_2_dynamic_trending_keywords", [])
+                )
+                if all_keywords:
+                    return frozenset(all_keywords)
+        except Exception:
+            pass
+    return None
 
 
 def get_combined_developer_keywords(max_dynamic_capacity: int = 250) -> frozenset[str]:
     """
     Layer 1 (코어 영구 보존 키워드) + Layer 2 (동적 트렌딩 키워드) 결합
-    최종 융합된 frozenset 반환 (evaluator.py에서 바로 사용) 및 모듈 내부 keywords.json 동적 저장
+    - 하루 1회 (24시간) 동기화 주기 적용: keywords.json 이 24시간 이내면 즉시 캐시 사용
+    - 24시간 초과 시 API 실시간 호출 후 keywords.json 자동 갱신
     """
+    # 24시간 이내의 유효한 캐시가 있으면 외부 API 호출 없이 즉시 로드 (0ms 초고속)
+    if os.path.exists(KEYWORD_JSON_PATH):
+        file_age = time.time() - os.path.getmtime(KEYWORD_JSON_PATH)
+        if file_age < CACHE_TTL_SECONDS:
+            cached = load_keywords_from_json()
+            if cached:
+                return cached
+
+    # 24시간이 넘었거나 파일이 없으면 API 실시간 수집 및 갱신
     dynamic_tags = fetch_stackoverflow_popular_tags(limit=150)
     
     # 불용어 제거 및 고정 크기 제한 (최대 250개)

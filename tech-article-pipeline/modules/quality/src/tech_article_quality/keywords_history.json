@@ -1,0 +1,55 @@
+{
+  "history": [
+    {
+      "timestamp": "2026-09-10 13:56:49",
+      "total_count": 115,
+      "added_count": 1,
+      "removed_count": 1,
+      "added_keywords": [
+        "gamma"
+      ],
+      "removed_keywords": [
+        "alpha"
+      ],
+      "summary": "추가된 키워드: 1개 | 제거된 키워드: 1개"
+    },
+    {
+      "timestamp": "2026-09-10 13:56:48",
+      "total_count": 115,
+      "added_count": 2,
+      "removed_count": 0,
+      "added_keywords": [
+        "alpha",
+        "beta"
+      ],
+      "removed_keywords": [],
+      "summary": "추가된 키워드: 2개 | 제거된 키워드: 0개"
+    },
+    {
+      "timestamp": "2026-09-10 13:56:48",
+      "total_count": 113,
+      "added_count": 0,
+      "removed_count": 3,
+      "added_keywords": [],
+      "removed_keywords": [
+        "agentic-ai",
+        "bun",
+        "vibe-coding"
+      ],
+      "summary": "추가된 키워드: 0개 | 제거된 키워드: 3개"
+    },
+    {
+      "timestamp": "2026-09-08 10:35:01",
+      "total_count": 116,
+      "added_count": 3,
+      "removed_count": 0,
+      "added_keywords": [
+        "agentic-ai",
+        "bun",
+        "vibe-coding"
+      ],
+      "removed_keywords": [],
+      "summary": "추가된 키워드: 3개 | 제거된 키워드: 0개"
+    }
+  ]
+}
