@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import MarkdownIt from 'markdown-it';
 import { apiPost, apiPatch, apiGet, apiDelete } from '../api/client';
-import { formatBirthDate } from '../utils/dateFormatter';
+import BackToListLink from '../components/public/BackToListLink';
+import '../styles/studyDetail.css';
+import '../styles/studyProgressWrite.css';
 
 const md = new MarkdownIt({
     html: true,
@@ -37,11 +39,6 @@ function StudyProgressWrite() {
             const fetchProgress = async () => {
                 try {
                     setIsLoading(true);
-                    // We need an endpoint to get single progress. 
-                    // Current StudyController only has findProgressByStudyId (list).
-                    // We need GET /api/v1/study/:id/progress/:progressId ??
-                    // Controller doesn't have it! I need to add it or fetch list and filter.
-                    // Fetching list is inefficient but works for now if list is small.
                     const progressList = await apiGet(`/api/v1/study/${id}/progress`);
                     const progress = progressList.find(p => p.id === parseInt(progressId));
 
@@ -52,12 +49,12 @@ function StudyProgressWrite() {
                         setDate(progress.progressDate ? new Date(progress.progressDate).toISOString().split('T')[0] : '');
                         setUploadedFiles(progress.resources || []);
                     } else {
-                        alert('Progress report not found.');
+                        alert('진행 글을 찾을 수 없습니다.');
                         navigate(`/study/${id}`);
                     }
                 } catch (error) {
                     console.error(error);
-                    alert('Failed to load progress report.');
+                    alert('진행 글을 불러오지 못했습니다.');
                 } finally {
                     setIsLoading(false);
                 }
@@ -107,9 +104,6 @@ function StudyProgressWrite() {
         const files = Array.from(e.target.files);
         if (files.length === 0) return;
 
-        // Limit to 3 files total? Or just upload one by one.
-        // Mockup says "attachments".
-
         for (const file of files) {
             const formData = new FormData();
             formData.append('file', file);
@@ -120,7 +114,7 @@ function StudyProgressWrite() {
                 });
                 setUploadedFiles(prev => [...prev, response]);
             } catch (error) {
-                alert(`Failed to upload ${file.name}`);
+                alert(`${file.name} 파일을 업로드하지 못했습니다.`);
                 console.error(error);
             }
         }
@@ -129,19 +123,19 @@ function StudyProgressWrite() {
     };
 
     const handleRemoveFile = async (resourceId) => {
-        if (!window.confirm('Delete this file?')) return;
+        if (!window.confirm('첨부파일을 삭제하시겠습니까?')) return;
         try {
             await apiDelete(`/api/v1/study/${id}/resources/${resourceId}`);
             setUploadedFiles(prev => prev.filter(f => f.id !== resourceId));
         } catch (error) {
-            alert('Failed to delete file.');
+            alert('첨부파일을 삭제하지 못했습니다.');
         }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!title || !content || !weekNo || !date) {
-            alert('Please fill in all required fields.');
+            alert('필수 항목을 모두 입력해주세요.');
             return;
         }
 
@@ -157,14 +151,14 @@ function StudyProgressWrite() {
             setIsSubmitting(true);
             if (isEditMode) {
                 await apiPatch(`/api/v1/study/${id}/progress/${progressId}`, payload);
-                alert('Progress report updated!');
+                alert('진행 글이 수정되었습니다.');
             } else {
                 await apiPost(`/api/v1/study/${id}/progress`, payload);
-                alert('Progress report created!');
+                alert('진행 글이 등록되었습니다.');
             }
             navigate(`/study/${id}`);
         } catch (error) {
-            alert('Failed to save progress report.');
+            alert('진행 글을 저장하지 못했습니다.');
             console.error(error);
         } finally {
             setIsSubmitting(false);
@@ -176,13 +170,13 @@ function StudyProgressWrite() {
         const html = md.render(content || '');
         const safeHtml = DOMPurify.sanitize(html);
         return (
-            <div className="article-content widget-card rounded-lg p-8 mb-8">
+            <div className="article-content study-progress-preview-content">
                 <h2 className="text-2xl font-bold mb-4">{title}</h2>
-                <div className="text-gray-400 mb-4">Week {weekNo} | {date}</div>
+                <div className="text-gray-400 mb-4">{weekNo}주차 · {date}</div>
                 <div className="article-body text-gray-200 text-left" dangerouslySetInnerHTML={{ __html: safeHtml }} />
                 {uploadedFiles.length > 0 && (
                     <div className="mt-4 pt-4 border-t border-gray-700">
-                        <h3 className="font-bold mb-2">Attachments</h3>
+                        <h3 className="font-bold mb-2">첨부파일</h3>
                         <ul className="list-disc pl-5">
                             {uploadedFiles.map(f => (
                                 <li key={f.id}>{f.name}</li>
@@ -194,43 +188,47 @@ function StudyProgressWrite() {
         );
     };
 
-    if (isLoading) return <div className="pt-20 text-center text-white">Loading...</div>;
+    if (isLoading) return <div className="pt-20 text-center text-white">진행 글을 불러오는 중...</div>;
 
     return (
-        <main className="pt-20 pb-16 min-h-screen">
-            <div className="container mx-auto px-4 max-w-4xl">
-                <div className="mb-8">
-                    <Link to={`/study/${id}`} className="text-gray-400 hover:text-white">
-                        <i className="fas fa-arrow-left mr-2"></i> Back to Study
-                    </Link>
-                </div>
+        <main className="study-detail-page study-progress-page">
+            <div className="study-detail-shell container mx-auto px-4">
+                <nav className="detail-breadcrumb study-detail-breadcrumb mb-8" aria-label="현재 위치">
+                    <BackToListLink to={`/study/${id}`}>스터디로 돌아가기</BackToListLink>
+                </nav>
 
-                <h1 className="orbitron text-3xl font-bold gradient-text mb-8">
-                    {isEditMode ? 'Edit Progress Report' : 'Write Progress Report'}
-                </h1>
+                <header className="study-progress-heading">
+                    <p className="study-progress-eyebrow">주차별 진행 현황</p>
+                    <h1 className="study-detail-title">
+                        {isEditMode ? '진행 글 수정' : '진행 글 작성'}
+                    </h1>
+                    <p className="study-progress-description">이번 주에 함께 공부한 내용과 진행 상황을 기록해주세요.</p>
+                </header>
 
-                <form onSubmit={handleSubmit} className="form-card rounded-xl p-8">
+                <form onSubmit={handleSubmit} className="study-detail-surface study-progress-form">
                     {/* Week & Date Row */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
-                            <label className="block text-white mb-2">Week No <span className="text-red-500">*</span></label>
+                            <label htmlFor="progress-weekNo" className="study-progress-label">주차 <span className="text-red-500">*</span></label>
                             <input
                                 type="number"
                                 min="1"
                                 className="form-input w-full px-4 py-3 rounded-lg"
+                                id="progress-weekNo"
                                 value={weekNo}
                                 onChange={e => setWeekNo(e.target.value)}
                                 required
                             />
                         </div>
                         <div>
-                            <label className="block text-white mb-2">Date <span className="text-red-500">*</span></label>
+                            <label htmlFor="progress-date" className="study-progress-label">진행일 <span className="text-red-500">*</span></label>
                             <input
-                                type="text"
+                                type="date"
                                 className="form-input w-full px-4 py-3 rounded-lg"
+                                id="progress-date"
                                 value={date}
                                 placeholder="YYYY-MM-DD"
-                                onChange={e => setDate(formatBirthDate(e.target.value))}
+                                onChange={e => setDate(e.target.value)}
                                 required
                             />
                         </div>
@@ -238,10 +236,11 @@ function StudyProgressWrite() {
 
                     {/* Title */}
                     <div className="mb-6">
-                        <label className="block text-white mb-2">Title <span className="text-red-500">*</span></label>
+                        <label htmlFor="progress-title" className="study-progress-label">제목 <span className="text-red-500">*</span></label>
                         <input
                             type="text"
                             className="form-input w-full px-4 py-3 rounded-lg"
+                            id="progress-title"
                             value={title}
                             onChange={e => setTitle(e.target.value)}
                             required
@@ -250,33 +249,35 @@ function StudyProgressWrite() {
 
                     {/* Content Toolbar & Textarea */}
                     <div className="mb-6">
-                        <label className="block text-white mb-2">Content <span className="text-red-500">*</span></label>
-                        <div className="flex flex-wrap gap-2 mb-3 p-3 bg-gray-800 rounded-lg">
-                            <button type="button" className="toolbar-btn" onClick={() => formatText('bold')}><i className="fas fa-bold"></i></button>
-                            <button type="button" className="toolbar-btn" onClick={() => formatText('italic')}><i className="fas fa-italic"></i></button>
-                            <button type="button" className="toolbar-btn" onClick={() => insertText('• ')}><i className="fas fa-list-ul"></i></button>
-                            {/* Add more buttons as needed */}
+                        <label htmlFor="progress-content" className="study-progress-label">내용 <span className="text-red-500">*</span></label>
+                        <div className="study-progress-toolbar">
+                            <button type="button" className="toolbar-btn" aria-label="굵게" title="굵게" onClick={() => formatText('bold')}><i className="fas fa-bold"></i></button>
+                            <button type="button" className="toolbar-btn" aria-label="기울임" title="기울임" onClick={() => formatText('italic')}><i className="fas fa-italic"></i></button>
+                            <button type="button" className="toolbar-btn" aria-label="목록" title="목록" onClick={() => insertText('- ')}><i className="fas fa-list-ul"></i></button>
                         </div>
                         <textarea
-                            className="form-input w-full px-4 py-4 rounded-lg resize-none font-mono"
-                            rows="15"
+                            className="form-input w-full px-4 py-4 rounded-lg study-progress-content"
+                            rows="12"
+                            placeholder="학습한 내용, 진행 결과, 다음 주 계획을 작성해주세요."
+                            id="progress-content"
                             value={content}
                             onChange={e => setContent(e.target.value)}
                             ref={contentRef}
                             required
                         ></textarea>
+                        <p className="study-progress-hint">마크다운 문법을 지원합니다. 미리보기에서 작성한 내용을 확인하실 수 있습니다.</p>
                     </div>
 
                     {/* File Upload */}
                     <div className="mb-8">
-                        <label className="block text-white mb-2">Attachments</label>
+                        <p className="study-progress-label">첨부파일</p>
                         <div className="flex items-center gap-4 mb-4">
                             <button
                                 type="button"
-                                className="btn-secondary px-4 py-2 rounded-lg text-sm"
+                                className="study-detail-action study-detail-action-secondary"
                                 onClick={() => fileInputRef.current?.click()}
                             >
-                                <i className="fas fa-paperclip mr-2"></i> Add Files
+                                <i className="fas fa-paperclip mr-2"></i> 파일 첨부
                             </button>
                             <input
                                 type="file"
@@ -289,9 +290,9 @@ function StudyProgressWrite() {
                         {uploadedFiles.length > 0 && (
                             <ul className="space-y-2">
                                 {uploadedFiles.map(file => (
-                                    <li key={file.id} className="flex justify-between items-center bg-gray-800 p-2 rounded">
+                                    <li key={file.id} className="study-progress-file">
                                         <span className="text-gray-300 text-sm truncate">{file.name}</span>
-                                        <button type="button" onClick={() => handleRemoveFile(file.id)} className="text-red-400 hover:text-red-300">
+                                        <button type="button" aria-label={`${file.name} 삭제`} onClick={() => handleRemoveFile(file.id)} className="text-red-400 hover:text-red-300">
                                             <i className="fas fa-times"></i>
                                         </button>
                                     </li>
@@ -301,20 +302,20 @@ function StudyProgressWrite() {
                     </div>
 
                     {/* Buttons */}
-                    <div className="flex justify-end gap-4">
+                    <div className="study-progress-actions">
                         <button
                             type="button"
-                            className="btn-secondary px-6 py-3 rounded-lg text-white"
+                            className="study-detail-action study-detail-action-secondary"
                             onClick={() => setIsPreviewModalOpen(true)}
                         >
-                            Preview
+                            미리보기
                         </button>
                         <button
                             type="submit"
-                            className="btn-primary px-6 py-3 rounded-lg text-white font-bold"
+                            className="study-detail-action cta-button primary-cta-text"
                             disabled={isSubmitting}
                         >
-                            {isSubmitting ? 'Saving...' : 'Save Progress'}
+                            {isSubmitting ? '저장 중...' : isEditMode ? '수정하기' : '등록하기'}
                         </button>
                     </div>
                 </form>
@@ -322,9 +323,9 @@ function StudyProgressWrite() {
                 {/* Preview Modal */}
                 {isPreviewModalOpen && (
                     <div className="fixed inset-0 preview-modal flex items-center justify-center z-50 bg-black bg-opacity-80">
-                        <div className="bg-gray-900 rounded-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto p-6 relative">
+                        <div role="dialog" aria-modal="true" aria-label="진행 글 미리보기" className="study-detail-surface study-progress-preview max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto relative">
                             <button
-                                onClick={() => setIsPreviewModalOpen(false)}
+                                aria-label="미리보기 닫기" onClick={() => setIsPreviewModalOpen(false)}
                                 className="absolute top-4 right-4 text-gray-400 hover:text-white"
                             >
                                 <i className="fas fa-times text-xl"></i>

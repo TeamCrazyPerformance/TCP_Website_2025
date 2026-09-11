@@ -112,7 +112,7 @@ function Announcement() {
         icon={<i className="fas fa-bullhorn text-white text-3xl"></i>}
         iconClassName="bg-gradient-to-br from-purple-400 via-pink-400 to-red-400"
         title="Announcements"
-        lead="TCP의 중요한 소식을 놓치지 마세요"
+        lead="TCP의 중요한 소식을 놓치지 마세요."
         description={(
           <>
             동아리 운영, 행사, 프로젝트 등

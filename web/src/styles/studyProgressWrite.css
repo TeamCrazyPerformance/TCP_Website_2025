@@ -1,0 +1,108 @@
+.study-progress-page {
+  font-family: "Spoqa Han Sans Neo", sans-serif;
+  text-align: left;
+}
+
+.study-progress-heading {
+  margin-bottom: 2rem;
+}
+.study-progress-eyebrow {
+  margin: 0 0 0.75rem;
+  color: #a8c5e6;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.study-progress-description {
+  margin: 1rem 0 0;
+  color: #aeb6c3;
+  line-height: 1.75;
+}
+.study-progress-label {
+  display: block;
+  margin: 0 0 0.625rem;
+  color: #d8dee7;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+.study-progress-form .form-input {
+  background: #0f131a;
+  border-color: #2b3444;
+  color: #e5e7eb;
+  color-scheme: dark;
+}
+.study-progress-form .form-input:focus {
+  border-color: #a8c5e6;
+}
+.study-progress-content {
+  resize: vertical;
+  min-height: 16rem;
+  line-height: 1.8;
+}
+.study-progress-toolbar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem;
+  background: #11141a;
+  border: 1px solid #2b3444;
+  border-radius: 0.5rem;
+}
+.study-progress-toolbar .toolbar-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+  color: #aeb6c3;
+  background: transparent;
+  border: 0;
+  border-radius: 0.375rem;
+}
+.study-progress-toolbar .toolbar-btn:hover {
+  color: #e5e7eb;
+  background: #2b3444;
+}
+.study-progress-hint {
+  margin-top: 0.75rem;
+  color: #9ca3af;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+.study-progress-file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: #11141a;
+  border: 1px solid #2b3444;
+  border-radius: 0.5rem;
+}
+.study-progress-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #2b3444;
+}
+.study-progress-actions .study-detail-action {
+  min-height: 2.875rem;
+}
+.study-progress-actions button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+  transform: none;
+}
+.study-progress-preview {
+  padding-top: 3.5rem;
+}
+.study-progress-preview-content {
+  overflow-wrap: anywhere;
+}
+.study-progress-page button:focus-visible {
+  outline: 2px solid #a8c5e6;
+  outline-offset: 3px;
+}
+@media (max-width: 479px) {
+  .study-progress-actions .study-detail-action {
+    flex: 1 1 auto;
+  }
+}
