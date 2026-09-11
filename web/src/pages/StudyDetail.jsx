@@ -46,7 +46,7 @@ const mapMembers = (data) => (data.members || [])
       ? '스터디장'
       : member.role === 'NOMINEE' ? '스터디장 후보' : '스터디원',
     avatar: member.user?.profile_image || member.profile_image || 'https://via.placeholder.com/40',
-    major: member.user?.major || '전공 미입력',
+    major: member.major?.trim() || member.user?.major?.trim() || '전공 미입력',
     techStack: member.user?.tech_stack || [],
   }));
 

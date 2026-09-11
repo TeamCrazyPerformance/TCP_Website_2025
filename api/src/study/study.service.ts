@@ -146,6 +146,7 @@ export class StudyService {
         .map((member) => ({
           user_id: member.user.id,
           name: member.user.name,
+          major: member.user.major ?? null,
           role: member.role,
           profile_image: member.user.profile_image && !member.user.profile_image.startsWith('http')
             ? `/profiles/${member.user.profile_image}`
