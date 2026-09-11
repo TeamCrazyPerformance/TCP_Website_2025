@@ -4,6 +4,7 @@ import DOMPurify from 'dompurify';
 import MarkdownIt from 'markdown-it';
 import { apiPost, apiPatch, apiGet } from '../api/client';
 import { formatBirthDate } from '../utils/dateFormatter';
+import WritingPreviewModal from '../components/public/WritingPreviewModal';
 import BackToListLink from '../components/public/BackToListLink';
 
 const md = new MarkdownIt({
@@ -240,41 +241,16 @@ function AnnouncementWrite() {
     const safeHtml = DOMPurify.sanitize(html);
 
     return (
-      <article>
-        <header className="mb-8">
-          <div className="mb-4 text-left">
-            <span
-              className="px-3 py-1 rounded-full text-xs font-bold text-black"
-              style={{ background: 'linear-gradient(135deg, var(--accent-blue), var(--accent-purple))' }}
-            >
-              공지사항
-            </span>
+      <article className="writing-preview-content">
+        <header className="writing-preview-heading">
+          <div className="writing-preview-meta">
+            <span className="writing-preview-week">공지사항</span>
+            <span><i className="far fa-calendar mr-2" aria-hidden="true"></i>게시일 · {date ? date.replace(/-/g, '.') : '미입력'}</span>
           </div>
-          <h1 className="orbitron text-3xl md:text-5xl font-bold mb-6 gradient-text text-left">
-            {title}
-          </h1>
-
-          {/* Meta: Left aligned content */}
-          <div className="article-meta widget-card rounded-lg p-6 mb-8">
-            <div className="flex flex-wrap items-center justify-between text-sm text-gray-300">
-              <div className="flex items-center space-x-6 mb-2 md:mb-0">
-                <div className="flex items-center space-x-2">
-                  <i className="fas fa-calendar text-purple-400"></i>
-                  <span>
-                    {date.replace(/-/g, '.')}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <h3>{title}</h3>
+          <p className="writing-preview-summary">{summary}</p>
         </header>
-
-        <div className="article-content widget-card rounded-lg p-8 mb-8">
-          <div
-            className="article-body text-gray-200 text-left"
-            dangerouslySetInnerHTML={{ __html: safeHtml }}
-          />
-        </div>
+        <div className="writing-preview-body" dangerouslySetInnerHTML={{ __html: safeHtml }} />
       </article>
     );
   };
@@ -563,27 +539,9 @@ function AnnouncementWrite() {
 
       {/* 미리보기 모달 */}
       {isPreviewModalOpen && (
-        <div
-          id="previewModal"
-          className="fixed inset-0 preview-modal flex items-start justify-center z-50 overflow-y-auto py-8"
-        >
-          <div className="bg-gray-900 rounded-xl max-w-4xl w-full mx-4 my-auto max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-gray-900 px-6 py-4 border-b border-gray-700 flex justify-between items-center z-10">
-              <h2 className="orbitron text-xl font-bold gradient-text">
-                미리보기
-              </h2>
-              <button
-                onClick={() => setIsPreviewModalOpen(false)}
-                className="text-gray-400 hover:text-white"
-              >
-                <i className="fas fa-times text-xl"></i>
-              </button>
-            </div>
-            <div className="p-6">
-              {renderPreviewContent()}
-            </div>
-          </div>
-        </div>
+        <WritingPreviewModal title="공지사항 미리보기" onClose={() => setIsPreviewModalOpen(false)}>
+          {renderPreviewContent()}
+        </WritingPreviewModal>
       )}
 
       {/* 성공 메시지 모달 */}

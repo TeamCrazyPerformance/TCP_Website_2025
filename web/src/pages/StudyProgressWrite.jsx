@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import MarkdownIt from 'markdown-it';
 import { apiPost, apiPatch, apiGet, apiDelete } from '../api/client';
+import WritingPreviewModal from '../components/public/WritingPreviewModal';
 import BackToListLink from '../components/public/BackToListLink';
 import '../styles/studyDetail.css';
 import '../styles/studyProgressWrite.css';
@@ -170,21 +171,30 @@ function StudyProgressWrite() {
         const html = md.render(content || '');
         const safeHtml = DOMPurify.sanitize(html);
         return (
-            <div className="article-content study-progress-preview-content">
-                <h2 className="text-2xl font-bold mb-4">{title}</h2>
-                <div className="text-gray-400 mb-4">{weekNo}주차 · {date}</div>
-                <div className="article-body text-gray-200 text-left" dangerouslySetInnerHTML={{ __html: safeHtml }} />
+            <article className="writing-preview-content">
+                <header className="writing-preview-heading">
+                    <div className="writing-preview-meta">
+                        <span className="writing-preview-week">{weekNo ? `${weekNo}주차` : '주차 미입력'}</span>
+                        <span><i className="far fa-calendar mr-2" aria-hidden="true"></i>{date ? date.replace(/-/g, '.') : '진행일 미입력'}</span>
+                    </div>
+                    <h3>{title.trim() || '제목을 입력해주세요'}</h3>
+                </header>
+                {content.trim() ? (
+                    <div className="writing-preview-body" dangerouslySetInnerHTML={{ __html: safeHtml }} />
+                ) : (
+                    <p className="writing-preview-empty">작성한 내용이 여기에 표시됩니다.</p>
+                )}
                 {uploadedFiles.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-gray-700">
-                        <h3 className="font-bold mb-2">첨부파일</h3>
-                        <ul className="list-disc pl-5">
+                    <section className="writing-preview-attachments" aria-label="첨부파일">
+                        <h4>첨부파일 <span>{uploadedFiles.length}</span></h4>
+                        <ul>
                             {uploadedFiles.map(f => (
-                                <li key={f.id}>{f.name}</li>
+                                <li key={f.id}><i className="fas fa-paperclip" aria-hidden="true"></i><span>{f.name}</span></li>
                             ))}
                         </ul>
-                    </div>
+                    </section>
                 )}
-            </div>
+            </article>
         );
     };
 
@@ -322,17 +332,9 @@ function StudyProgressWrite() {
 
                 {/* Preview Modal */}
                 {isPreviewModalOpen && (
-                    <div className="fixed inset-0 preview-modal flex items-center justify-center z-50 bg-black bg-opacity-80">
-                        <div role="dialog" aria-modal="true" aria-label="진행 글 미리보기" className="study-detail-surface study-progress-preview max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto relative">
-                            <button
-                                aria-label="미리보기 닫기" onClick={() => setIsPreviewModalOpen(false)}
-                                className="absolute top-4 right-4 text-gray-400 hover:text-white"
-                            >
-                                <i className="fas fa-times text-xl"></i>
-                            </button>
-                            {renderPreviewContent()}
-                        </div>
-                    </div>
+                    <WritingPreviewModal title="진행 글 미리보기" onClose={() => setIsPreviewModalOpen(false)}>
+                        {renderPreviewContent()}
+                    </WritingPreviewModal>
                 )}
             </div>
         </main>

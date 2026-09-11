@@ -91,12 +91,6 @@
   cursor: wait;
   transform: none;
 }
-.study-progress-preview {
-  padding-top: 3.5rem;
-}
-.study-progress-preview-content {
-  overflow-wrap: anywhere;
-}
 .study-progress-page button:focus-visible {
   outline: 2px solid #a8c5e6;
   outline-offset: 3px;
