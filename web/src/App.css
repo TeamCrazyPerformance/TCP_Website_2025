@@ -99,6 +99,17 @@ body {
     .sidebar.open {
         transform: translateX(0);
     }
+
+    .sidebar.admin-navigation-sidebar {
+        top: 0;
+        left: 0;
+        height: 100vh;
+        height: 100dvh;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior-y: contain;
+        padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    }
 }
 
 .sidebar-link {
