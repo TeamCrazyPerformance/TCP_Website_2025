@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import os
@@ -35,9 +36,10 @@ QUALITY_AXES = (
     {"key": "articleQuality", "label": "기사 품질", "weight": 0.10},
 )
 
-from .keywords_manager import get_combined_developer_keywords
+from .keywords_manager import CORE_IMMUTABLE_KEYWORDS, get_combined_developer_keywords
 
 DEVELOPER_KEYWORDS = get_combined_developer_keywords()
+KEYWORDS_LOADED_AT = datetime.now(UTC).isoformat()
 
 NON_ARTICLE_PATTERN = re.compile(
     r"\b(subscribe|learning center|webinars archives|archive|showcase|landscape|sponsors?)\b",
@@ -59,6 +61,19 @@ class QualityEvaluator:
 
     def __init__(self, *, clock: Clock = _utcnow) -> None:
         self._clock = clock
+
+    def keyword_snapshot(self) -> dict[str, Any]:
+        keywords = sorted(DEVELOPER_KEYWORDS)
+        core = sorted(DEVELOPER_KEYWORDS & CORE_IMMUTABLE_KEYWORDS)
+        dynamic = sorted(DEVELOPER_KEYWORDS - CORE_IMMUTABLE_KEYWORDS)
+        return {
+            "loadedAt": KEYWORDS_LOADED_AT,
+            "fingerprint": hashlib.sha256("\n".join(keywords).encode()).hexdigest(),
+            "totalCount": len(keywords),
+            "coreKeywords": core,
+            "dynamicKeywords": dynamic,
+            "refreshPolicy": "PROCESS_START",
+        }
 
     def evaluate(self, input_data: Mapping[str, Any]) -> dict[str, Any]:
         article_id = input_data.get("articleId", "") if isinstance(input_data, Mapping) else ""
