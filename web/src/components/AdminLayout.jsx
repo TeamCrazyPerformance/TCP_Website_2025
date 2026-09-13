@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import AdminSidebar from "./AdminSidebar";
+import "../styles/adminControls.css";
 
 function AdminLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -108,7 +109,7 @@ function AdminLayout() {
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="admin-layout flex min-h-screen">
       <div className="fixed inset-y-0 left-0 md:relative z-50">
         <AdminSidebar isOpen={isSidebarOpen} />
       </div>

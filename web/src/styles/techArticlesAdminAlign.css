@@ -1386,3 +1386,6 @@
   padding: 5px 9px;
   justify-content: center;
 }
+.ta-admin .filter-grid.review-filter-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+}

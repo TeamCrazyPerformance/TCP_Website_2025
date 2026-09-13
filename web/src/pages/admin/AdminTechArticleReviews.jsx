@@ -685,7 +685,7 @@ function AdminTechArticleReviews({ kind }) {
           </button>
         </div>
         <form
-          className="filter-grid"
+          className="filter-grid review-filter-grid"
           role="search"
           onSubmit={(event) => {
             event.preventDefault();
