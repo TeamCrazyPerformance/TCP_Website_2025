@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { apiDelete } from '../../api/client';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -105,65 +106,8 @@ const AdminStudy = () => {
         if (!window.confirm('이 작업은 되돌릴 수 없으며, 모든 멤버, 진행사항, 자료가 영구적으로 삭제됩니다. 정말 진행하시겠습니까?')) return;
 
         try {
-            const token = localStorage.getItem('access_token');
-
-            // 1. Fetch full study details first (to get members, resources, progress IDs)
-            // The list view item doesn't have these details.
-            const detailRes = await fetch(`/api/v1/study/${studyId}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (!detailRes.ok) throw new Error('스터디 상세 정보를 불러올 수 없습니다.');
-            const studyDetail = await detailRes.json();
-
-            // 2. Cascade Delete Manually
-
-            // Delete Resources
-            if (studyDetail.resources && studyDetail.resources.length > 0) {
-                for (const resource of studyDetail.resources) {
-                    await fetch(`/api/v1/study/${studyId}/resources/${resource.id}`, {
-                        method: 'DELETE',
-                        headers: { Authorization: `Bearer ${token}` },
-                    });
-                }
-            }
-
-            // Delete Progress Reports
-            if (studyDetail.progress && studyDetail.progress.length > 0) {
-                for (const item of studyDetail.progress) {
-                    await fetch(`/api/v1/study/${studyId}/progress/${item.id}`, {
-                        method: 'DELETE',
-                        headers: { Authorization: `Bearer ${token}` },
-                    });
-                }
-            }
-
-            // Delete Members
-            const allMembers = studyDetail.members || [];
-            if (allMembers.length > 0) {
-                // Delete non-leaders first
-                for (const member of allMembers) {
-                    // Determine current user ID if needed, but admin has power over all.
-                    // The issue is simply FK constraints.
-                    // Let's just try to delete everyone.
-                    // We might need to handle the case where the admin themselves is a member?
-                    // If we delete ourselves, we might lose access? No, Admin role is Global.
-                    await fetch(`/api/v1/study/${studyId}/members/${member.user_id}`, {
-                        method: 'DELETE',
-                        headers: { Authorization: `Bearer ${token}` },
-                    });
-                }
-            }
-
-            // 3. Delete Study
-            const response = await fetch(`/api/v1/study/${studyId}`, {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || '삭제 실패');
-            }
+            // Related database rows are deleted atomically by the backend/database.
+            await apiDelete(`/api/v1/study/${studyId}`);
 
             alert('스터디가 성공적으로 삭제되었습니다.');
             // Refresh list

@@ -5,12 +5,13 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
   StreamableFile,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, LessThan, QueryRunner, In } from 'typeorm';
+import { Repository, IsNull, In } from 'typeorm';
 import { Study } from './entities/study.entity';
 import { User } from '../members/entities/user.entity';
 import { UserRole } from '../members/entities/enums/user-role.enum';
@@ -37,6 +38,8 @@ import { SearchAvailableMembersResponseDto } from './dto/response/search-availab
 
 @Injectable()
 export class StudyService {
+  private readonly logger = new Logger(StudyService.name);
+
   constructor(
     @InjectRepository(Study)
     private readonly studyRepository: Repository<Study>,
@@ -243,17 +246,47 @@ export class StudyService {
    * @returns A promise that resolves to a DTO indicating success.
    */
   async delete(id: number): Promise<SuccessResponseDto> {
-    // 1. Attempt to delete the study directly by its primary key (ID).
+    const study = await this.studyRepository.findOne({
+      where: { id },
+      relations: ['resources'],
+    });
+
+    if (!study) {
+      throw new NotFoundException('Study not found');
+    }
+
+    const resourcePaths = (study.resources || [])
+      .map((resource) => resource.dir_path)
+      .filter((resourcePath): resourcePath is string => Boolean(resourcePath));
+
+    // PostgreSQL cascades the related members, progress records, and resources
+    // as part of this single, atomic DELETE statement.
     const deleteResult = await this.studyRepository.delete(id);
 
-    // 2. Check the result to see if any rows were actually deleted.
-    // If 'affected' is 0, no study with that ID was found.
     if (deleteResult.affected === 0) {
       throw new NotFoundException('Study not found');
     }
 
-    // 3. If deletion was successful, return the success response.
+    await this.deleteResourceFiles(resourcePaths);
+
     return { success: true };
+  }
+
+  private async deleteResourceFiles(resourcePaths: string[]): Promise<void> {
+    await Promise.all(
+      resourcePaths.map(async (resourcePath) => {
+        try {
+          await fs.promises.unlink(resourcePath);
+        } catch (error) {
+          const fileError = error as NodeJS.ErrnoException;
+          if (fileError.code !== 'ENOENT') {
+            this.logger.error(
+              `Failed to delete study resource file ${resourcePath}: ${fileError.message}`,
+            );
+          }
+        }
+      }),
+    );
   }
 
   /** 5
