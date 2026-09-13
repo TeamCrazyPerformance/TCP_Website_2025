@@ -1407,6 +1407,14 @@ TCP와 함께 프로젝트와 스터디에 참여할 신입 회원을 기다립�
   },
 ];
 
+const studyMember = (user_id, name, role, major) => ({
+  user_id,
+  name,
+  role,
+  major,
+  profile_image: "/images/default_profile.webp",
+});
+
 const demoStudies = [
   {
     id: 1,
@@ -1424,8 +1432,14 @@ const demoStudies = [
     is_public: true,
     leader: { user_id: "demo-leader-1", name: "김민준" },
     members: [
-      { user_id: "demo-leader-1", name: "김민준", role: "LEADER" },
-      { user_id: "demo-member-1", name: "이서연", role: "MEMBER" },
+      studyMember("demo-leader-1", "김민준", "LEADER", "컴퓨터공학과"),
+      studyMember("demo-member-1", "이서연", "MEMBER", "인공지능응용공학과"),
+      studyMember("demo-study-member-3", "윤지우", "NOMINEE", "산업디자인학과"),
+      studyMember("demo-study-member-4", "강하늘", "MEMBER", "컴퓨터공학과"),
+      studyMember("demo-study-member-5", "오다은", "MEMBER", null),
+      studyMember("demo-study-member-6", "서도현", "MEMBER", "스마트ICT융합공학과"),
+      studyMember("demo-study-member-7", "임시온", "MEMBER", "MSDE학과"),
+      studyMember("demo-study-member-8", "문유진", "MEMBER", "기계시스템디자인공학과 지능형로봇전공"),
     ],
   },
   {
@@ -1444,8 +1458,10 @@ const demoStudies = [
     is_public: true,
     leader: { user_id: "demo-leader-2", name: "박지훈" },
     members: [
-      { user_id: "demo-leader-2", name: "박지훈", role: "LEADER" },
-      { user_id: "demo-member-2", name: "최예원", role: "MEMBER" },
+      studyMember("demo-leader-2", "박지훈", "LEADER", "컴퓨터공학과"),
+      studyMember("demo-member-2", "최예원", "MEMBER", "컴퓨터공학과"),
+      studyMember("demo-study-member-9", "배수빈", "MEMBER", "MSDE학과"),
+      studyMember("demo-study-member-10", "조현우", "MEMBER", "경영학과"),
     ],
   },
   {
@@ -1463,7 +1479,11 @@ const demoStudies = [
     cycle: "주 1회",
     is_public: true,
     leader: { user_id: "demo-leader-3", name: "한동민" },
-    members: [{ user_id: "demo-leader-3", name: "한동민", role: "LEADER" }],
+    members: [
+      studyMember("demo-leader-3", "한동민", "LEADER", "인공지능응용공학과"),
+      studyMember("demo-study-member-11", "송가은", "MEMBER", "컴퓨터공학과"),
+      studyMember("demo-study-member-12", "유태오", "MEMBER", "스마트ICT융합공학과"),
+    ],
   },
   {
     id: 4,
@@ -1480,7 +1500,11 @@ const demoStudies = [
     cycle: "주 1회",
     is_public: true,
     leader: { user_id: "demo-leader-4", name: "정수현" },
-    members: [{ user_id: "demo-leader-4", name: "정수현", role: "LEADER" }],
+    members: [
+      studyMember("demo-leader-4", "정수현", "LEADER", "컴퓨터공학과"),
+      studyMember("demo-study-member-13", "남지안", "MEMBER", "자유전공학부"),
+      studyMember("demo-study-member-14", "백이준", "MEMBER", "스마트ICT융합공학과"),
+    ],
   },
 ];
 

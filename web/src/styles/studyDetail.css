@@ -250,6 +250,7 @@
 }
 
 .study-detail-member-card {
+  text-align: left;
   padding: 1rem;
   background: #11141a;
   border: 1px solid #2b3444;
