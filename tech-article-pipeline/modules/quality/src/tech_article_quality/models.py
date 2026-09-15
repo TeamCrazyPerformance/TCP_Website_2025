@@ -102,7 +102,6 @@ class Dimensions(ContractModel):
     technical_depth: int = Field(alias="technicalDepth", default=50, ge=0, le=100)
     timeliness: int = Field(ge=0, le=100)
     article_quality: int = Field(alias="articleQuality", default=100, ge=0, le=100)
-    community_bonus: int | None = Field(alias="communityBonus", default=None, ge=0, le=10)
 
 
 class ScoreScale(ContractModel):

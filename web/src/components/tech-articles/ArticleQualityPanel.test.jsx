@@ -39,7 +39,7 @@ describe("QualityScoreAxes", () => {
     expect(screen.getByText("가중치 40% · 기여 36.8")).toBeInTheDocument();
   });
 
-  it("shows the community bonus in the administrator quality detail", () => {
+  it("renders historical scores without a community bonus indicator", () => {
     render(
       <QualityEvaluationPanel
         evaluation={{
@@ -53,8 +53,9 @@ describe("QualityScoreAxes", () => {
       />,
     );
 
-    expect(screen.getByText("개발자 호응 보너스")).toBeInTheDocument();
-    expect(screen.getByText("+7점")).toBeInTheDocument();
+    expect(screen.queryByText("개발자 호응 보너스")).not.toBeInTheDocument();
+    expect(screen.queryByText("+7점")).not.toBeInTheDocument();
+    expect(screen.getByText("87")).toBeInTheDocument();
   });
 
   it("displays the server contribution instead of recalculating it", () => {

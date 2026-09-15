@@ -1,7 +1,7 @@
 # Quality module
 
-Deterministic quality evaluation for normalized technical articles. The supplied
-45% relevance, 30% timeliness, and 25% source-metadata formula is preserved.
+Deterministic quality evaluation for normalized technical articles. The four-axis formula uses
+35% relevance, 30% technical depth, 25% timeliness, and 10% article quality.
 The score result is self-describing: `score.axes` records each axis key, display
 label, value, weight, and weighted contribution used for that evaluation. The
 legacy `score.dimensions` object remains during the compatibility period.
@@ -29,3 +29,16 @@ is returned through the shared failure contract instead of raising from the publ
   Confirm the administrator keyword snapshot contains the core keywords and no
   `alpha`, `beta`, or `gamma` test entries. New startup collection may add real tags.
 - Existing stored article evaluations are not recalculated by this change.
+
+
+## Community bonus removal (evaluator 2.2.7)
+
+New evaluations use only the four weighted axes. Engagement metadata is still
+accepted for input compatibility, but never changes the score, decision, or
+reason. New results omit `score.dimensions.communityBonus`.
+
+Stored evaluations retain their original score, decision, reason, and evaluator
+version; the API can still read their legacy metadata. The administrator UI no
+longer renders a separate bonus indicator. This change does not migrate or
+recalculate historical results. Reprocess selected articles explicitly if they
+need an evaluation under the new version.

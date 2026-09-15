@@ -23,7 +23,7 @@ const PUBLIC_ARTICLE_COUNT = Math.min(
   Number(process.env.MOCK_PUBLIC_ARTICLE_COUNT || 106),
   ARTICLE_COUNT,
 );
-const LATEST_QUALITY = Object.freeze({ moduleVersion: "2.2.6" });
+const LATEST_QUALITY = Object.freeze({ moduleVersion: "2.2.7" });
 const LATEST_AI_SUMMARY = Object.freeze({
   moduleVersion: "1.0.0",
   model: "gemini-3.5-flash-lite",

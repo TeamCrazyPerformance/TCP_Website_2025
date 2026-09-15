@@ -117,7 +117,7 @@ describe('projectQualityEvaluation', () => {
     ]);
   });
 
-  it('keeps the community bonus in the operational administrator shape', () => {
+  it('preserves historical scores and legacy metadata without recalculating them', () => {
     const result = projectQualityEvaluation(
       {
         score: {
@@ -143,5 +143,6 @@ describe('projectQualityEvaluation', () => {
         >
       ).communityBonus,
     ).toBe(7);
+    expect((result?.score as Record<string, unknown>).overall).toBe(87);
   });
 });
