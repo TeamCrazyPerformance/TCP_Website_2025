@@ -35,7 +35,6 @@ const mapStudy = (data) => ({
   leader: data.leader ? {
     id: data.leader.user_id,
     name: data.leader.name || '알 수 없음',
-    quote: data.leader.intro || '함께 성장하는 스터디를 만들어갑시다!',
   } : null,
 });
 
@@ -48,7 +47,7 @@ const mapMembers = (data) => (data.members || [])
       ? '스터디장'
       : member.role === 'NOMINEE' ? '스터디장 후보' : '스터디원',
     avatar: member.user?.profile_image || member.profile_image || 'https://via.placeholder.com/40',
-    major: member.user?.major || '전공 미입력',
+    major: member.major?.trim() || member.user?.major?.trim() || '전공 미입력',
     techStack: member.user?.tech_stack || [],
   }));
 
@@ -312,18 +311,6 @@ export default function StudyDetail() {
     }
   };
 
-  const handleRemoveMember = async (memberId) => {
-    if (!window.confirm('이 스터디원을 내보내시겠습니까?')) return;
-
-    try {
-      await apiDelete(`/api/v1/study/${id}/members/${memberId}`);
-      alert('스터디원을 내보냈습니다.');
-      await loadStudy();
-    } catch (error) {
-      alert(error.message || '스터디원을 내보내지 못했습니다.');
-    }
-  };
-
   const isAdmin = currentUser?.role === 'ADMIN';
   const canManage = userRole === STUDY_ROLE.LEADER || isAdmin;
   const canViewMemberContent = [
@@ -413,7 +400,6 @@ export default function StudyDetail() {
               <h3><i className="fas fa-user" aria-hidden="true"></i>스터디장</h3>
               <p>
                 <strong>{study.leader ? study.leader.name : '공석'}</strong>
-                {study.leader && <span>"{study.leader.quote}"</span>}
               </p>
             </div>
             <div className="study-detail-info-card">
@@ -560,21 +546,7 @@ export default function StudyDetail() {
                     <div className="text-xs text-gray-400 mb-2">
                       {member.major || '전공 미입력'} {member.studentNumber ? `${member.studentNumber}학번` : ''}
                     </div>
-                    {member.bio && (
-                      <p className="text-sm text-gray-300 mb-3">{member.bio}</p>
-                    )}
-                    <div className="study-detail-member-footer">
-                      <span className="tag tag-devops text-xs">{member.role || 'MEMBER'}</span>
-                      {canManage && member.id !== currentUser?.id && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveMember(member.id)}
-                          className="study-detail-member-remove text-xs px-3 py-1 rounded border border-red-800 hover:border-red-500 text-red-400 hover:text-red-300 transition-colors"
-                        >
-                          내보내기
-                        </button>
-                      )}
-                    </div>
+
                   </div>
                 ))}
               </div>

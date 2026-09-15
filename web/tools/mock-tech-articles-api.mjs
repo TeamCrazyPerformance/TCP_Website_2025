@@ -1915,6 +1915,14 @@ TCP와 함께 성장할 여러분을 기다립니다! 🚀`,
   },
 ];
 
+const studyMember = (user_id, name, role, major) => ({
+  user_id,
+  name,
+  role,
+  major,
+  profile_image: "/images/default_profile.webp",
+});
+
 const demoStudies = [
   {
     id: 18,
@@ -1946,8 +1954,8 @@ const demoStudies = [
     is_public: false,
     leader: { user_id: "demo-member-37", name: "이준수" },
     members: [
-      { user_id: "demo-member-37", name: "이준수", role: "LEADER" },
-      { user_id: "demo-member-36", name: "박연오", role: "MEMBER" },
+      studyMember("demo-member-37", "이준수", "LEADER", null),
+      studyMember("demo-member-36", "박연오", "MEMBER", null),
     ],
   },
   {
@@ -1976,8 +1984,8 @@ const demoStudies = [
     is_public: true,
     leader: { user_id: "demo-member-37", name: "이준수" },
     members: [
-      { user_id: "demo-member-37", name: "이준수", role: "LEADER" },
-      { user_id: "demo-member-38", name: "반재민", role: "MEMBER" },
+      studyMember("demo-member-37", "이준수", "LEADER", null),
+      studyMember("demo-member-38", "반재민", "MEMBER", null),
     ],
   },
   {
@@ -1998,8 +2006,8 @@ https://discord.gg/U7Z9ymaMYj
     is_public: true,
     leader: { user_id: "demo-member-39", name: "김영진" },
     members: [
-      { user_id: "demo-member-39", name: "김영진", role: "LEADER" },
-      { user_id: "demo-member-30", name: "김태형", role: "MEMBER" },
+      studyMember("demo-member-39", "김영진", "LEADER", null),
+      studyMember("demo-member-30", "김태형", "MEMBER", null),
     ],
   },
   {
@@ -2033,7 +2041,9 @@ https://discord.gg/U7Z9ymaMYj
     cycle: "주 1회",
     is_public: false,
     leader: { user_id: "demo-member-38", name: "반재민" },
-    members: [{ user_id: "demo-member-38", name: "반재민", role: "LEADER" }],
+    members: [
+      studyMember("demo-member-38", "반재민", "LEADER", null),
+    ],
   },
 ];
 

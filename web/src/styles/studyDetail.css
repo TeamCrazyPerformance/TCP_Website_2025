@@ -306,6 +306,7 @@
 .study-detail-member-card {
   display: flex;
   height: 100%;
+  text-align: left;
   padding: 1rem;
   flex-direction: column;
   background: #11141a;

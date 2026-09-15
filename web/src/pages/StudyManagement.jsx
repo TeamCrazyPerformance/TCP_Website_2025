@@ -125,11 +125,11 @@ export default function StudyManagement() {
 
     // Reject/Remove member
     const handleRemoveMember = async (userId, isPending = false) => {
-        const confirmMsg = isPending ? '이 신청을 거절하시겠습니까?' : '이 멤버를 추방하시겠습니까?';
+        const confirmMsg = isPending ? '이 신청을 거절하시겠습니까?' : '이 멤버를 내보내시겠습니까?';
         if (!window.confirm(confirmMsg)) return;
         try {
             await apiDelete(`/api/v1/study/${id}/members/${userId}`);
-            alert(isPending ? '신청이 거절되었습니다.' : '멤버가 추방되었습니다.');
+            alert(isPending ? '신청이 거절되었습니다.' : '멤버를 내보냈습니다.');
             await loadStudy();
         } catch (error) {
             alert(error.message || '작업에 실패했습니다.');
@@ -530,7 +530,7 @@ export default function StudyManagement() {
                                                     onClick={() => handleRemoveMember(member.user_id)}
                                                     className="text-red-500 hover:text-red-400"
                                                 >
-                                                    <i className="fas fa-user-minus mr-1"></i>추방
+                                                    <i className="fas fa-times mr-1"></i>내보내기
                                                 </button>
                                             </div>
                                         </li>
@@ -552,7 +552,7 @@ export default function StudyManagement() {
                                                     onClick={() => handleRemoveMember(member.user_id)}
                                                     className="text-red-500 hover:text-red-400"
                                                 >
-                                                    <i className="fas fa-times mr-1"></i>지명 취소 (추방)
+                                                    <i className="fas fa-times mr-1"></i>내보내기
                                                 </button>
                                             </li>
                                         ))}
