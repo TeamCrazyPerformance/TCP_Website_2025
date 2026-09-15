@@ -18,7 +18,7 @@ describe('공개 페이지 모바일 문구', () => {
     const source = fs.readFileSync(path.join(__dirname, 'Recruitment.jsx'), 'utf8');
 
     expect(source).toMatch(
-      /TCP \(Team Crazy Performance\)는,\s*<br \/>\s*서울과학기술대학교 컴퓨터공학과 학술동아리로,\s*<br \/>\s*뛰어난 동료와 같이 탐구하고, 함께 성장하는 것을 목표로 합니다\./s,
+      /TCP \(Team Crazy Performance\)는\s*<br \/>\s*서울과학기술대학교 컴퓨터공학과 학술동아리로,\s*<br \/>\s*뛰어난 동료와 같이 탐구하고, 함께 성장하는 것을 목표로 합니다\./s,
     );
     expect(source).not.toContain('TCP는 다양한 사람이 모여 같이 탐구하고');
   });

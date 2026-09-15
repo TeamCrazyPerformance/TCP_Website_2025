@@ -84,12 +84,14 @@ describe('스터디 화면 UI 정리', () => {
     expect(css).toMatch(/\.article-body a\s*\{[^}]*word-break:\s*break-all;/s);
   });
 
-  it('한 줄 소개는 값이 있을 때만 보여주고 문구를 지어내지 않는다', () => {
+  it('간소화된 스터디원 카드에는 소개 문구를 표시하지 않는다', () => {
     const source = read('pages/StudyDetail.jsx');
 
     // eslint-disable-next-line no-template-curly-in-string
     expect(source).not.toContain('안녕하세요, ${member.name}입니다.');
-    expect(source).toMatch(/\{member\.bio && \(/);
+    expect(source).not.toContain('member.bio');
+    expect(source).toContain('{member.name}');
+    expect(source).toContain("{member.major || '전공 미입력'}");
   });
 
   it('스터디 개설 모달은 고정 헤더·푸터 시트 구조를 쓴다', () => {
@@ -137,20 +139,20 @@ describe('스터디 화면 UI 정리', () => {
     );
   });
 
-  it('스터디원 카드는 역할 태그와 내보내기를 같은 줄 하단에 둔다', () => {
+  it('스터디원 역할은 카드에 표시하고 내보내기는 관리 화면에서 제공한다', () => {
     const source = read('pages/StudyDetail.jsx');
+    const management = read('pages/StudyManagement.jsx');
     const css = read('styles/studyDetail.css');
 
-    const footer = source.match(
-      /<div className="study-detail-member-footer">([\s\S]*?)<\/div>\s*\)\}/,
+    expect(source).toContain('{member.role}');
+    expect(source).not.toContain('study-detail-member-footer');
+    expect(source).not.toContain('handleRemoveMember');
+    expect(source).not.toContain('내보내기');
+    expect(management).toMatch(
+      /<button\b[^>]*onClick=\{\(\) => handleRemoveMember\(member\.user_id\)\}[^>]*>[\s\S]*?내보내기\s*<\/button>/,
     );
-    expect(footer).not.toBeNull();
-    expect(footer[1]).toContain("{member.role || 'MEMBER'}");
-    expect(footer[1]).toContain('내보내기');
+    expect(management).toContain('await apiDelete(`/api/v1/study/${id}/members/${userId}`)');
 
-    expect(css).toMatch(
-      /\.study-detail-member-footer\s*\{[^}]*margin-top:\s*auto;[^}]*justify-content:\s*space-between;/s,
-    );
     expect(css).toMatch(
       /\.study-detail-member-card\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column;/s,
     );

@@ -71,7 +71,7 @@ describe('StudyService study list', () => {
       },
     ]);
     expect(studyRepository.find).toHaveBeenCalledWith({
-      where: { start_year: 2026 },
+      where: { start_year: 2026, is_public: true },
       relations: ['studyMembers', 'studyMembers.user'],
     });
   });
