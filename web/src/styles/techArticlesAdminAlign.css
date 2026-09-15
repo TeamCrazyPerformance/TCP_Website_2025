@@ -1,5 +1,80 @@
 
 
+.ta-admin .admin-article-tags .article-tag.tag-ai-ml {
+  color: #111827;
+  background: #c978a9;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-frontend {
+  color: #111827;
+  background: #a99fb4;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-mobile {
+  color: #111827;
+  background: #d9cde5;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-language-framework {
+  color: #111827;
+  background: #9b89a8;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-data-db {
+  color: #111827;
+  background: #a684a7;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-cloud {
+  color: #111827;
+  background: #a181af;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-devops {
+  color: #111827;
+  background: #a17eba;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-security {
+  color: #111827;
+  background: #758f9f;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-backend {
+  color: #111827;
+  background: #6fb8aa;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-architecture {
+  color: #111827;
+  background: #808b89;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-developer-tools {
+  color: #111827;
+  background: #75aea4;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-software-quality {
+  color: #111827;
+  background: #579c8f;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-open-source {
+  color: #111827;
+  background: #7ba672;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-development-organization {
+  color: #111827;
+  background: #8ba0d6;
+}
+
+.ta-admin .admin-article-tags .article-tag.tag-industry-trends {
+  color: #111827;
+  background: #9dc3d8;
+}
+
 .ta-admin h1 {
   margin: 0.67em 0;
   font-size: 2em;
@@ -81,8 +156,8 @@
 }
 
 .ta-admin .widget-card {
-  background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--card-surface-background);
+  border: 1px solid var(--card-surface-border);
   border-radius: 0.75rem;
 }
 
@@ -102,8 +177,8 @@
   margin-bottom: 1.5rem;
   padding: 1.5rem;
   flex-direction: column;
-  background: linear-gradient(135deg, var(--secondary-gray), var(--light-gray));
-  border: 1px solid rgba(168, 197, 230, 0.28);
+  background: var(--card-surface-background);
+  border: 1px solid var(--card-surface-border);
   border-radius: 0.75rem;
 }
 
@@ -1040,7 +1115,6 @@
 .ta-admin .publish-control > span,
 .ta-admin .row-action,
 .ta-admin .admin-page-button,
-.ta-admin .section-eyebrow,
 .ta-admin .overview-card-heading .overview-caption,
 .ta-admin .policy-scope-badge,
 .ta-admin .btn-small,
@@ -1293,4 +1367,7 @@
 .ta-admin .admin-articles-table .row-action {
   padding: 5px 9px;
   justify-content: center;
+}
+.ta-admin .filter-grid.review-filter-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
 }

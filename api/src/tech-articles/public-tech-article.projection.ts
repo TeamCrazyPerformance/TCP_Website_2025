@@ -46,6 +46,7 @@ function projectSuppliedValueScore(
           {
             label,
             contribution: finiteNumber(candidate.contribution),
+            value: finiteNumber(candidate.value),
           },
         ];
       })
@@ -75,6 +76,7 @@ function projectLegacyValueScore(article: PipelinePublicDetailArticle) {
       {
         label,
         contribution: finiteNumber(axis.contribution),
+        value: finiteNumber(axis.value),
       },
     ];
   });

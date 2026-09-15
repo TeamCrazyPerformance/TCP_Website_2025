@@ -1,4 +1,3 @@
-
 export const PROCESSING_STATUS_LABEL = {
   INGESTED: "수집 완료",
   QUALITY_EVALUATED: "품질 검토 대기",
@@ -282,6 +281,43 @@ export const STAGE_EXIT = STAGE_ORDER.filter(
 
 export function resolveStage(article) {
   return article?.stage || articleStage(article);
+}
+
+const PUBLICATION_ACTIONS_BY_STATUS = {
+  PUBLISHED: ["HIDE", "ARCHIVE"],
+  HIDDEN: ["PUBLISH", "ARCHIVE"],
+  UNPUBLISHED: ["PUBLISH", "ARCHIVE"],
+};
+const COMPLETED_REVIEW_STATUS = new Set(["NOT_REQUIRED", "APPROVED"]);
+
+export function canApplyPublicationAction(article, action) {
+  const stage = articleStage(article);
+  const publicationStatus = article?.publicationStatus;
+
+  if (stage === STAGE.PUBLICATION_REVIEW) {
+    return action === "PUBLISH";
+  }
+  if (
+    stage !== STAGE.COMPLETED ||
+    !COMPLETED_REVIEW_STATUS.has(article?.reviewStatus)
+  ) {
+    return false;
+  }
+
+  return (
+    PUBLICATION_ACTIONS_BY_STATUS[publicationStatus]?.includes(action) ?? false
+  );
+}
+
+export function partitionPublicationAction(articles = [], action) {
+  const eligible = [];
+  const blocked = [];
+  for (const article of articles) {
+    (canApplyPublicationAction(article, action) ? eligible : blocked).push(
+      article,
+    );
+  }
+  return { eligible, blocked };
 }
 
 export function summarizeStages(articles = []) {

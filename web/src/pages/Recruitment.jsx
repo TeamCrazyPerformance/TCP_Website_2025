@@ -242,7 +242,7 @@ function Recruitment() {
               </h2>
             <div className="max-w-4xl mx-auto">
               <p className="recruitment-about-summary orbitron text-xl text-gray-300">
-                TCP (Team Crazy Performance)는,
+                TCP (Team Crazy Performance)는
                 <br />
                 서울과학기술대학교 컴퓨터공학과 학술동아리로,
                 <br />

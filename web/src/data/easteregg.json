@@ -37,6 +37,40 @@
       ]
     }
   ],
-  "2기 팀": [],
+  "2기 2026 주니어팀": [
+    {
+      "id": "frontend",
+      "label": "FRONTEND",
+      "icon": "🖥️",
+      "desc": "프론트 전반, UI/UX",
+      "color": "var(--neon-1, #00f3ff)",
+      "members": [
+        { "name": "박준우", "role": "프론트 전반, UI/UX 개선, TechArticles 페이지 구성" }
+      ]
+    },
+    {
+      "id": "backend",
+      "label": "BACKEND",
+      "icon": "🛠️",
+      "desc": "아티클 수집, 중복 검사, 품질 평가, AI 요약, API",
+      "color": "var(--neon-2, #ff00ea)",
+      "members": [
+        { "name": "이준수", "role": "크롤링 및 정규화 모듈, TechArticles 파이프라인 통합, API, DB" },
+        { "name": "김재민", "role": "크롤링 및 정규화 모듈, 아티클 품질 평가 모듈" },
+        { "name": "윤태완", "role": "크롤링 및 정규화 모듈, 아티클 요약 모듈 및 AI" },
+        { "name": "박준우", "role": "크롤링 및 정규화 모듈, 아티클 중복 검사 모듈, 아티클 재처리 기능" }
+      ]
+    },
+    {
+      "id": "infra",
+      "label": "INFRA & OPERATIONS",
+      "icon": "🧰",
+      "desc": "서버 구축 및 배포, 운영 모니터링",
+      "color": "var(--neon-3, #00ff66)",
+      "members": [
+        { "name": "이준수", "role": "Docker 구성, QA 환경 구축, 배포, 백업, 복구를 위한 스크립트" }
+      ]
+    }
+  ],
   "3기 팀": []
 }

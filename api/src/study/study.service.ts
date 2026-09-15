@@ -12,6 +12,7 @@ import {
 import type { Response } from 'express';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, In } from 'typeorm';
+import type { FindOptionsWhere } from 'typeorm';
 import { Study } from './entities/study.entity';
 import { User } from '../members/entities/user.entity';
 import { UserRole } from '../members/entities/enums/user-role.enum';
@@ -56,11 +57,25 @@ export class StudyService {
   /**
    * @description Retrieves a list of studies, with an option to filter by year.
    * @param year The optional year to filter the studies by.
+   * @param includePrivate Whether to include private studies. Only true for authenticated requests.
    * @returns A promise that resolves to an array of study summary DTOs.
    */
-  async findAll(year?: number): Promise<StudyResponseDto[]> {
+  async findAll(
+    year?: number,
+    includePrivate = false,
+  ): Promise<StudyResponseDto[]> {
+    const where: FindOptionsWhere<Study> = {};
+
+    if (year) {
+      where.start_year = year;
+    }
+      
+    if (!includePrivate) {
+      where.is_public = true;
+    }
+
     const studies = await this.studyRepository.find({
-      where: year ? { start_year: year } : {},
+      where,
       relations: ['studyMembers', 'studyMembers.user'],
     });
 
@@ -72,6 +87,7 @@ export class StudyService {
           StudyMemberRole.NOMINEE,
         ].includes(member.role),
       );
+
       const leader = activeMembers.find(
         (member) => member.role === StudyMemberRole.LEADER,
       );
@@ -166,6 +182,7 @@ export class StudyService {
         .map((member) => ({
           user_id: member.user.id,
           name: member.user.name,
+          major: member.user.major ?? null,
           role: member.role,
           profile_image: member.user.profile_image && !member.user.profile_image.startsWith('http')
             ? `/profiles/${member.user.profile_image}`

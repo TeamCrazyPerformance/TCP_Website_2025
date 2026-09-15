@@ -1,4 +1,3 @@
-
 import {
   PROCESSING_STATUS_LABEL,
   PUBLICATION_STATUS_LABEL,
@@ -10,8 +9,10 @@ import {
   STAGE_FLOW,
   STAGE_ORDER,
   STAGE_WAITING,
+  canApplyPublicationAction,
   formatWaiting,
   hasStateMismatch,
+  partitionPublicationAction,
   partitionPublishable,
   publishBlockReason,
   scoreTone,
@@ -385,6 +386,98 @@ describe("일괄 공개 대상 분리", () => {
 
   test("빈 입력을 견딘다", () => {
     expect(partitionPublishable()).toEqual({ publishable: [], blocked: [] });
+  });
+});
+
+describe("공개 상태 작업 허용 범위", () => {
+  const unavailableStages = [
+    article({ processingStatus: "INGESTED" }),
+    article({ processingStatus: "QUALITY_EVALUATED", reviewStatus: "PENDING" }),
+    article({ processingStatus: "ENRICHMENT_PENDING" }),
+    article({
+      processingStatus: "PROCESSING_FAILED",
+      reviewStatus: "APPROVED",
+    }),
+    article({ processingStatus: "PROCESSING_FAILED" }),
+    article({ processingStatus: "QUALITY_REJECTED" }),
+  ];
+
+  test.each(["PUBLISH", "HIDE", "ARCHIVE"])(
+    "%s는 처리 중·실패·품질 미달 아티클에 적용하지 않는다",
+    (action) => {
+      unavailableStages.forEach((item) => {
+        expect(canApplyPublicationAction(item, action)).toBe(false);
+      });
+    },
+  );
+
+  test("공개 검토 대기에는 공개만 허용한다", () => {
+    const item = article({
+      reviewStatus: "PENDING",
+      publicationStatus: "UNPUBLISHED",
+    });
+    expect(canApplyPublicationAction(item, "PUBLISH")).toBe(true);
+    expect(canApplyPublicationAction(item, "HIDE")).toBe(false);
+    expect(canApplyPublicationAction(item, "ARCHIVE")).toBe(false);
+  });
+
+  test("처리 완료 후 현재 공개 상태에 맞는 전환만 허용한다", () => {
+    const published = article({
+      reviewStatus: "APPROVED",
+      publicationStatus: "PUBLISHED",
+    });
+    expect(canApplyPublicationAction(published, "PUBLISH")).toBe(false);
+    expect(canApplyPublicationAction(published, "HIDE")).toBe(true);
+    expect(canApplyPublicationAction(published, "ARCHIVE")).toBe(true);
+
+    const hidden = article({
+      reviewStatus: "APPROVED",
+      publicationStatus: "HIDDEN",
+    });
+    expect(canApplyPublicationAction(hidden, "PUBLISH")).toBe(true);
+    expect(canApplyPublicationAction(hidden, "HIDE")).toBe(false);
+    expect(canApplyPublicationAction(hidden, "ARCHIVE")).toBe(true);
+
+    const archived = article({
+      reviewStatus: "APPROVED",
+      publicationStatus: "ARCHIVED",
+    });
+    expect(canApplyPublicationAction(archived, "PUBLISH")).toBe(false);
+    expect(canApplyPublicationAction(archived, "HIDE")).toBe(false);
+    expect(canApplyPublicationAction(archived, "ARCHIVE")).toBe(false);
+  });
+
+  test("처리 완료라도 정상적인 검토 상태가 아니면 전환하지 않는다", () => {
+    for (const reviewStatus of [
+      undefined,
+      "PENDING",
+      "IN_REVIEW",
+      "REJECTED",
+      "CHANGES_REQUESTED",
+    ]) {
+      const item = article({
+        reviewStatus,
+        publicationStatus: "PUBLISHED",
+      });
+      expect(canApplyPublicationAction(item, "HIDE")).toBe(false);
+      expect(canApplyPublicationAction(item, "ARCHIVE")).toBe(false);
+    }
+  });
+
+  test("혼합 선택에서도 허용된 대상만 분리한다", () => {
+    const eligible = article({
+      articleId: "eligible",
+      reviewStatus: "APPROVED",
+      publicationStatus: "PUBLISHED",
+    });
+    const blocked = article({
+      articleId: "blocked",
+      processingStatus: "ENRICHMENT_PENDING",
+    });
+    expect(partitionPublicationAction([eligible, blocked], "ARCHIVE")).toEqual({
+      eligible: [eligible],
+      blocked: [blocked],
+    });
   });
 });
 
