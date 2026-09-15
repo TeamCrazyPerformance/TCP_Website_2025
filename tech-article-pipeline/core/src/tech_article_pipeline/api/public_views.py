@@ -68,7 +68,7 @@ def _supplied_breakdown(score: Mapping[str, Any]) -> list[dict[str, Any]]:
             weight = _finite_number(candidate.get("weight"))
             if weight is not None and 0 <= weight <= 1:
                 contribution = round(value * weight, 2)
-        result.append({"label": label.strip(), "contribution": contribution})
+        result.append({"label": label.strip(), "contribution": contribution, "value": value})
     return result
 
 
@@ -90,6 +90,7 @@ def _legacy_breakdown(score: Mapping[str, Any]) -> list[dict[str, Any]]:
         result.append(
             {
                 "label": definition["label"],
+                "value": value,
                 "contribution": round(value * definition["weight"], 2),
             }
         )

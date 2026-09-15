@@ -7,7 +7,6 @@ function AdminCrawlOperations() {
     <AdminTechArticleContent>
       <section className="admin-intro" aria-labelledby="crawlOperationsTitle">
         <div>
-          <p className="section-eyebrow orbitron">CRAWL OPERATIONS</p>
           <h2 id="crawlOperationsTitle" className="orbitron gradient-text">
             크롤링 관리
           </h2>

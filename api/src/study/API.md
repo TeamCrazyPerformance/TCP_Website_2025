@@ -99,11 +99,21 @@ Authorization: Bearer <access_token>
     "profile_image": "profile.jpg",
     "role": "LEADER"
   },
-  "members": [...],
+  "members": [
+    {
+      "user_id": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "홍길동",
+      "major": "컴퓨터공학과",
+      "profile_image": "/profiles/profile.jpg",
+      "role": "LEADER"
+    }
+  ],
   "resources": [...],
   "progress": [...]
 }
 ```
+
+회원 목록은 해당 스터디의 스터디원·스터디장·스터디장 후보 또는 관리자에게만 반환합니다.
 
 ---
 

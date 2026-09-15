@@ -6,6 +6,7 @@ import { apiPost, apiPatch } from '../../api/client';
 import { formatBirthDate } from '../../utils/dateFormatter';
 
 import ImageEditorModal from '../common/ImageEditorModal';
+import '../../styles/teamRecruitModal.css';
 
 export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateTeam, initialData }) {
   const [form, setForm] = useState({
@@ -460,21 +461,21 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
 
   return (
     <div
-      className="modal active"
-      onClick={(e) => { if (e.target.className.includes('modal')) handleSafeClose(); }}
+      className="modal active team-recruit-modal"
+      onClick={(e) => { if (e.target === e.currentTarget) handleSafeClose(); }}
     >
-      <div className="modal-content">
-        <button className="close-modal" onClick={handleSafeClose}>
+      <div className="modal-content team-recruit-sheet" role="dialog" aria-modal="true" aria-labelledby="team-recruit-title">
+        <button type="button" className="close-modal" onClick={handleSafeClose} aria-label="팀 모집 작성 창 닫기">
           <i className="fas fa-times" />
         </button>
 
-        <div className="mb-6">
-          <h3 className="orbitron text-xl font-bold gradient-text text-left">
+        <div className="team-recruit-header">
+          <h3 id="team-recruit-title" className="orbitron text-xl font-bold gradient-text text-left">
             {isEditMode ? '팀 모집 수정하기' : '팀 모집 시작하기'}
           </h3>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto pr-2 -mr-2">
+        <div className="team-recruit-scroll">
           <form onSubmit={handleSubmit} className="space-y-6 pb-2">
 
             {/* Project Image */}
@@ -491,7 +492,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
                   />
                   <label
                     htmlFor="projectImageInput"
-                    className="px-3 py-1.5 bg-white text-gray-800 rounded text-sm border border-gray-300 cursor-pointer hover:bg-gray-100"
+                    className="team-recruit-upload"
                   >
                     파일 선택
                   </label>
@@ -499,7 +500,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
                     <button
                       type="button"
                       onClick={handleRemoveImage}
-                      className="px-3 py-1.5 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+                      className="team-recruit-remove"
                     >
                       사진 제거
                     </button>
@@ -713,7 +714,7 @@ export default function RecruitTeamModal({ isOpen, onClose, onAddTeam, onUpdateT
             />
 
             {/* Actions */}
-            <div className="flex justify-end gap-3 pt-6 border-t border-gray-800">
+            <div className="team-recruit-actions flex justify-end gap-3">
               <button
                 type="button"
                 onClick={handleSafeClose}

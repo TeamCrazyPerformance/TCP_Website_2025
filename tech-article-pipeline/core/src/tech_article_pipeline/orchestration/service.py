@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from tech_article_pipeline.contracts import JobRecord, Stage
+from tech_article_pipeline.contracts import JobPurpose, JobRecord, Stage
 from tech_article_pipeline.persistence.base import PipelineRepository
 from tech_article_pipeline.ports import AdmissionPort, QualityPort, SummarizerPort
 
@@ -23,12 +23,29 @@ class PipelineOrchestrator:
         summarizer: SummarizerPort,
         *,
         job_max_attempts: int = 3,
+        quality_module_version: str | None = None,
     ) -> None:
         self.repository = repository
         self.admission = admission
         self.quality = quality
         self.summarizer = summarizer
         self.job_max_attempts = job_max_attempts
+        self.quality_module_version = quality_module_version
+
+    def module_versions(self) -> dict[str, dict[str, str]]:
+        return {
+            "qualityEvaluator": {
+                "moduleVersion": str(
+                    self.quality_module_version
+                    or getattr(self.quality, "module_version", "unknown")
+                ),
+            },
+            "aiSummarizer": {
+                "moduleVersion": str(getattr(self.summarizer, "module_version", "unknown")),
+                "model": str(getattr(self.summarizer, "model", "unknown")),
+                "promptVersion": str(getattr(self.summarizer, "prompt_version", "unknown")),
+            },
+        }
 
     def execute(self, job: JobRecord) -> dict[str, Any]:
         submission = self.repository.get_submission(job.submission_id)
@@ -57,6 +74,12 @@ class PipelineOrchestrator:
         return result
 
     def _quality(self, job: JobRecord, submission: dict[str, Any]) -> dict[str, Any]:
+        if job.purpose == JobPurpose.QUALITY_RECALCULATION:
+            raise StageExecutionError({
+                "code": "QUALITY_RECALCULATION_RETIRED",
+                "message": "Quality recalculation is no longer supported.",
+                "retryable": False,
+            })
         payload = submission["payload"]
         article_id = submission.get("article_id") or submission.get("articleId")
         if not article_id:
@@ -103,11 +126,10 @@ class PipelineOrchestrator:
         quality_score = quality_evaluation.get("score")
         quality_decision = quality_evaluation["decision"]
         quality_review_approved = bool(
-            submission.get("quality_review_approved")
-            or submission.get("qualityReviewApproved")
+            submission.get("quality_review_approved") or submission.get("qualityReviewApproved")
         )
         if quality_decision != "PASS" and not (
-            quality_decision == "REVIEW_REQUIRED" and quality_review_approved
+            quality_decision in {"REVIEW_REQUIRED", "REJECT"} and quality_review_approved
         ):
             raise StageExecutionError(
                 {
@@ -135,9 +157,7 @@ class PipelineOrchestrator:
                 # summarizer receives PASS only after the review approval is verified.
                 "decision": "PASS",
                 "score": (
-                    {"overall": quality_score["overall"]}
-                    if quality_score is not None
-                    else None
+                    {"overall": quality_score["overall"]} if quality_score is not None else None
                 ),
             },
             "generationOptions": payload["generationOptions"],
@@ -146,6 +166,22 @@ class PipelineOrchestrator:
         generation = result["generation"]
         if generation["status"] == "FAILED":
             raise StageExecutionError(generation["error"])
+        if job.purpose == JobPurpose.SUMMARY_REGENERATION:
+            actual_versions = {
+                "moduleVersion": generation.get("summarizerVersion"),
+                "model": generation.get("model"),
+                "promptVersion": generation.get("promptVersion"),
+            }
+            if job.target_versions and actual_versions != job.target_versions:
+                raise StageExecutionError(
+                    {
+                        "code": "SUMMARY_VERSION_MISMATCH",
+                        "message": "The worker does not match the requested summary versions.",
+                        "retryable": True,
+                    }
+                )
+            self.repository.mark_summary_regeneration_result(job.submission_id, result)
+            return result
         policy, _ = self.repository.publication_policy()
         self.repository.mark_enrichment_result(job.submission_id, result, policy)
         return result

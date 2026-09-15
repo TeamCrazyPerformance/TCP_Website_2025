@@ -5,12 +5,14 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
   StreamableFile,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, LessThan, QueryRunner, In } from 'typeorm';
+import { Repository, IsNull, In } from 'typeorm';
+import type { FindOptionsWhere } from 'typeorm';
 import { Study } from './entities/study.entity';
 import { User } from '../members/entities/user.entity';
 import { UserRole } from '../members/entities/enums/user-role.enum';
@@ -37,6 +39,8 @@ import { SearchAvailableMembersResponseDto } from './dto/response/search-availab
 
 @Injectable()
 export class StudyService {
+  private readonly logger = new Logger(StudyService.name);
+
   constructor(
     @InjectRepository(Study)
     private readonly studyRepository: Repository<Study>,
@@ -53,26 +57,58 @@ export class StudyService {
   /**
    * @description Retrieves a list of studies, with an option to filter by year.
    * @param year The optional year to filter the studies by.
+   * @param includePrivate Whether to include private studies. Only true for authenticated requests.
    * @returns A promise that resolves to an array of study summary DTOs.
    */
-  async findAll(year?: number): Promise<StudyResponseDto[]> {
-    const findOptions = {
-      where: {},
-    };
+  async findAll(
+    year?: number,
+    includePrivate = false,
+  ): Promise<StudyResponseDto[]> {
+    const where: FindOptionsWhere<Study> = {};
 
     if (year) {
-      findOptions.where = { start_year: year };
+      where.start_year = year;
+    }
+      
+    if (!includePrivate) {
+      where.is_public = true;
     }
 
-    const studies = await this.studyRepository.find(findOptions);
+    const studies = await this.studyRepository.find({
+      where,
+      relations: ['studyMembers', 'studyMembers.user'],
+    });
 
-    return studies.map((study) => ({
-      id: study.id,
-      study_name: study.study_name,
-      start_year: study.start_year,
-      study_description: study.study_description,
-      is_public: study.is_public,
-    }));
+    return studies.map((study) => {
+      const activeMembers = (study.studyMembers || []).filter((member) =>
+        [
+          StudyMemberRole.LEADER,
+          StudyMemberRole.MEMBER,
+          StudyMemberRole.NOMINEE,
+        ].includes(member.role),
+      );
+
+      const leader = activeMembers.find(
+        (member) => member.role === StudyMemberRole.LEADER,
+      );
+
+      return {
+        id: study.id,
+        study_name: study.study_name,
+        start_year: study.start_year,
+        study_description: study.study_description,
+        tag: study.tag,
+        recruit_count: study.recruit_count,
+        period: study.period,
+        apply_deadline: study.apply_deadline,
+        place: study.place,
+        way: study.way,
+        cycle: study.cycle,
+        is_public: study.is_public,
+        leader_name: leader?.user?.name || null,
+        members_count: activeMembers.length,
+      };
+    });
   }
 
   /**
@@ -146,6 +182,7 @@ export class StudyService {
         .map((member) => ({
           user_id: member.user.id,
           name: member.user.name,
+          major: member.user.major ?? null,
           role: member.role,
           profile_image: member.user.profile_image && !member.user.profile_image.startsWith('http')
             ? `/profiles/${member.user.profile_image}`
@@ -243,17 +280,47 @@ export class StudyService {
    * @returns A promise that resolves to a DTO indicating success.
    */
   async delete(id: number): Promise<SuccessResponseDto> {
-    // 1. Attempt to delete the study directly by its primary key (ID).
+    const study = await this.studyRepository.findOne({
+      where: { id },
+      relations: ['resources'],
+    });
+
+    if (!study) {
+      throw new NotFoundException('Study not found');
+    }
+
+    const resourcePaths = (study.resources || [])
+      .map((resource) => resource.dir_path)
+      .filter((resourcePath): resourcePath is string => Boolean(resourcePath));
+
+    // PostgreSQL cascades the related members, progress records, and resources
+    // as part of this single, atomic DELETE statement.
     const deleteResult = await this.studyRepository.delete(id);
 
-    // 2. Check the result to see if any rows were actually deleted.
-    // If 'affected' is 0, no study with that ID was found.
     if (deleteResult.affected === 0) {
       throw new NotFoundException('Study not found');
     }
 
-    // 3. If deletion was successful, return the success response.
+    await this.deleteResourceFiles(resourcePaths);
+
     return { success: true };
+  }
+
+  private async deleteResourceFiles(resourcePaths: string[]): Promise<void> {
+    await Promise.all(
+      resourcePaths.map(async (resourcePath) => {
+        try {
+          await fs.promises.unlink(resourcePath);
+        } catch (error) {
+          const fileError = error as NodeJS.ErrnoException;
+          if (fileError.code !== 'ENOENT') {
+            this.logger.error(
+              `Failed to delete study resource file ${resourcePath}: ${fileError.message}`,
+            );
+          }
+        }
+      }),
+    );
   }
 
   /** 5

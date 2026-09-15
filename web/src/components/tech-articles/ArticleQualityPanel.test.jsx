@@ -1,6 +1,9 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { QualityScoreAxes } from "./ArticleQualityPanel";
+import {
+  QualityEvaluationPanel,
+  QualityScoreAxes,
+} from "./ArticleQualityPanel";
 import PublicValueScoreBreakdown from "./PublicValueScoreBreakdown";
 
 describe("QualityScoreAxes", () => {
@@ -36,6 +39,25 @@ describe("QualityScoreAxes", () => {
     expect(screen.getByText("가중치 40% · 기여 36.8")).toBeInTheDocument();
   });
 
+  it("renders historical scores without a community bonus indicator", () => {
+    render(
+      <QualityEvaluationPanel
+        evaluation={{
+          decision: "PASS",
+          score: {
+            overall: 87,
+            axes: [],
+            dimensions: { communityBonus: 7 },
+          },
+        }}
+      />,
+    );
+
+    expect(screen.queryByText("개발자 호응 보너스")).not.toBeInTheDocument();
+    expect(screen.queryByText("+7점")).not.toBeInTheDocument();
+    expect(screen.getByText("87")).toBeInTheDocument();
+  });
+
   it("displays the server contribution instead of recalculating it", () => {
     render(
       <QualityScoreAxes
@@ -60,11 +82,12 @@ describe("QualityScoreAxes", () => {
   it("uses the separate minimal breakdown contract in the public article view", () => {
     render(
       <PublicValueScoreBreakdown
-        breakdown={[{ label: "사용자 정의 축", contribution: 7.25 }]}
+        breakdown={[{ label: "사용자 정의 축", contribution: 7.25, value: 91 }]}
       />,
     );
 
     expect(screen.getByText("7.25")).toBeInTheDocument();
+    expect(screen.getByText(/91 \/ 100/)).toHaveClass("score-breakdown-raw");
     expect(screen.queryByText("100 / 100")).not.toBeInTheDocument();
     expect(screen.queryByText("최종 기여 점수")).not.toBeInTheDocument();
     expect(screen.queryByText(/가중치/)).not.toBeInTheDocument();

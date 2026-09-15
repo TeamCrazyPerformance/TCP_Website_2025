@@ -16,7 +16,13 @@ export default function PublicValueScoreBreakdown({ breakdown }) {
       {items.map((item, index) => (
         <div key={`${item.label}-${index}`}>
           <dt>{item.label}</dt>
-          <dd>{finiteNumber(item.contribution) ?? "—"}</dd>
+          <dd>
+            {finiteNumber(item.contribution) ?? "—"}
+            <span className="score-breakdown-raw">
+              {" "}
+              | {finiteNumber(item.value) ?? "—"} / 100
+            </span>
+          </dd>
         </div>
       ))}
     </dl>

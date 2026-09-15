@@ -3,5 +3,14 @@ export class StudyResponseDto {
   study_name: string;
   start_year: number;
   study_description: string | null;
+  tag: string | null;
+  recruit_count: number | null;
+  period: string | null;
+  apply_deadline: Date;
+  place: string | null;
+  way: string | null;
+  cycle: string | null;
   is_public: boolean;
+  leader_name: string | null;
+  members_count: number;
 }

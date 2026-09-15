@@ -20,7 +20,7 @@
 
 ### 1.1 내 스터디 목록 조회
 
-현재 로그인한 사용자가 참여 중인 스터디 목록을 진행중/완료로 구분하여 조회합니다.
+현재 로그인한 사용자가 참여 중인 스터디 목록을 예정/진행중/완료로 구분하여 조회합니다.
 
 **Request:**
 ```
@@ -35,20 +35,33 @@ Authorization: Bearer <access_token>
     {
       "id": 1,
       "study_name": "알고리즘 스터디",
-      "period": "2026-01-01 ~ 2026-06-30",
+      "period": "2026.01.01 ~ 2026.06.30",
       "memberCount": 5,
       "way": "오프라인",
-      "tag": "알고리즘"
+      "tag": "알고리즘",
+      "progress": 35
     }
   ],
   "completedStudies": [
     {
       "id": 2,
       "study_name": "웹 개발 스터디",
-      "period": "2025-09-01 ~ 2025-12-31",
+      "period": "2025.09.01 ~ 2025.12.31",
       "memberCount": 4,
       "way": "온라인",
-      "tag": "React"
+      "tag": "React",
+      "progress": 100
+    }
+  ],
+  "upcomingStudies": [
+    {
+      "id": 3,
+      "study_name": "NestJS 스터디",
+      "period": "2026.10.01 ~ 2026.12.31",
+      "memberCount": 3,
+      "way": "오프라인",
+      "tag": "NestJS",
+      "progress": 0
     }
   ]
 }
@@ -58,6 +71,7 @@ Authorization: Bearer <access_token>
 |------|------|------|
 | `ongoingStudies` | `array` | 진행중인 스터디 목록 |
 | `completedStudies` | `array` | 완료된 스터디 목록 |
+| `upcomingStudies` | `array` | 시작 전인 스터디 목록 |
 
 **스터디 항목 필드:**
 
@@ -65,13 +79,16 @@ Authorization: Bearer <access_token>
 |------|------|------|
 | `id` | `number` | 스터디 ID |
 | `study_name` | `string` | 스터디 이름 |
-| `period` | `string` | 기간 (YYYY-MM-DD ~ YYYY-MM-DD) |
+| `period` | `string` | 기간 (YYYY.MM.DD ~ YYYY.MM.DD) |
 | `memberCount` | `number` | 참여자 수 |
 | `way` | `string` | 진행 방식 (온라인/오프라인) |
 | `tag` | `string` | 태그 |
+| `progress` | `number` | 전체 기간 중 경과 시간 비율 (0~100) |
 
 > **Note**: 
+> - 시작일 전인 스터디는 `upcomingStudies`에 포함됩니다.
 > - 종료일이 지난 스터디는 `completedStudies`에 포함됩니다.
+> - 날짜 경계와 진행률은 한국 시간 기준으로 계산됩니다.
 
 **Errors:**
 
@@ -104,7 +121,7 @@ Authorization: Bearer <access_token>
   "study_name": "알고리즘 스터디",
   "study_description": "백준 문제 풀이 스터디입니다. 매주 목표를 정하고 함께 문제를 풀어나갑니다.",
   "tag": "알고리즘",
-  "period": "2026-01-01 ~ 2026-06-30",
+  "period": "2026.01.01 ~ 2026.06.30",
   "place": "학교 스터디룸",
   "way": "오프라인",
   "memberCount": 5,
@@ -118,11 +135,11 @@ Authorization: Bearer <access_token>
 | `study_name` | `string` | 스터디 이름 |
 | `study_description` | `string` | 스터디 설명 |
 | `tag` | `string` | 태그 |
-| `period` | `string` | 기간 (YYYY-MM-DD ~ YYYY-MM-DD) |
+| `period` | `string` | 기간 (YYYY.MM.DD ~ YYYY.MM.DD) |
 | `place` | `string` | 장소 |
 | `way` | `string` | 진행 방식 |
 | `memberCount` | `number` | 현재 참여자 수 |
-| `progress` | `number` | 진행률 (0~100) |
+| `progress` | `number` | 전체 기간 중 경과 시간 비율 (0~100) |
 
 **Errors:**
 

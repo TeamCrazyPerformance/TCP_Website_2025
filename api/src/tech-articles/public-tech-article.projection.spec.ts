@@ -102,7 +102,7 @@ describe('public tech article projections', () => {
     expect(valueScore).toEqual({
       overall: 88,
       scale: { min: 0, max: 100 },
-      breakdown: [{ label: '개발 관련성', contribution: 31.85 }],
+      breakdown: [{ label: '개발 관련성', contribution: 31.85, value: 91 }],
     });
     expect(Object.keys(valueScore ?? {})).toEqual([
       'overall',
@@ -112,6 +112,7 @@ describe('public tech article projections', () => {
     expect(Object.keys(valueScore?.breakdown[0] ?? {})).toEqual([
       'label',
       'contribution',
+      'value',
     ]);
     expect(JSON.stringify(result)).not.toMatch(
       /schemaVersion|evaluatorVersion|policyVersion|decision|reason|signals|weight|relevance/,
@@ -142,7 +143,7 @@ describe('public tech article projections', () => {
     expect(valueScore).toEqual({
       overall: 91,
       scale: { min: 0, max: 100 },
-      breakdown: [{ label: '기술적 깊이', contribution: 27.3 }],
+      breakdown: [{ label: '기술적 깊이', contribution: 27.3, value: 91 }],
     });
   });
 

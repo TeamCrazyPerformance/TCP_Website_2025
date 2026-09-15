@@ -1,0 +1,300 @@
+.study-recruit-modal {
+  z-index: 1200;
+  padding: 24px;
+  background: rgba(3, 6, 12, 0.78);
+  backdrop-filter: blur(18px) saturate(115%);
+  -webkit-backdrop-filter: blur(18px) saturate(115%);
+}
+
+.study-recruit-modal .study-recruit-sheet {
+  width: min(760px, 100%);
+  max-width: 760px;
+  height: min(880px, calc(100dvh - 48px));
+  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
+  padding: 0;
+  overflow: hidden;
+  overflow: clip;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 24px;
+  background: #0b0e14;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.58);
+  color: #f5f5f7;
+  text-align: left;
+}
+
+.study-recruit-header {
+  display: flex;
+  min-height: 88px;
+  padding: 18px 24px 16px;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(11, 14, 20, 0.94);
+}
+
+.study-recruit-heading {
+  min-width: 0;
+}
+
+.study-recruit-heading h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 730;
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+}
+
+.study-recruit-heading > p:last-child {
+  margin: 6px 0 0;
+  color: #9da3ae;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.study-recruit-modal .study-recruit-close {
+  position: static;
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  flex: 0 0 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+  color: #d4d7dd;
+  font-size: 16px;
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.study-recruit-modal .study-recruit-close:hover {
+  background: rgba(255, 255, 255, 0.13);
+  color: #fff;
+}
+
+.study-recruit-modal .study-recruit-close:active {
+  transform: scale(0.96);
+}
+
+.study-recruit-form {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+  overflow: clip;
+}
+
+.study-recruit-scroll {
+  min-height: 0;
+  padding: 26px 24px 32px;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.study-recruit-scroll > * + * {
+  margin-top: 22px;
+}
+
+.study-recruit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.study-recruit-label {
+  display: block;
+  margin-bottom: 8px;
+  color: #d4d7dd;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.study-recruit-required {
+  margin-left: 2px;
+  color: #ff4d62;
+  font-weight: 800;
+}
+
+.study-recruit-hint {
+  margin: 6px 0 0;
+  color: #8b919c;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.study-recruit-range {
+  display: grid;
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 10px;
+}
+
+.study-recruit-range span {
+  color: #8b919c;
+}
+
+.study-recruit-scroll .form-input,
+.study-recruit-scroll .form-textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+}
+
+.study-recruit-scroll .form-textarea {
+  min-height: 132px;
+  resize: vertical;
+}
+
+.study-recruit-toggle-row {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 12px;
+}
+
+.study-recruit-toggle-row .toggle-switch {
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+  border: 0;
+}
+
+.study-recruit-toggle-state {
+  color: #d4d7dd;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.study-recruit-footer {
+  display: grid;
+  padding: 14px 24px calc(14px + env(safe-area-inset-bottom));
+  flex: 0 0 auto;
+  grid-template-columns: 0.72fr 1.28fr;
+  gap: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(11, 14, 20, 0.96);
+}
+
+.study-recruit-footer button {
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: 13px;
+  font-size: 14px;
+  font-weight: 700;
+  transition: filter 160ms ease, transform 160ms ease, background 160ms ease;
+}
+
+.study-recruit-footer button:active {
+  transform: scale(0.985);
+}
+
+.study-recruit-cancel {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.065);
+  color: #e4e6eb;
+}
+
+.study-recruit-cancel:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.study-recruit-submit {
+  border: 0;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.23);
+  color: var(--cta-text-color);
+}
+
+.study-recruit-submit:hover {
+  filter: brightness(1.07);
+}
+
+.study-recruit-submit:disabled {
+  cursor: not-allowed;
+  filter: none;
+  opacity: 0.55;
+}
+
+@media (max-width: 640px) {
+  .study-recruit-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 479px) {
+  .study-recruit-modal {
+    padding: 0;
+    align-items: stretch;
+    background: #0b0e14;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .study-recruit-modal .study-recruit-sheet {
+    width: 100%;
+    max-width: none;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    animation: study-recruit-sheet-enter 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .study-recruit-header {
+    min-height: 70px;
+    padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
+    align-items: center;
+  }
+
+  .study-recruit-heading h2 {
+    font-size: 19px;
+  }
+
+  .study-recruit-scroll {
+    padding: 18px 14px 26px;
+  }
+
+    .study-recruit-scroll .form-input,
+  .study-recruit-scroll .form-textarea {
+    font-size: 16px;
+  }
+
+  .study-recruit-footer {
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+    grid-template-columns: 0.68fr 1.32fr;
+    gap: 8px;
+  }
+}
+
+@keyframes study-recruit-sheet-enter {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .study-recruit-modal .study-recruit-sheet {
+    animation: none;
+  }
+
+  .study-recruit-footer button,
+  .study-recruit-modal .study-recruit-close {
+    transition: none;
+  }
+}
