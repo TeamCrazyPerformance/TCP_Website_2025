@@ -59,23 +59,40 @@ export class StudyService {
    * @returns A promise that resolves to an array of study summary DTOs.
    */
   async findAll(year?: number): Promise<StudyResponseDto[]> {
-    const findOptions = {
-      where: {},
-    };
+    const studies = await this.studyRepository.find({
+      where: year ? { start_year: year } : {},
+      relations: ['studyMembers', 'studyMembers.user'],
+    });
 
-    if (year) {
-      findOptions.where = { start_year: year };
-    }
+    return studies.map((study) => {
+      const activeMembers = (study.studyMembers || []).filter((member) =>
+        [
+          StudyMemberRole.LEADER,
+          StudyMemberRole.MEMBER,
+          StudyMemberRole.NOMINEE,
+        ].includes(member.role),
+      );
+      const leader = activeMembers.find(
+        (member) => member.role === StudyMemberRole.LEADER,
+      );
 
-    const studies = await this.studyRepository.find(findOptions);
-
-    return studies.map((study) => ({
-      id: study.id,
-      study_name: study.study_name,
-      start_year: study.start_year,
-      study_description: study.study_description,
-      is_public: study.is_public,
-    }));
+      return {
+        id: study.id,
+        study_name: study.study_name,
+        start_year: study.start_year,
+        study_description: study.study_description,
+        tag: study.tag,
+        recruit_count: study.recruit_count,
+        period: study.period,
+        apply_deadline: study.apply_deadline,
+        place: study.place,
+        way: study.way,
+        cycle: study.cycle,
+        is_public: study.is_public,
+        leader_name: leader?.user?.name || null,
+        members_count: activeMembers.length,
+      };
+    });
   }
 
   /**

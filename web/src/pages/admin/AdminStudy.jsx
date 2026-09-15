@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { apiDelete } from '../../api/client';
+import { isStudyRecruitmentClosed } from '../../utils/studyDashboard';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -56,7 +57,7 @@ const AdminStudy = () => {
             const matchTag = !filters.tag || studyTags.includes(filters.tag);
             const matchYear = !filters.year || study.start_year?.toString() === filters.year;
             // Status filter
-            const deadlinePassed = study.apply_deadline ? new Date(study.apply_deadline) < new Date() : false;
+            const deadlinePassed = isStudyRecruitmentClosed(study.apply_deadline);
             const matchStatus = !filters.status ||
                 (filters.status === 'recruiting' && !deadlinePassed) ||
                 (filters.status === 'closed' && deadlinePassed);
@@ -90,8 +91,7 @@ const AdminStudy = () => {
 
     // Check if deadline is passed
     const isDeadlinePassed = (deadline) => {
-        if (!deadline) return false;
-        return new Date(deadline) < new Date();
+        return isStudyRecruitmentClosed(deadline);
     };
 
     // Format date
@@ -284,8 +284,8 @@ const AdminStudy = () => {
                                                 </td>
                                                 <td className="p-4 text-gray-300">{study.period || '-'}</td>
                                                 <td className="p-4 text-white">
-                                                    <span className="text-green-400">{study.members_count || 0}</span>
-                                                    <span className="text-gray-500">/{study.recruit_count || '∞'}</span>
+                                                    <span className="text-green-400">{study.members_count ?? 0}</span>
+                                                    <span className="text-gray-500">/{study.recruit_count ?? '∞'}</span>
                                                 </td>
                                                 <td className="p-4 text-gray-300">{formatDate(study.apply_deadline)}</td>
                                                 <td className="p-4">
