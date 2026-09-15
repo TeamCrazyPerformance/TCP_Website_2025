@@ -129,6 +129,8 @@ def test_migrations_are_idempotent_and_checksummed(mysql_pool):
             ("003", 64),
             ("004", 64),
             ("005", 64),
+            ("006", 64),
+            ("007", 64),
         ]
     finally:
         connection.close()

@@ -11,6 +11,7 @@ from tech_article_admission import (
 from tech_article_admission.application import ArticleAdmissionService
 from tech_article_admission.persistence import MySQLConnectionPool
 from tech_article_quality import QualityEvaluator
+from tech_article_quality.evaluator import EVALUATOR_VERSION as QUALITY_EVALUATOR_VERSION
 from tech_article_sources import SourceAdapterRegistry
 
 from tech_article_pipeline.orchestration import CrawlOrchestrator, PipelineOrchestrator
@@ -58,6 +59,7 @@ def build_runtime(settings: Settings) -> Runtime:
         quality,
         summarizer,
         job_max_attempts=settings.job_max_attempts,
+        quality_module_version=QUALITY_EVALUATOR_VERSION,
     )
     registry = SourceAdapterRegistry.default(
         public_url=settings.crawler_public_url,

@@ -4,13 +4,15 @@ import copy
 import hashlib
 import json
 import threading
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 from tech_article_pipeline.catalog import language_projection, source_projection
 from tech_article_pipeline.contracts import (
     CrawlJobRecord,
+    JobPurpose,
     JobRecord,
     PublicationPolicy,
     Stage,
@@ -21,6 +23,7 @@ from .base import (
     NEW_ARTICLE_WINDOW_HOURS,
     STAGE_NAMES,
     IdempotencyConflictError,
+    InvalidArticleActionError,
     NotFoundError,
     VersionConflictError,
     crawl_error_summary,
@@ -491,6 +494,9 @@ class MemoryPipelineRepository:
             "jobId": job["job_id"],
             "submissionId": job["submission_id"],
             "stage": job["stage"],
+            "purpose": job.get("purpose", JobPurpose.PIPELINE.value),
+            "requestedBy": job.get("requested_by"),
+            "targetVersions": copy.deepcopy(job.get("target_versions")),
             "status": job["status"],
             "attemptCount": job["attempt_count"],
             "maxAttempts": job["max_attempts"],
@@ -512,10 +518,11 @@ class MemoryPipelineRepository:
                         "message": "Worker lease expired.",
                         "retryable": can_retry,
                     }
+                    job["failed_at"] = now
                     job["lease_token"] = None
                     job["lease_expires_at"] = None
-                    if not can_retry:
-                        self.submissions[job["submission_id"]]["state"] = "PROCESSING_FAILED"
+                    if not can_retry and job.get("purpose") == JobPurpose.PIPELINE.value:
+                        self._mark_processing_failed(job["submission_id"])
             candidates = sorted(
                 (
                     job
@@ -578,7 +585,23 @@ class MemoryPipelineRepository:
                         "processingStatus": "INGESTED",
                         "reviewStatus": "NOT_REQUIRED",
                         "publicationStatus": "UNPUBLISHED",
+                        "qualityRecalculationStatus": None,
                         "recordVersion": 1,
+                        "processingVersions": {
+                            "crawler": {
+                                "moduleVersion": (
+                                    self.crawl_items.get(payload["crawlItemId"], {})
+                                    .get("item_payload", {})
+                                    .get("crawl", {})
+                                    .get("crawlerVersion")
+                                ),
+                                "completedAt": self.crawl_items.get(payload["crawlItemId"], {}).get(
+                                    "produced_at"
+                                ),
+                            },
+                            "qualityEvaluator": None,
+                            "aiSummarizer": None,
+                        },
                         "createdAt": now,
                         "updatedAt": now,
                     },
@@ -614,6 +637,12 @@ class MemoryPipelineRepository:
             article["qualityScore"] = evaluation.get("score", {}).get("overall")
             decision = evaluation["decision"]
             article["qualityDecision"] = decision
+            article["qualityRecalculationStatus"] = None
+            article["processingVersions"]["qualityEvaluator"] = {
+                "moduleVersion": evaluation.get("evaluatorVersion"),
+                "policyVersion": evaluation.get("policyVersion"),
+                "completedAt": _now(),
+            }
             article["recordVersion"] += 1
             article["updatedAt"] = _now()
             if decision == "PASS":
@@ -637,6 +666,26 @@ class MemoryPipelineRepository:
                 submission["state"] = "QUALITY_REJECTED"
                 article["processingStatus"] = "QUALITY_REJECTED"
 
+    def mark_quality_recalculation_result(self, submission_id: str, result: dict[str, Any]) -> None:
+        with self._lock:
+            submission = self.submissions[submission_id]
+            article = self.articles[submission["article_id"]]
+            evaluation = result["qualityEvaluation"]
+            article["qualityEvaluation"] = copy.deepcopy(evaluation)
+            article["qualityScore"] = evaluation.get("score", {}).get("overall")
+            decision = evaluation.get("decision")
+            article["qualityDecision"] = decision
+            article["qualityRecalculationStatus"] = (
+                "PASS" if decision == "PASS" else "ATTENTION_REQUIRED"
+            )
+            article["processingVersions"]["qualityEvaluator"] = {
+                "moduleVersion": evaluation.get("evaluatorVersion"),
+                "policyVersion": evaluation.get("policyVersion"),
+                "completedAt": _now(),
+            }
+            article["recordVersion"] += 1
+            article["updatedAt"] = _now()
+
     def mark_enrichment_result(
         self,
         submission_id: str,
@@ -657,6 +706,13 @@ class MemoryPipelineRepository:
                     "processingStatus": "ENRICHED",
                 }
             )
+            generation = result.get("generation") or {}
+            article["processingVersions"]["aiSummarizer"] = {
+                "moduleVersion": generation.get("summarizerVersion"),
+                "model": generation.get("model"),
+                "promptVersion": generation.get("promptVersion"),
+                "completedAt": _now(),
+            }
             if publication_policy == PublicationPolicy.IMMEDIATE:
                 article["reviewStatus"] = "NOT_REQUIRED"
                 article["publicationStatus"] = "PUBLISHED"
@@ -670,6 +726,31 @@ class MemoryPipelineRepository:
             article["updatedAt"] = _now()
             submission["enrichment_result"] = copy.deepcopy(result)
 
+    def mark_summary_regeneration_result(self, submission_id: str, result: dict[str, Any]) -> None:
+        with self._lock:
+            submission = self.submissions[submission_id]
+            article = self.articles[submission["article_id"]]
+            enrichment = result["enrichment"]
+            article.update(
+                {
+                    "localizedTitle": enrichment["localizedTitle"],
+                    "tags": copy.deepcopy(enrichment["tags"]),
+                    "oneLineSummary": enrichment["oneLineSummary"],
+                    "summary": enrichment["summary"],
+                    "localizedContent": enrichment["localizedContent"],
+                }
+            )
+            generation = result.get("generation") or {}
+            article["processingVersions"]["aiSummarizer"] = {
+                "moduleVersion": generation.get("summarizerVersion"),
+                "model": generation.get("model"),
+                "promptVersion": generation.get("promptVersion"),
+                "completedAt": _now(),
+            }
+            article["recordVersion"] += 1
+            article["updatedAt"] = _now()
+            submission["enrichment_result"] = copy.deepcopy(result)
+
     def enqueue(
         self,
         submission_id: str,
@@ -677,6 +758,9 @@ class MemoryPipelineRepository:
         *,
         max_attempts: int,
         unique_key: str,
+        purpose: JobPurpose = JobPurpose.PIPELINE,
+        requested_by: str | None = None,
+        target_versions: dict[str, str] | None = None,
     ) -> str:
         with self._lock:
             if unique_key in self.job_keys:
@@ -687,6 +771,9 @@ class MemoryPipelineRepository:
                 "job_id": job_id,
                 "submission_id": submission_id,
                 "stage": stage.value,
+                "purpose": purpose.value,
+                "requested_by": requested_by,
+                "target_versions": copy.deepcopy(target_versions),
                 "status": "PENDING",
                 "attempt_count": 0,
                 "max_attempts": max_attempts,
@@ -729,11 +816,22 @@ class MemoryPipelineRepository:
                 status="RETRY" if can_retry else "DEAD",
                 error=copy.deepcopy(error),
                 available_at=available_at,
+                failed_at=_now(),
                 lease_token=None,
                 lease_expires_at=None,
             )
-            if not can_retry:
-                self.submissions[job.submission_id]["state"] = "PROCESSING_FAILED"
+            if not can_retry and job.purpose == JobPurpose.PIPELINE:
+                self._mark_processing_failed(job.submission_id)
+
+    def _mark_processing_failed(self, submission_id: str) -> None:
+        submission = self.submissions[submission_id]
+        submission["state"] = "PROCESSING_FAILED"
+        article_id = submission.get("article_id")
+        if article_id and article_id in self.articles:
+            article = self.articles[article_id]
+            article["processingStatus"] = "PROCESSING_FAILED"
+            article["recordVersion"] += 1
+            article["updatedAt"] = _now()
 
     def publication_policy(self) -> tuple[PublicationPolicy, int]:
         with self._lock:
@@ -831,24 +929,37 @@ class MemoryPipelineRepository:
                     counts[key] = counts.get(key, 0) + 1
             return counts
 
-    # mysql._is_new 와 같은 판정입니다.
     @staticmethod
-    def _is_new(collected_at: Any) -> bool:
-        if collected_at is None:
-            return False
-        if isinstance(collected_at, str):
-            try:
-                collected_at = datetime.fromisoformat(collected_at)
-            except ValueError:
+    def _is_new(collected_at: Any, original_published_at: Any) -> bool:
+        values: list[datetime] = []
+        for value in (collected_at, original_published_at):
+            if value is None:
                 return False
-        if collected_at.tzinfo is None:
-            collected_at = collected_at.replace(tzinfo=UTC)
-        return _now() - collected_at < timedelta(hours=NEW_ARTICLE_WINDOW_HOURS)
+            if isinstance(value, str):
+                try:
+                    value = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                except ValueError:
+                    return False
+            if value.tzinfo is None:
+                value = value.replace(tzinfo=UTC)
+            values.append(value.astimezone(UTC))
+        now = _now()
+        window = timedelta(hours=NEW_ARTICLE_WINDOW_HOURS)
+        return all(now - value < window for value in values)
 
     def _project_article(self, article: dict[str, Any]) -> dict[str, Any]:
         projected = copy.deepcopy(article)
         crawl_item = self.crawl_items.get(str(article.get("crawlItemId")))
         collected_at = crawl_item.get("produced_at") if crawl_item else None
+        quality_review = next(
+            (
+                review
+                for review in self.quality_reviews.values()
+                if review.get("articleId") == article.get("articleId")
+                and review.get("status") == "PENDING"
+            ),
+            None,
+        )
         projected.update(
             {
                 "source": source_projection(
@@ -858,11 +969,19 @@ class MemoryPipelineRepository:
                 ),
                 "originalLanguage": language_projection(article.get("language")),
                 "collectedAt": collected_at,
-                "isNew": self._is_new(collected_at),
+                "isNew": self._is_new(collected_at, article.get("originalPublishedAt")),
                 "summaryMarkdown": article.get("summary"),
                 "evaluation": copy.deepcopy(article.get("qualityEvaluation")),
                 "valueScore": article.get("qualityScore"),
                 "duplicateStatus": "UNIQUE",
+                "qualityReview": (
+                    {
+                        "caseId": quality_review.get("caseId"),
+                        "caseVersion": quality_review.get("caseVersion"),
+                    }
+                    if quality_review
+                    else None
+                ),
                 "stage": self._article_stage(article),
                 "viewCounts": copy.deepcopy(
                     self.article_views.get(
@@ -886,7 +1005,7 @@ class MemoryPipelineRepository:
             "sourceId": article.get("sourceId"),
             "canonicalUrl": article.get("canonicalUrl"),
             "originalPublishedAt": article.get("originalPublishedAt"),
-            "isNew": self._is_new(collected_at),
+            "isNew": self._is_new(collected_at, article.get("originalPublishedAt")),
         }
 
     def _project_public_detail_article(self, article: dict[str, Any]) -> dict[str, Any]:
@@ -978,6 +1097,11 @@ class MemoryPipelineRepository:
         publication_status: str | None = None,
         stage: str | None = None,
         status_mismatch: bool = False,
+        quality_recalculation_status: str | None = None,
+        quality_version_status: str | None = None,
+        current_quality_version: dict[str, str] | None = None,
+        summary_version_status: str | None = None,
+        current_summary_version: dict[str, str] | None = None,
         sort: str = "NEWEST",
     ) -> list[dict[str, Any]]:
         with self._lock:
@@ -989,6 +1113,26 @@ class MemoryPipelineRepository:
                 )
                 and (stage is None or self._article_stage(article) == stage)
                 and (not status_mismatch or self._has_status_mismatch(article))
+                and (
+                    quality_recalculation_status is None
+                    or article.get("qualityRecalculationStatus") == quality_recalculation_status
+                )
+                and (
+                    quality_version_status is None
+                    or (
+                        current_quality_version is not None
+                        and self._quality_version_status(article, current_quality_version)
+                        == quality_version_status
+                    )
+                )
+                and (
+                    summary_version_status is None
+                    or (
+                        current_summary_version is not None
+                        and self._summary_version_status(article, current_summary_version)
+                        == summary_version_status
+                    )
+                )
                 and self._matches_article(article, keyword, (), include_admin_fields=True)
             ]
             if sort == "SCORE_DESC":
@@ -1027,6 +1171,11 @@ class MemoryPipelineRepository:
         publication_status: str | None = None,
         stage: str | None = None,
         status_mismatch: bool = False,
+        quality_recalculation_status: str | None = None,
+        quality_version_status: str | None = None,
+        current_quality_version: dict[str, str] | None = None,
+        summary_version_status: str | None = None,
+        current_summary_version: dict[str, str] | None = None,
     ) -> int:
         with self._lock:
             return sum(
@@ -1037,13 +1186,100 @@ class MemoryPipelineRepository:
                 )
                 and (stage is None or self._article_stage(article) == stage)
                 and (not status_mismatch or self._has_status_mismatch(article))
+                and (
+                    quality_recalculation_status is None
+                    or article.get("qualityRecalculationStatus") == quality_recalculation_status
+                )
+                and (
+                    quality_version_status is None
+                    or (
+                        current_quality_version is not None
+                        and self._quality_version_status(article, current_quality_version)
+                        == quality_version_status
+                    )
+                )
+                and (
+                    summary_version_status is None
+                    or (
+                        current_summary_version is not None
+                        and self._summary_version_status(article, current_summary_version)
+                        == summary_version_status
+                    )
+                )
                 and self._matches_article(article, keyword, (), include_admin_fields=True)
             )
+
+    @staticmethod
+    def _quality_version_status(
+        article: dict[str, Any], current_quality_version: dict[str, str]
+    ) -> str:
+        if article.get("processingStatus") != "ENRICHED" or not article.get("qualityDecision"):
+            return "NOT_ELIGIBLE"
+        applied = (article.get("processingVersions") or {}).get("qualityEvaluator") or {}
+        if not applied.get("moduleVersion"):
+            return "UNTRACKED"
+        if applied.get("moduleVersion") == current_quality_version.get("moduleVersion"):
+            return "CURRENT"
+        return "OUTDATED"
+
+    @staticmethod
+    def _summary_version_status(
+        article: dict[str, Any], current_summary_version: dict[str, str]
+    ) -> str:
+        if article.get("processingStatus") != "ENRICHED" or not article.get("summary"):
+            return "NOT_ELIGIBLE"
+        applied = (article.get("processingVersions") or {}).get("aiSummarizer") or {}
+        fields = ("moduleVersion", "model", "promptVersion")
+        if any(not applied.get(key) for key in fields):
+            return "UNTRACKED"
+        if all(applied.get(key) == current_summary_version.get(key) for key in fields):
+            return "CURRENT"
+        return "OUTDATED"
 
     def get_article(self, article_id: str) -> dict[str, Any] | None:
         with self._lock:
             article = self.articles.get(article_id)
             return None if article is None else self._project_article(article)
+
+    def get_processing_failure(self, article_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            submission_ids = {
+                submission_id
+                for submission_id, submission in self.submissions.items()
+                if submission.get("article_id") == article_id
+            }
+            failed_jobs = [
+                job
+                for job in self.jobs.values()
+                if job.get("submission_id") in submission_ids
+                and job.get("status") == "DEAD"
+                and job.get("purpose") == JobPurpose.PIPELINE.value
+                and job.get("stage") in {Stage.QUALITY.value, Stage.ENRICHMENT.value}
+            ]
+            if not failed_jobs:
+                return None
+            job = max(
+                failed_jobs,
+                key=lambda item: (
+                    item.get("failed_at") or item.get("created_at"),
+                    item.get("created_at"),
+                    item.get("job_id", ""),
+                ),
+            )
+            error = job.get("error") if isinstance(job.get("error"), dict) else {}
+            return {
+                "stage": job["stage"],
+                "code": error.get("code") if isinstance(error.get("code"), str) else None,
+                "message": (
+                    error.get("message") if isinstance(error.get("message"), str) else None
+                ),
+                "retryable": (
+                    error.get("retryable") if isinstance(error.get("retryable"), bool) else None
+                ),
+                "attemptCount": job.get("attempt_count"),
+                "maxAttempts": job.get("max_attempts"),
+                "failedAt": job.get("failed_at") or job.get("created_at"),
+            }
 
     def record_article_view(self, article_id: str, *, member: bool) -> None:
         with self._lock:
@@ -1100,6 +1336,39 @@ class MemoryPipelineRepository:
                     "quality": self.count_review_queue("quality"),
                     "publication": self.count_review_queue("publication"),
                 },
+            }
+
+    def admin_overview(self, *, start_date: date, end_date: date) -> dict[str, Any]:
+        timezone = ZoneInfo("Asia/Seoul")
+        with self._lock:
+            daily = {
+                start_date + timedelta(days=offset): {"collectedCount": 0, "processedCount": 0}
+                for offset in range((end_date - start_date).days + 1)
+            }
+            for article in self.articles.values():
+                versions = article.get("processingVersions") or {}
+                crawler = versions.get("crawler") or {}
+                collected_at = crawler.get("completedAt")
+                if isinstance(collected_at, datetime):
+                    key = collected_at.astimezone(timezone).date()
+                    if key in daily:
+                        daily[key]["collectedCount"] += 1
+                summarizer = versions.get("aiSummarizer") or {}
+                processed_at = summarizer.get("completedAt")
+                if isinstance(processed_at, datetime):
+                    key = processed_at.astimezone(timezone).date()
+                    if key in daily:
+                        daily[key]["processedCount"] += 1
+            measured_at = _now()
+            return {
+                "storage": {
+                    "available": False,
+                    "dataBytes": 0,
+                    "indexBytes": 0,
+                    "totalBytes": 0,
+                    "measuredAt": measured_at,
+                },
+                "daily": [{"date": key.isoformat(), **counts} for key, counts in daily.items()],
             }
 
     def list_review_queue(
@@ -1163,6 +1432,12 @@ class MemoryPipelineRepository:
                             "originalPublishedAt": article.get("originalPublishedAt"),
                         }
                     )
+            elif kind == "rejected":
+                values = [
+                    self._project_article(article)
+                    for article in self.articles.values()
+                    if article["processingStatus"] == "QUALITY_REJECTED"
+                ]
             elif kind == "publication":
                 values = [
                     self._project_article(article)
@@ -1181,7 +1456,7 @@ class MemoryPipelineRepository:
             if filter_value:
                 if kind == "duplicate" and filter_value == "JACCARD":
                     values = [item for item in values if "JACCARD" in searchable(item).upper()]
-                elif kind in {"quality", "publication"}:
+                elif kind in {"quality", "rejected", "publication"}:
                     values = [
                         item
                         for item in values
@@ -1262,6 +1537,272 @@ class MemoryPipelineRepository:
                 article["processingStatus"] = "QUALITY_REJECTED"
                 submission["state"] = "QUALITY_REJECTED"
             return copy.deepcopy(case)
+
+    def reprocess_article(
+        self,
+        article_id: str,
+        *,
+        action: str,
+        expected_version: int,
+        administrator_id: str,
+        max_attempts: int,
+    ) -> dict[str, Any]:
+        with self._lock:
+            article = self.articles.get(article_id)
+            if not article:
+                raise NotFoundError(article_id)
+            if article["recordVersion"] != expected_version:
+                raise VersionConflictError(article_id)
+            submission = next(
+                (
+                    item
+                    for item in self.submissions.values()
+                    if item.get("article_id") == article_id
+                ),
+                None,
+            )
+            if submission is None:
+                raise InvalidArticleActionError("아티클의 처리 요청을 찾을 수 없습니다.")
+
+            if action == "APPROVE_QUALITY":
+                if article.get("processingStatus") != "QUALITY_REJECTED":
+                    raise InvalidArticleActionError(
+                        "품질 미달 상태의 아티클만 품질 통과로 변경할 수 있습니다."
+                    )
+                quality_result = submission.get("quality_result")
+                if not quality_result:
+                    raise InvalidArticleActionError("저장된 품질 평가 결과가 없습니다.")
+                review = next(
+                    (
+                        item
+                        for item in self.quality_reviews.values()
+                        if item.get("submissionId") == submission["submission_id"]
+                    ),
+                    None,
+                )
+                now = _now()
+                if review:
+                    review["status"] = "RESOLVED_APPROVE"
+                    review["caseVersion"] += 1
+                    review["administratorId"] = administrator_id
+                    review["resolvedAt"] = now
+                else:
+                    case_id = f"quality-review-{uuid4().hex}"
+                    self.quality_reviews[case_id] = {
+                        "caseId": case_id,
+                        "submissionId": submission["submission_id"],
+                        "articleId": article_id,
+                        "status": "RESOLVED_APPROVE",
+                        "caseVersion": 1,
+                        "evaluation": copy.deepcopy(quality_result.get("qualityEvaluation")),
+                        "administratorId": administrator_id,
+                        "resolvedAt": now,
+                        "createdAt": now,
+                    }
+                stage = Stage.ENRICHMENT
+                submission["state"] = "ENRICHMENT_PENDING"
+                article["processingStatus"] = "ENRICHMENT_PENDING"
+                article["reviewStatus"] = "APPROVED"
+            elif action == "RETRY":
+                if article.get("processingStatus") != "PROCESSING_FAILED":
+                    raise InvalidArticleActionError(
+                        "처리 실패 상태의 아티클만 재처리할 수 있습니다."
+                    )
+                failed_jobs = [
+                    item
+                    for item in self.jobs.values()
+                    if item["submission_id"] == submission["submission_id"]
+                    and item["status"] == "DEAD"
+                    and item["stage"] in {Stage.QUALITY.value, Stage.ENRICHMENT.value}
+                ]
+                if not failed_jobs:
+                    raise InvalidArticleActionError("재처리할 실패 작업을 찾을 수 없습니다.")
+                failed = max(
+                    failed_jobs,
+                    key=lambda item: (item["created_at"], item["job_id"]),
+                )
+                stage = Stage(failed["stage"])
+                if stage == Stage.QUALITY:
+                    submission["state"] = "QUALITY_PENDING"
+                    article["processingStatus"] = "INGESTED"
+                    article["reviewStatus"] = "NOT_REQUIRED"
+                else:
+                    submission["state"] = "ENRICHMENT_PENDING"
+                    article["processingStatus"] = "ENRICHMENT_PENDING"
+            else:
+                raise InvalidArticleActionError("지원하지 않는 재처리 작업입니다.")
+
+            article["recordVersion"] += 1
+            article["updatedAt"] = _now()
+            job_id = self.enqueue(
+                submission["submission_id"],
+                stage,
+                max_attempts=max_attempts,
+                unique_key=(
+                    f"{submission['submission_id']}:ADMIN:{action}:{article['recordVersion']}"
+                ),
+            )
+            return {
+                "articleId": article_id,
+                "action": action,
+                "processingStatus": article["processingStatus"],
+                "reviewStatus": article["reviewStatus"],
+                "recordVersion": article["recordVersion"],
+                "jobId": job_id,
+                "stage": stage.value,
+            }
+
+    def regenerate_summary(
+        self,
+        article_id: str,
+        *,
+        expected_version: int,
+        administrator_id: str,
+        target_versions: dict[str, str],
+        max_attempts: int,
+    ) -> dict[str, Any]:
+        with self._lock:
+            article = self.articles.get(article_id)
+            if not article:
+                raise NotFoundError(article_id)
+            if article["recordVersion"] != expected_version:
+                raise VersionConflictError(article_id)
+            if self._summary_version_status(article, target_versions) not in {
+                "OUTDATED",
+                "UNTRACKED",
+            }:
+                raise InvalidArticleActionError(
+                    "버전이 미기록되었거나 최신 버전과 다른 AI 요약만 재생성할 수 있습니다."
+                )
+            submissions = [
+                item for item in self.submissions.values() if item.get("article_id") == article_id
+            ]
+            if not submissions:
+                raise InvalidArticleActionError("아티클의 처리 요청을 찾을 수 없습니다.")
+            submission = max(
+                submissions,
+                key=lambda item: (item.get("created_at"), item.get("submission_id", "")),
+            )
+            if not submission.get("quality_result"):
+                raise InvalidArticleActionError("저장된 품질 평가 결과가 없습니다.")
+            active = next(
+                (
+                    job
+                    for job in self.jobs.values()
+                    if job.get("submission_id") == submission["submission_id"]
+                    and job.get("purpose") == JobPurpose.SUMMARY_REGENERATION.value
+                    and job.get("status") in {"PENDING", "RUNNING", "RETRY"}
+                ),
+                None,
+            )
+            if active:
+                return {
+                    "articleId": article_id,
+                    "jobId": active["job_id"],
+                    "status": active["status"],
+                    "alreadyQueued": True,
+                    "targetVersions": copy.deepcopy(active.get("target_versions")),
+                    "recordVersion": article["recordVersion"],
+                    "processingStatus": article["processingStatus"],
+                    "publicationStatus": article["publicationStatus"],
+                }
+            job_id = self.enqueue(
+                submission["submission_id"],
+                Stage.ENRICHMENT,
+                max_attempts=max_attempts,
+                unique_key=(
+                    f"{submission['submission_id']}:ADMIN:REGENERATE_SUMMARY:{uuid4().hex}"
+                ),
+                purpose=JobPurpose.SUMMARY_REGENERATION,
+                requested_by=administrator_id,
+                target_versions=target_versions,
+            )
+            return {
+                "articleId": article_id,
+                "jobId": job_id,
+                "status": "PENDING",
+                "alreadyQueued": False,
+                "targetVersions": copy.deepcopy(target_versions),
+                "recordVersion": article["recordVersion"],
+                "processingStatus": article["processingStatus"],
+                "publicationStatus": article["publicationStatus"],
+            }
+
+    def recalculate_quality(
+        self,
+        article_id: str,
+        *,
+        expected_version: int,
+        administrator_id: str,
+        target_versions: dict[str, str],
+        max_attempts: int,
+    ) -> dict[str, Any]:
+        with self._lock:
+            article = self.articles.get(article_id)
+            if not article:
+                raise NotFoundError(article_id)
+            if article["recordVersion"] != expected_version:
+                raise VersionConflictError(article_id)
+            if self._quality_version_status(article, target_versions) not in {
+                "OUTDATED",
+                "UNTRACKED",
+            }:
+                raise InvalidArticleActionError(
+                    "버전이 미기록되었거나 최신 버전과 다른 품질 평가만 재계산할 수 있습니다."
+                )
+            submissions = [
+                item for item in self.submissions.values() if item.get("article_id") == article_id
+            ]
+            if not submissions:
+                raise InvalidArticleActionError("아티클의 처리 요청을 찾을 수 없습니다.")
+            submission = max(
+                submissions,
+                key=lambda item: (item.get("created_at"), item.get("submission_id", "")),
+            )
+            if not submission.get("quality_result"):
+                raise InvalidArticleActionError("저장된 품질 평가 결과가 없습니다.")
+            active = next(
+                (
+                    job
+                    for job in self.jobs.values()
+                    if job.get("submission_id") == submission["submission_id"]
+                    and job.get("purpose") == JobPurpose.QUALITY_RECALCULATION.value
+                    and job.get("status") in {"PENDING", "RUNNING", "RETRY"}
+                ),
+                None,
+            )
+            if active:
+                return {
+                    "articleId": article_id,
+                    "jobId": active["job_id"],
+                    "status": active["status"],
+                    "alreadyQueued": True,
+                    "targetVersions": copy.deepcopy(active.get("target_versions")),
+                    "recordVersion": article["recordVersion"],
+                    "processingStatus": article["processingStatus"],
+                    "publicationStatus": article["publicationStatus"],
+                }
+            job_id = self.enqueue(
+                submission["submission_id"],
+                Stage.QUALITY,
+                max_attempts=max_attempts,
+                unique_key=(
+                    f"{submission['submission_id']}:ADMIN:RECALCULATE_QUALITY:{uuid4().hex}"
+                ),
+                purpose=JobPurpose.QUALITY_RECALCULATION,
+                requested_by=administrator_id,
+                target_versions=target_versions,
+            )
+            return {
+                "articleId": article_id,
+                "jobId": job_id,
+                "status": "PENDING",
+                "alreadyQueued": False,
+                "targetVersions": copy.deepcopy(target_versions),
+                "recordVersion": article["recordVersion"],
+                "processingStatus": article["processingStatus"],
+                "publicationStatus": article["publicationStatus"],
+            }
 
     def apply_publication_action(
         self,

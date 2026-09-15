@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import os
@@ -26,8 +27,7 @@ from .models import (
 )
 
 Clock = Callable[[], datetime]
-EVALUATOR_VERSION = "2.2.6"
-
+EVALUATOR_VERSION = "2.2.7"
 # 개편된 4대 평가 축 정의 (개발 관련성 35%, 기술적 깊이 30%, 최신성 25%, 기사 품질 10%)
 QUALITY_AXES = (
     {"key": "relevance", "label": "개발 관련성", "weight": 0.35},
@@ -36,179 +36,10 @@ QUALITY_AXES = (
     {"key": "articleQuality", "label": "기사 품질", "weight": 0.10},
 )
 
-DEVELOPER_KEYWORDS = frozenset(
-    {
-        "python",
-        "java",
-        "javascript",
-        "typescript",
-        "golang",
-        "rust",
-        "kotlin",
-        "swift",
-        "php",
-        "ruby",
-        "scala",
-        "dart",
-        "elixir",
-        "zig",
-        "lua",
-        "haskell",
-        "clojure",
-        "react",
-        "vue",
-        "next.js",
-        "nuxt",
-        "angular",
-        "svelte",
-        "tailwind",
-        "webpack",
-        "vite",
-        "redux",
-        "zustand",
-        "webassembly",
-        "three.js",
-        "webgl",
-        "docker",
-        "kubernetes",
-        "k8s",
-        "aws",
-        "gcp",
-        "azure",
-        "terraform",
-        "ansible",
-        "ci/cd",
-        "jenkins",
-        "github actions",
-        "nginx",
-        "istio",
-        "serverless",
-        "helm",
-        "prometheus",
-        "grafana",
-        "postgresql",
-        "mysql",
-        "redis",
-        "mongodb",
-        "elasticsearch",
-        "kafka",
-        "rabbitmq",
-        "sqlite",
-        "spark",
-        "airflow",
-        "vector db",
-        "milvus",
-        "pinecone",
-        "cassandra",
-        "dynamodb",
-        "clickhouse",
-        "duckdb",
-        "ai",
-        "llm",
-        "deepmind",
-        "openai",
-        "gpt",
-        "langchain",
-        "rag",
-        "pytorch",
-        "tensorflow",
-        "huggingface",
-        "machine learning",
-        "deep learning",
-        "neural network",
-        "fine-tuning",
-        "transformer",
-        "ollama",
-        "architecture",
-        "refactoring",
-        "clean code",
-        "design pattern",
-        "domain driven design",
-        "ddd",
-        "test driven development",
-        "tdd",
-        "code review",
-        "security",
-        "oauth",
-        "performance tuning",
-        "memory leak",
-        "profiling",
-        "concurrency",
-        "async",
-        "multithreading",
-        "pytest",
-        "junit",
-        "jest",
-        "cypress",
-        "playwright",
-        # [QA 피드백 반영] 대폭 확장된 로우레벨 시스템 / 네트워크 / 성능 최적화 키워드
-        "dns",
-        "cache",
-        "memory",
-        "optimization",
-        "socket",
-        "bpf",
-        "ebpf",
-        "kernel",
-        "linux",
-        "buffer",
-        "allocation",
-        "latency",
-        "throughput",
-        "tcp",
-        "udp",
-        "packet",
-        "network",
-        "process",
-        "thread",
-        "pointer",
-        "struct",
-        "algorithm",
-        "hash table",
-        "lru",
-        "trie",
-        "system",
-        "benchmark",
-        "profiling",
-        "garbage collection",
-        "gc",
-        "cpu",
-        "concurrency",
-        "io",
-        "non-blocking",
-        "event loop",
-        "epoll",
-        "kqueue",
-        "개발",
-        "개발자",
-        "프로그래밍",
-        "파이썬",
-        "자바",
-        "자바스크립트",
-        "타입스크립트",
-        "리액트",
-        "데이터베이스",
-        "클라우드",
-        "컨테이너",
-        "쿠버네티스",
-        "도커",
-        "인공지능",
-        "머신러닝",
-        "딥러닝",
-        "보안",
-        "네트워크",
-        "아키텍처",
-        "오픈소스",
-        "배포",
-        "테스트",
-        "성능",
-        "서버",
-        "프론트엔드",
-        "백엔드",
-        "모바일",
-        "운영체제",
-    }
-)
+from .keywords_manager import CORE_IMMUTABLE_KEYWORDS, get_combined_developer_keywords
+
+DEVELOPER_KEYWORDS = get_combined_developer_keywords()
+KEYWORDS_LOADED_AT = datetime.now(UTC).isoformat()
 
 NON_ARTICLE_PATTERN = re.compile(
     r"\b(subscribe|learning center|webinars archives|archive|showcase|landscape|sponsors?)\b",
@@ -230,6 +61,19 @@ class QualityEvaluator:
 
     def __init__(self, *, clock: Clock = _utcnow) -> None:
         self._clock = clock
+
+    def keyword_snapshot(self) -> dict[str, Any]:
+        keywords = sorted(DEVELOPER_KEYWORDS)
+        core = sorted(DEVELOPER_KEYWORDS & CORE_IMMUTABLE_KEYWORDS)
+        dynamic = sorted(DEVELOPER_KEYWORDS - CORE_IMMUTABLE_KEYWORDS)
+        return {
+            "loadedAt": KEYWORDS_LOADED_AT,
+            "fingerprint": hashlib.sha256("\n".join(keywords).encode()).hexdigest(),
+            "totalCount": len(keywords),
+            "coreKeywords": core,
+            "dynamicKeywords": dynamic,
+            "refreshPolicy": "PROCESS_START",
+        }
 
     def evaluate(self, input_data: Mapping[str, Any]) -> dict[str, Any]:
         article_id = input_data.get("articleId", "") if isinstance(input_data, Mapping) else ""
@@ -350,19 +194,25 @@ class QualityEvaluator:
 
     @staticmethod
     def evaluate_developer_relevance(article: Article) -> int:
-        """TF-IDF Sigmoid (math.tanh) 키워드 밀도 알고리즘 (가중치 35%)"""
+        """TF-IDF Sigmoid (math.tanh) 토큰 밀도 알고리즘 (가중치 35%)"""
         if NON_ARTICLE_PATTERN.search(article.title):
             return 0
         if len(article.content.strip()) < 200:
             return 0
         text = f"{article.title} {article.content}".lower()
-        tokens = TOKEN_PATTERN.findall(text)
+        tokens = [token.lower() for token in TOKEN_PATTERN.findall(text)]
         if not tokens:
             return 0
+        token_counts = Counter(tokens)
         tf_sum = 0.0
         for keyword in DEVELOPER_KEYWORDS:
-            count = text.count(keyword)
-            if count:
+            kw = keyword.lower()
+            if " " in kw or "-" in kw:
+                pattern = re.compile(r"\b" + re.escape(kw) + r"\b", re.IGNORECASE)
+                count = len(pattern.findall(text))
+            else:
+                count = token_counts.get(kw, 0)
+            if count > 0:
                 tf_sum += 1.0 + math.log(count)
         return round(100.0 * math.tanh(75.0 * (tf_sum / len(tokens))))
 
@@ -384,14 +234,14 @@ class QualityEvaluator:
                 model_name = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={effective_key}"
                 prompt = (
-                    "Evaluate the technical depth of this engineering article on a scale of 0 to 100 based on these 4 rubrics:\n"
-                    "1. Code & Command Precision (0-30 pts): Contains code snippets, shell commands, or config schemas.\n"
-                    "2. Systems & Architectural Insight (0-30 pts): Discusses low-level internals, memory, protocols, or architecture.\n"
-                    "3. Production Problem-Solving (0-30 pts): Explains root cause analysis, performance tuning, benchmarks, or scalability.\n"
-                    "4. Professional Specificity (0-10 pts): Uses precise domain-specific engineering vocabulary instead of marketing hype.\n\n"
+                    "Evaluate the technical depth and engineering value of this tech article on a scale of 0 to 100 based on these 4 rubrics:\n"
+                    "1. Technical Utility & Open-Source/Tooling News (0-30 pts): Discusses useful open-source tools, CLI utilities, libraries, frameworks, or developer productivity announcements.\n"
+                    "2. Systems & Architectural Insight (0-30 pts): Explains low-level internals, memory allocation, network protocols, system architecture, or code/config schemas.\n"
+                    "3. Production Engineering & Problem-Solving (0-30 pts): Details real-world outage root-cause analysis, performance tuning, benchmarks, or scalability challenges.\n"
+                    "4. Engineering Specificity & Rigor (0-10 pts): Uses precise domain-specific engineering vocabulary instead of high-level marketing hype.\n\n"
                     f"Title: {article.title}\n"
                     f"Content: {article.content[:1500]}\n\n"
-                    f'Return JSON only: {{"depth_score": number, "reasoning": "brief explanation"}}'
+                    f'Return JSON format only: {{"depth_score": number, "reasoning": "brief explanation"}}'
                 )
                 payload = {
                     "contents": [{"parts": [{"text": prompt}]}],
@@ -419,14 +269,14 @@ class QualityEvaluator:
                 "Authorization": f"Bearer {effective_key}",
             }
             prompt = (
-                "Evaluate the technical depth of this engineering article on a scale of 0 to 100 based on these 4 rubrics:\n"
-                "1. Code & Command Precision (0-30 pts): Contains code snippets, shell commands, or config schemas.\n"
-                "2. Systems & Architectural Insight (0-30 pts): Discusses low-level internals, memory, protocols, or architecture.\n"
-                "3. Production Problem-Solving (0-30 pts): Explains root cause analysis, performance tuning, benchmarks, or scalability.\n"
-                "4. Professional Specificity (0-10 pts): Uses precise domain-specific engineering vocabulary instead of marketing hype.\n\n"
+                "Evaluate the technical depth and engineering value of this tech article on a scale of 0 to 100 based on these 4 rubrics:\n"
+                "1. Technical Utility & Open-Source/Tooling News (0-30 pts): Discusses useful open-source tools, CLI utilities, libraries, frameworks, or developer productivity announcements.\n"
+                "2. Systems & Architectural Insight (0-30 pts): Explains low-level internals, memory allocation, network protocols, system architecture, or code/config schemas.\n"
+                "3. Production Engineering & Problem-Solving (0-30 pts): Details real-world outage root-cause analysis, performance tuning, benchmarks, or scalability challenges.\n"
+                "4. Engineering Specificity & Rigor (0-10 pts): Uses precise domain-specific engineering vocabulary instead of high-level marketing hype.\n\n"
                 f"Title: {article.title}\n"
                 f"Content: {article.content[:1500]}\n\n"
-                f'Return JSON only: {{"depth_score": number, "reasoning": "brief explanation"}}'
+                f'Return JSON format only: {{"depth_score": number, "reasoning": "brief explanation"}}'
             )
             payload = {
                 "model": "gpt-4o-mini",

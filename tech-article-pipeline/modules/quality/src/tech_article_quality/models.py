@@ -15,11 +15,18 @@ class Source(ContractModel):
 
 
 class Article(ContractModel):
+    model_config = ConfigDict(populate_by_name=True, extra="ignore")
+
     title: str = Field(min_length=1, max_length=1_000)
     content: str = Field(min_length=1)
     language: str = Field(min_length=2, max_length=16)
     authors: list[str] = Field(default_factory=list)
     original_published_at: datetime | None = Field(alias="originalPublishedAt", default=None)
+    stars_today: int | None = Field(alias="starsToday", default=None)
+    likes: int | None = Field(default=None)
+    views: int | None = Field(default=None)
+    comments: int | None = Field(default=None)
+    extra: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("language")
     @classmethod

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
 from tech_article_quality import QualityEvaluator
 
 NOW = datetime(2026, 8, 16, 12, 0, tzinfo=UTC)
@@ -106,3 +108,35 @@ def test_invalid_timestamp_returns_failure_contract():
     result = evaluator().evaluate(payload)
     assert result["qualityEvaluation"]["status"] == "FAILED"
     assert result["qualityEvaluation"]["error"]["code"] == "INVALID_INPUT"
+
+
+@pytest.mark.parametrize("source_id,engagement", [
+    ("github-trending", {"starsToday": 1000}),
+    ("hugging-face-blog", {"likes": 1000}),
+    ("infoq", {"views": 10000, "comments": 100}),
+    ("sdtimes", {"views": 10000, "comments": 100}),
+])
+@pytest.mark.parametrize("nested", [False, True])
+@pytest.mark.parametrize("axis_score,decision", [
+    (65, "REVIEW_REQUIRED"), (40, "REJECT"), (75, "PASS"),
+])
+def test_engagement_does_not_change_score_or_decision(
+    monkeypatch, source_id, engagement, nested, axis_score, decision,
+):
+    # Fix all four axes, including LLM depth, to isolate bonus removal at boundaries.
+    for method in ("evaluate_developer_relevance", "evaluate_technical_depth_llm",
+                   "evaluate_timeliness", "evaluate_article_quality"):
+        monkeypatch.setattr(QualityEvaluator, method,
+                            staticmethod(lambda *args, **kwargs: axis_score))
+    payload = request()
+    payload["source"]["sourceId"] = source_id
+    baseline = evaluator().evaluate(payload)["qualityEvaluation"]
+    payload["article"].update({"extra": engagement} if nested else engagement)
+    evaluation = evaluator().evaluate(payload)["qualityEvaluation"]
+    assert evaluation == baseline
+    assert evaluation["score"]["overall"] == axis_score
+    assert evaluation["decision"] == decision
+    assert evaluation["evaluatorVersion"] == "2.2.7"
+    assert "communityBonus" not in evaluation["score"]["dimensions"]
+    assert "보너스" not in evaluation["reason"]
+    assert round(sum(axis["contribution"] for axis in evaluation["score"]["axes"])) == axis_score

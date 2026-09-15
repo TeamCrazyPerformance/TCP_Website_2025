@@ -4,9 +4,11 @@ import { useNavigate, Link } from 'react-router-dom';
 import { apiGet } from '../api/client';
 import PublicPageHero from '../components/public/PublicPageHero';
 import { useScrollReveal } from '../hooks/useScrollReveal';
+import { useAuth } from '../context/AuthContext';
 
 function Announcement() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [announcements, setAnnouncements] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,17 +32,17 @@ function Announcement() {
           summary: item.summary,
           author: item.author?.name || '관리자',
         }));
-        // publishAt 먼저, 같으면 createdAt 기준으로 정렬 (내림차순)
+        // Sort by publishAt, falling back to createdAt, newest first
         const sorted = mapped.sort((a, b) => {
           const dateA = new Date(a.publishAt || a.createdAt);
           const dateB = new Date(b.publishAt || b.createdAt);
 
-          // publishAt 비교
+          // Compare publishAt
           if (dateB.getTime() !== dateA.getTime()) {
             return dateB - dateA;
           }
 
-          // publishAt이 같으면 createdAt으로 비교
+          // Fall back to createdAt when publishAt ties
           return new Date(b.createdAt) - new Date(a.createdAt);
         });
         if (isMounted) {
@@ -65,7 +67,7 @@ function Announcement() {
     };
   }, []);
 
-  // 페이지네이션 계산
+  // Pagination
   const totalPages = Math.ceil(announcements.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -75,6 +77,9 @@ function Announcement() {
     '.scroll-fade',
     `${currentPage}:${currentAnnouncements.map((item) => item.id).join(',')}`,
   );
+
+  // The API enforces the same rule; this only hides the entry point.
+  const canWrite = user?.role === 'ADMIN';
 
   const handleWriteClick = () => {
     navigate('/announcement/write');
@@ -133,12 +138,14 @@ function Announcement() {
             <h2 className="orbitron text-3xl md:text-4xl font-bold gradient-text">
               공지사항
             </h2>
-            <button
-              className="announcement-write-button cta-button primary-cta-text px-6 py-2 rounded-lg text-sm font-bold transition-colors"
-              onClick={handleWriteClick}
-            >
-              <i className="fas fa-edit mr-2"></i> 글쓰기
-            </button>
+            {canWrite && (
+              <button
+                className="announcement-write-button cta-button primary-cta-text px-6 py-2 rounded-lg text-sm font-bold transition-colors"
+                onClick={handleWriteClick}
+              >
+                <i className="fas fa-edit mr-2"></i> 글쓰기
+              </button>
+            )}
           </div>
 
           <div className="space-y-6">

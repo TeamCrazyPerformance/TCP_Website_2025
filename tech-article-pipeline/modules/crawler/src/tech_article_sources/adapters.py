@@ -13,6 +13,7 @@ from feed_article_pipeline import (
     FeedHttpClient,
     FeedSourceProfile,
 )
+from feed_article_pipeline.pipeline import CRAWLER_VERSION as FEED_CRAWLER_VERSION
 from github_trending_pipeline import (
     CrawlOptions as GitHubTrendingCrawlOptions,
 )
@@ -22,6 +23,7 @@ from github_trending_pipeline import (
 from github_trending_pipeline import (
     GitHubTrendingPipeline,
 )
+from github_trending_pipeline import __version__ as GITHUB_TRENDING_VERSION
 from github_trending_pipeline.http_client import GitHubTrendingHttpClient
 from sdtimes_crawler.crawler import SDTimesCrawler
 from sdtimes_crawler.models import (
@@ -56,6 +58,7 @@ from technical_news_pipeline.contracts import (
     SourceType as InfoQSourceType,
 )
 from technical_news_pipeline.http_client import InfoQHttpClient
+from technical_news_pipeline.infoq import CRAWLER_VERSION as INFOQ_CRAWLER_VERSION
 from technical_news_pipeline.infoq import InfoQCollector
 from technical_news_pipeline.pipeline import InfoQPipeline
 from technical_news_pipeline.storage import InMemoryRawCrawlRepository
@@ -74,6 +77,8 @@ class SourceAdapterError(RuntimeError):
 
 
 class SourceAdapter(Protocol):
+    module_version: str
+
     def run(self, crawl_run_id: str, request: dict[str, Any]) -> CrawlBatch: ...
 
 
@@ -92,6 +97,7 @@ class CloudflareSourceAdapter:
         self.public_url = public_url
         self.contact = contact
         self.repository = InMemoryIngestionRepository()
+        self.module_version = "1.0.0"
 
     def run(self, crawl_run_id: str, request: dict[str, Any]) -> CrawlBatch:
         source = _source(request)
@@ -132,6 +138,7 @@ class CloudflareSourceAdapter:
 class InfoQSourceAdapter:
     def __init__(self, *, user_agent: str | None = None) -> None:
         self.user_agent = user_agent
+        self.module_version = INFOQ_CRAWLER_VERSION
 
     def run(self, crawl_run_id: str, request: dict[str, Any]) -> CrawlBatch:
         source = _source(request)
@@ -174,9 +181,7 @@ class InfoQSourceAdapter:
                 request_timeout_ms=options["requestTimeoutMs"],
             ),
         )
-        http_options: dict[str, Any] = {
-            "timeout_seconds": options["requestTimeoutMs"] / 1000
-        }
+        http_options: dict[str, Any] = {"timeout_seconds": options["requestTimeoutMs"] / 1000}
         if self.user_agent:
             http_options["user_agent"] = self.user_agent
         pipeline = InfoQPipeline(
@@ -200,6 +205,7 @@ class SDTimesSourceAdapter:
     ) -> None:
         self.crawler = crawler or SDTimesCrawler()
         self.normalizer = normalizer or SDTimesNormalizer()
+        self.module_version = self.crawler.crawler_version
 
     def run(self, crawl_run_id: str, request: dict[str, Any]) -> CrawlBatch:
         source = _source(request)
@@ -262,6 +268,7 @@ class GitHubTrendingSourceAdapter:
         self.public_url = public_url
         self.contact = contact
         self.pipeline = pipeline
+        self.module_version = GITHUB_TRENDING_VERSION
 
     def run(self, crawl_run_id: str, request: dict[str, Any]) -> CrawlBatch:
         source = _source(request)
@@ -297,8 +304,7 @@ class GitHubTrendingSourceAdapter:
         http: GitHubTrendingHttpClient | None = None
         if pipeline is None:
             user_agent = (
-                "TCP-Tech-Article-Pipeline/0.2 "
-                f"(+{self.public_url}; contact={self.contact})"
+                f"TCP-Tech-Article-Pipeline/0.2 (+{self.public_url}; contact={self.contact})"
             )
             http = GitHubTrendingHttpClient(
                 user_agent=user_agent,
@@ -311,16 +317,12 @@ class GitHubTrendingSourceAdapter:
             if http is not None:
                 http.close()
         return CrawlBatch(
-            completion=result.crawl_run_completed.model_dump(
-                by_alias=True, mode="json"
-            ),
+            completion=result.crawl_run_completed.model_dump(by_alias=True, mode="json"),
             crawl_items=[
-                item.model_dump(by_alias=True, mode="json")
-                for item in result.crawl_items
+                item.model_dump(by_alias=True, mode="json") for item in result.crawl_items
             ],
             normalized_articles=[
-                item.model_dump(by_alias=True, mode="json")
-                for item in result.normalized_articles
+                item.model_dump(by_alias=True, mode="json") for item in result.normalized_articles
             ],
         )
 
@@ -338,6 +340,7 @@ class FeedArticleSourceAdapter:
         self.profile = profile
         self.user_agent = user_agent
         self.http_factory = http_factory
+        self.module_version = FEED_CRAWLER_VERSION
 
     def run(self, crawl_run_id: str, request: dict[str, Any]) -> CrawlBatch:
         options = _options(request)
@@ -351,9 +354,7 @@ class FeedArticleSourceAdapter:
         except FeedFetchError as exc:
             raise SourceAdapterError(exc.code, str(exc), retryable=exc.retryable) from exc
         except (KeyError, TypeError, ValueError) as exc:
-            raise SourceAdapterError(
-                "SOURCE_REQUEST_INVALID", str(exc), retryable=False
-            ) from exc
+            raise SourceAdapterError("SOURCE_REQUEST_INVALID", str(exc), retryable=False) from exc
         return CrawlBatch(
             completion=result.crawl_run_completed,
             crawl_items=result.crawl_items,
@@ -374,13 +375,9 @@ class SourceAdapterRegistry:
         if public_url and contact:
             user_agent = f"TCP-Tech-Article-Pipeline/0.2 (+{public_url}; contact={contact})"
         adapters: dict[str, SourceAdapter] = {
-            "cloudflare-blog": CloudflareSourceAdapter(
-                public_url=public_url, contact=contact
-            ),
+            "cloudflare-blog": CloudflareSourceAdapter(public_url=public_url, contact=contact),
             "infoq": InfoQSourceAdapter(user_agent=user_agent),
-            "sdtimes": SDTimesSourceAdapter(
-                crawler=SDTimesCrawler(user_agent=user_agent)
-            ),
+            "sdtimes": SDTimesSourceAdapter(crawler=SDTimesCrawler(user_agent=user_agent)),
             "github-trending": GitHubTrendingSourceAdapter(
                 public_url=public_url,
                 contact=contact,
@@ -388,9 +385,7 @@ class SourceAdapterRegistry:
         }
         adapters.update(
             {
-                source_id: FeedArticleSourceAdapter(
-                    profile, user_agent=user_agent
-                )
+                source_id: FeedArticleSourceAdapter(profile, user_agent=user_agent)
                 for source_id, profile in FEED_SOURCE_PROFILES.items()
             }
         )
@@ -399,6 +394,15 @@ class SourceAdapterRegistry:
     @property
     def source_ids(self) -> tuple[str, ...]:
         return tuple(sorted(self._adapters))
+
+    def module_versions(self) -> list[dict[str, str]]:
+        return [
+            {
+                "sourceId": source_id,
+                "moduleVersion": adapter.module_version,
+            }
+            for source_id, adapter in sorted(self._adapters.items())
+        ]
 
     def run(self, crawl_run_id: str, request: dict[str, Any]) -> CrawlBatch:
         source_id = request["source"]["sourceId"]
