@@ -7,12 +7,14 @@ Layer 2: 동적 트렌딩 키워드 (Dynamic Trending Set - Stack Overflow & Git
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import time
+import tempfile
 import urllib.request
 import zlib
-from typing import Set
+from pathlib import Path
 
 # =====================================================================
 # Layer 1: 절대로 삭제되지 않는 영구 보존 코어 사전 (Core Immutable Set)
@@ -104,8 +106,34 @@ def fetch_stackoverflow_popular_tags(limit: int = 150) -> set[str]:
     return extracted
 
 
-KEYWORD_JSON_PATH = os.path.join(os.path.dirname(__file__), "keywords.json")
-KEYWORD_HISTORY_PATH = os.path.join(os.path.dirname(__file__), "keywords_history.json")
+# Bundled seed is read-only; runtime updates must never modify tracked source files.
+SEED_KEYWORD_PATH = Path(__file__).with_name("keywords.json")
+CACHE_DIR = Path(os.environ.get(
+    "QUALITY_KEYWORD_CACHE_DIR", str(Path.home() / ".cache" / "tech-article-quality")
+))
+KEYWORD_JSON_PATH = str(CACHE_DIR / "keywords.json")
+KEYWORD_HISTORY_PATH = str(CACHE_DIR / "keywords_history.json")
+logger = logging.getLogger(__name__)
+
+
+def _atomic_write_json(path: str, payload: dict) -> None:
+    target = Path(path)
+    if target.resolve() in {
+        SEED_KEYWORD_PATH.resolve(), SEED_KEYWORD_PATH.with_name("keywords_history.json").resolve()
+    }:
+        raise OSError("Keyword cache must not overwrite bundled source data")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=target.parent,
+                                         delete=False) as handle:
+            temporary = handle.name
+            json.dump(payload, handle, ensure_ascii=False, indent=2)
+        os.replace(temporary, target)
+    finally:
+        if temporary and os.path.exists(temporary):
+            os.unlink(temporary)
+
 CACHE_TTL_SECONDS = 86_400  # 24시간 (하루 1회 자정 동기화 주기)
 
 
@@ -134,19 +162,20 @@ def record_keyword_history_diff(old_keywords: set[str], new_keywords: set[str]) 
         try:
             with open(KEYWORD_HISTORY_PATH, "r", encoding="utf-8") as f:
                 history_list = json.load(f).get("history", [])
+                if not isinstance(history_list, list):
+                    history_list = []
         except Exception:
             history_list = []
 
     history_list.insert(0, entry)
 
-    with open(KEYWORD_HISTORY_PATH, "w", encoding="utf-8") as f:
-        json.dump({"history": history_list}, f, ensure_ascii=False, indent=2)
+    _atomic_write_json(KEYWORD_HISTORY_PATH, {"history": history_list})
 
 
 def save_keywords_to_json(combined_keywords: frozenset[str] | set[str]) -> str:
-    """모듈 디렉터리 내부 keywords.json 에 키워드 동적 영구 저장 및 히스토리 기록"""
+    """별도 런타임 캐시에 사전 및 변경 이력을 저장합니다."""
     old_keywords = load_keywords_from_json() or set()
-    new_keywords = set(combined_keywords)
+    new_keywords = set(combined_keywords) | CORE_IMMUTABLE_KEYWORDS
 
     core_list = sorted(list(CORE_IMMUTABLE_KEYWORDS))
     dynamic_list = sorted(list(new_keywords - CORE_IMMUTABLE_KEYWORDS))
@@ -163,8 +192,7 @@ def save_keywords_to_json(combined_keywords: frozenset[str] | set[str]) -> str:
         "layer_2_dynamic_trending_keywords": dynamic_list,
         "all_combined_keywords": all_combined,
     }
-    with open(KEYWORD_JSON_PATH, "w", encoding="utf-8") as f:
-        json.dump(payload, f, ensure_ascii=False, indent=2)
+    _atomic_write_json(KEYWORD_JSON_PATH, payload)
 
     # 히스토리 변경점 자동 기록
     record_keyword_history_diff(set(old_keywords), new_keywords)
@@ -172,47 +200,43 @@ def save_keywords_to_json(combined_keywords: frozenset[str] | set[str]) -> str:
     return KEYWORD_JSON_PATH
 
 
-def load_keywords_from_json() -> frozenset[str] | None:
-    """keywords.json 파일이 존재하면 읽어서 frozenset으로 반환"""
-    if os.path.exists(KEYWORD_JSON_PATH):
-        try:
-            with open(KEYWORD_JSON_PATH, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                all_keywords = data.get("all_combined_keywords") or (
-                    data.get("layer_1_core_immutable_keywords", [])
-                    + data.get("layer_2_dynamic_trending_keywords", [])
-                )
-                if all_keywords:
-                    return frozenset(all_keywords)
-        except Exception:
-            pass
-    return None
+def load_keywords_from_json(path: str | Path | None = None) -> frozenset[str] | None:
+    """Read a valid dictionary; malformed caches are ignored without blocking startup."""
+    try:
+        with open(path if path is not None else KEYWORD_JSON_PATH, encoding="utf-8") as handle:
+            data = json.load(handle)
+        keywords = data.get("all_combined_keywords")
+        if keywords is None:
+            keywords = (data.get("layer_1_core_immutable_keywords", [])
+                        + data.get("layer_2_dynamic_trending_keywords", []))
+        if not isinstance(keywords, list) or not keywords:
+            return None
+        if not all(isinstance(word, str) and word.strip() == word and word for word in keywords):
+            return None
+        return frozenset(keywords) | CORE_IMMUTABLE_KEYWORDS
+    except (OSError, ValueError, TypeError, AttributeError):
+        return None
 
 
 def get_combined_developer_keywords(max_dynamic_capacity: int = 250) -> frozenset[str]:
-    """
-    Layer 1 (코어 영구 보존 키워드) + Layer 2 (동적 트렌딩 키워드) 결합
-    - 하루 1회 (24시간) 동기화 주기 적용: keywords.json 이 24시간 이내면 즉시 캐시 사용
-    - 24시간 초과 시 API 실시간 호출 후 keywords.json 자동 갱신
-    """
-    # 24시간 이내의 유효한 캐시가 있으면 외부 API 호출 없이 즉시 로드 (0ms 초고속)
-    if os.path.exists(KEYWORD_JSON_PATH):
-        file_age = time.time() - os.path.getmtime(KEYWORD_JSON_PATH)
-        if file_age < CACHE_TTL_SECONDS:
-            cached = load_keywords_from_json()
-            if cached:
+    """Refresh at process start after 24h; keep the last valid dictionary on failure."""
+    cached = load_keywords_from_json()
+    fallback = cached or load_keywords_from_json(SEED_KEYWORD_PATH) or CORE_IMMUTABLE_KEYWORDS
+    if cached:
+        try:
+            if 0 <= time.time() - os.path.getmtime(KEYWORD_JSON_PATH) < CACHE_TTL_SECONDS:
                 return cached
+        except OSError:
+            pass
 
-    # 24시간이 넘었거나 파일이 없으면 API 실시간 수집 및 갱신
     dynamic_tags = fetch_stackoverflow_popular_tags(limit=150)
-    
-    # 불용어 제거 및 고정 크기 제한 (최대 250개)
-    filtered_dynamic = {tag for tag in dynamic_tags if tag not in STOPWORDS and tag not in CORE_IMMUTABLE_KEYWORDS}
-    sorted_dynamic = sorted(list(filtered_dynamic))[:max_dynamic_capacity]
-    
-    combined = set(CORE_IMMUTABLE_KEYWORDS).union(sorted_dynamic)
-    frozenset_combined = frozenset(combined)
-    
-    # 모듈 상대 경로 내부 keywords.json 영구 보존 저장
-    save_keywords_to_json(frozenset_combined)
-    return frozenset_combined
+    if not dynamic_tags:
+        logger.warning("Keyword refresh returned no tags; retaining the last valid dictionary")
+        return fallback
+    filtered = dynamic_tags - STOPWORDS - CORE_IMMUTABLE_KEYWORDS
+    combined = CORE_IMMUTABLE_KEYWORDS | frozenset(sorted(filtered)[:max_dynamic_capacity])
+    try:
+        save_keywords_to_json(combined)
+    except OSError:
+        logger.warning("Keyword cache could not be saved; using refreshed keywords in memory")
+    return combined
