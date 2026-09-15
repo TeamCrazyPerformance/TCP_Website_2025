@@ -74,7 +74,10 @@ describe('StudyService.findAll', () => {
 
     await service.findAll();
 
-    expect(find).toHaveBeenCalledWith({ where: { is_public: true } });
+    expect(find).toHaveBeenCalledWith({
+      where: { is_public: true },
+      relations: ['studyMembers', 'studyMembers.user'],
+    });
   });
 
   it('keeps the year filter alongside the public restriction', async () => {
@@ -84,6 +87,7 @@ describe('StudyService.findAll', () => {
 
     expect(find).toHaveBeenCalledWith({
       where: { start_year: 2026, is_public: true },
+      relations: ['studyMembers', 'studyMembers.user'],
     });
   });
 
@@ -92,6 +96,9 @@ describe('StudyService.findAll', () => {
 
     await service.findAll(2026, true);
 
-    expect(find).toHaveBeenCalledWith({ where: { start_year: 2026 } });
+    expect(find).toHaveBeenCalledWith({
+      where: { start_year: 2026 },
+      relations: ['studyMembers', 'studyMembers.user'],
+    });
   });
 });
