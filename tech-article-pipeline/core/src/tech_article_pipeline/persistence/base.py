@@ -78,6 +78,16 @@ def crawl_error_summary(
 class PipelineRepository(Protocol):
     def check_readiness(self) -> None: ...
 
+    def load_active_keyword_dictionary(self) -> dict[str, Any] | None: ...
+
+    def save_keyword_dictionary(
+        self, *, keywords: set[str], source: str, previous_keywords: set[str]
+    ) -> dict[str, Any]: ...
+
+    def record_keyword_update_failure(self, *, source: str, error_message: str) -> None: ...
+
+    def get_keyword_dictionary_status(self) -> dict[str, Any]: ...
+
     def submit(
         self,
         *,

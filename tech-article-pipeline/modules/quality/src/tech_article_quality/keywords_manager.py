@@ -14,7 +14,9 @@ import time
 import tempfile
 import urllib.request
 import zlib
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any, Protocol
 
 # =====================================================================
 # Layer 1: 절대로 삭제되지 않는 영구 보존 코어 사전 (Core Immutable Set)
@@ -116,6 +118,27 @@ KEYWORD_HISTORY_PATH = str(CACHE_DIR / "keywords_history.json")
 logger = logging.getLogger(__name__)
 
 
+class KeywordDictionaryStore(Protocol):
+    """Persistence boundary owned by the pipeline, not by this library."""
+
+    def load_active_keyword_dictionary(self) -> dict[str, Any] | None: ...
+
+    def save_keyword_dictionary(
+        self, *, keywords: set[str], source: str, previous_keywords: set[str]
+    ) -> dict[str, Any]: ...
+
+    def record_keyword_update_failure(self, *, source: str, error_message: str) -> None: ...
+
+
+KEYWORD_STORE: KeywordDictionaryStore | None = None
+
+
+def configure_keyword_store(store: KeywordDictionaryStore | None) -> None:
+    """Configure durable storage from the pipeline runtime."""
+    global KEYWORD_STORE
+    KEYWORD_STORE = store
+
+
 def _atomic_write_json(path: str, payload: dict) -> None:
     target = Path(path)
     if target.resolve() in {
@@ -134,7 +157,7 @@ def _atomic_write_json(path: str, payload: dict) -> None:
         if temporary and os.path.exists(temporary):
             os.unlink(temporary)
 
-CACHE_TTL_SECONDS = 86_400  # 24시간 (하루 1회 자정 동기화 주기)
+CACHE_TTL_SECONDS = 86_400  # 마지막 성공 저장 시점부터 24시간
 
 
 def record_keyword_history_diff(old_keywords: set[str], new_keywords: set[str]) -> None:
@@ -218,25 +241,83 @@ def load_keywords_from_json(path: str | Path | None = None) -> frozenset[str] | 
         return None
 
 
-def get_combined_developer_keywords(max_dynamic_capacity: int = 250) -> frozenset[str]:
-    """Refresh at process start after 24h; keep the last valid dictionary on failure."""
-    cached = load_keywords_from_json()
-    fallback = cached or load_keywords_from_json(SEED_KEYWORD_PATH) or CORE_IMMUTABLE_KEYWORDS
-    if cached:
+def _snapshot_keywords(snapshot: dict[str, Any] | None) -> frozenset[str] | None:
+    if not isinstance(snapshot, dict):
+        return None
+    keywords = snapshot.get("keywords")
+    if not isinstance(keywords, list) or not keywords:
+        return None
+    if not all(isinstance(keyword, str) and keyword.strip() == keyword for keyword in keywords):
+        return None
+    return frozenset(keywords) | CORE_IMMUTABLE_KEYWORDS
+
+
+def _snapshot_is_fresh(snapshot: dict[str, Any]) -> bool:
+    updated_at = snapshot.get("updatedAt")
+    if not isinstance(updated_at, str):
+        return False
+    try:
+        parsed = datetime.fromisoformat(updated_at.replace("Z", "+00:00")).astimezone(UTC)
+    except ValueError:
+        return False
+    return 0 <= (datetime.now(UTC) - parsed).total_seconds() < CACHE_TTL_SECONDS
+
+
+def _record_failure(error_message: str) -> None:
+    if KEYWORD_STORE is None:
+        return
+    try:
+        KEYWORD_STORE.record_keyword_update_failure(source="stack-overflow", error_message=error_message)
+    except Exception:
+        logger.warning("Keyword update failure could not be recorded in durable storage")
+
+
+def get_combined_developer_keywords(
+    max_dynamic_capacity: int = 250, *, force_refresh: bool = False
+) -> frozenset[str]:
+    """Load the active DB dictionary, refreshing an expired version when necessary.
+
+    File cache remains only as a compatibility fallback when the runtime has not
+    configured a durable store (for standalone library use and older deployments).
+    """
+    snapshot: dict[str, Any] | None = None
+    if KEYWORD_STORE is not None:
         try:
-            if 0 <= time.time() - os.path.getmtime(KEYWORD_JSON_PATH) < CACHE_TTL_SECONDS:
-                return cached
-        except OSError:
-            pass
+            snapshot = KEYWORD_STORE.load_active_keyword_dictionary()
+        except Exception:
+            logger.warning("Keyword dictionary could not be read from durable storage")
+    cached = _snapshot_keywords(snapshot)
+    if KEYWORD_STORE is None:
+        cached = load_keywords_from_json()
+    fallback = cached or load_keywords_from_json(SEED_KEYWORD_PATH) or CORE_IMMUTABLE_KEYWORDS
+    if cached and not force_refresh:
+        if snapshot is not None and _snapshot_is_fresh(snapshot):
+            return cached
+        if KEYWORD_STORE is None:
+            try:
+                if 0 <= time.time() - os.path.getmtime(KEYWORD_JSON_PATH) < CACHE_TTL_SECONDS:
+                    return cached
+            except OSError:
+                pass
 
     dynamic_tags = fetch_stackoverflow_popular_tags(limit=150)
     if not dynamic_tags:
         logger.warning("Keyword refresh returned no tags; retaining the last valid dictionary")
+        _record_failure("Stack Overflow returned no usable tags")
         return fallback
     filtered = dynamic_tags - STOPWORDS - CORE_IMMUTABLE_KEYWORDS
     combined = CORE_IMMUTABLE_KEYWORDS | frozenset(sorted(filtered)[:max_dynamic_capacity])
-    try:
-        save_keywords_to_json(combined)
-    except OSError:
-        logger.warning("Keyword cache could not be saved; using refreshed keywords in memory")
+    if KEYWORD_STORE is not None:
+        try:
+            KEYWORD_STORE.save_keyword_dictionary(
+                keywords=set(combined), source="stack-overflow", previous_keywords=set(cached or ())
+            )
+        except Exception:
+            logger.warning("Keyword dictionary could not be saved to durable storage")
+            _record_failure("Durable storage write failed")
+    else:
+        try:
+            save_keywords_to_json(combined)
+        except OSError:
+            logger.warning("Keyword cache could not be saved; using refreshed keywords in memory")
     return combined

@@ -5,6 +5,8 @@ import json
 import math
 import os
 import re
+import threading
+import time
 import urllib.request
 from collections import Counter
 from collections.abc import Callable, Mapping
@@ -40,6 +42,14 @@ from .keywords_manager import CORE_IMMUTABLE_KEYWORDS, get_combined_developer_ke
 
 DEVELOPER_KEYWORDS = get_combined_developer_keywords()
 KEYWORDS_LOADED_AT = datetime.now(UTC).isoformat()
+try:
+    KEYWORD_REFRESH_CHECK_SECONDS = max(
+        1, int(os.environ.get("QUALITY_KEYWORD_REFRESH_CHECK_SECONDS", "300"))
+    )
+except ValueError:
+    KEYWORD_REFRESH_CHECK_SECONDS = 300
+_KEYWORD_REFRESH_LOCK = threading.Lock()
+_LAST_KEYWORD_REFRESH_CHECK = time.monotonic()
 
 NON_ARTICLE_PATTERN = re.compile(
     r"\b(subscribe|learning center|webinars archives|archive|showcase|landscape|sponsors?)\b",
@@ -63,6 +73,7 @@ class QualityEvaluator:
         self._clock = clock
 
     def keyword_snapshot(self) -> dict[str, Any]:
+        self._refresh_keywords_if_due()
         keywords = sorted(DEVELOPER_KEYWORDS)
         core = sorted(DEVELOPER_KEYWORDS & CORE_IMMUTABLE_KEYWORDS)
         dynamic = sorted(DEVELOPER_KEYWORDS - CORE_IMMUTABLE_KEYWORDS)
@@ -72,10 +83,11 @@ class QualityEvaluator:
             "totalCount": len(keywords),
             "coreKeywords": core,
             "dynamicKeywords": dynamic,
-            "refreshPolicy": "PROCESS_START",
+            "refreshPolicy": "REQUEST_TRIGGERED_TTL_CHECK",
         }
 
     def evaluate(self, input_data: Mapping[str, Any]) -> dict[str, Any]:
+        self._refresh_keywords_if_due()
         article_id = input_data.get("articleId", "") if isinstance(input_data, Mapping) else ""
         try:
             request = QualityEvaluationRequest.model_validate(input_data)
@@ -191,6 +203,39 @@ class QualityEvaluator:
             ),
         )
         return result.model_dump(by_alias=True, mode="json")
+
+    @staticmethod
+    def refresh_keyword_dictionary() -> dict[str, Any]:
+        """Force one administrator/scheduler-triggered dictionary refresh."""
+        global DEVELOPER_KEYWORDS, KEYWORDS_LOADED_AT, _LAST_KEYWORD_REFRESH_CHECK
+        with _KEYWORD_REFRESH_LOCK:
+            refreshed = get_combined_developer_keywords(force_refresh=True)
+            _LAST_KEYWORD_REFRESH_CHECK = time.monotonic()
+            if refreshed != DEVELOPER_KEYWORDS:
+                DEVELOPER_KEYWORDS = refreshed
+                KEYWORDS_LOADED_AT = datetime.now(UTC).isoformat()
+        return QualityEvaluator().keyword_snapshot()
+
+    @staticmethod
+    def _refresh_keywords_if_due() -> None:
+        """Refresh an expired dictionary in a long-running API process safely."""
+        global DEVELOPER_KEYWORDS, KEYWORDS_LOADED_AT, _LAST_KEYWORD_REFRESH_CHECK
+        now = time.monotonic()
+        if now - _LAST_KEYWORD_REFRESH_CHECK < KEYWORD_REFRESH_CHECK_SECONDS:
+            return
+        if not _KEYWORD_REFRESH_LOCK.acquire(blocking=False):
+            return
+        try:
+            now = time.monotonic()
+            if now - _LAST_KEYWORD_REFRESH_CHECK < KEYWORD_REFRESH_CHECK_SECONDS:
+                return
+            refreshed = get_combined_developer_keywords()
+            _LAST_KEYWORD_REFRESH_CHECK = now
+            if refreshed != DEVELOPER_KEYWORDS:
+                DEVELOPER_KEYWORDS = refreshed
+                KEYWORDS_LOADED_AT = datetime.now(UTC).isoformat()
+        finally:
+            _KEYWORD_REFRESH_LOCK.release()
 
     @staticmethod
     def evaluate_developer_relevance(article: Article) -> int:

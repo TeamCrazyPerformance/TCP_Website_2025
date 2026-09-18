@@ -126,7 +126,7 @@ class MySQLPipelineRepository:
                 # LEFT JOIN 합니다. 005 없이 뜨면 준비 완료로 보고된 뒤 공개·관리자
                 # 목록이 모두 실패합니다. 조회 경로가 기대는 마이그레이션은
                 # 여기에 반드시 함께 올려 주세요.
-                required = {"001", "002", "003", "004", "005", "006", "007"}
+                required = {"001", "002", "003", "004", "005", "006", "007", "008"}
                 placeholders = ", ".join(["%s"] * len(required))
                 cursor.execute(
                     f"SELECT version FROM pipeline_migration_history "
@@ -137,6 +137,156 @@ class MySQLPipelineRepository:
                     raise RuntimeError("required pipeline migrations have not been applied")
                 cursor.execute("SELECT 1 AS ready")
                 cursor.fetchone()
+            finally:
+                cursor.close()
+        finally:
+            connection.close()
+
+    def load_active_keyword_dictionary(self) -> dict[str, Any] | None:
+        connection = self._connection()
+        try:
+            cursor = connection.cursor(dictionary=True)
+            try:
+                cursor.execute(
+                    "SELECT version_id, source, activated_at FROM quality_keyword_dictionary_versions "
+                    "WHERE status = 'ACTIVE' ORDER BY activated_at DESC LIMIT 1"
+                )
+                version = cursor.fetchone()
+                if version is None:
+                    return None
+                cursor.execute(
+                    "SELECT keyword FROM quality_keyword_dictionary_items "
+                    "WHERE version_id = %s ORDER BY keyword",
+                    (version["version_id"],),
+                )
+                keywords = [row["keyword"] for row in cursor.fetchall()]
+                if not keywords:
+                    return None
+                activated_at = _utc(version["activated_at"])
+                return {
+                    "versionId": version["version_id"],
+                    "source": version["source"],
+                    "keywords": keywords,
+                    "updatedAt": activated_at.isoformat().replace("+00:00", "Z"),
+                }
+            finally:
+                cursor.close()
+        finally:
+            connection.close()
+
+    def save_keyword_dictionary(
+        self, *, keywords: set[str], source: str, previous_keywords: set[str]
+    ) -> dict[str, Any]:
+        ordered = sorted(keywords)
+        version_id = f"keyword-version-{uuid4().hex}"
+        checksum = hashlib.sha256("\n".join(ordered).encode("utf-8")).hexdigest()
+        connection = self._connection()
+        try:
+            cursor = connection.cursor(dictionary=True)
+            try:
+                cursor.execute(
+                    "UPDATE quality_keyword_dictionary_versions SET status = 'ARCHIVED' "
+                    "WHERE status = 'ACTIVE'"
+                )
+                cursor.execute(
+                    "INSERT INTO quality_keyword_dictionary_versions "
+                    "(version_id, status, source, keyword_count, checksum_sha256, activated_at) "
+                    "VALUES (%s, 'ACTIVE', %s, %s, %s, UTC_TIMESTAMP(6))",
+                    (version_id, source, len(ordered), checksum),
+                )
+                cursor.executemany(
+                    "INSERT INTO quality_keyword_dictionary_items (version_id, keyword, source) "
+                    "VALUES (%s, %s, %s)",
+                    [(version_id, keyword, source) for keyword in ordered],
+                )
+                cursor.execute(
+                    "INSERT INTO quality_keyword_update_history "
+                    "(update_id, status, source, version_id, added_count, removed_count) "
+                    "VALUES (%s, 'SUCCESS', %s, %s, %s, %s)",
+                    (
+                        f"keyword-update-{uuid4().hex}",
+                        source,
+                        version_id,
+                        len(keywords - previous_keywords),
+                        len(previous_keywords - keywords),
+                    ),
+                )
+                connection.commit()
+                cursor.execute(
+                    "SELECT activated_at FROM quality_keyword_dictionary_versions WHERE version_id = %s",
+                    (version_id,),
+                )
+                activated_at = _utc(cursor.fetchone()["activated_at"])
+                return {
+                    "versionId": version_id,
+                    "source": source,
+                    "keywords": ordered,
+                    "updatedAt": activated_at.isoformat().replace("+00:00", "Z"),
+                }
+            finally:
+                cursor.close()
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    def record_keyword_update_failure(self, *, source: str, error_message: str) -> None:
+        connection = self._connection()
+        try:
+            cursor = connection.cursor()
+            try:
+                cursor.execute(
+                    "INSERT INTO quality_keyword_update_history "
+                    "(update_id, status, source, error_message) VALUES (%s, 'FAILED', %s, %s)",
+                    (f"keyword-update-{uuid4().hex}", source, error_message[:4000]),
+                )
+                connection.commit()
+            finally:
+                cursor.close()
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    def get_keyword_dictionary_status(self) -> dict[str, Any]:
+        connection = self._connection()
+        try:
+            cursor = connection.cursor(dictionary=True)
+            try:
+                cursor.execute(
+                    "SELECT version_id, keyword_count, activated_at FROM quality_keyword_dictionary_versions "
+                    "WHERE status = 'ACTIVE' ORDER BY activated_at DESC LIMIT 1"
+                )
+                active = cursor.fetchone()
+                cursor.execute(
+                    "SELECT status, source, added_count, removed_count, error_message, completed_at "
+                    "FROM quality_keyword_update_history ORDER BY completed_at DESC, update_id DESC LIMIT 1"
+                )
+                latest = cursor.fetchone()
+                return {
+                    "storage": "DATABASE",
+                    "activeVersion": active["version_id"] if active else None,
+                    "activatedAt": (
+                        _utc(active["activated_at"]).isoformat().replace("+00:00", "Z")
+                        if active else None
+                    ),
+                    "storedKeywordCount": int(active["keyword_count"]) if active else 0,
+                    "lastUpdate": (
+                        {
+                            "status": latest["status"],
+                            "source": latest["source"],
+                            "addedCount": latest["added_count"],
+                            "removedCount": latest["removed_count"],
+                            "errorMessage": latest["error_message"],
+                            "completedAt": _utc(latest["completed_at"]).isoformat().replace(
+                                "+00:00", "Z"
+                            ),
+                        }
+                        if latest else None
+                    ),
+                }
             finally:
                 cursor.close()
         finally:

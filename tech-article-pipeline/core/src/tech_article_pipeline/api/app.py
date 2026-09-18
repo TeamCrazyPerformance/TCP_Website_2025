@@ -146,7 +146,7 @@ def _quality_version_status(article: dict[str, Any], target_versions: dict[str, 
     return "OUTDATED"
 
 
-def _quality_keywords_read(orchestrator: Any) -> dict[str, Any]:
+def _quality_keywords_read(orchestrator: Any, repository: Any | None = None) -> dict[str, Any]:
     unavailable = {
         "status": "UNAVAILABLE",
         "warnings": ["KEYWORD_SNAPSHOT_UNAVAILABLE"],
@@ -189,7 +189,7 @@ def _quality_keywords_read(orchestrator: Any) -> dict[str, Any]:
     if not valid:
         return unavailable
     warnings = [] if dynamic else ["DYNAMIC_KEYWORDS_EMPTY"]
-    return {
+    result = {
         "status": "AVAILABLE",
         "warnings": warnings,
         "loadedAt": loaded_at,
@@ -201,6 +201,23 @@ def _quality_keywords_read(orchestrator: Any) -> dict[str, Any]:
         "dynamicKeywords": dynamic,
         "refreshPolicy": snapshot.get("refreshPolicy"),
     }
+    if repository is None or not hasattr(repository, "get_keyword_dictionary_status"):
+        return result
+    try:
+        durable_status = repository.get_keyword_dictionary_status()
+    except Exception:
+        _LOGGER.exception("Failed to read durable quality keyword status")
+        result["storage"] = "UNAVAILABLE"
+        result["warnings"].append("KEYWORD_STORAGE_STATUS_UNAVAILABLE")
+        return result
+    if not isinstance(durable_status, dict):
+        result["storage"] = "UNAVAILABLE"
+        result["warnings"].append("KEYWORD_STORAGE_STATUS_UNAVAILABLE")
+        return result
+    result.update(durable_status)
+    if result.get("storage") == "DATABASE" and not result.get("activeVersion"):
+        result["warnings"].append("ACTIVE_KEYWORD_DICTIONARY_MISSING")
+    return result
 
 
 def _summary_version_status(article: dict[str, Any], target_versions: dict[str, str]) -> str:
@@ -651,7 +668,7 @@ def create_app(
                 **module_versions,
             },
             "storage": overview["storage"],
-            "qualityKeywords": _quality_keywords_read(orchestrator),
+            "qualityKeywords": _quality_keywords_read(orchestrator, request.app.state.runtime.repository),
             "statistics": {
                 "timezone": "Asia/Seoul",
                 "from": start_date.isoformat(),
@@ -814,6 +831,22 @@ def create_app(
             target_versions=_current_summary_versions(request.app.state.runtime),
             max_attempts=request.app.state.settings.job_max_attempts,
         )
+
+    @internal.post("/admin/quality-keywords/refresh")
+    async def refresh_quality_keywords(request: Request) -> dict[str, Any]:
+        """Scheduler entry point for the daily durable keyword dictionary refresh."""
+        quality = request.app.state.runtime.orchestrator.quality
+        refresh = getattr(quality, "refresh_keyword_dictionary", None)
+        if not callable(refresh):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "code": "KEYWORD_REFRESH_UNAVAILABLE",
+                    "message": "The configured quality module cannot refresh keyword dictionaries.",
+                },
+            )
+        snapshot = await asyncio.to_thread(refresh)
+        return {"status": "AVAILABLE", "snapshot": snapshot}
 
     @internal.get("/admin/settings/publication-policy")
     async def get_publication_policy(request: Request) -> dict[str, Any]:

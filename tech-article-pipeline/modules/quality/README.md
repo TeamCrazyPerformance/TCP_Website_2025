@@ -8,26 +8,30 @@ legacy `score.dimensions` object remains during the compatibility period.
 Length, language, spam, and advertisement policies are hard gates. Invalid input
 is returned through the shared failure contract instead of raising from the public API.
 
-## Keyword cache and startup safety
+## Durable keyword dictionary
 
-- The bundled `keywords.json` is a read-only seed, restored to the pre-contamination
-  core dictionary (113 keywords). The tracked history was cleared because it
-  contained manual/test updates; Git retains that history.
-- Runtime updates write to `~/.cache/tech-article-quality`, or the directory set by
-  `QUALITY_KEYWORD_CACHE_DIR`. Both dictionary and history are stored there, using
-  atomic file replacement. Do not point this setting at the module source folder.
-- The existing refresh behavior is unchanged: initialization checks the cache's
-  24-hour age when the process starts. It is not a daily background scheduler.
-- Empty/failed collection preserves the last valid cache, falling back to the
-  bundled seed and then the built-in core. Invalid caches are ignored. A cache
-  write failure logs a warning and does not prevent initialization.
-- Pytest uses a temporary cache seeded before collection imports the evaluator;
-  tests do not initialize from the operator's runtime cache or update source JSON.
-- No database migration or new production environment variable is required. The
-  default Docker user has `/app` as its home; its cache is disposable across
-  container replacement. Build and recreate the pipeline container to deploy.
-  Confirm the administrator keyword snapshot contains the core keywords and no
-  `alpha`, `beta`, or `gamma` test entries. New startup collection may add real tags.
+- The bundled `keywords.json` is a read-only 113-keyword core seed. It is never
+  changed at runtime and is used only when no durable dictionary is available.
+  The bundled `keywords_history.json` remains an empty compatibility template;
+  it is not the operational update history.
+- In the pipeline runtime, MySQL is the source of truth. Migration `008` creates
+  immutable dictionary versions, their keyword items, and successful/failed
+  update history. A new version becomes active only after all its items are saved.
+- The evaluator checks the active dictionary during initialization and then every
+  `QUALITY_KEYWORD_REFRESH_CHECK_SECONDS` seconds (300 by default). A dictionary
+  older than 24 hours is refreshed on the next request. The authenticated internal
+  refresh endpoint is intended for the daily external scheduler.
+- Empty/failed collection keeps the last active DB version unchanged and records
+  a failed update history item. If durable storage cannot be read, the evaluator
+  falls back to its in-memory dictionary and then the bundled core seed.
+- `QUALITY_KEYWORD_CACHE_DIR` is retained only for standalone library use without
+  a configured pipeline repository. It is not used as the production source of
+  truth after the DB migration.
+- The administrator Overview response exposes the active storage type, version,
+  stored keyword count, and latest update status without requiring Docker or
+  direct database access.
+- Apply migration `008` before deploying the code. Existing article evaluations
+  are not recalculated by this change.
 - Existing stored article evaluations are not recalculated by this change.
 
 

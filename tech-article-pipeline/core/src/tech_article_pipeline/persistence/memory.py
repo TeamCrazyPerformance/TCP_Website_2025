@@ -55,9 +55,69 @@ class MemoryPipelineRepository:
         self.crawl_items: dict[str, dict[str, Any]] = {}
         # 아티클별 조회수. 사용자별 이력은 남기지 않습니다.
         self.article_views: dict[str, dict[str, Any]] = {}
+        self.keyword_dictionary_versions: list[dict[str, Any]] = []
+        self.keyword_update_history: list[dict[str, Any]] = []
 
     def check_readiness(self) -> None:
         return None
+
+    def load_active_keyword_dictionary(self) -> dict[str, Any] | None:
+        with self._lock:
+            active = next(
+                (item for item in self.keyword_dictionary_versions if item["status"] == "ACTIVE"),
+                None,
+            )
+            return copy.deepcopy(active) if active else None
+
+    def save_keyword_dictionary(
+        self, *, keywords: set[str], source: str, previous_keywords: set[str]
+    ) -> dict[str, Any]:
+        with self._lock:
+            for item in self.keyword_dictionary_versions:
+                if item["status"] == "ACTIVE":
+                    item["status"] = "ARCHIVED"
+            now = _now()
+            ordered = sorted(keywords)
+            snapshot = {
+                "versionId": f"keyword-version-{uuid4().hex}",
+                "status": "ACTIVE",
+                "keywords": ordered,
+                "updatedAt": now.isoformat().replace("+00:00", "Z"),
+                "source": source,
+            }
+            self.keyword_dictionary_versions.insert(0, snapshot)
+            self.keyword_update_history.insert(0, {
+                "status": "SUCCESS",
+                "source": source,
+                "addedCount": len(keywords - previous_keywords),
+                "removedCount": len(previous_keywords - keywords),
+                "completedAt": snapshot["updatedAt"],
+            })
+            return copy.deepcopy(snapshot)
+
+    def record_keyword_update_failure(self, *, source: str, error_message: str) -> None:
+        with self._lock:
+            self.keyword_update_history.insert(0, {
+                "status": "FAILED",
+                "source": source,
+                "errorMessage": error_message,
+                "completedAt": _now().isoformat().replace("+00:00", "Z"),
+            })
+
+    def get_keyword_dictionary_status(self) -> dict[str, Any]:
+        with self._lock:
+            active = next(
+                (item for item in self.keyword_dictionary_versions if item["status"] == "ACTIVE"),
+                None,
+            )
+            latest = self.keyword_update_history[0] if self.keyword_update_history else None
+            return {
+                "storage": "MEMORY",
+                "activeVersion": active["versionId"] if active else None,
+                "activatedAt": active["updatedAt"] if active else None,
+                "storedKeywordCount": len(active["keywords"]) if active else 0,
+                "lastUpdate": copy.deepcopy(latest) if latest else None,
+            }
 
     def submit(
         self,
