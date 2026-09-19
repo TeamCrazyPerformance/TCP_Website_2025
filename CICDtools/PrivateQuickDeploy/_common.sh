@@ -108,7 +108,10 @@ private_qa_compose() {
   }
   (
     cd "$PRIVATE_QA_DIR" || exit 1
-    private_qa_docker compose --project-name "$PRIVATE_QA_PROJECT_NAME" \
+    # Keep every Compose operation single-threaded. The Private QA host is
+    # intentionally small, so concurrent pulls/builds/container creates can
+    # otherwise exhaust memory before health checks have a chance to run.
+    private_qa_docker compose --parallel 1 --project-name "$PRIVATE_QA_PROJECT_NAME" \
       --env-file "$PRIVATE_QA_ENV_FILE" -f "$PRIVATE_QA_COMPOSE_FILE" "$@"
   )
 }
@@ -382,16 +385,24 @@ private_qa_deploy() {
   local rebuild="${1:-1}"
   private_qa_validate_env
 
+  log_info "⏸️  Stopping the QA stack to free memory before deployment... / 배포 전 메모리 확보를 위해 QA 스택을 중지합니다."
+  private_qa_compose stop --timeout 30 >/dev/null 2>&1 || true
+
   if [[ "$rebuild" == "1" ]]; then
-    cicd_print_step 1 7 "📦" "Build API, pipeline, and frontend images / 새 이미지 빌드"
-    private_qa_compose build --pull api tech-article-pipeline web
+    cicd_print_step 1 7 "📦" "Build API, pipeline, and frontend images one at a time / 새 이미지를 하나씩 빌드"
+    local build_service
+    for build_service in api tech-article-pipeline web; do
+      log_info "🧱 Building '$build_service' alone to limit peak memory. / 최대 메모리를 낮추기 위해 단독 빌드합니다."
+      private_qa_compose build --pull "$build_service"
+    done
   else
     cicd_print_step 1 7 "📦" "Reuse existing local images / 기존 로컬 이미지 사용"
   fi
 
   cicd_print_step 2 7 "🗄️" "Start isolated empty databases / 격리된 QA 데이터베이스 준비"
-  private_qa_compose up -d postgres pipeline-mysql
+  private_qa_compose up -d --no-deps postgres
   private_qa_wait_service postgres healthy 240
+  private_qa_compose up -d --no-deps pipeline-mysql
   private_qa_wait_service pipeline-mysql healthy 240
 
   log_info "⏸️  Stopping data writers before migrations... / 마이그레이션 전 쓰기 서비스를 중지합니다."
@@ -409,8 +420,9 @@ private_qa_deploy() {
   private_qa_wait_service tech-article-pipeline healthy 240
 
   cicd_print_step 6 7 "⚙️" "Activate API, frontend, and HTTP proxy / API·프론트엔드·HTTP 프록시 활성화"
-  private_qa_compose up -d --no-deps --force-recreate api web
+  private_qa_compose up -d --no-deps --force-recreate api
   private_qa_wait_service api healthy 240
+  private_qa_compose up -d --no-deps --force-recreate web
   private_qa_wait_service web healthy 120
   private_qa_compose up -d --no-deps --force-recreate reverse-proxy
   private_qa_wait_service reverse-proxy healthy 120

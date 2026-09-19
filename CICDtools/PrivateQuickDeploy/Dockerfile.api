@@ -1,0 +1,20 @@
+FROM node:24-alpine
+
+ARG PRIVATE_QA_NODE_BUILD_HEAP_MB=512
+ENV NODE_OPTIONS="--max-old-space-size=${PRIVATE_QA_NODE_BUILD_HEAP_MB}"
+
+RUN mkdir -p /var/app
+WORKDIR /var/app
+
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
+
+COPY . .
+RUN npm run build
+
+# Keep the running API below its Compose memory ceiling while leaving room for
+# native modules and the Node runtime outside V8's managed heap.
+ENV NODE_OPTIONS="--max-old-space-size=192"
+
+EXPOSE 3000
+CMD ["node", "dist/main.js"]

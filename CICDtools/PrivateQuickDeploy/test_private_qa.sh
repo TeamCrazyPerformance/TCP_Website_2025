@@ -45,5 +45,19 @@ grep -q 'down --volumes --remove-orphans' "$SCRIPT_DIR/private_qa.sh" \
   || fail "reset does not remove the isolated volumes"
 ! grep -q 'exec > >(' "$SCRIPT_DIR/_common.sh" \
   || fail "interactive output must not be redirected through an asynchronous process substitution"
+grep -q 'compose --parallel 1' "$SCRIPT_DIR/_common.sh" \
+  || fail "Compose operations are not globally serialized"
+grep -q 'for build_service in api tech-article-pipeline web' "$SCRIPT_DIR/_common.sh" \
+  || fail "application images are not built serially"
+! grep -q 'up -d postgres pipeline-mysql' "$SCRIPT_DIR/_common.sh" \
+  || fail "databases must not be started in parallel"
+! grep -q -- '--force-recreate api web' "$SCRIPT_DIR/_common.sh" \
+  || fail "API and web must not be started in parallel"
+grep -q 'PRIVATE_QA_NODE_BUILD_HEAP_MB:-512' "$SCRIPT_DIR/docker-compose.private-qa.yml" \
+  || fail "Node image builds do not have a bounded heap"
+[[ "$(grep -c '^    mem_limit:' "$SCRIPT_DIR/docker-compose.private-qa.yml")" == "9" ]] \
+  || fail "every Private QA service must have an explicit memory limit"
+! grep -Eqi '^  (elasticsearch|logstash|kibana|filebeat):' "$SCRIPT_DIR/docker-compose.private-qa.yml" \
+  || fail "ELK services must stay disabled in Private QA"
 
-printf 'PASS: Private QA isolated environment, secrecy, idempotency, and port contracts\n'
+printf 'PASS: Private QA isolation, secrecy, serial startup, memory, and port contracts\n'
