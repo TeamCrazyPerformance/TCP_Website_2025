@@ -86,9 +86,20 @@ def normalize_keyword(raw_term: str) -> set[str]:
     return results
 
 
-def fetch_stackoverflow_popular_tags(limit: int = 150) -> set[str]:
-    """Stack Overflow API에서 실시간 인기 기술 태그 수집"""
-    url = f"https://api.stackexchange.com/2.3/tags?pagesize={limit}&order=desc&sort=popular&site=stackoverflow"
+STACKEXCHANGE_MAX_PAGE_SIZE = 100
+
+
+def fetch_stackoverflow_popular_tags(limit: int = STACKEXCHANGE_MAX_PAGE_SIZE) -> set[str]:
+    """Stack Overflow API에서 실시간 인기 기술 태그 수집.
+
+    Stack Exchange는 ``pagesize``를 최대 100으로 제한한다. 호출자가 더 큰
+    값을 전달하더라도 요청 자체가 400으로 실패하지 않도록 여기서 제한한다.
+    """
+    page_size = max(1, min(limit, STACKEXCHANGE_MAX_PAGE_SIZE))
+    url = (
+        "https://api.stackexchange.com/2.3/tags?"
+        f"pagesize={page_size}&order=desc&sort=popular&site=stackoverflow"
+    )
     extracted = set()
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
@@ -104,7 +115,9 @@ def fetch_stackoverflow_popular_tags(limit: int = 150) -> set[str]:
                 norm = normalize_keyword(tag_name)
                 extracted.update(norm)
     except Exception:
-        pass
+        # Do not let an external-source failure break article evaluation, but
+        # retain the traceback so an empty dictionary is diagnosable.
+        logger.warning("Stack Overflow keyword collection failed", exc_info=True)
     return extracted
 
 
@@ -300,7 +313,7 @@ def get_combined_developer_keywords(
             except OSError:
                 pass
 
-    dynamic_tags = fetch_stackoverflow_popular_tags(limit=150)
+    dynamic_tags = fetch_stackoverflow_popular_tags()
     if not dynamic_tags:
         logger.warning("Keyword refresh returned no tags; retaining the last valid dictionary")
         _record_failure("Stack Overflow returned no usable tags")
