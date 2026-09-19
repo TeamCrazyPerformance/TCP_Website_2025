@@ -49,7 +49,10 @@ try:
 except ValueError:
     KEYWORD_REFRESH_CHECK_SECONDS = 300
 _KEYWORD_REFRESH_LOCK = threading.Lock()
-_LAST_KEYWORD_REFRESH_CHECK = time.monotonic()
+# The module is imported before the pipeline runtime wires its durable store.
+# A zero value makes the first request after that wiring persist/refresh the
+# dictionary immediately instead of waiting five minutes with cache-only data.
+_LAST_KEYWORD_REFRESH_CHECK = 0.0
 
 NON_ARTICLE_PATTERN = re.compile(
     r"\b(subscribe|learning center|webinars archives|archive|showcase|landscape|sponsors?)\b",
