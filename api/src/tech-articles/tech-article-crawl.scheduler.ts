@@ -8,6 +8,7 @@ const SEOUL_UTC_OFFSET_MS = 9 * 60 * 60 * 1000;
 const DEFAULT_MAXIMUM_ARTICLE_COUNT = 10;
 const DEFAULT_MAXIMUM_AGE_HOURS = 48;
 const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
+const KEYWORD_DICTIONARY_REFRESH_PROFILE_ID = 'quality-keyword-dictionary';
 
 interface ScheduledCrawlProfile {
   id: string;
@@ -17,6 +18,15 @@ interface ScheduledCrawlProfile {
 interface CrawlRunAccepted {
   crawlRunId?: string;
   operation?: string;
+}
+
+interface KeywordDictionaryOverview {
+  qualityKeywords?: {
+    lastUpdate?: {
+      status?: string;
+      completedAt?: string | null;
+    };
+  };
 }
 
 const SCHEDULED_CRAWL_PROFILES: readonly ScheduledCrawlProfile[] = [
@@ -167,6 +177,57 @@ export class TechArticleCrawlScheduler {
       } finally {
         this.inFlightKeys.delete(idempotencyKey);
       }
+    }
+  }
+
+  @Cron('0 5 0 * * *', {
+    name: 'tech-article-keyword-dictionary-refresh',
+    timeZone: 'Asia/Seoul',
+  })
+  async runScheduledKeywordDictionaryRefresh(
+    now: Date = new Date(),
+  ): Promise<void> {
+    if (!this.enabled()) return;
+    await this.refreshKeywordDictionary(this.dayKey(now));
+  }
+
+  private async refreshKeywordDictionary(dayKey: string): Promise<void> {
+    if (this.completedDayByProfile.get(KEYWORD_DICTIONARY_REFRESH_PROFILE_ID) === dayKey) {
+      return;
+    }
+
+    try {
+      const overview = (await this.techArticles.overview()) as KeywordDictionaryOverview;
+      const lastUpdate = overview.qualityKeywords?.lastUpdate;
+      if (
+        lastUpdate?.status === 'SUCCESS' &&
+        lastUpdate.completedAt &&
+        this.dayKey(new Date(lastUpdate.completedAt)) === dayKey
+      ) {
+        this.completedDayByProfile.set(KEYWORD_DICTIONARY_REFRESH_PROFILE_ID, dayKey);
+        this.logger.log(`Scheduled keyword dictionary refresh already completed: day=${dayKey}`);
+        return;
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown error';
+      this.logger.warn(
+        `Keyword dictionary status lookup failed; refresh will still be attempted: day=${dayKey} ${message}`,
+      );
+    }
+
+    const inFlightKey = `quality-keyword-refresh:v1:${dayKey}`;
+    if (this.inFlightKeys.has(inFlightKey)) return;
+
+    this.inFlightKeys.add(inFlightKey);
+    try {
+      await this.techArticles.refreshKeywordDictionary();
+      this.completedDayByProfile.set(KEYWORD_DICTIONARY_REFRESH_PROFILE_ID, dayKey);
+      this.logger.log(`Scheduled keyword dictionary refresh completed: day=${dayKey}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown error';
+      this.logger.error(`Scheduled keyword dictionary refresh failed: day=${dayKey} ${message}`);
+    } finally {
+      this.inFlightKeys.delete(inFlightKey);
     }
   }
 

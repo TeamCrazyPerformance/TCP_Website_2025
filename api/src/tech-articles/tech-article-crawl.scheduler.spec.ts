@@ -20,6 +20,12 @@ describe('TechArticleCrawlScheduler', () => {
         operation: 'CREATED',
         crawlRunId: 'crawl-run-1',
       }),
+      refreshKeywordDictionary: jest.fn().mockResolvedValue({
+        status: 'AVAILABLE',
+      }),
+      overview: jest.fn().mockResolvedValue({
+        qualityKeywords: { lastUpdate: null },
+      }),
     } as unknown as jest.Mocked<TechArticlesService>;
     scheduler = new TechArticleCrawlScheduler(config, techArticles);
     jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
@@ -163,6 +169,59 @@ describe('TechArticleCrawlScheduler', () => {
     expect(retriedKey).toBe(
       'auto-crawl:v1:20260821T0000KST:github-trending-web-repositories-daily',
     );
+  });
+
+  it('runs the keyword refresh once per Seoul day', async () => {
+    settings.TECH_ARTICLE_AUTO_CRAWL_ENABLED = 'true';
+    await scheduler.runScheduledKeywordDictionaryRefresh(
+      new Date('2026-08-21T00:05:00Z'),
+    );
+    await scheduler.runScheduledKeywordDictionaryRefresh(
+      new Date('2026-08-21T12:00:00Z'),
+    );
+    await scheduler.runScheduledKeywordDictionaryRefresh(
+      new Date('2026-08-21T15:05:00Z'),
+    );
+
+    expect(techArticles.refreshKeywordDictionary).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not refresh twice when DB history already has a success for the Seoul day', async () => {
+    settings.TECH_ARTICLE_AUTO_CRAWL_ENABLED = 'true';
+    techArticles.overview.mockResolvedValue({
+      qualityKeywords: {
+        lastUpdate: {
+          status: 'SUCCESS',
+          completedAt: '2026-08-21T03:00:00Z',
+        },
+      },
+    });
+
+    await scheduler.runScheduledKeywordDictionaryRefresh(
+      new Date('2026-08-21T04:00:00Z'),
+    );
+
+    expect(techArticles.refreshKeywordDictionary).not.toHaveBeenCalled();
+  });
+
+  it('refreshes after a Seoul-day boundary even when the previous success was one second before midnight', async () => {
+    settings.TECH_ARTICLE_AUTO_CRAWL_ENABLED = 'true';
+    techArticles.overview.mockResolvedValue({
+      qualityKeywords: {
+        lastUpdate: {
+          status: 'SUCCESS',
+          // 2026-08-21 23:59:59 KST
+          completedAt: '2026-08-21T14:59:59Z',
+        },
+      },
+    });
+
+    // 2026-08-22 00:05:00 KST
+    await scheduler.runScheduledKeywordDictionaryRefresh(
+      new Date('2026-08-21T15:05:00Z'),
+    );
+
+    expect(techArticles.refreshKeywordDictionary).toHaveBeenCalledTimes(1);
   });
 
   it('uses bounded operator settings', async () => {

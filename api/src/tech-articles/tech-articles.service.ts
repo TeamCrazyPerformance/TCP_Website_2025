@@ -199,6 +199,10 @@ export class TechArticlesService {
     });
   }
 
+  refreshKeywordDictionary() {
+    return this.pipeline.post('/internal/v1/admin/quality-keywords/refresh', undefined);
+  }
+
   async adminDetail(articleId: string) {
     const article = await this.pipeline.get<PipelineArticle>(
       `/internal/v1/admin/articles/${encodeURIComponent(articleId)}`,
