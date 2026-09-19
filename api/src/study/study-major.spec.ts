@@ -43,5 +43,6 @@ describe('Study detail member majors', () => {
   it('keeps member information hidden from nonmembers', async () => {
     const result = await service.findById(1, 'outsider');
     expect(result.members).toBeUndefined();
+    expect(result.members_count).toBe(2);
   });
 });

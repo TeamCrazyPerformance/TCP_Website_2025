@@ -2584,13 +2584,16 @@ function handle(method, pathname, query, body, headers = {}) {
   }
   if (method === "GET" && pathname === "/api/v1/study") {
     const year = query.get("year");
-    // Mirrors the real API: anonymous callers only see public studies.
-    const signedIn = Boolean(headers.authorization);
     return [
       200,
       demoStudies
-        .filter((study) => signedIn || study.is_public)
-        .filter((study) => !year || String(study.start_year) === year),
+        .filter((study) => !year || String(study.start_year) === year)
+        .map((study) => ({
+          ...study,
+          members_count: (study.members ?? []).filter((member) =>
+            ["LEADER", "MEMBER", "NOMINEE"].includes(member.role),
+          ).length,
+        })),
     ];
   }
   if (method === "GET" && /^\/api\/v1\/study\/\d+\/progress$/.test(pathname)) {
@@ -2601,7 +2604,15 @@ function handle(method, pathname, query, body, headers = {}) {
     const id = Number(pathname.split("/").at(-1));
     const study = demoStudies.find((item) => item.id === id);
     return study
-      ? [200, study]
+      ? [
+          200,
+          {
+            ...study,
+            members_count: (study.members ?? []).filter((member) =>
+              ["LEADER", "MEMBER", "NOMINEE"].includes(member.role),
+            ).length,
+          },
+        ]
       : [404, { statusCode: 404, message: "스터디를 찾을 수 없습니다." }];
   }
   if (method === "GET" && pathname === "/api/v1/members") {

@@ -39,7 +39,7 @@ describe('StudyService study list', () => {
         place: 'Club room',
         way: 'Offline',
         cycle: 'Weekly',
-        is_public: true,
+        is_public: false,
         studyMembers: [
           {
             role: StudyMemberRole.LEADER,
@@ -65,13 +65,13 @@ describe('StudyService study list', () => {
         place: 'Club room',
         way: 'Offline',
         cycle: 'Weekly',
-        is_public: true,
+        is_public: false,
         leader_name: 'Leader',
         members_count: 3,
       },
     ]);
     expect(studyRepository.find).toHaveBeenCalledWith({
-      where: { start_year: 2026, is_public: true },
+      where: { start_year: 2026 },
       relations: ['studyMembers', 'studyMembers.user'],
     });
   });

@@ -30,7 +30,7 @@
 
 ### GET /api/v1/study
 
-스터디 목록을 조회합니다.
+공개 여부와 관계없이 전체 스터디 목록을 조회합니다.
 
 **권한**: Public
 
@@ -72,7 +72,7 @@ GET /api/v1/study?year=2026
 
 스터디 상세 정보를 조회합니다.
 
-**권한**: StudyMember, Admin
+**권한**: Member
 
 **Request:**
 ```
@@ -93,6 +93,7 @@ Authorization: Bearer <access_token>
   "apply_deadline": "2026-01-15T23:59:59.000Z",
   "place": "온라인",
   "way": "매주 토요일 오후 2시",
+  "members_count": 5,
   "leader": {
     "user_id": "550e8400-e29b-41d4-a716-446655440000",
     "name": "홍길동",
@@ -113,7 +114,7 @@ Authorization: Bearer <access_token>
 }
 ```
 
-회원 목록은 해당 스터디의 스터디원·스터디장·스터디장 후보 또는 관리자에게만 반환합니다.
+`members_count`는 로그인한 사용자에게 항상 반환합니다. 회원 목록은 해당 스터디의 스터디원·스터디장·스터디장 후보 또는 관리자에게만 반환합니다.
 
 ---
 

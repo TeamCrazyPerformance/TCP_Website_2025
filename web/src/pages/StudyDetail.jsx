@@ -26,7 +26,7 @@ const mapStudy = (data) => ({
   cycle: data.cycle || '정보 없음',
   location: data.place || '정보 없음',
   recruitCount: data.recruit_count || 0,
-  memberCount: (data.members || []).filter((member) =>
+  memberCount: data.members_count ?? (data.members || []).filter((member) =>
     ['MEMBER', 'LEADER', 'NOMINEE'].includes(member.role)
   ).length,
   description: data.study_description,

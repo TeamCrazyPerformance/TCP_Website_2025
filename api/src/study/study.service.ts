@@ -57,21 +57,13 @@ export class StudyService {
   /**
    * @description Retrieves a list of studies, with an option to filter by year.
    * @param year The optional year to filter the studies by.
-   * @param includePrivate Whether to include private studies. Only true for authenticated requests.
    * @returns A promise that resolves to an array of study summary DTOs.
    */
-  async findAll(
-    year?: number,
-    includePrivate = false,
-  ): Promise<StudyResponseDto[]> {
+  async findAll(year?: number): Promise<StudyResponseDto[]> {
     const where: FindOptionsWhere<Study> = {};
 
     if (year) {
       where.start_year = year;
-    }
-      
-    if (!includePrivate) {
-      where.is_public = true;
     }
 
     const studies = await this.studyRepository.find({
@@ -134,6 +126,13 @@ export class StudyService {
     // Process the 'studyMembers' array.
     const validMembers = study.studyMembers.filter((m) => m && m.user);
     const leaderMember = validMembers.find((member) => member.role === StudyMemberRole.LEADER);
+    const membersCount = validMembers.filter((member) =>
+      [
+        StudyMemberRole.LEADER,
+        StudyMemberRole.MEMBER,
+        StudyMemberRole.NOMINEE,
+      ].includes(member.role),
+    ).length;
 
     const isMember = validMembers.some(
       (m) => m.user.id === userId && (m.role === StudyMemberRole.MEMBER || m.role === StudyMemberRole.LEADER || m.role === StudyMemberRole.NOMINEE)
@@ -157,6 +156,7 @@ export class StudyService {
       way: study.way,
       cycle: study.cycle,
       is_public: study.is_public,
+      members_count: membersCount,
       leader: leaderMember
         ? {
           // Only include user_id if the requester can view details

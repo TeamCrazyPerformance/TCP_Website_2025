@@ -24,7 +24,6 @@ import {
 import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { StudyService } from './study.service';
-import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 
 import { GetStudiesQueryDto } from './dto/request/get-studies-query.dto';
 import { CreateStudyDto } from './dto/request/create-study.dto';
@@ -63,16 +62,10 @@ export class StudyController {
    * @returns A promise that resolves to an array of study summary DTOs.
    */
   @Get()
-  @UseGuards(OptionalJwtAuthGuard)
   findAll(
     @Query(new ValidationPipe({ transform: true })) query: GetStudiesQueryDto,
-    @Req() req: { user?: { userId?: string } },
-    @Res({ passthrough: true }) res: Response,
   ): Promise<StudyResponseDto[]> {
-    // Response differs by auth state, so a shared cache must never serve it.
-    res.vary('Authorization');
-    res.setHeader('Cache-Control', 'private, no-store');
-    return this.studyService.findAll(query.year, Boolean(req.user));
+    return this.studyService.findAll(query.year);
   }
 
   /**

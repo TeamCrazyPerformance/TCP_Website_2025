@@ -1,58 +1,29 @@
-/* eslint-disable @typescript-eslint/unbound-method */
-import { GUARDS_METADATA } from '@nestjs/common/constants';
-import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { StudyController } from './study.controller';
 import { StudyService } from './study.service';
 
 describe('study list visibility', () => {
-  it('authenticates the list optionally so anonymous callers still get a response', () => {
-    expect(
-      Reflect.getMetadata(GUARDS_METADATA, StudyController.prototype.findAll),
-    ).toContain(OptionalJwtAuthGuard);
-  });
-
   const buildController = () => {
     const findAll = jest.fn().mockResolvedValue([]);
     const controller = new StudyController({
       findAll,
     } as unknown as StudyService);
-    const res = {
-      vary: jest.fn(),
-      setHeader: jest.fn(),
-    };
-    return { controller, findAll, res };
+    return { controller, findAll };
   };
 
-  it('hides private studies from anonymous callers', async () => {
-    const { controller, findAll, res } = buildController();
+  it('returns every study to anonymous callers', async () => {
+    const { controller, findAll } = buildController();
 
-    await controller.findAll({ year: 2026 }, {}, res as never);
+    await controller.findAll({ year: 2026 });
 
-    expect(findAll).toHaveBeenCalledWith(2026, false);
+    expect(findAll).toHaveBeenCalledWith(2026);
   });
 
-  it('keeps private studies visible once a member is signed in', async () => {
-    const { controller, findAll, res } = buildController();
+  it('passes an omitted year through without adding an auth-dependent scope', async () => {
+    const { controller, findAll } = buildController();
 
-    await controller.findAll(
-      { year: undefined },
-      { user: { userId: 'member-1' } },
-      res as never,
-    );
+    await controller.findAll({ year: undefined });
 
-    expect(findAll).toHaveBeenCalledWith(undefined, true);
-  });
-
-  it('marks the response as varying by authorization and not shared-cacheable', async () => {
-    const { controller, res } = buildController();
-
-    await controller.findAll({ year: undefined }, {}, res as never);
-
-    expect(res.vary).toHaveBeenCalledWith('Authorization');
-    expect(res.setHeader).toHaveBeenCalledWith(
-      'Cache-Control',
-      'private, no-store',
-    );
+    expect(findAll).toHaveBeenCalledWith(undefined);
   });
 });
 
@@ -69,32 +40,21 @@ describe('StudyService.findAll', () => {
     return { service, find };
   };
 
-  it('restricts the query to public studies by default', async () => {
+  it('does not restrict the query by visibility', async () => {
     const { service, find } = buildService();
 
     await service.findAll();
 
     expect(find).toHaveBeenCalledWith({
-      where: { is_public: true },
+      where: {},
       relations: ['studyMembers', 'studyMembers.user'],
     });
   });
 
-  it('keeps the year filter alongside the public restriction', async () => {
+  it('keeps the year filter without adding a visibility restriction', async () => {
     const { service, find } = buildService();
 
     await service.findAll(2026);
-
-    expect(find).toHaveBeenCalledWith({
-      where: { start_year: 2026, is_public: true },
-      relations: ['studyMembers', 'studyMembers.user'],
-    });
-  });
-
-  it('drops the restriction for signed-in callers', async () => {
-    const { service, find } = buildService();
-
-    await service.findAll(2026, true);
 
     expect(find).toHaveBeenCalledWith({
       where: { start_year: 2026 },
