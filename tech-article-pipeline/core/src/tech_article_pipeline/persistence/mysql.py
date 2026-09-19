@@ -126,7 +126,7 @@ class MySQLPipelineRepository:
                 # LEFT JOIN 합니다. 005 없이 뜨면 준비 완료로 보고된 뒤 공개·관리자
                 # 목록이 모두 실패합니다. 조회 경로가 기대는 마이그레이션은
                 # 여기에 반드시 함께 올려 주세요.
-                required = {"001", "002", "003", "004", "005", "006", "007", "008"}
+                required = {"001", "002", "003", "004", "005", "006", "007", "008", "009"}
                 placeholders = ", ".join(["%s"] * len(required))
                 cursor.execute(
                     f"SELECT version FROM pipeline_migration_history "
@@ -247,6 +247,46 @@ class MySQLPipelineRepository:
         except Exception:
             connection.rollback()
             raise
+        finally:
+            connection.close()
+
+    def upsert_keyword_observations(self, *, observations: list[dict[str, str]]) -> None:
+        if not observations:
+            return
+        connection = self._connection()
+        try:
+            cursor = connection.cursor()
+            try:
+                cursor.executemany(
+                    "INSERT INTO quality_keyword_observations "
+                    "(keyword, source, first_collected_at, last_collected_at) "
+                    "VALUES (%s, %s, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)) "
+                    "ON DUPLICATE KEY UPDATE source = VALUES(source), "
+                    "last_collected_at = UTC_TIMESTAMP(6)",
+                    [(item["keyword"], item["source"]) for item in observations],
+                )
+                connection.commit()
+            finally:
+                cursor.close()
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    def load_keyword_observations(self, *, limit: int) -> list[dict[str, str]]:
+        connection = self._connection()
+        try:
+            cursor = connection.cursor(dictionary=True)
+            try:
+                cursor.execute(
+                    "SELECT keyword, source FROM quality_keyword_observations "
+                    "ORDER BY last_collected_at DESC, first_collected_at DESC, keyword ASC LIMIT %s",
+                    (limit,),
+                )
+                return [{"keyword": row["keyword"], "source": row["source"]} for row in cursor.fetchall()]
+            finally:
+                cursor.close()
         finally:
             connection.close()
 

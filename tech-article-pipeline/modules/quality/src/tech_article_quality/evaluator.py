@@ -40,7 +40,10 @@ QUALITY_AXES = (
 
 from .keywords_manager import CORE_IMMUTABLE_KEYWORDS, get_combined_developer_keywords
 
-DEVELOPER_KEYWORDS = get_combined_developer_keywords()
+# Do not refresh during import.  The pipeline installs its database-backed
+# dictionary store immediately after import; fetching here used the legacy file
+# fallback first and created a disposable container cache on every deployment.
+DEVELOPER_KEYWORDS = CORE_IMMUTABLE_KEYWORDS
 KEYWORDS_LOADED_AT = datetime.now(UTC).isoformat()
 try:
     KEYWORD_REFRESH_CHECK_SECONDS = max(

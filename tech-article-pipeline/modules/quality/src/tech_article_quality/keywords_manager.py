@@ -15,6 +15,7 @@ import tempfile
 import urllib.request
 import zlib
 from datetime import UTC, datetime
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -51,7 +52,19 @@ STOPWORDS: frozenset[str] = frozenset({
     "logs", "common", "config", "args", "arg", "file", "files", "item", "items", "data",
     "info", "value", "values", "main", "core", "base", "util", "utils", "helper", "helpers",
     "node", "nodes", "project", "projects", "code", "codes", "array", "arrays", "object",
-    "excel", "string", "strings", "number", "numbers", "user", "users", "text", "texts"
+    "excel", "string", "strings", "number", "numbers", "user", "users", "text", "texts",
+    "news", "latest", "update", "updates", "guide", "guides", "tutorial", "tutorials",
+    "best", "free", "tool", "tools", "library", "libraries", "framework", "frameworks",
+    "software", "development", "developer", "developers", "engineering", "technology",
+    "technologies", "tech", "ai"
+})
+
+# Repository topics are user supplied.  These broad product/platform/event
+# labels do not establish that an article is technically about development, so
+# they must not enter the dynamic relevance dictionary.
+DYNAMIC_KEYWORD_STOPWORDS: frozenset[str] = STOPWORDS | frozenset({
+    "agent", "agents", "apple", "hacktoberfest", "lume", "manus", "operator", "operators",
+    "skill", "skills",
 })
 
 
@@ -87,9 +100,48 @@ def normalize_keyword(raw_term: str) -> set[str]:
 
 
 STACKEXCHANGE_MAX_PAGE_SIZE = 100
+GITHUB_TRENDING_REPOSITORY_LIMIT = 3
+# The dictionary retains up to 250 dynamic keywords.  Daily collection is
+# limited to half of that capacity so one day's source fluctuation cannot
+# replace the whole retained dictionary at once. Stack Overflow has a direct
+# tag-popularity signal; GitHub topics do not, so their daily intake is smaller.
+MAX_DYNAMIC_KEYWORDS = 250
+DAILY_DYNAMIC_COLLECTION_LIMIT = 125
+STACKOVERFLOW_DYNAMIC_ALLOCATION = 100
+GITHUB_TRENDING_DYNAMIC_ALLOCATION = 25
+assert (
+    STACKOVERFLOW_DYNAMIC_ALLOCATION + GITHUB_TRENDING_DYNAMIC_ALLOCATION
+    == DAILY_DYNAMIC_COLLECTION_LIMIT
+), "daily source allocations must match the daily collection limit"
 
 
-def fetch_stackoverflow_popular_tags(limit: int = STACKEXCHANGE_MAX_PAGE_SIZE) -> set[str]:
+class _GitHubTrendingRepositoryParser(HTMLParser):
+    """Extract repository paths from GitHub Trending without a third-party parser."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._inside_heading = False
+        self.repositories: list[tuple[str, str]] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag == "h2":
+            self._inside_heading = True
+            return
+        if tag != "a" or not self._inside_heading:
+            return
+        href = dict(attrs).get("href", "")
+        parts = href.strip("/").split("/")
+        if len(parts) == 2 and all(parts):
+            repository = (parts[0], parts[1])
+            if repository not in self.repositories:
+                self.repositories.append(repository)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "h2":
+            self._inside_heading = False
+
+
+def fetch_stackoverflow_popular_tags(limit: int = STACKEXCHANGE_MAX_PAGE_SIZE) -> list[str]:
     """Stack Overflow API에서 실시간 인기 기술 태그 수집.
 
     Stack Exchange는 ``pagesize``를 최대 100으로 제한한다. 호출자가 더 큰
@@ -100,7 +152,8 @@ def fetch_stackoverflow_popular_tags(limit: int = STACKEXCHANGE_MAX_PAGE_SIZE) -
         "https://api.stackexchange.com/2.3/tags?"
         f"pagesize={page_size}&order=desc&sort=popular&site=stackoverflow"
     )
-    extracted = set()
+    extracted: list[str] = []
+    seen: set[str] = set()
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=6) as resp:
@@ -113,12 +166,68 @@ def fetch_stackoverflow_popular_tags(limit: int = STACKEXCHANGE_MAX_PAGE_SIZE) -
             for item in data.get("items", []):
                 tag_name = item.get("name", "")
                 norm = normalize_keyword(tag_name)
-                extracted.update(norm)
+                for keyword in sorted(norm):
+                    if keyword not in seen:
+                        seen.add(keyword)
+                        extracted.append(keyword)
     except Exception:
         # Do not let an external-source failure break article evaluation, but
         # retain the traceback so an empty dictionary is diagnosable.
         logger.warning("Stack Overflow keyword collection failed", exc_info=True)
     return extracted
+
+
+def fetch_github_trending_keywords(limit: int = GITHUB_TRENDING_REPOSITORY_LIMIT) -> list[str]:
+    """Collect explicit topics from the daily GitHub Trending repositories.
+
+    GitHub Trending itself is an HTML ranking, but the terms used here come from
+    the public repository-topics REST endpoint.  Repository names and free-form
+    descriptions are deliberately excluded: both add product-name noise to a
+    relevance dictionary.  Public resources work without a token; an optional
+    ``GITHUB_KEYWORD_TOKEN`` only increases the available API rate limit.
+    """
+    repository_limit = max(1, min(limit, GITHUB_TRENDING_REPOSITORY_LIMIT))
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "tech-article-quality-keyword-collector",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    token = os.environ.get("GITHUB_KEYWORD_TOKEN", "").strip()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    try:
+        trending_request = urllib.request.Request(
+            "https://github.com/trending?since=daily", headers=headers
+        )
+        with urllib.request.urlopen(trending_request, timeout=6) as response:
+            page = response.read().decode("utf-8", errors="replace")
+        parser = _GitHubTrendingRepositoryParser()
+        parser.feed(page)
+        repositories = parser.repositories[:repository_limit]
+        if not repositories:
+            logger.warning("GitHub Trending returned no repositories")
+            return []
+
+        extracted: list[str] = []
+        seen: set[str] = set()
+        for owner, repository in repositories:
+            topic_request = urllib.request.Request(
+                f"https://api.github.com/repos/{owner}/{repository}/topics", headers=headers
+            )
+            with urllib.request.urlopen(topic_request, timeout=6) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+            for topic in payload.get("names", []):
+                if isinstance(topic, str):
+                    for keyword in sorted(normalize_keyword(topic)):
+                        if keyword not in seen:
+                            seen.add(keyword)
+                            extracted.append(keyword)
+        return extracted
+    except Exception:
+        # The Stack Overflow source remains usable when GitHub is unavailable.
+        logger.warning("GitHub Trending keyword collection failed", exc_info=True)
+        return []
 
 
 # Bundled seed is read-only; runtime updates must never modify tracked source files.
@@ -141,6 +250,10 @@ class KeywordDictionaryStore(Protocol):
     ) -> dict[str, Any]: ...
 
     def record_keyword_update_failure(self, *, source: str, error_message: str) -> None: ...
+
+    def upsert_keyword_observations(self, *, observations: list[dict[str, str]]) -> None: ...
+
+    def load_keyword_observations(self, *, limit: int) -> list[dict[str, str]]: ...
 
 
 KEYWORD_STORE: KeywordDictionaryStore | None = None
@@ -276,13 +389,52 @@ def _snapshot_is_fresh(snapshot: dict[str, Any]) -> bool:
     return 0 <= (datetime.now(UTC) - parsed).total_seconds() < CACHE_TTL_SECONDS
 
 
-def _record_failure(error_message: str) -> None:
+def _record_failure(error_message: str, *, source: str) -> None:
     if KEYWORD_STORE is None:
         return
     try:
-        KEYWORD_STORE.record_keyword_update_failure(source="stack-overflow", error_message=error_message)
+        KEYWORD_STORE.record_keyword_update_failure(source=source, error_message=error_message)
     except Exception:
         logger.warning("Keyword update failure could not be recorded in durable storage")
+
+
+def _filter_ordered_candidates(candidates: object, *, limit: int) -> list[str]:
+    """Keep source order while applying exact-string de-duplication and filters."""
+    if not isinstance(candidates, (list, tuple, set, frozenset)):
+        return []
+    filtered: list[str] = []
+    seen: set[str] = set()
+    for keyword in candidates:
+        if not isinstance(keyword, str):
+            continue
+        normalized = keyword.strip().lower()
+        if (
+            not normalized
+            or normalized in seen
+            or normalized in DYNAMIC_KEYWORD_STOPWORDS
+            or normalized in CORE_IMMUTABLE_KEYWORDS
+        ):
+            continue
+        seen.add(normalized)
+        filtered.append(normalized)
+        if len(filtered) >= limit:
+            break
+    return filtered
+
+
+def _merge_daily_candidates(stackoverflow_tags: object, github_tags: object) -> list[dict[str, str]]:
+    """Union source quotas in collection order, retaining the first source on overlap."""
+    merged: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for source, candidates, limit in (
+        ("stack-overflow", stackoverflow_tags, STACKOVERFLOW_DYNAMIC_ALLOCATION),
+        ("github-trending", github_tags, GITHUB_TRENDING_DYNAMIC_ALLOCATION),
+    ):
+        for keyword in _filter_ordered_candidates(candidates, limit=limit):
+            if keyword not in seen:
+                seen.add(keyword)
+                merged.append({"keyword": keyword, "source": source})
+    return merged
 
 
 def get_combined_developer_keywords(
@@ -313,21 +465,39 @@ def get_combined_developer_keywords(
             except OSError:
                 pass
 
-    dynamic_tags = fetch_stackoverflow_popular_tags()
-    if not dynamic_tags:
+    daily_candidates = _merge_daily_candidates(
+        fetch_stackoverflow_popular_tags(), fetch_github_trending_keywords()
+    )
+    if not daily_candidates:
         logger.warning("Keyword refresh returned no tags; retaining the last valid dictionary")
-        _record_failure("Stack Overflow returned no usable tags")
+        _record_failure(
+            "Stack Overflow and GitHub Trending returned no usable tags",
+            source="stack-overflow+github-trending",
+        )
         return fallback
-    filtered = dynamic_tags - STOPWORDS - CORE_IMMUTABLE_KEYWORDS
-    combined = CORE_IMMUTABLE_KEYWORDS | frozenset(sorted(filtered)[:max_dynamic_capacity])
+    dynamic_capacity = min(max_dynamic_capacity, MAX_DYNAMIC_KEYWORDS)
+    dynamic_keywords = [item["keyword"] for item in daily_candidates]
+    if KEYWORD_STORE is not None:
+        try:
+            KEYWORD_STORE.upsert_keyword_observations(observations=daily_candidates)
+            observed = KEYWORD_STORE.load_keyword_observations(limit=dynamic_capacity)
+            dynamic_keywords = [
+                item["keyword"] for item in observed
+                if isinstance(item, dict) and isinstance(item.get("keyword"), str)
+            ][:dynamic_capacity]
+        except Exception:
+            logger.warning("Keyword observations could not be updated; using today's candidates")
+    combined = CORE_IMMUTABLE_KEYWORDS | frozenset(dynamic_keywords)
     if KEYWORD_STORE is not None:
         try:
             KEYWORD_STORE.save_keyword_dictionary(
-                keywords=set(combined), source="stack-overflow", previous_keywords=set(cached or ())
+                keywords=set(combined),
+                source="stack-overflow+github-trending",
+                previous_keywords=set(cached or ()),
             )
         except Exception:
             logger.warning("Keyword dictionary could not be saved to durable storage")
-            _record_failure("Durable storage write failed")
+            _record_failure("Durable storage write failed", source="stack-overflow+github-trending")
     else:
         try:
             save_keywords_to_json(combined)

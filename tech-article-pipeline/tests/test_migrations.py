@@ -88,6 +88,14 @@ def test_selective_reprocessing_migration_tracks_both_job_purposes():
     assert "DROP CHECK" not in sql
 
 
+def test_keyword_observations_migration_preserves_first_and_last_collection_dates():
+    sql = (ROOT / "migrations" / "009_quality_keyword_observations.sql").read_text(encoding="utf-8")
+    assert "quality_keyword_observations" in sql
+    assert "first_collected_at" in sql
+    assert "last_collected_at" in sql
+    assert "PRIMARY KEY (keyword)" in sql
+
+
 def test_mysql_runtime_uses_article_version_columns_without_provenance_join():
     source = (ROOT / "core/src/tech_article_pipeline/persistence/mysql.py").read_text(
         encoding="utf-8"

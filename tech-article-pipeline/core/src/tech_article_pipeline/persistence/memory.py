@@ -57,6 +57,7 @@ class MemoryPipelineRepository:
         self.article_views: dict[str, dict[str, Any]] = {}
         self.keyword_dictionary_versions: list[dict[str, Any]] = []
         self.keyword_update_history: list[dict[str, Any]] = []
+        self.keyword_observations: dict[str, dict[str, Any]] = {}
 
     def check_readiness(self) -> None:
         return None
@@ -103,6 +104,35 @@ class MemoryPipelineRepository:
                 "errorMessage": error_message,
                 "completedAt": _now().isoformat().replace("+00:00", "Z"),
             })
+
+    def upsert_keyword_observations(self, *, observations: list[dict[str, str]]) -> None:
+        with self._lock:
+            now = _now()
+            for item in observations:
+                keyword = item["keyword"]
+                existing = self.keyword_observations.get(keyword)
+                if existing is None:
+                    self.keyword_observations[keyword] = {
+                        "keyword": keyword,
+                        "source": item["source"],
+                        "firstCollectedAt": now,
+                        "lastCollectedAt": now,
+                    }
+                else:
+                    existing["source"] = item["source"]
+                    existing["lastCollectedAt"] = now
+
+    def load_keyword_observations(self, *, limit: int) -> list[dict[str, str]]:
+        with self._lock:
+            ordered = sorted(
+                self.keyword_observations.values(),
+                key=lambda item: (
+                    -item["lastCollectedAt"].timestamp(),
+                    -item["firstCollectedAt"].timestamp(),
+                    item["keyword"],
+                ),
+            )[:limit]
+            return [{"keyword": item["keyword"], "source": item["source"]} for item in ordered]
 
     def get_keyword_dictionary_status(self) -> dict[str, Any]:
         with self._lock:
