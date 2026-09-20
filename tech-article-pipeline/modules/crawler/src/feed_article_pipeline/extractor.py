@@ -32,6 +32,9 @@ def extract_article(
     container = _content_container(soup, profile.article_selectors)
     if container is None:
         raise ArticleExtractionError("The configured article body selector did not match.")
+    for selector in profile.article_exclude_selectors:
+        for unwanted in container.select(selector):
+            unwanted.decompose()
     for unwanted in container.select(
         "script, style, noscript, iframe, form, button, nav, footer, aside, "
         "[aria-label='Related'], [data-testid*='related']"

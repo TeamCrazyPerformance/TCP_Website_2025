@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
+from bs4 import BeautifulSoup
 from feed_article_pipeline import (
     FEED_SOURCE_PROFILES,
     FeedArticlePipeline,
@@ -10,10 +11,47 @@ from feed_article_pipeline import (
     FeedHttpClient,
     FeedHttpResult,
 )
+from feed_article_pipeline.extractor import ArticleExtractionError, extract_article
 from tech_article_sources import SourceAdapterRegistry
 
 NOW = datetime(2026, 8, 29, 3, 0, tzinfo=UTC)
 ROBOTS_ALLOW_ALL = b"User-agent: *\nAllow: /\n"
+
+
+def test_deepmind_extracts_all_body_sections_instead_of_related_card() -> None:
+    body = b'''<html><head><meta property="og:title" content="Genome research"></head>
+    <body><main id="page-content">
+      <section class="section-cover"><h1>Genome research</h1><p>Share Copied</p></section>
+      <section><div class="rich-text"><p>First research section.</p></div></section>
+      <section><div class="rich-text"><h2>Results</h2><p>Final research section.</p></div></section>
+      <section><h2>Related posts</h2><article class="card card-blog">AlphaGenome Learn more</article></section>
+    </main></body></html>'''
+    result = extract_article(
+        body, "https://deepmind.google/blog/genome/", FEED_SOURCE_PROFILES["deepmind-blog"]
+    )
+    text = BeautifulSoup(result.content_html, "lxml").get_text(" ", strip=True)
+    assert text == "First research section. Results Final research section."
+    assert result.title == "Genome research"
+
+
+def test_deepmind_google_blog_body_survives_related_card_cleanup() -> None:
+    result = extract_article(
+        b'<main><article class="uni-article-wrapper"><div class="rich-text"><p>Google body.</p></div>'
+        b'<div class="rich-text"><p>More research.</p></div></article></main>',
+        "https://blog.google/innovation-and-ai/example/",
+        FEED_SOURCE_PROFILES["deepmind-blog"],
+    )
+    assert "Google body." in result.content_html
+    assert "More research." in result.content_html
+
+
+def test_deepmind_related_cards_alone_are_not_an_article() -> None:
+    with pytest.raises(ArticleExtractionError):
+        extract_article(
+            b'<main><section><article class="card">AlphaGenome Learn more</article></section></main>',
+            "https://deepmind.google/blog/genome/",
+            FEED_SOURCE_PROFILES["deepmind-blog"],
+        )
 
 
 def _rss(url: str, *, title: str = "A useful engineering article") -> bytes:
