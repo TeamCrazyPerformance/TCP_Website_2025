@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from tech_article_quality import QualityEvaluator
+from tech_article_quality import evaluator as evaluator_module
+from tech_article_quality.models import Article
 
 NOW = datetime(2026, 8, 16, 12, 0, tzinfo=UTC)
 
@@ -62,6 +65,7 @@ def test_valid_article_passes_at_low_boundary():
         "technicalDepth",
         "timeliness",
         "articleQuality",
+        "communityBonus",
     }
 
 
@@ -110,33 +114,108 @@ def test_invalid_timestamp_returns_failure_contract():
     assert result["qualityEvaluation"]["error"]["code"] == "INVALID_INPUT"
 
 
+def test_technical_depth_sends_the_full_article_to_gemini(monkeypatch):
+    article = Article(
+        title="Long technical article",
+        content=("Introduction. " * 200) + "UNIQUE_TAIL_TECHNICAL_EVIDENCE",
+        language="en",
+    )
+    captured: dict[str, object] = {}
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        @staticmethod
+        def read():
+            return json.dumps({
+                "candidates": [{"content": {"parts": [{"text": '{"depth_score": 77}'}]}}]
+            }).encode()
+
+    def fake_urlopen(request, timeout):
+        captured["payload"] = json.loads(request.data.decode())
+        captured["timeout"] = timeout
+        return Response()
+
+    monkeypatch.setattr(evaluator_module.urllib.request, "urlopen", fake_urlopen)
+
+    assert QualityEvaluator.evaluate_technical_depth_llm(article, api_key="test-key") == 77
+    prompt = captured["payload"]["contents"][0]["parts"][0]["text"]
+    assert article.content in prompt
+    assert "UNIQUE_TAIL_TECHNICAL_EVIDENCE" in prompt
+    assert captured["timeout"] == 10
+
+
+def test_advertisement_words_without_a_disclosure_do_not_create_a_signal(monkeypatch):
+    for method in ("evaluate_developer_relevance", "evaluate_technical_depth_llm",
+                   "evaluate_timeliness", "evaluate_article_quality"):
+        monkeypatch.setattr(QualityEvaluator, method, staticmethod(lambda *args, **kwargs: 80))
+    payload = request()
+    payload["article"]["content"] = ("sponsored " * 100) + "architecture analysis"
+
+    evaluation = evaluator().evaluate(payload)["qualityEvaluation"]
+
+    assert evaluation["signals"]["advertisementSuspected"] is False
+    assert evaluation["signals"]["spamSuspected"] is True
+    assert evaluation["decision"] == "PASS"
+    assert "ADVERTISEMENT_SUSPECTED" not in evaluation["rejectionCodes"]
+    assert "SPAM_SUSPECTED" not in evaluation["rejectionCodes"]
+
+
+def test_explicit_sponsorship_is_an_observation_signal_not_a_hard_rejection(monkeypatch):
+    for method in ("evaluate_developer_relevance", "evaluate_technical_depth_llm",
+                   "evaluate_timeliness", "evaluate_article_quality"):
+        monkeypatch.setattr(QualityEvaluator, method, staticmethod(lambda *args, **kwargs: 80))
+    payload = request()
+    payload["article"]["content"] = "This article is sponsored by Example Corp. " + (
+        "Detailed architecture analysis. " * 20
+    )
+
+    evaluation = evaluator().evaluate(payload)["qualityEvaluation"]
+
+    assert evaluation["signals"]["advertisementSuspected"] is True
+    assert evaluation["decision"] == "PASS"
+    assert "ADVERTISEMENT_SUSPECTED" not in evaluation["rejectionCodes"]
+
+
+@pytest.mark.parametrize(("stars_today", "expected_bonus"), [
+    (None, None), (49, None), (50, 4), (150, 7), (300, 10),
+])
+def test_github_trending_bonus_uses_the_collected_daily_star_count(
+    monkeypatch, stars_today, expected_bonus,
+):
+    for method in ("evaluate_developer_relevance", "evaluate_technical_depth_llm",
+                   "evaluate_timeliness", "evaluate_article_quality"):
+        monkeypatch.setattr(QualityEvaluator, method, staticmethod(lambda *args, **kwargs: 65))
+    payload = request()
+    payload["source"]["sourceId"] = "github-trending"
+    if stars_today is not None:
+        payload["article"]["starsToday"] = stars_today
+    evaluation = evaluator().evaluate(payload)["qualityEvaluation"]
+    assert evaluation["score"]["dimensions"]["communityBonus"] == expected_bonus
+    assert evaluation["score"]["overall"] == 65 + (expected_bonus or 0)
+    assert evaluation["decision"] == (
+        "PASS" if 65 + (expected_bonus or 0) >= 70 else "REVIEW_REQUIRED"
+    )
+
+
 @pytest.mark.parametrize("source_id,engagement", [
-    ("github-trending", {"starsToday": 1000}),
     ("hugging-face-blog", {"likes": 1000}),
     ("infoq", {"views": 10000, "comments": 100}),
     ("sdtimes", {"views": 10000, "comments": 100}),
 ])
-@pytest.mark.parametrize("nested", [False, True])
-@pytest.mark.parametrize("axis_score,decision", [
-    (65, "REVIEW_REQUIRED"), (40, "REJECT"), (75, "PASS"),
-])
-def test_engagement_does_not_change_score_or_decision(
-    monkeypatch, source_id, engagement, nested, axis_score, decision,
+def test_uncollected_or_incomparable_source_metrics_do_not_get_a_bonus(
+    monkeypatch, source_id, engagement,
 ):
-    # Fix all four axes, including LLM depth, to isolate bonus removal at boundaries.
     for method in ("evaluate_developer_relevance", "evaluate_technical_depth_llm",
                    "evaluate_timeliness", "evaluate_article_quality"):
-        monkeypatch.setattr(QualityEvaluator, method,
-                            staticmethod(lambda *args, **kwargs: axis_score))
+        monkeypatch.setattr(QualityEvaluator, method, staticmethod(lambda *args, **kwargs: 65))
     payload = request()
     payload["source"]["sourceId"] = source_id
-    baseline = evaluator().evaluate(payload)["qualityEvaluation"]
-    payload["article"].update({"extra": engagement} if nested else engagement)
+    payload["article"].update(engagement)
     evaluation = evaluator().evaluate(payload)["qualityEvaluation"]
-    assert evaluation == baseline
-    assert evaluation["score"]["overall"] == axis_score
-    assert evaluation["decision"] == decision
-    assert evaluation["evaluatorVersion"] == "2.2.7"
-    assert "communityBonus" not in evaluation["score"]["dimensions"]
-    assert "보너스" not in evaluation["reason"]
-    assert round(sum(axis["contribution"] for axis in evaluation["score"]["axes"])) == axis_score
+    assert evaluation["score"]["dimensions"]["communityBonus"] is None
+    assert evaluation["score"]["overall"] == 65

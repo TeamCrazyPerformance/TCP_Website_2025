@@ -29,7 +29,7 @@ from .models import (
 )
 
 Clock = Callable[[], datetime]
-EVALUATOR_VERSION = "2.4.1"
+EVALUATOR_VERSION = "2.4.4"
 # 개편된 4대 평가 축 정의 (개발 관련성 35%, 기술적 깊이 30%, 최신성 25%, 기사 품질 10%)
 QUALITY_AXES = (
     {"key": "relevance", "label": "개발 관련성", "weight": 0.35},
@@ -61,11 +61,28 @@ NON_ARTICLE_PATTERN = re.compile(
     r"\b(subscribe|learning center|webinars archives|archive|showcase|landscape|sponsors?)\b",
     re.IGNORECASE,
 )
-ADVERTISEMENT_PATTERN = re.compile(
-    r"(?:sponsored|advertisement|buy now|limited offer|제휴|광고|구매하기|특가)",
-    re.IGNORECASE,
-)
 TOKEN_PATTERN = re.compile(r"[A-Za-z0-9_+#.-]+|[가-힣]+")
+ADVERTISEMENT_PATTERNS = (
+    # A bare word such as "sponsored" is intentionally insufficient: technical
+    # articles often discuss sponsorship without being promotional themselves.
+    ("explicit_sponsorship", re.compile(
+        r"\b(?:this|the)\s+(?:article|post|content)\s+(?:is|was)\s+sponsored(?:\s+by)?\b"
+        r"|\bsponsored\s+(?:content|post|article)\b",
+        re.IGNORECASE,
+    )),
+    ("paid_or_partner_promotion", re.compile(
+        r"\b(?:paid\s+(?:partnership|promotion)|in\s+partnership\s+with)\b",
+        re.IGNORECASE,
+    )),
+    ("affiliate_or_discount", re.compile(
+        r"\b(?:affiliate\s+links?|use\s+(?:code|coupon)\s+[A-Z0-9_-]+|save\s+\d{1,2}%|limited\s+time\s+offer)\b",
+        re.IGNORECASE,
+    )),
+    ("purchase_call_to_action", re.compile(
+        r"\b(?:buy\s+now|shop\s+now|order\s+now)\b|(?:유료\s*광고|스폰서\s*콘텐츠|제휴\s*링크|할인\s*코드|구매하기|한정\s*특가)",
+        re.IGNORECASE,
+    )),
+)
 
 
 def _utcnow() -> datetime:
@@ -114,7 +131,7 @@ class QualityEvaluator:
         article = request.article
         content_length = len(article.content)
         spam = self._spam_suspected(article.content)
-        advertisement = bool(ADVERTISEMENT_PATTERN.search(f"{article.title} {article.content}"))
+        advertisement = bool(self._advertisement_indicators(f"{article.title}\n{article.content}"))
         hard_rejections: list[str] = []
         if content_length < policy.minimum_content_length:
             hard_rejections.append("CONTENT_TOO_SHORT")
@@ -122,10 +139,7 @@ class QualityEvaluator:
             hard_rejections.append("CONTENT_TOO_LONG")
         if article.language not in policy.allowed_languages:
             hard_rejections.append("LANGUAGE_NOT_ALLOWED")
-        if policy.reject_spam and spam:
-            hard_rejections.append("SPAM_SUSPECTED")
-        if policy.reject_advertisements and advertisement:
-            hard_rejections.append("ADVERTISEMENT_SUSPECTED")
+        # The curated-source spam heuristic remains an observation signal only.
 
         # 4대 평가 축 채점
         effective_api_key = request.llm_api_key or policy.llm_api_key
@@ -417,6 +431,11 @@ class QualityEvaluator:
             return False
         counts = Counter(tokens)
         return counts.most_common(1)[0][1] / len(tokens) >= 0.35
+
+    @staticmethod
+    def _advertisement_indicators(text: str) -> list[str]:
+        """Return explicit commercial-disclosure signals without affecting decision."""
+        return [label for label, pattern in ADVERTISEMENT_PATTERNS if pattern.search(text)]
 
     def _failure(
         self, article_id: str, code: str, message: str, details: dict[str, Any]

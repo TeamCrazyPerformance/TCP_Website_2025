@@ -32,10 +32,14 @@ class SDTimesCrawler:
 
     ALLOWED_HOSTS = {"sdtimes.com", "www.sdtimes.com"}
     REDIRECT_CODES = {301, 302, 303, 307, 308}
+    _NON_ARTICLE_PATH = re.compile(
+        r"/(?:category|author|tag|page|comments|feed|webinars?|sponsors?|advertis(?:e|ing)?|events?)(?:/|$)",
+        re.IGNORECASE,
+    )
 
     def __init__(
         self,
-        crawler_version: str = "1.1.0",
+        crawler_version: str = "1.1.1",
         *,
         user_agent: str | None = None,
         minimum_request_interval_seconds: float = 1.0,
@@ -58,6 +62,11 @@ class SDTimesCrawler:
         if parsed.username or parsed.password or parsed.port not in {None, 443}:
             raise ValueError("SD Times crawler rejected URL credentials or a non-standard port")
         return url
+
+    @classmethod
+    def _is_non_article_url(cls, url: str | None) -> bool:
+        """Exclude navigation, event, and explicit sponsor destinations by URL type."""
+        return not url or bool(cls._NON_ARTICLE_PATH.search(urlparse(url).path))
 
     def _safe_get(self, url: str, *, timeout: float) -> requests.Response:
         current = self._validate_url(url)
@@ -192,7 +201,7 @@ class SDTimesCrawler:
             
             if parsed.scheme == "https" and parsed.hostname in self.ALLOWED_HOSTS:
                 # Filter out tag/category/author/pagination index pages
-                if not re.search(r"/(category|author|tag|page|comments|feed)/", parsed.path, re.I) and len(parsed.path) > 5:
+                if not self._is_non_article_url(abs_url) and len(parsed.path) > 5:
                     if abs_url not in discovered_urls and abs_url != entry_url:
                         discovered_urls.append(abs_url)
 
@@ -350,6 +359,9 @@ class SDTimesCrawler:
             content_html = post.get("content", {}).get("rendered")
             date_gmt = post.get("date_gmt") or post.get("date")
 
+            if self._is_non_article_url(link):
+                item_counter += 1
+                continue
             if self._excluded_by_age(request, date_gmt):
                 stats.articlesExcludedByAge += 1
                 item_counter += 1
@@ -420,6 +432,9 @@ class SDTimesCrawler:
             author = entry.get("author")
             content_html = entry.get("content", [{}])[0].get("value") if entry.get("content") else entry.get("summary")
 
+            if self._is_non_article_url(link):
+                item_counter += 1
+                continue
             if self._excluded_by_age(request, published_raw):
                 stats.articlesExcludedByAge += 1
                 item_counter += 1

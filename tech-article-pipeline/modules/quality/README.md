@@ -5,8 +5,13 @@ Deterministic quality evaluation for normalized technical articles. The four-axi
 The score result is self-describing: `score.axes` records each axis key, display
 label, value, weight, and weighted contribution used for that evaluation. The
 legacy `score.dimensions` object remains during the compatibility period.
-Length, language, spam, and advertisement policies are hard gates. Invalid input
-is returned through the shared failure contract instead of raising from the public API.
+Length and language policies are hard gates. Spam and advertisement findings are
+administrator-visible signals only. Advertisement detection uses explicit
+commercial disclosures and calls to purchase (for example, a statement that an
+article is sponsored, affiliate links, discount codes, or purchase prompts), not
+a bare word such as `sponsored`. Source crawlers also exclude explicit
+non-article and sponsor page types before quality evaluation. Invalid input is
+returned through the shared failure contract instead of raising from the public API.
 
 ## Technical-depth input
 
@@ -56,7 +61,7 @@ deterministic fallback score of 50.
 - Existing stored article evaluations are not recalculated by this change.
 
 
-## Community bonus (evaluator 2.4.1)
+## Community bonus (evaluator 2.4.4)
 
 The four weighted axes remain the base score. A separate, capped community bonus
 is applied only when the pipeline has a comparable source-owned metric. At

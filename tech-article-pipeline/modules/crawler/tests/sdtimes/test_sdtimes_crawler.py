@@ -24,6 +24,12 @@ class TestSDTimesPipeline(unittest.TestCase):
             "https://www.sdtimes.com/article",
         )
 
+    def test_crawler_excludes_only_explicit_non_article_page_types(self):
+        self.assertTrue(SDTimesCrawler._is_non_article_url("https://sdtimes.com/webinars/cloud"))
+        self.assertTrue(SDTimesCrawler._is_non_article_url("https://sdtimes.com/sponsors/acme"))
+        self.assertTrue(SDTimesCrawler._is_non_article_url("https://sdtimes.com/category/devops"))
+        self.assertFalse(SDTimesCrawler._is_non_article_url("https://sdtimes.com/ai/sponsored-model-context"))
+
     def test_normalizer_rejects_off_domain_canonical(self):
         _, _, canonical = normalize_url_pipeline(
             discovered_url="https://sdtimes.com/news/sample",
