@@ -29,7 +29,7 @@ from .models import (
 )
 
 Clock = Callable[[], datetime]
-EVALUATOR_VERSION = "2.2.7"
+EVALUATOR_VERSION = "2.4.1"
 # 개편된 4대 평가 축 정의 (개발 관련성 35%, 기술적 깊이 30%, 최신성 25%, 기사 품질 10%)
 QUALITY_AXES = (
     {"key": "relevance", "label": "개발 관련성", "weight": 0.35},
@@ -140,10 +140,11 @@ class QualityEvaluator:
             "timeliness": timeliness,
             "articleQuality": article_quality,
         }
+        community_bonus = self.calculate_community_engagement_bonus(request)
         overall = round(
             sum(dimension_values[axis["key"]] * float(axis["weight"]) for axis in QUALITY_AXES)
         )
-        overall = max(0, min(100, overall))
+        overall = max(0, min(100, overall + community_bonus))
         axes = [
             ScoreAxis(
                 key=str(axis["key"]),
@@ -169,11 +170,15 @@ class QualityEvaluator:
             else:
                 decision = "PASS"
                 reason = f"품질 기준점({policy.minimum_evaluation_score}점) 이상입니다."
+                if community_bonus:
+                    reason += f" (커뮤니티 반응 보너스 +{community_bonus}점 적용)"
         else:
             rejection_codes.append("LOW_EVALUATION_SCORE")
             if overall >= policy.review_lower_bound:
                 decision = "REVIEW_REQUIRED"
                 reason = "품질 점수가 검토 가능 범위에 있어 관리자 판단이 필요합니다."
+                if community_bonus:
+                    reason += f" (커뮤니티 반응 보너스 +{community_bonus}점 적용)"
             else:
                 decision = "REJECT"
                 reason = "품질 점수가 최소 검토 범위보다 낮습니다."
@@ -200,6 +205,7 @@ class QualityEvaluator:
                         technicalDepth=technical_depth,
                         timeliness=timeliness,
                         articleQuality=article_quality,
+                        communityBonus=community_bonus if community_bonus else None,
                     ),
                     axes=axes,
                 ),
@@ -291,7 +297,7 @@ class QualityEvaluator:
                     "3. Production Engineering & Problem-Solving (0-30 pts): Details real-world outage root-cause analysis, performance tuning, benchmarks, or scalability challenges.\n"
                     "4. Engineering Specificity & Rigor (0-10 pts): Uses precise domain-specific engineering vocabulary instead of high-level marketing hype.\n\n"
                     f"Title: {article.title}\n"
-                    f"Content: {article.content[:1500]}\n\n"
+                    f"Content: {article.content}\n\n"
                     f'Return JSON format only: {{"depth_score": number, "reasoning": "brief explanation"}}'
                 )
                 payload = {
@@ -326,7 +332,7 @@ class QualityEvaluator:
                 "3. Production Engineering & Problem-Solving (0-30 pts): Details real-world outage root-cause analysis, performance tuning, benchmarks, or scalability challenges.\n"
                 "4. Engineering Specificity & Rigor (0-10 pts): Uses precise domain-specific engineering vocabulary instead of high-level marketing hype.\n\n"
                 f"Title: {article.title}\n"
-                f"Content: {article.content[:1500]}\n\n"
+                f"Content: {article.content}\n\n"
                 f'Return JSON format only: {{"depth_score": number, "reasoning": "brief explanation"}}'
             )
             payload = {
@@ -381,6 +387,28 @@ class QualityEvaluator:
             length_score = 25
 
         return min(100, meta_score + length_score)
+
+    @staticmethod
+    def calculate_community_engagement_bonus(request: QualityEvaluationRequest) -> int:
+        """Return a small, auditable bonus only for comparable source data.
+
+        ``starsToday`` is collected with the GitHub Trending discovery record and
+        measures one daily window.  Views, likes, and comments from other sources
+        are not collected under the current contract and are not comparable, so
+        they deliberately receive no inferred bonus.
+        """
+        if request.source.source_id.strip().lower() != "github-trending":
+            return 0
+        stars_today = request.article.stars_today
+        if stars_today is None:
+            return 0
+        if stars_today >= 300:
+            return 10
+        if stars_today >= 150:
+            return 7
+        if stars_today >= 50:
+            return 4
+        return 0
 
     @staticmethod
     def _spam_suspected(content: str) -> bool:

@@ -8,6 +8,14 @@ legacy `score.dimensions` object remains during the compatibility period.
 Length, language, spam, and advertisement policies are hard gates. Invalid input
 is returned through the shared failure contract instead of raising from the public API.
 
+## Technical-depth input
+
+The Gemini depth evaluator receives the complete normalized article body, not a
+leading excerpt. This lets technical material, benchmark results, and incident
+analysis that appear later in a long article affect the depth score. The current
+Gemini request timeout remains 10 seconds; an API failure still returns the
+deterministic fallback score of 50.
+
 ## Durable keyword dictionary
 
 - The bundled `keywords.json` is a read-only 113-keyword core seed. It is never
@@ -48,14 +56,17 @@ is returned through the shared failure contract instead of raising from the publ
 - Existing stored article evaluations are not recalculated by this change.
 
 
-## Community bonus removal (evaluator 2.2.7)
+## Community bonus (evaluator 2.4.1)
 
-New evaluations use only the four weighted axes. Engagement metadata is still
-accepted for input compatibility, but never changes the score, decision, or
-reason. New results omit `score.dimensions.communityBonus`.
+The four weighted axes remain the base score. A separate, capped community bonus
+is applied only when the pipeline has a comparable source-owned metric. At
+present this means GitHub Trending's already-collected `starsToday`: 50/150/300
+daily stars yield +4/+7/+10 points. Missing values and every other source yield
+0; likes, views, and comments are intentionally not estimated or compared across
+sources.
 
-Stored evaluations retain their original score, decision, reason, and evaluator
-version; the API can still read their legacy metadata. The administrator UI no
-longer renders a separate bonus indicator. This change does not migrate or
-recalculate historical results. Reprocess selected articles explicitly if they
-need an evaluation under the new version.
+The core quality stage copies `discovery.starsToday` only for `github-trending`
+into the module request. It does not change the normalized article, public API,
+or database schema. The result exposes a nullable
+`score.dimensions.communityBonus`; `score.axes` continues to describe only the
+four 100%-weighted base axes. Existing evaluations are not recalculated.
