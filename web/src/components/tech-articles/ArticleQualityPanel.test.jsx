@@ -86,7 +86,9 @@ describe("QualityScoreAxes", () => {
       />,
     );
 
-    expect(screen.getByText("7.25")).toBeInTheDocument();
+    expect(screen.getByText("7.25")).toHaveClass(
+      "score-breakdown-contribution",
+    );
     expect(screen.getByText(/91 \/ 100/)).toHaveClass("score-breakdown-raw");
     expect(screen.queryByText("100 / 100")).not.toBeInTheDocument();
     expect(screen.queryByText("최종 기여 점수")).not.toBeInTheDocument();

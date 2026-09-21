@@ -328,11 +328,21 @@ describe("Tech Articles CSS 스코프", () => {
     expect(row).not.toBeNull();
     expect(row[1]).toMatch(/border:\s*0;/);
     expect(row[1]).not.toMatch(/border-bottom:/);
+    expect(row[1]).toMatch(/display:\s*grid;/);
+    expect(row[1]).toMatch(
+      /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+5ch\s+9ch;/,
+    );
 
     expect(css).not.toMatch(/\.ta-public \.score-breakdown > div:last-child/);
 
     expect(css).toMatch(
       /\.ta-public \.score-breakdown dd\s*{[^}]*font-variant-numeric:\s*tabular-nums;/s,
+    );
+    expect(css).toMatch(
+      /\.ta-public \.score-breakdown-contribution\s*{[^}]*justify-self:\s*end;[^}]*text-align:\s*right;/s,
+    );
+    expect(css).toMatch(
+      /\.ta-public \.score-breakdown dd \.score-breakdown-raw\s*{[^}]*justify-self:\s*start;/s,
     );
   });
 
