@@ -22,6 +22,11 @@ describe('StudyService study list', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useFakeTimers().setSystemTime(new Date('2026-10-02T03:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it('returns the metadata and active-member metrics required by the dashboard', async () => {
@@ -39,7 +44,7 @@ describe('StudyService study list', () => {
         place: 'Club room',
         way: 'Offline',
         cycle: 'Weekly',
-        is_public: true,
+        is_public: false,
         studyMembers: [
           {
             role: StudyMemberRole.LEADER,
@@ -65,14 +70,57 @@ describe('StudyService study list', () => {
         place: 'Club room',
         way: 'Offline',
         cycle: 'Weekly',
-        is_public: true,
+        is_public: false,
         leader_name: 'Leader',
         members_count: 3,
+        status: 'ongoing',
       },
     ]);
     expect(studyRepository.find).toHaveBeenCalledWith({
-      where: { start_year: 2026, is_public: true },
+      where: { start_year: 2026 },
       relations: ['studyMembers', 'studyMembers.user'],
     });
+  });
+
+  it('classifies every study by its period rather than the recruitment deadline', async () => {
+    studyRepository.find.mockResolvedValue([
+      { id: 1, period: '2026.09.01 ~ 2026.12.31', apply_deadline: new Date('2026-09-01'), is_public: false },
+      { id: 2, period: '2026.11.01 ~ 2026.12.31', is_public: true },
+      { id: 3, period: '2026.03 ~ 2026.05', apply_deadline: new Date('2026-12-31'), is_public: false },
+      { id: 4, period: null, is_public: true },
+    ] as Study[]);
+
+    const studies = await service.findAll();
+
+    expect(studies.map(({ id, status }) => ({ id, status }))).toEqual([
+      { id: 1, status: 'ongoing' },
+      { id: 2, status: 'upcoming' },
+      { id: 3, status: 'completed' },
+      { id: 4, status: 'unknown' },
+    ]);
+  });
+
+  it('returns the upcoming status when a future study is created', async () => {
+    const period = '2026.11.01 ~ 2026.12.31';
+    const createService = new StudyService(
+      {
+        create: jest.fn((data) => data),
+        save: jest.fn().mockResolvedValue({ id: 99, period }),
+      } as never,
+      { findOneBy: jest.fn().mockResolvedValue({ id: 'leader' }) } as never,
+      {
+        create: jest.fn((data) => data),
+        save: jest.fn().mockResolvedValue({}),
+      } as never,
+      {} as Repository<Progress>,
+      {} as Repository<Resource>,
+    );
+
+    await expect(createService.create('leader', {
+      study_name: 'Future study',
+      start_year: 2026,
+      period,
+      apply_deadline: '2026-10-31',
+    })).resolves.toEqual({ success: true, id: 99, status: 'upcoming' });
   });
 });
