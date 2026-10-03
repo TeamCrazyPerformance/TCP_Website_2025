@@ -20,6 +20,7 @@ import { StudyMember } from './entities/study-member.entity';
 import { StudyMemberRole } from './entities/enums/study-member-role.enum';
 import { Progress } from './entities/progress.entity';
 import { Resource } from './entities/resource.entity';
+import { calculateStudyPeriodProgress } from './study-period';
 
 // DTOs
 import { CreateStudyDto } from './dto/request/create-study.dto';
@@ -97,6 +98,7 @@ export class StudyService {
         way: study.way,
         cycle: study.cycle,
         is_public: study.is_public,
+        status: calculateStudyPeriodProgress(study.period).status,
         leader_name: leader?.user?.name || null,
         members_count: activeMembers.length,
       };
@@ -237,7 +239,11 @@ export class StudyService {
     });
     await this.studyMemberRepository.save(leaderMember);
 
-    return { success: true, id: savedStudy.id };
+    return {
+      success: true,
+      id: savedStudy.id,
+      status: calculateStudyPeriodProgress(savedStudy.period).status,
+    };
   }
 
   /**

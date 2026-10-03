@@ -15,6 +15,7 @@
  */
 
 import { createServer } from "node:http";
+import { studyPeriodStatus } from "./study-period.mjs";
 import { createSharedDemoData } from "./shared-demo-data.mjs";
 
 const PORT = Number(process.env.PORT || 3000);
@@ -1812,6 +1813,7 @@ function handle(method, pathname, query, body, headers = {}) {
         .filter((study) => !year || String(study.start_year) === year)
         .map((study) => ({
           ...study,
+          status: studyPeriodStatus(study.period),
           members_count: (study.members ?? []).filter((member) =>
             ["LEADER", "MEMBER", "NOMINEE"].includes(member.role),
           ).length,

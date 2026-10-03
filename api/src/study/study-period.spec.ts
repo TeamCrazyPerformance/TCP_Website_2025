@@ -40,12 +40,44 @@ describe('calculateStudyPeriodProgress', () => {
     ).toEqual({ progress: 100, status: 'completed' });
   });
 
-  it('keeps unparseable legacy data visible as an ongoing study', () => {
+  it.each(['2026.03 ~ 2026.05', '2026.3-2026.5', '2026-03 ~ 2026-05'])(
+    'supports the month-only period %s through the last day in Seoul',
+    (period) => {
+      expect(
+        calculateStudyPeriodProgress(period, new Date('2026-05-31T14:59:59.999Z')),
+      ).toEqual({ progress: 100, status: 'ongoing' });
+      expect(
+        calculateStudyPeriodProgress(period, new Date('2026-05-31T15:00:00.000Z')),
+      ).toEqual({ progress: 100, status: 'completed' });
+    },
+  );
+
+  it('keeps the full-date period ongoing until the end of the final day in Seoul', () => {
+    const period = '2026.09.10 ~ 2026.09.20';
+
+    expect(
+      calculateStudyPeriodProgress(period, new Date('2026-09-09T15:00:00.000Z')),
+    ).toEqual({ progress: 0, status: 'ongoing' });
+    expect(
+      calculateStudyPeriodProgress(period, new Date('2026-09-20T14:59:59.999Z')),
+    ).toEqual({ progress: 100, status: 'ongoing' });
+  });
+
+  it.each([
+    null,
+    '',
+    'not-a-period',
+    '8주',
+    '2026.02.30 ~ 2026.03.20',
+    '2026.09.20 ~ 2026.09.10',
+    '2026.13 ~ 2026.14',
+    '2026.12 ~ 2026.01',
+  ])('does not guess the status of an absent or invalid period: %s', (period) => {
     expect(
       calculateStudyPeriodProgress(
-        'not-a-period',
+        period,
         new Date('2026-09-15T00:00:00.000Z'),
       ),
-    ).toEqual({ progress: 0, status: 'ongoing' });
+    ).toEqual({ progress: 0, status: 'unknown' });
   });
 });

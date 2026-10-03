@@ -61,10 +61,22 @@ GET /api/v1/study?year=2026
     "place": "온라인",
     "way": "매주 토요일 오후 2시",
     "leader_name": "홍길동",
-    "members_count": 5
+    "members_count": 5,
+    "status": "unknown"
   }
 ]
 ```
+
+`status`는 진행 기간(`period`)을 기준으로 서버가 계산합니다.
+
+| 값 | 의미 |
+|----|------|
+| `upcoming` | 진행 예정 |
+| `ongoing` | 진행 중 |
+| `completed` | 종료 |
+| `unknown` | 기간 없음 또는 해석 불가 |
+
+종료일의 한국 시간 23:59:59까지는 `ongoing`입니다. 월 단위 기간은 마지막 월의 말일까지 포함하며, 모집 마감일(`apply_deadline`)은 진행 상태에 영향을 주지 않습니다.
 
 ---
 
@@ -164,7 +176,8 @@ Content-Type: application/json
 ```json
 {
   "success": true,
-  "id": 1
+  "id": 1,
+  "status": "unknown"
 }
 ```
 

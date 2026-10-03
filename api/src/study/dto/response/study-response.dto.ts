@@ -1,3 +1,5 @@
+import type { StudyPeriodStatus } from '../../study-period';
+
 export class StudyResponseDto {
   id: number;
   study_name: string;
@@ -11,6 +13,7 @@ export class StudyResponseDto {
   way: string | null;
   cycle: string | null;
   is_public: boolean;
+  status: StudyPeriodStatus;
   leader_name: string | null;
   members_count: number;
 }

@@ -3,8 +3,10 @@ import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { createSharedDemoData } from "./shared-demo-data.mjs";
+import { studyPeriodStatus } from "./study-period.mjs";
 
-const data = createSharedDemoData();
+const now = new Date("2026-10-02T14:00:00.000Z");
+const data = createSharedDemoData(now);
 const stringsOf = (value) => {
   if (typeof value === "string") return [value];
   if (Array.isArray(value)) return value.flatMap(stringsOf);
@@ -16,7 +18,7 @@ const stringsOf = (value) => {
 test("shared fixtures retain representative screen data without real identities", () => {
   assert.equal(data.demoMembers.length, 38);
   assert.equal(data.demoAnnouncements.length, 7);
-  assert.equal(data.demoStudies.length, 5);
+  assert.equal(data.demoStudies.length, 8);
   assert.equal(data.demoTeams.length, 4);
   assert.equal(new Set(data.demoMembers.map((member) => member.id)).size, 38);
   assert.deepEqual(
@@ -69,6 +71,9 @@ test("study and team identities refer to the same synthetic profiles", () => {
     [21, 2],
     [22, 1],
     [23, 1],
+    [24, 1],
+    [25, 1],
+    [26, 1],
   ]);
   for (const study of data.demoStudies) {
     assert.equal(study.members.length, counts.get(study.id));
@@ -89,6 +94,20 @@ test("study and team identities refer to the same synthetic profiles", () => {
     assert.ok(
       data.demoMembers.some((member) => member.name === post.author.name),
     );
+});
+
+test("completed, ongoing, upcoming and unknown study cases remain available", () => {
+  const statuses = data.demoStudies.map((study) =>
+    studyPeriodStatus(study.period, now),
+  );
+  assert.equal(statuses.filter((status) => status === "completed").length, 5);
+  assert.equal(statuses[5], "ongoing");
+  assert.equal(statuses[6], "upcoming");
+  assert.equal(statuses[7], "unknown");
+  const nextYear = new Date("2027-01-01T00:00:00.000Z");
+  const future = createSharedDemoData(nextYear).demoStudies;
+  assert.equal(studyPeriodStatus(future[5].period, nextYear), "ongoing");
+  assert.equal(studyPeriodStatus(future[6].period, nextYear), "upcoming");
 });
 
 test("development fallbacks have synthetic names and no real account/contact destinations", async () => {
@@ -166,7 +185,7 @@ test(
       assert.equal((await get("announcements")).length, 7);
       assert.equal((await get("teams")).length, 4);
       const studies = await get("study");
-      assert.equal(studies.length, 5);
+      assert.equal(studies.length, 8);
       assert.ok(studies.some((study) => !study.is_public));
       for (const study of studies)
         assert.equal(study.members_count, study.members.length);

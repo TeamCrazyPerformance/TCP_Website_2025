@@ -1,4 +1,4 @@
-export type StudyPeriodStatus = 'upcoming' | 'ongoing' | 'completed';
+export type StudyPeriodStatus = 'upcoming' | 'ongoing' | 'completed' | 'unknown';
 
 export interface StudyPeriodProgress {
   progress: number;
@@ -61,8 +61,10 @@ const parseFullDateRange = (period: string): DateRange | null => {
   return { startDate, endDate };
 };
 
-const parseLegacyMonthRange = (period: string): DateRange | null => {
-  const match = period.match(/^(\d{4})\.(\d{2})\s*-\s*(\d{4})\.(\d{2})$/);
+const parseMonthRange = (period: string): DateRange | null => {
+  const match = period.match(
+    /^(\d{4})[.-](\d{1,2})\s*[~-]\s*(\d{4})[.-](\d{1,2})$/,
+  );
 
   if (!match) {
     return null;
@@ -98,7 +100,7 @@ const parseStudyPeriod = (period?: string | null): DateRange | null => {
   const normalizedPeriod = period.trim();
   return (
     parseFullDateRange(normalizedPeriod) ||
-    parseLegacyMonthRange(normalizedPeriod)
+    parseMonthRange(normalizedPeriod)
   );
 };
 
@@ -109,7 +111,7 @@ export const calculateStudyPeriodProgress = (
   const range = parseStudyPeriod(period);
 
   if (!range) {
-    return { progress: 0, status: 'ongoing' };
+    return { progress: 0, status: 'unknown' };
   }
 
   const { startDate, endDate } = range;

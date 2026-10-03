@@ -1,7 +1,15 @@
 const DEMO_ORIGIN = "https://example.invalid";
 const PROFILE_IMAGE = "/images/default_profile.webp";
+const DAY_MS = 24 * 60 * 60 * 1000;
+const SEOUL_OFFSET_MS = 9 * 60 * 60 * 1000;
 
-export const createSharedDemoData = () => {
+export const createSharedDemoData = (now = new Date()) => {
+  const demoDate = (offset) =>
+    new Date(now.getTime() + SEOUL_OFFSET_MS + offset * DAY_MS)
+      .toISOString()
+      .slice(0, 10);
+  const studyDate = (offset) => demoDate(offset).replace(/-/g, ".");
+  const year = Number(demoDate(0).slice(0, 4));
   const tagSets = [
     ["React", "TypeScript", "프론트엔드"],
     ["Python", "머신러닝"],
@@ -88,6 +96,29 @@ export const createSharedDemoData = () => {
     study(23, "머신러닝 기초 스터디", 8, [], {
       tag: "머신러닝,Python",
       recruit_count: 12,
+    }),
+    study(24, "TypeScript 실전 스터디", 9, [], {
+      start_year: year,
+      tag: "TypeScript,웹",
+      period: `${studyDate(-7)} ~ ${studyDate(30)}`,
+      apply_deadline: `${demoDate(-8)}T23:59:59+09:00`,
+      recruit_count: 6,
+      is_public: true,
+    }),
+    study(25, "알고리즘 스터디", 10, [], {
+      start_year: year,
+      tag: "알고리즘",
+      period: `${studyDate(14)} ~ ${studyDate(60)}`,
+      apply_deadline: `${demoDate(13)}T23:59:59+09:00`,
+      recruit_count: 8,
+      way: "오프라인",
+      place: "가상 학습실 B",
+    }),
+    study(26, "기간 미정 스터디", 11, [], {
+      start_year: year,
+      period: null,
+      apply_deadline: null,
+      recruit_count: 5,
     }),
   ];
 
