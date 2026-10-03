@@ -51,7 +51,8 @@ Database changes are applied only by the one-shot migration command. The runner
 records each filename and SHA-256 checksum in `pipeline_migration_history` and
 refuses changed applied migrations.
 
-Keyword reads do not collect or persist. Apply `008` (dictionary versions/items/history) and `009`
+Quality evaluator 2.4.5 uses only the four weighted axes. Keyword reads do not
+collect or persist. Apply `008` (dictionary versions/items/history) and `009`
 (observations) before starting the pipeline; populate the first active dictionary
 through the authenticated refresh endpoint or the enabled daily scheduler.
 See `modules/quality/README.md` for refresh outcomes and time budgets.

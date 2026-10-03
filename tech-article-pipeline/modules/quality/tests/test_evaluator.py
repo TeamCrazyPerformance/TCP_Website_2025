@@ -65,7 +65,6 @@ def test_valid_article_passes_at_low_boundary():
         "technicalDepth",
         "timeliness",
         "articleQuality",
-        "communityBonus",
     }
 
 
@@ -181,12 +180,8 @@ def test_explicit_sponsorship_is_an_observation_signal_not_a_hard_rejection(monk
     assert "ADVERTISEMENT_SUSPECTED" not in evaluation["rejectionCodes"]
 
 
-@pytest.mark.parametrize(("stars_today", "expected_bonus"), [
-    (None, None), (49, None), (50, 4), (150, 7), (300, 10),
-])
-def test_github_trending_bonus_uses_the_collected_daily_star_count(
-    monkeypatch, stars_today, expected_bonus,
-):
+@pytest.mark.parametrize("stars_today", [None, 49, 50, 150, 300])
+def test_github_popularity_does_not_change_quality_score(monkeypatch, stars_today):
     for method in ("evaluate_developer_relevance", "evaluate_technical_depth_llm",
                    "evaluate_timeliness", "evaluate_article_quality"):
         monkeypatch.setattr(QualityEvaluator, method, staticmethod(lambda *args, **kwargs: 65))
@@ -195,11 +190,11 @@ def test_github_trending_bonus_uses_the_collected_daily_star_count(
     if stars_today is not None:
         payload["article"]["starsToday"] = stars_today
     evaluation = evaluator().evaluate(payload)["qualityEvaluation"]
-    assert evaluation["score"]["dimensions"]["communityBonus"] == expected_bonus
-    assert evaluation["score"]["overall"] == 65 + (expected_bonus or 0)
-    assert evaluation["decision"] == (
-        "PASS" if 65 + (expected_bonus or 0) >= 70 else "REVIEW_REQUIRED"
-    )
+    assert "communityBonus" not in evaluation["score"]["dimensions"]
+    assert evaluation["score"]["overall"] == 65
+    assert evaluation["decision"] == "REVIEW_REQUIRED"
+    assert evaluation["evaluatorVersion"] == "2.4.5"
+    assert round(sum(axis["contribution"] for axis in evaluation["score"]["axes"])) == 65
 
 
 @pytest.mark.parametrize("source_id,engagement", [
@@ -207,7 +202,7 @@ def test_github_trending_bonus_uses_the_collected_daily_star_count(
     ("infoq", {"views": 10000, "comments": 100}),
     ("sdtimes", {"views": 10000, "comments": 100}),
 ])
-def test_uncollected_or_incomparable_source_metrics_do_not_get_a_bonus(
+def test_other_source_metrics_do_not_change_quality_score(
     monkeypatch, source_id, engagement,
 ):
     for method in ("evaluate_developer_relevance", "evaluate_technical_depth_llm",
@@ -217,5 +212,5 @@ def test_uncollected_or_incomparable_source_metrics_do_not_get_a_bonus(
     payload["source"]["sourceId"] = source_id
     payload["article"].update(engagement)
     evaluation = evaluator().evaluate(payload)["qualityEvaluation"]
-    assert evaluation["score"]["dimensions"]["communityBonus"] is None
+    assert "communityBonus" not in evaluation["score"]["dimensions"]
     assert evaluation["score"]["overall"] == 65

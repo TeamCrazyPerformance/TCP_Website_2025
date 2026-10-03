@@ -22,13 +22,6 @@ class Article(ContractModel):
     language: str = Field(min_length=2, max_length=16)
     authors: list[str] = Field(default_factory=list)
     original_published_at: datetime | None = Field(alias="originalPublishedAt", default=None)
-    # Engagement is optional because most sources do not expose a comparable
-    # public metric.  The pipeline currently supplies starsToday only for
-    # GitHub Trending from its already-normalized discovery metadata.
-    stars_today: int | None = Field(alias="starsToday", default=None, ge=0)
-    likes: int | None = Field(default=None, ge=0)
-    views: int | None = Field(default=None, ge=0)
-    comments: int | None = Field(default=None, ge=0)
     extra: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("language")
@@ -107,7 +100,6 @@ class Dimensions(ContractModel):
     technical_depth: int = Field(alias="technicalDepth", default=50, ge=0, le=100)
     timeliness: int = Field(ge=0, le=100)
     article_quality: int = Field(alias="articleQuality", default=100, ge=0, le=100)
-    community_bonus: int | None = Field(alias="communityBonus", default=None, ge=0, le=10)
 
 
 class ScoreScale(ContractModel):

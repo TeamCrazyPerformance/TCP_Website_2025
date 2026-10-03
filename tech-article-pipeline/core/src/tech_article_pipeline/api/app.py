@@ -39,7 +39,7 @@ from tech_article_pipeline.persistence.base import (
 from tech_article_pipeline.runtime import Runtime, build_runtime
 from tech_article_pipeline.settings import Settings
 
-from .public_views import public_detail_article_read, public_list_article_read
+from .public_views import public_detail_article_read, public_list_article_read, quality_payload_read
 from .security import require_service_token
 
 _LOGGER = logging.getLogger(__name__)
@@ -435,7 +435,7 @@ def create_app(
         job = await asyncio.to_thread(request.app.state.runtime.repository.get_job, job_id)
         if job is None:
             raise HTTPException(status_code=404, detail={"code": "JOB_NOT_FOUND"})
-        return job
+        return quality_payload_read(job)
 
     @internal.get("/public/articles")
     async def public_articles(
@@ -597,7 +597,7 @@ def create_app(
             article["qualityVersionStatus"] = _quality_version_status(article, quality_target)
             article["summaryVersionStatus"] = _summary_version_status(article, summary_target)
         return {
-            "items": items,
+            "items": quality_payload_read(items),
             "limit": limit,
             "offset": offset,
             "totalCount": total_count,
@@ -725,7 +725,7 @@ def create_app(
         article["qualityTarget"] = quality_target
         article["summaryVersionStatus"] = _summary_version_status(article, summary_target)
         article["summaryTarget"] = summary_target
-        return article
+        return quality_payload_read(article)
 
     @internal.get("/admin/reviews/{kind}")
     async def review_queue(
@@ -767,7 +767,7 @@ def create_app(
                 filter_value=filter_value,
             ),
         )
-        return {"items": items, "limit": limit, "offset": offset, "totalCount": total_count}
+        return {"items": quality_payload_read(items), "limit": limit, "offset": offset, "totalCount": total_count}
 
     @internal.get("/admin/crawl-sources")
     async def admin_crawl_sources() -> dict[str, Any]:

@@ -74,17 +74,9 @@ deterministic fallback score of 50.
 - Existing stored article evaluations are not recalculated by this change.
 
 
-## Community bonus (evaluator 2.4.4)
+## Score contract (evaluator 2.4.5)
 
-The four weighted axes remain the base score. A separate, capped community bonus
-is applied only when the pipeline has a comparable source-owned metric. At
-present this means GitHub Trending's already-collected `starsToday`: 50/150/300
-daily stars yield +4/+7/+10 points. Missing values and every other source yield
-0; likes, views, and comments are intentionally not estimated or compared across
-sources.
-
-The core quality stage copies `discovery.starsToday` only for `github-trending`
-into the module request. It does not change the normalized article, public API,
-or database schema. The result exposes a nullable
-`score.dimensions.communityBonus`; `score.axes` continues to describe only the
-four 100%-weighted base axes. Existing evaluations are not recalculated.
+New scores contain exactly the four weighted dimensions and no popularity-based
+addition. GitHub daily stars remain discovery evidence, not scoring input.
+Historical overall scores, decisions, reasons, and versions are preserved; read
+projections omit unsupported historical dimension fields without rewriting DB data.

@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, Mock
 import httpx
 import pytest
 from tech_article_pipeline.api.app import _quality_keywords_read, create_app
+from tech_article_pipeline.api.public_views import quality_payload_read
 from tech_article_pipeline.persistence import memory
 from tech_article_pipeline.persistence.memory import MemoryPipelineRepository
 from tech_article_pipeline.settings import Settings
@@ -445,3 +446,20 @@ def test_kst_day_success(activated, now, expected):
         )
         is expected
     )
+
+
+def test_legacy_payload_filter_preserves_overall_and_original():
+    value = {
+        "evaluation": {
+            "score": {
+                "overall": 87,
+                "dimensions": {"relevance": 90, "communityBonus": 7},
+                "axes": [{"key": "communityBonus"}, {"key": "custom"}],
+            }
+        }
+    }
+    projected = quality_payload_read(value)
+    assert projected["evaluation"]["score"]["overall"] == 87
+    assert projected["evaluation"]["score"]["dimensions"] == {"relevance": 90}
+    assert projected["evaluation"]["score"]["axes"] == [{"key": "custom"}]
+    assert value["evaluation"]["score"]["dimensions"]["communityBonus"] == 7

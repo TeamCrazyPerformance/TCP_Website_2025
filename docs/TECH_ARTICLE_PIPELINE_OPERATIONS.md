@@ -133,7 +133,7 @@ and its first refresh success after deployment. If automatic collection is off,
 keep it off and perform one authorized internal refresh for initialization;
 otherwise reads continue using core seed with an administrator warning.
 Existing evaluation overall/decision/reason/version and all LLM behavior remain
-unchanged.
+unchanged. The 2.4.5 evaluator uses four axes only for new evaluations.
 
 Run `cd tech-article-pipeline && bash scripts/test_keyword_mysql.sh` for disposable
 MySQL 8.4 checks with Docker running. The schema verifier checks required keyword

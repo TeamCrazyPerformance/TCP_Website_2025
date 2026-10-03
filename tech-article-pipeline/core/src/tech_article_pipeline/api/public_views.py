@@ -20,6 +20,26 @@ _LEGACY_V2_AXES = (
 )
 
 
+def quality_payload_read(value: Any) -> Any:
+    if isinstance(value, list):
+        return [quality_payload_read(item) for item in value]
+    if not isinstance(value, Mapping):
+        return value
+    result = {key: quality_payload_read(item) for key, item in value.items()}
+    score = result.get("score")
+    if isinstance(score, dict):
+        dimensions = score.get("dimensions")
+        if isinstance(dimensions, dict):
+            supported = {axis["key"] for axis in (*_LEGACY_V1_AXES, *_LEGACY_V2_AXES)}
+            score["dimensions"] = {key: item for key, item in dimensions.items() if key in supported}
+        if isinstance(score.get("axes"), list):
+            score["axes"] = [
+                axis for axis in score["axes"]
+                if not isinstance(axis, dict) or axis.get("key") not in {"communityBonus", "community_bonus"}
+            ]
+    return result
+
+
 def _finite_number(value: Any) -> int | float | None:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
@@ -56,7 +76,7 @@ def _supplied_breakdown(score: Mapping[str, Any]) -> list[dict[str, Any]]:
         key = candidate.get("key")
         label = candidate.get("label")
         value = _finite_number(candidate.get("value"))
-        if not isinstance(key, str) or not key.strip() or key in seen:
+        if not isinstance(key, str) or not key.strip() or key in seen or key in {"communityBonus", "community_bonus"}:
             continue
         if not isinstance(label, str) or not label.strip() or len(label.strip()) > 100:
             continue
