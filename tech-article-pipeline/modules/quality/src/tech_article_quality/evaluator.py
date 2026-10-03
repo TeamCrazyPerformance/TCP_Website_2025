@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import math
@@ -15,6 +16,8 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from . import keywords_manager
+from .keywords_manager import CORE_IMMUTABLE_KEYWORDS, KeywordRefreshError
 from .models import (
     Article,
     Dimensions,
@@ -38,24 +41,13 @@ QUALITY_AXES = (
     {"key": "articleQuality", "label": "기사 품질", "weight": 0.10},
 )
 
-from .keywords_manager import CORE_IMMUTABLE_KEYWORDS, get_combined_developer_keywords
-
-# Do not refresh during import.  The pipeline installs its database-backed
-# dictionary store immediately after import; fetching here used the legacy file
-# fallback first and created a disposable container cache on every deployment.
 DEVELOPER_KEYWORDS = CORE_IMMUTABLE_KEYWORDS
-KEYWORDS_LOADED_AT = datetime.now(UTC).isoformat()
 try:
     KEYWORD_REFRESH_CHECK_SECONDS = max(
         1, int(os.environ.get("QUALITY_KEYWORD_REFRESH_CHECK_SECONDS", "300"))
     )
 except ValueError:
     KEYWORD_REFRESH_CHECK_SECONDS = 300
-_KEYWORD_REFRESH_LOCK = threading.Lock()
-# The module is imported before the pipeline runtime wires its durable store.
-# A zero value makes the first request after that wiring persist/refresh the
-# dictionary immediately instead of waiting five minutes with cache-only data.
-_LAST_KEYWORD_REFRESH_CHECK = 0.0
 
 NON_ARTICLE_PATTERN = re.compile(
     r"\b(subscribe|learning center|webinars archives|archive|showcase|landscape|sponsors?)\b",
@@ -94,23 +86,43 @@ class QualityEvaluator:
 
     def __init__(self, *, clock: Clock = _utcnow) -> None:
         self._clock = clock
+        self._keywords = {
+            "keywords": CORE_IMMUTABLE_KEYWORDS,
+            "loadedAt": datetime.now(UTC).isoformat(),
+            "loadedVersion": None,
+            "loadedActivatedAt": None,
+            "warnings": (),
+        }
+        self._last_keyword_check = 0.0
+        self._keyword_read_lock = threading.Lock()
+        self._keyword_state_lock = threading.Lock()
+        self._keyword_refresh_lock = threading.Lock()
+        self._keyword_generation = 0
+        self._refresh_task: asyncio.Task | None = None
+        self._unknown_keyword_version: str | None = None
 
     def keyword_snapshot(self) -> dict[str, Any]:
-        self._refresh_keywords_if_due()
-        keywords = sorted(DEVELOPER_KEYWORDS)
-        core = sorted(DEVELOPER_KEYWORDS & CORE_IMMUTABLE_KEYWORDS)
-        dynamic = sorted(DEVELOPER_KEYWORDS - CORE_IMMUTABLE_KEYWORDS)
+        self._sync_keywords_if_due()
+        snapshot = self._keywords
+        keywords = sorted(snapshot["keywords"])
+        core = sorted(snapshot["keywords"] & CORE_IMMUTABLE_KEYWORDS)
+        dynamic = sorted(snapshot["keywords"] - CORE_IMMUTABLE_KEYWORDS)
         return {
-            "loadedAt": KEYWORDS_LOADED_AT,
+            "loadedAt": snapshot["loadedAt"],
+            "loadedVersion": snapshot["loadedVersion"],
+            "loadedActivatedAt": snapshot["loadedActivatedAt"],
+            "warnings": list(snapshot["warnings"])
+            + (["KEYWORD_REFRESH_OUTCOME_UNKNOWN"] if self._unknown_keyword_version else []),
             "fingerprint": hashlib.sha256("\n".join(keywords).encode()).hexdigest(),
             "totalCount": len(keywords),
             "coreKeywords": core,
             "dynamicKeywords": dynamic,
-            "refreshPolicy": "REQUEST_TRIGGERED_TTL_CHECK",
+            "refreshPolicy": "READ_ONLY_DATABASE_CHECK",
         }
 
     def evaluate(self, input_data: Mapping[str, Any]) -> dict[str, Any]:
-        self._refresh_keywords_if_due()
+        self._sync_keywords_if_due()
+        keywords = self._keywords["keywords"]
         article_id = input_data.get("articleId", "") if isinstance(input_data, Mapping) else ""
         try:
             request = QualityEvaluationRequest.model_validate(input_data)
@@ -143,7 +155,7 @@ class QualityEvaluator:
 
         # 4대 평가 축 채점
         effective_api_key = request.llm_api_key or policy.llm_api_key
-        relevance = self.evaluate_developer_relevance(article)
+        relevance = self.evaluate_developer_relevance(article, keywords=keywords)
         technical_depth = self.evaluate_technical_depth_llm(article, api_key=effective_api_key)
         timeliness = self.evaluate_timeliness(article.original_published_at, now)
         article_quality = self.evaluate_article_quality(request)
@@ -230,41 +242,88 @@ class QualityEvaluator:
         )
         return result.model_dump(by_alias=True, mode="json")
 
-    @staticmethod
-    def refresh_keyword_dictionary() -> dict[str, Any]:
-        """Force one administrator/scheduler-triggered dictionary refresh."""
-        global DEVELOPER_KEYWORDS, KEYWORDS_LOADED_AT, _LAST_KEYWORD_REFRESH_CHECK
-        with _KEYWORD_REFRESH_LOCK:
-            refreshed = get_combined_developer_keywords(force_refresh=True)
-            _LAST_KEYWORD_REFRESH_CHECK = time.monotonic()
-            if refreshed != DEVELOPER_KEYWORDS:
-                DEVELOPER_KEYWORDS = refreshed
-                KEYWORDS_LOADED_AT = datetime.now(UTC).isoformat()
-        return QualityEvaluator().keyword_snapshot()
+    def _install_keyword_dictionary(self, dictionary: dict[str, Any] | None) -> None:
+        self._keywords = {
+            "keywords": keywords_manager._snapshot_keywords(dictionary) or CORE_IMMUTABLE_KEYWORDS,
+            "loadedAt": datetime.now(UTC).isoformat(),
+            "loadedVersion": dictionary.get("versionId") if dictionary else None,
+            "loadedActivatedAt": dictionary.get("updatedAt") if dictionary else None,
+            "warnings": () if dictionary else ("ACTIVE_KEYWORD_DICTIONARY_MISSING",),
+        }
+        self._keyword_generation += 1
+        if dictionary and dictionary.get("versionId") == self._unknown_keyword_version:
+            self._unknown_keyword_version = None
 
-    @staticmethod
-    def _refresh_keywords_if_due() -> None:
-        """Refresh an expired dictionary in a long-running API process safely."""
-        global DEVELOPER_KEYWORDS, KEYWORDS_LOADED_AT, _LAST_KEYWORD_REFRESH_CHECK
+    async def refresh_keyword_dictionary(self) -> dict[str, Any]:
+        if not self._keyword_refresh_lock.acquire(blocking=False):
+            raise KeywordRefreshError(
+                "KEYWORD_REFRESH_BUSY", "Keyword refresh is already running.", status_code=409
+            )
+        self._refresh_task = asyncio.create_task(self._run_keyword_refresh())
+        self._refresh_task.add_done_callback(
+            lambda task: task.exception() if not task.cancelled() else None
+        )
+        return await asyncio.shield(self._refresh_task)
+
+    async def _run_keyword_refresh(self) -> dict[str, Any]:
+        try:
+            result = await keywords_manager.refresh_keyword_dictionary()
+            dictionary = result["dictionary"]
+            with self._keyword_state_lock:
+                self._install_keyword_dictionary(dictionary)
+                self._last_keyword_check = time.monotonic()
+                self._unknown_keyword_version = None
+            snapshot = self.keyword_snapshot()
+            return {
+                "status": "SUCCESS",
+                "activeVersion": dictionary["versionId"],
+                "activatedAt": dictionary["updatedAt"],
+                "changed": result["changed"],
+                "source": dictionary.get("source"),
+                "warnings": result["warnings"],
+                "snapshot": snapshot,
+            }
+        except keywords_manager.KeywordCommitOutcomeUnknown as error:
+            self._unknown_keyword_version = error.version_id
+            raise
+        finally:
+            self._keyword_refresh_lock.release()
+
+    def _sync_keywords_if_due(self) -> None:
         now = time.monotonic()
-        if now - _LAST_KEYWORD_REFRESH_CHECK < KEYWORD_REFRESH_CHECK_SECONDS:
+        if (
+            self._last_keyword_check
+            and now - self._last_keyword_check < KEYWORD_REFRESH_CHECK_SECONDS
+        ):
             return
-        if not _KEYWORD_REFRESH_LOCK.acquire(blocking=False):
+        if not self._keyword_read_lock.acquire(blocking=False):
             return
         try:
-            now = time.monotonic()
-            if now - _LAST_KEYWORD_REFRESH_CHECK < KEYWORD_REFRESH_CHECK_SECONDS:
-                return
-            refreshed = get_combined_developer_keywords()
-            _LAST_KEYWORD_REFRESH_CHECK = now
-            if refreshed != DEVELOPER_KEYWORDS:
-                DEVELOPER_KEYWORDS = refreshed
-                KEYWORDS_LOADED_AT = datetime.now(UTC).isoformat()
+            generation = self._keyword_generation
+            try:
+                dictionary = keywords_manager.load_keyword_dictionary()
+                warning = None
+            except Exception:
+                dictionary = None
+                warning = "KEYWORD_DICTIONARY_READ_FAILED"
+            with self._keyword_state_lock:
+                if generation != self._keyword_generation:
+                    return
+                self._last_keyword_check = time.monotonic()
+                if dictionary:
+                    self._install_keyword_dictionary(dictionary)
+                else:
+                    self._keywords = {
+                        **self._keywords,
+                        "warnings": (warning or "ACTIVE_KEYWORD_DICTIONARY_MISSING",),
+                    }
         finally:
-            _KEYWORD_REFRESH_LOCK.release()
+            self._keyword_read_lock.release()
 
     @staticmethod
-    def evaluate_developer_relevance(article: Article) -> int:
+    def evaluate_developer_relevance(
+        article: Article, *, keywords: frozenset[str] | None = None
+    ) -> int:
         """TF-IDF Sigmoid (math.tanh) 토큰 밀도 알고리즘 (가중치 35%)"""
         if NON_ARTICLE_PATTERN.search(article.title):
             return 0
@@ -276,7 +335,7 @@ class QualityEvaluator:
             return 0
         token_counts = Counter(tokens)
         tf_sum = 0.0
-        for keyword in DEVELOPER_KEYWORDS:
+        for keyword in keywords if keywords is not None else DEVELOPER_KEYWORDS:
             kw = keyword.lower()
             if " " in kw or "-" in kw:
                 pattern = re.compile(r"\b" + re.escape(kw) + r"\b", re.IGNORECASE)

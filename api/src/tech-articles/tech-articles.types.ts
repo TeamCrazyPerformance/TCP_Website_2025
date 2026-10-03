@@ -150,3 +150,13 @@ export interface SummaryVersions {
   model?: string | null;
   promptVersion?: string | null;
 }
+
+export interface KeywordDictionaryRefreshResult {
+  status: 'SUCCESS';
+  activeVersion: string;
+  activatedAt: string;
+  changed: boolean;
+  source: string;
+  warnings: string[];
+  snapshot: Record<string, unknown>;
+}

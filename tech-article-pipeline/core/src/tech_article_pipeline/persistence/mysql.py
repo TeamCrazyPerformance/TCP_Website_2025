@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 from zoneinfo import ZoneInfo
+
+from tech_article_quality.keywords_manager import KeywordCommitOutcomeUnknown
 
 from tech_article_pipeline.catalog import language_projection, source_projection
 from tech_article_pipeline.contracts import (
@@ -101,6 +104,13 @@ def _payload_digest(value: dict[str, Any]) -> bytes:
     return hashlib.sha256(encoded).digest()
 
 
+def _keyword_cleanup(resource: Any, method: str) -> None:
+    try:
+        getattr(resource, method)()
+    except Exception:
+        logging.getLogger(__name__).warning("Keyword transaction cleanup failed: %s", method)
+
+
 class MySQLPipelineRepository:
     """MySQL 8.4 repository sharing the admission module's connection pool."""
 
@@ -181,55 +191,102 @@ class MySQLPipelineRepository:
         version_id = f"keyword-version-{uuid4().hex}"
         checksum = hashlib.sha256("\n".join(ordered).encode("utf-8")).hexdigest()
         connection = self._connection()
+        cursor = None
+        commit_started = False
         try:
             cursor = connection.cursor(dictionary=True)
-            try:
-                cursor.execute(
-                    "UPDATE quality_keyword_dictionary_versions SET status = 'ARCHIVED' "
-                    "WHERE status = 'ACTIVE'"
-                )
-                cursor.execute(
-                    "INSERT INTO quality_keyword_dictionary_versions "
-                    "(version_id, status, source, keyword_count, checksum_sha256, activated_at) "
-                    "VALUES (%s, 'ACTIVE', %s, %s, %s, UTC_TIMESTAMP(6))",
-                    (version_id, source, len(ordered), checksum),
-                )
-                cursor.executemany(
-                    "INSERT INTO quality_keyword_dictionary_items (version_id, keyword, source) "
-                    "VALUES (%s, %s, %s)",
-                    [(version_id, keyword, source) for keyword in ordered],
-                )
-                cursor.execute(
-                    "INSERT INTO quality_keyword_update_history "
-                    "(update_id, status, source, version_id, added_count, removed_count) "
-                    "VALUES (%s, 'SUCCESS', %s, %s, %s, %s)",
-                    (
-                        f"keyword-update-{uuid4().hex}",
-                        source,
-                        version_id,
-                        len(keywords - previous_keywords),
-                        len(previous_keywords - keywords),
-                    ),
-                )
-                connection.commit()
-                cursor.execute(
-                    "SELECT activated_at FROM quality_keyword_dictionary_versions WHERE version_id = %s",
-                    (version_id,),
-                )
-                activated_at = _utc(cursor.fetchone()["activated_at"])
-                return {
-                    "versionId": version_id,
-                    "source": source,
-                    "keywords": ordered,
-                    "updatedAt": activated_at.isoformat().replace("+00:00", "Z"),
-                }
-            finally:
-                cursor.close()
+            cursor.execute(
+                "UPDATE quality_keyword_dictionary_versions SET status = 'ARCHIVED' "
+                "WHERE status = 'ACTIVE'"
+            )
+            cursor.execute(
+                "INSERT INTO quality_keyword_dictionary_versions "
+                "(version_id, status, source, keyword_count, checksum_sha256, activated_at) "
+                "VALUES (%s, 'ACTIVE', %s, %s, %s, UTC_TIMESTAMP(6))",
+                (version_id, source, len(ordered), checksum),
+            )
+            cursor.executemany(
+                "INSERT INTO quality_keyword_dictionary_items (version_id, keyword, source) "
+                "VALUES (%s, %s, %s)",
+                [(version_id, keyword, source) for keyword in ordered],
+            )
+            cursor.execute(
+                "INSERT INTO quality_keyword_update_history "
+                "(update_id, status, source, version_id, added_count, removed_count) "
+                "VALUES (%s, 'SUCCESS', %s, %s, %s, %s)",
+                (
+                    f"keyword-update-{uuid4().hex}",
+                    source,
+                    version_id,
+                    len(keywords - previous_keywords),
+                    len(previous_keywords - keywords),
+                ),
+            )
+            cursor.execute(
+                "SELECT activated_at FROM quality_keyword_dictionary_versions WHERE version_id = %s",
+                (version_id,),
+            )
+            activated_at = _utc(cursor.fetchone()["activated_at"])
+            snapshot = {
+                "versionId": version_id,
+                "source": source,
+                "keywords": ordered,
+                "updatedAt": activated_at.isoformat().replace("+00:00", "Z"),
+            }
+            commit_started = True
+            connection.commit()
+            return snapshot
         except Exception:
-            connection.rollback()
+            _keyword_cleanup(connection, "rollback")
+            if commit_started:
+                if cursor is not None:
+                    _keyword_cleanup(cursor, "close")
+                    cursor = None
+                _keyword_cleanup(connection, "close")
+                connection = None
+                return self._reconcile_keyword_commit(version_id)
             raise
         finally:
-            connection.close()
+            if cursor is not None:
+                _keyword_cleanup(cursor, "close")
+            if connection is not None:
+                _keyword_cleanup(connection, "close")
+
+    def _reconcile_keyword_commit(self, version_id: str) -> dict[str, Any]:
+        connection = None
+        cursor = None
+        try:
+            connection = self._connection()
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT v.version_id, v.source, v.activated_at FROM quality_keyword_dictionary_versions v "
+                "JOIN quality_keyword_update_history h ON h.version_id = v.version_id "
+                "WHERE v.version_id = %s AND h.status = 'SUCCESS' LIMIT 1",
+                (version_id,),
+            )
+            version = cursor.fetchone()
+            if version is None:
+                raise KeywordCommitOutcomeUnknown(version_id)
+            cursor.execute(
+                "SELECT keyword FROM quality_keyword_dictionary_items WHERE version_id = %s ORDER BY keyword",
+                (version_id,),
+            )
+            keywords = [row["keyword"] for row in cursor.fetchall()]
+            if not keywords:
+                raise KeywordCommitOutcomeUnknown(version_id)
+            return {
+                "versionId": version_id,
+                "source": version["source"],
+                "keywords": keywords,
+                "updatedAt": _utc(version["activated_at"]).isoformat().replace("+00:00", "Z"),
+            }
+        except Exception:
+            raise KeywordCommitOutcomeUnknown(version_id) from None
+        finally:
+            if cursor is not None:
+                _keyword_cleanup(cursor, "close")
+            if connection is not None:
+                _keyword_cleanup(connection, "close")
 
     def record_keyword_update_failure(self, *, source: str, error_message: str) -> None:
         connection = self._connection()

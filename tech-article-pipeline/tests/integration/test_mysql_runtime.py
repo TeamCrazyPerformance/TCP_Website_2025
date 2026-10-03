@@ -5,10 +5,12 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
+import mysql.connector
 import pytest
 from tech_article_admission.application import ArticleAdmissionService
 from tech_article_admission.config import MySQLSettings
 from tech_article_admission.persistence import MySQLAdmissionRepository, MySQLConnectionPool
+from tech_article_pipeline.persistence import migrate
 from tech_article_pipeline.persistence.migrate import apply_migrations
 from tech_article_pipeline.persistence.mysql import MySQLPipelineRepository
 
@@ -58,6 +60,13 @@ def _insert_migration_004_probe(pool):
 def mysql_pool():
     if os.getenv("PIPELINE_TEST_MYSQL") != "1":
         pytest.skip("set PIPELINE_TEST_MYSQL=1 for the disposable MySQL 8.4 suite")
+    if (
+        os.getenv("TECH_ARTICLE_MYSQL_HOST") != "127.0.0.1"
+        or os.getenv("TECH_ARTICLE_MYSQL_DATABASE") != "tcp_keyword_test"
+    ):
+        pytest.fail(
+            "Use scripts/test_keyword_mysql.sh with the isolated loopback tcp_keyword_test DB"
+        )
     apply_migrations(through_version="003")
     settings = MySQLSettings.from_env()
     pool = MySQLConnectionPool(settings)
@@ -69,8 +78,21 @@ def mysql_pool():
     finally:
         connection.close()
     probe = None if already_applied else _insert_migration_004_probe(pool)
+    apply_migrations(through_version="007")
+    admission = ArticleAdmissionService(MySQLAdmissionRepository(pool))
+    suffix = uuid4().hex
+    preserved = admission.admit(
+        admission_payload(
+            f"upgrade-{suffix}",
+            f"Synthetic upgrade fixture {suffix} " * 30,
+            f"https://integration.example/upgrade/{suffix}",
+        )
+    )
+    article_id = preserved["articleIngested"]["articleId"]
+    before = MySQLPipelineRepository(pool).get_article(article_id)
     apply_migrations()
     pool.migration_004_probe = probe
+    pool.keyword_upgrade_probe = {"articleId": article_id, "before": before}
     return pool
 
 
@@ -131,8 +153,118 @@ def test_migrations_are_idempotent_and_checksummed(mysql_pool):
             ("005", 64),
             ("006", 64),
             ("007", 64),
+            ("008", 64),
+            ("009", 64),
         ]
     finally:
+        connection.close()
+
+
+def test_keyword_upgrade_preserves_existing_article_and_readiness(mysql_pool):
+    repository = MySQLPipelineRepository(mysql_pool)
+    probe = mysql_pool.keyword_upgrade_probe
+    assert repository.get_article(probe["articleId"]) == probe["before"]
+    repository.check_readiness()
+
+
+def test_applied_keyword_checksum_mismatch_stops_before_sql(mysql_pool, monkeypatch, tmp_path):
+    original = migrate.migration_directory()
+    for path in original.glob("[0-9][0-9][0-9]_*.sql"):
+        text = path.read_text()
+        (tmp_path / path.name).write_text(
+            text + ("\n-- mismatch\n" if path.name.startswith("008_") else "")
+        )
+    monkeypatch.setenv("PIPELINE_MIGRATIONS_DIR", str(tmp_path))
+    with pytest.raises(RuntimeError, match="checksum mismatch for 008"):
+        apply_migrations()
+    assert (
+        MySQLPipelineRepository(mysql_pool).get_article(
+            mysql_pool.keyword_upgrade_probe["articleId"]
+        )
+        == mysql_pool.keyword_upgrade_probe["before"]
+    )
+
+
+def test_partial_keyword_ddl_validates_structure_before_recording_history(mysql_pool):
+    connection = mysql_pool.get_connection()
+    cursor = connection.cursor()
+    try:
+        cursor.execute("DELETE FROM pipeline_migration_history WHERE version = '009'")
+        connection.commit()
+        cursor.execute(
+            "ALTER TABLE quality_keyword_observations MODIFY source VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL"
+        )
+        with pytest.raises(RuntimeError, match=r"schema mismatch.*columns"):
+            apply_migrations()
+        cursor.execute("SELECT COUNT(*) FROM pipeline_migration_history WHERE version = '009'")
+        assert cursor.fetchone()[0] == 0
+    finally:
+        cursor.execute(
+            "ALTER TABLE quality_keyword_observations MODIFY source VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL"
+        )
+        cursor.close()
+        connection.close()
+        apply_migrations()
+    MySQLPipelineRepository(mysql_pool).check_readiness()
+
+
+def test_keyword_version_rollback_observations_and_restart(mysql_pool, monkeypatch):
+    from tech_article_quality import QualityEvaluator
+    from tech_article_quality import keywords_manager as manager
+
+    repository = MySQLPipelineRepository(mysql_pool)
+    keywords = set(manager.CORE_IMMUTABLE_KEYWORDS | {"bun"})
+    saved = repository.save_keyword_dictionary(
+        keywords=keywords,
+        source="stack-overflow",
+        previous_keywords=set(manager.CORE_IMMUTABLE_KEYWORDS),
+    )
+    assert repository.load_active_keyword_dictionary() == saved
+    with pytest.raises(mysql.connector.Error):
+        repository.save_keyword_dictionary(
+            keywords={"x" * 256}, source="test", previous_keywords=keywords
+        )
+    assert repository.load_active_keyword_dictionary() == saved
+    assert repository.get_keyword_dictionary_status()["lastUpdate"]["status"] == "SUCCESS"
+    monkeypatch.setattr(manager, "KEYWORD_STORE", repository)
+    restarted = QualityEvaluator().keyword_snapshot()
+    assert restarted["loadedVersion"] == saved["versionId"]
+    assert set(restarted["coreKeywords"] + restarted["dynamicKeywords"]) == keywords
+
+    suffix = uuid4().hex
+    oldest = f"oldest-{suffix}"
+    now = datetime(2026, 10, 3, 1)
+    connection = mysql_pool.get_connection()
+    cursor = connection.cursor()
+    try:
+        cursor.executemany(
+            "INSERT INTO quality_keyword_observations (keyword, source, first_collected_at, last_collected_at) VALUES (%s, 'test', %s, %s)",
+            [(oldest, now - timedelta(days=1), now - timedelta(days=1))]
+            + [(f"recent-{suffix}-{i:03}", now, now) for i in range(250)],
+        )
+        connection.commit()
+    finally:
+        cursor.close()
+        connection.close()
+    observed = repository.load_keyword_observations(limit=250)
+    assert len(observed) == 250
+    assert oldest not in {item["keyword"] for item in observed}
+    repository.upsert_keyword_observations(
+        observations=[{"keyword": oldest, "source": "stack-overflow"}]
+    )
+    connection = mysql_pool.get_connection()
+    cursor = connection.cursor(dictionary=True)
+    try:
+        cursor.execute(
+            "SELECT first_collected_at, last_collected_at, source FROM quality_keyword_observations WHERE keyword = %s",
+            (oldest,),
+        )
+        row = cursor.fetchone()
+        assert row["first_collected_at"] == now - timedelta(days=1)
+        assert row["source"] == "stack-overflow"
+        assert row["last_collected_at"] > row["first_collected_at"]
+    finally:
+        cursor.close()
         connection.close()
 
 

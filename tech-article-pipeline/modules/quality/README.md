@@ -29,13 +29,21 @@ deterministic fallback score of 50.
   it is not the operational update history.
 - In the pipeline runtime, MySQL is the source of truth. Migration `008` creates
   immutable dictionary versions, their keyword items, and successful/failed
-  update history. A new version becomes active only after all its items are saved.
+  update history; `009` stores recent observations. Version activation, items,
+  and SUCCESS history are committed in one transaction.
 - The evaluator does not collect during Python module import. After the pipeline
   has configured its repository, the first request checks the active DB version;
   later checks run every `QUALITY_KEYWORD_REFRESH_CHECK_SECONDS` seconds (300 by
-  default). A dictionary older than 24 hours is refreshed on the next request.
-  The authenticated internal refresh endpoint is intended for the daily external
-  scheduler, so a container replacement cannot create a file-cache dictionary first.
+  default). These checks only read the DB: snapshots, evaluations, Overview, and
+  health never collect keywords or write history. A failed read retains the last
+  good process snapshot; only an uninitialized process uses the core seed.
+  `loadedVersion`/`loadedActivatedAt` identify the loaded list, separately from
+  the DB's `activeVersion`/`activatedAt`.
+- Only the authenticated internal refresh endpoint collects externally. It uses
+  cancellable async HTTP, a 30-second total collection budget, and a 2 MiB decoded
+  response limit per request. Concurrent refresh returns 409/BUSY; a caller
+  disconnect does not cancel the tracked server operation. Under the deployed
+  single-process runtime, retries reuse a confirmed active KST-day version.
 - Dynamic candidates combine Stack Overflow's popular tags and explicit topics of
   the three daily GitHub Trending repositories. Repository names/descriptions and
   broad topic labels are excluded. A GitHub outage leaves Stack Overflow available;
@@ -47,17 +55,22 @@ deterministic fallback score of 50.
   `quality_keyword_observations` records each keyword's first and latest collection
   timestamp; a repeated keyword updates only its latest timestamp. The active
   dynamic dictionary is the most recently collected 250 observations.
-- Empty/failed collection keeps the last active DB version unchanged and records
-  a failed update history item. If durable storage cannot be read, the evaluator
-  falls back to its in-memory dictionary and then the bundled core seed.
+- Empty collection, observation failure, or pre-commit storage failure keeps the
+  previous dictionary and returns 503. A usable single source permits a partial
+  refresh with a warning and actual source attribution. Observations commit
+  separately and can remain after a subsequent dictionary save fails.
+- A confirmed commit installs its returned version before SUCCESS is returned.
+  Lost commit acknowledgement is reconciled by version ID and SUCCESS history;
+  unavailable reconciliation returns `KEYWORD_REFRESH_OUTCOME_UNKNOWN`, not an
+  invented failure/success. Failure-history storage itself may be unavailable.
 - `QUALITY_KEYWORD_CACHE_DIR` is retained only for standalone library use without
   a configured pipeline repository. It is not used as the production source of
   truth after the DB migration.
 - The administrator Overview response exposes the active storage type, version,
   stored keyword count, and latest update status without requiring Docker or
   direct database access.
-- Apply migration `008` before deploying the code. Existing article evaluations
-  are not recalculated by this change.
+- Apply migrations `008` and `009` before deploying the code. Without an active
+  dictionary, an explicit initial refresh is needed if automatic collection is off.
 - Existing stored article evaluations are not recalculated by this change.
 
 

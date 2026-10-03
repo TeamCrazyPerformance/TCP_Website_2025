@@ -1,6 +1,9 @@
+import hashlib
 import inspect
 from pathlib import Path
 
+import pytest
+from tech_article_pipeline.persistence import migrate
 from tech_article_pipeline.persistence.mysql import MySQLPipelineRepository
 
 ROOT = Path(__file__).parents[1]
@@ -112,3 +115,130 @@ def test_quality_recalculation_preserves_the_original_submission_result():
     assert "UPDATE pipeline_submissions" not in source
     assert "quality_evaluation = %s" in source
     assert "quality_recalculation_status = %s" in source
+
+
+class KeywordMigrationProbe:
+    def __init__(self, mismatch=None):
+        self.mismatch = mismatch
+        self.rows = []
+        self.ddl = []
+        self.history = {
+            path.name[:3]: {
+                "filename": path.name,
+                "checksum_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            }
+            for path in (ROOT / "migrations").glob("[0-9][0-9][0-9]_*.sql")
+            if path.name[:3] <= "007"
+        }
+
+    def cursor(self, **kwargs):
+        return self
+
+    def close(self):
+        pass
+
+    def execute(self, sql, params=None):
+        self.rows = []
+        if sql.startswith("SELECT filename"):
+            self.rows = [self.history[params[0]]] if params[0] in self.history else []
+        elif sql.startswith("INSERT INTO pipeline_migration_history"):
+            self.history[params[0]] = {"filename": params[1], "checksum_sha256": params[2]}
+        elif sql.startswith("SELECT ENGINE"):
+            self.rows = [{"ENGINE": "MyISAM" if self.mismatch == "engine" else "InnoDB"}]
+        elif "FROM information_schema.COLUMNS" in sql:
+            columns = next(
+                tables[params[0]]
+                for tables in migrate._KEYWORD_TABLES.values()
+                if params[0] in tables
+            )
+            self.rows = [
+                {
+                    "COLUMN_NAME": name,
+                    "COLUMN_TYPE": definition[0],
+                    "IS_NULLABLE": definition[1],
+                    "COLLATION_NAME": definition[2],
+                    "COLUMN_DEFAULT": "CURRENT_TIMESTAMP(6)"
+                    if definition[:2] == ("datetime(6)", "NO")
+                    else None,
+                }
+                for name, definition in columns.items()
+            ]
+            if self.mismatch == "columns":
+                self.rows[0]["COLUMN_TYPE"] = "varchar(1)"
+            if self.mismatch == "defaults":
+                for row in self.rows:
+                    row["COLUMN_DEFAULT"] = None
+        elif "FROM information_schema.STATISTICS" in sql:
+            self.rows = [
+                {"INDEX_NAME": name, "COLUMN_NAME": column}
+                for name, columns in migrate._KEYWORD_INDEXES[params[0]].items()
+                for column in columns
+            ]
+            if self.mismatch == "indexes":
+                self.rows = []
+        elif "REFERENTIAL_CONSTRAINTS" in sql:
+            self.rows = [
+                {
+                    "TABLE_NAME": table,
+                    "COLUMN_NAME": "version_id",
+                    "REFERENCED_TABLE_NAME": "quality_keyword_dictionary_versions",
+                    "REFERENCED_COLUMN_NAME": "version_id",
+                    "DELETE_RULE": rule,
+                }
+                for table, rule in [
+                    ("quality_keyword_dictionary_items", "CASCADE"),
+                    ("quality_keyword_update_history", "SET NULL"),
+                ]
+            ]
+            if self.mismatch == "foreign keys":
+                self.rows = []
+        elif "CHECK_CONSTRAINTS" in sql:
+            self.rows = [{"ENFORCED": "YES", "CHECK_CLAUSE": "(`keyword_count` > 0)"}]
+            if self.mismatch == "check":
+                self.rows = []
+        elif sql.startswith("CREATE TABLE") and "pipeline_migration_history" not in sql:
+            self.ddl.append(sql)
+
+    def fetchone(self):
+        return self.rows[0] if self.rows else None
+
+    def fetchall(self):
+        return self.rows
+
+
+def configure_migration_probe(monkeypatch, probe):
+    monkeypatch.setattr(migrate.mysql.connector, "connect", lambda **kwargs: probe)
+    monkeypatch.setattr(migrate, "migration_directory", lambda: ROOT / "migrations")
+    for name in ("USER", "PASSWORD", "DATABASE"):
+        monkeypatch.setenv(f"TECH_ARTICLE_MYSQL_{name}", "test-only")
+
+
+def test_007_upgrade_adds_only_four_keyword_tables_and_reapply_skips_ddl(monkeypatch):
+    probe = KeywordMigrationProbe()
+    configure_migration_probe(monkeypatch, probe)
+    migrate.apply_migrations()
+    assert len(probe.ddl) == 4
+    assert set(probe.history) == {f"{number:03}" for number in range(1, 10)}
+    migrate.apply_migrations()
+    assert len(probe.ddl) == 4
+
+
+@pytest.mark.parametrize(
+    "mismatch", ["engine", "columns", "defaults", "indexes", "foreign keys", "check"]
+)
+def test_partial_keyword_schema_mismatch_never_records_success(monkeypatch, mismatch):
+    probe = KeywordMigrationProbe(mismatch)
+    configure_migration_probe(monkeypatch, probe)
+    with pytest.raises(RuntimeError, match="Keyword schema mismatch"):
+        migrate.apply_migrations()
+    assert "008" not in probe.history
+
+
+def test_keyword_checksum_mismatch_is_rejected_before_ddl(monkeypatch):
+    probe = KeywordMigrationProbe()
+    configure_migration_probe(monkeypatch, probe)
+    migrate.apply_migrations()
+    probe.history["008"]["checksum_sha256"] = "0" * 64
+    with pytest.raises(RuntimeError, match="checksum mismatch for 008"):
+        migrate.apply_migrations()
+    assert len(probe.ddl) == 4

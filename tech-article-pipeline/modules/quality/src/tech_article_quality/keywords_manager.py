@@ -6,18 +6,21 @@ Layer 2: 동적 트렌딩 키워드 (Dynamic Trending Set - Stack Overflow & Git
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
 import re
-import time
 import tempfile
-import urllib.request
+import time
 import zlib
 from datetime import UTC, datetime
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Protocol
+from zoneinfo import ZoneInfo
+
+import httpx
 
 # =====================================================================
 # Layer 1: 절대로 삭제되지 않는 영구 보존 코어 사전 (Core Immutable Set)
@@ -141,7 +144,26 @@ class _GitHubTrendingRepositoryParser(HTMLParser):
             self._inside_heading = False
 
 
-def fetch_stackoverflow_popular_tags(limit: int = STACKEXCHANGE_MAX_PAGE_SIZE) -> list[str]:
+MAX_RESPONSE_BYTES = 2 * 1024 * 1024
+COLLECTION_BUDGET_SECONDS = 30
+
+
+async def _read_remote_bytes(client: httpx.AsyncClient, url: str, *, headers=None) -> bytes:
+    chunks = bytearray()
+    async with client.stream("GET", url, headers=headers) as response:
+        response.raise_for_status()
+        async for chunk in response.aiter_bytes():
+            chunks.extend(chunk)
+            if len(chunks) > MAX_RESPONSE_BYTES:
+                raise ValueError("Keyword source response exceeds the size limit")
+    return bytes(chunks)
+
+
+async def fetch_stackoverflow_popular_tags(
+    limit: int = STACKEXCHANGE_MAX_PAGE_SIZE,
+    *,
+    client: httpx.AsyncClient | None = None,
+) -> list[str]:
     """Stack Overflow API에서 실시간 인기 기술 태그 수집.
 
     Stack Exchange는 ``pagesize``를 최대 100으로 제한한다. 호출자가 더 큰
@@ -154,30 +176,32 @@ def fetch_stackoverflow_popular_tags(limit: int = STACKEXCHANGE_MAX_PAGE_SIZE) -
     )
     extracted: list[str] = []
     seen: set[str] = set()
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=6) as resp:
-            data_bytes = resp.read()
-            try:
-                data_text = zlib.decompress(data_bytes, 15 + 32).decode("utf-8")
-            except Exception:
-                data_text = data_bytes.decode("utf-8")
-            data = json.loads(data_text)
-            for item in data.get("items", []):
-                tag_name = item.get("name", "")
-                norm = normalize_keyword(tag_name)
-                for keyword in sorted(norm):
-                    if keyword not in seen:
-                        seen.add(keyword)
-                        extracted.append(keyword)
-    except Exception:
-        # Do not let an external-source failure break article evaluation, but
-        # retain the traceback so an empty dictionary is diagnosable.
-        logger.warning("Stack Overflow keyword collection failed", exc_info=True)
+    if client is None:
+        async with httpx.AsyncClient(timeout=6) as owned:
+            return await fetch_stackoverflow_popular_tags(limit, client=owned)
+    data_bytes = await _read_remote_bytes(client, url, headers={"User-Agent": "Mozilla/5.0"})
+    if data_bytes.startswith(b"\x1f\x8b"):
+        decoder = zlib.decompressobj(15 + 32)
+        data_bytes = decoder.decompress(data_bytes, MAX_RESPONSE_BYTES + 1)
+        if len(data_bytes) > MAX_RESPONSE_BYTES or decoder.unconsumed_tail:
+            raise ValueError("Keyword source response exceeds the size limit")
+    data = json.loads(data_bytes)
+    for item in data.get("items", []):
+        tag_name = item.get("name", "")
+        if not isinstance(tag_name, str):
+            continue
+        for keyword in sorted(normalize_keyword(tag_name)):
+            if keyword not in seen:
+                seen.add(keyword)
+                extracted.append(keyword)
     return extracted
 
 
-def fetch_github_trending_keywords(limit: int = GITHUB_TRENDING_REPOSITORY_LIMIT) -> list[str]:
+async def fetch_github_trending_keywords(
+    limit: int = GITHUB_TRENDING_REPOSITORY_LIMIT,
+    *,
+    client: httpx.AsyncClient | None = None,
+) -> list[str]:
     """Collect explicit topics from the daily GitHub Trending repositories.
 
     GitHub Trending itself is an HTML ranking, but the terms used here come from
@@ -196,38 +220,37 @@ def fetch_github_trending_keywords(limit: int = GITHUB_TRENDING_REPOSITORY_LIMIT
     if token:
         headers["Authorization"] = f"Bearer {token}"
 
-    try:
-        trending_request = urllib.request.Request(
-            "https://github.com/trending?since=daily", headers=headers
+    if client is None:
+        async with httpx.AsyncClient(timeout=6) as owned:
+            return await fetch_github_trending_keywords(limit, client=owned)
+    page = (
+        await _read_remote_bytes(
+            client,
+            "https://github.com/trending?since=daily",
+            headers=headers,
         )
-        with urllib.request.urlopen(trending_request, timeout=6) as response:
-            page = response.read().decode("utf-8", errors="replace")
-        parser = _GitHubTrendingRepositoryParser()
-        parser.feed(page)
-        repositories = parser.repositories[:repository_limit]
-        if not repositories:
-            logger.warning("GitHub Trending returned no repositories")
-            return []
-
-        extracted: list[str] = []
-        seen: set[str] = set()
-        for owner, repository in repositories:
-            topic_request = urllib.request.Request(
-                f"https://api.github.com/repos/{owner}/{repository}/topics", headers=headers
+    ).decode("utf-8", errors="replace")
+    parser = _GitHubTrendingRepositoryParser()
+    parser.feed(page)
+    extracted: list[str] = []
+    seen: set[str] = set()
+    for owner, repository in parser.repositories[:repository_limit]:
+        if not all(re.fullmatch(r"[A-Za-z0-9_.-]+", part) for part in (owner, repository)):
+            continue
+        payload = json.loads(
+            await _read_remote_bytes(
+                client,
+                f"https://api.github.com/repos/{owner}/{repository}/topics",
+                headers=headers,
             )
-            with urllib.request.urlopen(topic_request, timeout=6) as response:
-                payload = json.loads(response.read().decode("utf-8"))
-            for topic in payload.get("names", []):
-                if isinstance(topic, str):
-                    for keyword in sorted(normalize_keyword(topic)):
-                        if keyword not in seen:
-                            seen.add(keyword)
-                            extracted.append(keyword)
-        return extracted
-    except Exception:
-        # The Stack Overflow source remains usable when GitHub is unavailable.
-        logger.warning("GitHub Trending keyword collection failed", exc_info=True)
-        return []
+        )
+        for topic in payload.get("names", []):
+            if isinstance(topic, str):
+                for keyword in sorted(normalize_keyword(topic)):
+                    if keyword not in seen:
+                        seen.add(keyword)
+                        extracted.append(keyword)
+    return extracted
 
 
 # Bundled seed is read-only; runtime updates must never modify tracked source files.
@@ -283,7 +306,19 @@ def _atomic_write_json(path: str, payload: dict) -> None:
         if temporary and os.path.exists(temporary):
             os.unlink(temporary)
 
-CACHE_TTL_SECONDS = 86_400  # 마지막 성공 저장 시점부터 24시간
+class KeywordRefreshError(RuntimeError):
+    def __init__(self, code: str, message: str, *, status_code: int = 503) -> None:
+        super().__init__(message)
+        self.code = code
+        self.status_code = status_code
+
+
+class KeywordCommitOutcomeUnknown(KeywordRefreshError):
+    def __init__(self, version_id: str) -> None:
+        super().__init__(
+            "KEYWORD_REFRESH_OUTCOME_UNKNOWN", "Keyword dictionary commit outcome is unknown.",
+        )
+        self.version_id = version_id
 
 
 def record_keyword_history_diff(old_keywords: set[str], new_keywords: set[str]) -> None:
@@ -309,7 +344,7 @@ def record_keyword_history_diff(old_keywords: set[str], new_keywords: set[str]) 
     history_list = []
     if os.path.exists(KEYWORD_HISTORY_PATH):
         try:
-            with open(KEYWORD_HISTORY_PATH, "r", encoding="utf-8") as f:
+            with open(KEYWORD_HISTORY_PATH, encoding="utf-8") as f:
                 history_list = json.load(f).get("history", [])
                 if not isinstance(history_list, list):
                     history_list = []
@@ -373,27 +408,29 @@ def _snapshot_keywords(snapshot: dict[str, Any] | None) -> frozenset[str] | None
     keywords = snapshot.get("keywords")
     if not isinstance(keywords, list) or not keywords:
         return None
-    if not all(isinstance(keyword, str) and keyword.strip() == keyword for keyword in keywords):
+    if not all(isinstance(keyword, str) and keyword and keyword.strip() == keyword for keyword in keywords):
         return None
     return frozenset(keywords) | CORE_IMMUTABLE_KEYWORDS
 
 
-def _snapshot_is_fresh(snapshot: dict[str, Any]) -> bool:
-    updated_at = snapshot.get("updatedAt")
-    if not isinstance(updated_at, str):
+def is_current_day(snapshot: dict[str, Any] | None, now: datetime) -> bool:
+    if not snapshot or not snapshot.get("versionId"):
         return False
     try:
-        parsed = datetime.fromisoformat(updated_at.replace("Z", "+00:00")).astimezone(UTC)
-    except ValueError:
+        activated = datetime.fromisoformat(snapshot["updatedAt"].replace("Z", "+00:00"))
+        return (
+            activated.tzinfo is not None
+            and activated <= now
+            and activated.astimezone(ZoneInfo("Asia/Seoul")).date()
+            == now.astimezone(ZoneInfo("Asia/Seoul")).date()
+        )
+    except (KeyError, TypeError, ValueError):
         return False
-    return 0 <= (datetime.now(UTC) - parsed).total_seconds() < CACHE_TTL_SECONDS
 
 
-def _record_failure(error_message: str, *, source: str) -> None:
-    if KEYWORD_STORE is None:
-        return
+def _record_failure(store: KeywordDictionaryStore, error_message: str, *, source: str) -> None:
     try:
-        KEYWORD_STORE.record_keyword_update_failure(source=source, error_message=error_message)
+        store.record_keyword_update_failure(source=source, error_message=error_message)
     except Exception:
         logger.warning("Keyword update failure could not be recorded in durable storage")
 
@@ -422,7 +459,9 @@ def _filter_ordered_candidates(candidates: object, *, limit: int) -> list[str]:
     return filtered
 
 
-def _merge_daily_candidates(stackoverflow_tags: object, github_tags: object) -> list[dict[str, str]]:
+def _merge_daily_candidates(
+    stackoverflow_tags: object, github_tags: object
+) -> list[dict[str, str]]:
     """Union source quotas in collection order, retaining the first source on overlap."""
     merged: list[dict[str, str]] = []
     seen: set[str] = set()
@@ -437,70 +476,129 @@ def _merge_daily_candidates(stackoverflow_tags: object, github_tags: object) -> 
     return merged
 
 
-def get_combined_developer_keywords(
-    max_dynamic_capacity: int = 250, *, force_refresh: bool = False
-) -> frozenset[str]:
-    """Load the active DB dictionary, refreshing an expired version when necessary.
-
-    File cache remains only as a compatibility fallback when the runtime has not
-    configured a durable store (for standalone library use and older deployments).
-    """
-    snapshot: dict[str, Any] | None = None
+def load_keyword_dictionary() -> dict[str, Any] | None:
+    """Read only; callers retain their last good snapshot on a storage error."""
     if KEYWORD_STORE is not None:
-        try:
-            snapshot = KEYWORD_STORE.load_active_keyword_dictionary()
-        except Exception:
-            logger.warning("Keyword dictionary could not be read from durable storage")
-    cached = _snapshot_keywords(snapshot)
-    if KEYWORD_STORE is None:
-        cached = load_keywords_from_json()
-    fallback = cached or load_keywords_from_json(SEED_KEYWORD_PATH) or CORE_IMMUTABLE_KEYWORDS
-    if cached and not force_refresh:
-        if snapshot is not None and _snapshot_is_fresh(snapshot):
-            return cached
-        if KEYWORD_STORE is None:
-            try:
-                if 0 <= time.time() - os.path.getmtime(KEYWORD_JSON_PATH) < CACHE_TTL_SECONDS:
-                    return cached
-            except OSError:
-                pass
+        snapshot = KEYWORD_STORE.load_active_keyword_dictionary()
+        if snapshot is not None and not _valid_stored_dictionary(snapshot):
+            raise ValueError("Invalid stored keyword dictionary")
+        return snapshot
+    cached = load_keywords_from_json()
+    return {"keywords": sorted(cached), "versionId": None, "updatedAt": None} if cached else None
 
-    daily_candidates = _merge_daily_candidates(
-        fetch_stackoverflow_popular_tags(), fetch_github_trending_keywords()
-    )
-    if not daily_candidates:
-        logger.warning("Keyword refresh returned no tags; retaining the last valid dictionary")
-        _record_failure(
-            "Stack Overflow and GitHub Trending returned no usable tags",
-            source="stack-overflow+github-trending",
+
+def _valid_stored_dictionary(snapshot: Any) -> bool:
+    if not _snapshot_keywords(snapshot):
+        return False
+    version = snapshot.get("versionId")
+    if not isinstance(version, str) or not version.strip():
+        return False
+    try:
+        activated = datetime.fromisoformat(snapshot["updatedAt"].replace("Z", "+00:00"))
+        return activated.tzinfo is not None and activated.utcoffset().total_seconds() == 0
+    except (KeyError, AttributeError, TypeError, ValueError):
+        return False
+
+
+def get_combined_developer_keywords() -> frozenset[str]:
+    """Read the configured dictionary without external collection or writes."""
+    return _snapshot_keywords(load_keyword_dictionary()) or CORE_IMMUTABLE_KEYWORDS
+
+
+def _persist_candidates(store, current, candidates, source) -> dict[str, Any]:
+    try:
+        store.upsert_keyword_observations(observations=candidates)
+        observed = store.load_keyword_observations(limit=MAX_DYNAMIC_KEYWORDS)
+        dynamic = _filter_ordered_candidates(
+            [item["keyword"] for item in observed],
+            limit=MAX_DYNAMIC_KEYWORDS,
         )
-        return fallback
-    dynamic_capacity = min(max_dynamic_capacity, MAX_DYNAMIC_KEYWORDS)
-    dynamic_keywords = [item["keyword"] for item in daily_candidates]
-    if KEYWORD_STORE is not None:
+        if not dynamic:
+            raise ValueError("Keyword observations contain no usable candidates")
+    except Exception:
+        raise KeywordRefreshError(
+            "KEYWORD_OBSERVATION_FAILED", "Keyword observation storage failed."
+        ) from None
+    combined = set(CORE_IMMUTABLE_KEYWORDS | frozenset(dynamic))
+    try:
+        saved = store.save_keyword_dictionary(
+            keywords=combined,
+            source=source,
+            previous_keywords=set(_snapshot_keywords(current) or CORE_IMMUTABLE_KEYWORDS),
+        )
+    except KeywordCommitOutcomeUnknown:
+        raise
+    except Exception:
+        raise KeywordRefreshError(
+            "KEYWORD_SAVE_FAILED", "Keyword dictionary storage failed."
+        ) from None
+    if not _valid_stored_dictionary(saved) or set(saved["keywords"]) != combined:
+        raise KeywordCommitOutcomeUnknown(
+            saved.get("versionId", "unknown") if isinstance(saved, dict) else "unknown"
+        )
+    return saved
+
+
+async def refresh_keyword_dictionary(*, now: datetime | None = None) -> dict[str, Any]:
+    store = KEYWORD_STORE
+    if store is None:
+        raise KeywordRefreshError(
+            "KEYWORD_REFRESH_UNAVAILABLE", "Keyword dictionary storage is not configured."
+        )
+    now = now or datetime.now(UTC)
+    source = "stack-overflow+github-trending"
+    try:
         try:
-            KEYWORD_STORE.upsert_keyword_observations(observations=daily_candidates)
-            observed = KEYWORD_STORE.load_keyword_observations(limit=dynamic_capacity)
-            dynamic_keywords = [
-                item["keyword"] for item in observed
-                if isinstance(item, dict) and isinstance(item.get("keyword"), str)
-            ][:dynamic_capacity]
+            current = await asyncio.to_thread(store.load_active_keyword_dictionary)
+            if current is not None and not _valid_stored_dictionary(current):
+                raise ValueError("Invalid stored keyword dictionary")
         except Exception:
-            logger.warning("Keyword observations could not be updated; using today's candidates")
-    combined = CORE_IMMUTABLE_KEYWORDS | frozenset(dynamic_keywords)
-    if KEYWORD_STORE is not None:
+            raise KeywordRefreshError(
+                "KEYWORD_READ_FAILED", "Active keyword dictionary could not be read."
+            ) from None
+        if is_current_day(current, now) and _snapshot_keywords(current):
+            return {"dictionary": current, "changed": False, "warnings": []}
         try:
-            KEYWORD_STORE.save_keyword_dictionary(
-                keywords=set(combined),
-                source="stack-overflow+github-trending",
-                previous_keywords=set(cached or ()),
+            async with asyncio.timeout(COLLECTION_BUDGET_SECONDS):
+                async with httpx.AsyncClient(timeout=6) as client:
+                    results = await asyncio.gather(
+                        fetch_stackoverflow_popular_tags(client=client),
+                        fetch_github_trending_keywords(client=client),
+                        return_exceptions=True,
+                    )
+        except TimeoutError:
+            raise KeywordRefreshError(
+                "KEYWORD_COLLECTION_TIMEOUT", "Keyword collection exceeded its time budget."
+            ) from None
+        candidates = _merge_daily_candidates(*results)
+        warnings = [
+            f"{name}_KEYWORD_SOURCE_UNAVAILABLE"
+            for name, result, limit in zip(
+                ("STACKOVERFLOW", "GITHUB"),
+                results,
+                (STACKOVERFLOW_DYNAMIC_ALLOCATION, GITHUB_TRENDING_DYNAMIC_ALLOCATION),
+                strict=True,
             )
-        except Exception:
-            logger.warning("Keyword dictionary could not be saved to durable storage")
-            _record_failure("Durable storage write failed", source="stack-overflow+github-trending")
-    else:
-        try:
-            save_keywords_to_json(combined)
-        except OSError:
-            logger.warning("Keyword cache could not be saved; using refreshed keywords in memory")
-    return combined
+            if not _filter_ordered_candidates(result, limit=limit)
+        ]
+        if not candidates:
+            raise KeywordRefreshError(
+                "KEYWORD_COLLECTION_FAILED", "No usable keyword candidates were collected."
+            )
+        source = "+".join(dict.fromkeys(item["source"] for item in candidates))
+        if warnings:
+            logger.warning("Partial keyword collection: %s", ", ".join(warnings))
+        saved = await asyncio.to_thread(_persist_candidates, store, current, candidates, source)
+        return {"dictionary": saved, "changed": True, "warnings": warnings}
+    except KeywordCommitOutcomeUnknown as error:
+        logger.warning("Keyword dictionary commit outcome could not be confirmed: version=%s", error.version_id)
+        raise
+    except KeywordRefreshError as error:
+        await asyncio.to_thread(_record_failure, store, str(error), source=source)
+        raise
+    except Exception:
+        error = KeywordRefreshError(
+            "KEYWORD_REFRESH_FAILED", "Keyword refresh could not be completed."
+        )
+        await asyncio.to_thread(_record_failure, store, str(error), source=source)
+        raise error from None

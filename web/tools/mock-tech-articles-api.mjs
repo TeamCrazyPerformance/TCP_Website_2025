@@ -2031,7 +2031,14 @@ function handle(method, pathname, query, body, headers = {}) {
           dynamicCount: 2,
           coreKeywords: ["python", "javascript"],
           dynamicKeywords: ["fastapi", "webgpu"],
-          refreshPolicy: "PROCESS_START",
+          refreshPolicy: "READ_ONLY_DATABASE_CHECK",
+          loadedVersion: "mock-keyword-version",
+          loadedActivatedAt: "2026-09-06T00:00:00.000Z",
+          storage: "MEMORY",
+          activeVersion: "mock-keyword-version",
+          activatedAt: "2026-09-06T00:00:00.000Z",
+          storedKeywordCount: 4,
+          lastUpdate: { status: "SUCCESS", completedAt: "2026-09-06T00:00:00.000Z" },
         },
         moduleVersions: {
           standards: {
