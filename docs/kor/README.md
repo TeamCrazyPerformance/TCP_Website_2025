@@ -30,7 +30,6 @@
 - [PRIVACY_DRAFT.md](./PRIVACY_DRAFT.md) - 개인정보처리방침 (안)
 - [PROFILE_IMAGE_LOGIC.md](./PROFILE_IMAGE_LOGIC.md) - 프로필 이미지 로직
 - [RECRUITMENT_POST_DRAFT.md](./RECRUITMENT_POST_DRAFT.md) - 모집 공고문 (안)
-- [SERVICE_READINESS_REPORT.md](./SERVICE_READINESS_REPORT.md) - 서비스 준비 상태 보고서
 - [TERMS_DRAFT.md](./TERMS_DRAFT.md) - 이용약관 (안)
 
 ---

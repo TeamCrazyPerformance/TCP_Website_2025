@@ -5,40 +5,78 @@ Deterministic quality evaluation for normalized technical articles. The four-axi
 The score result is self-describing: `score.axes` records each axis key, display
 label, value, weight, and weighted contribution used for that evaluation. The
 legacy `score.dimensions` object remains during the compatibility period.
-Length, language, spam, and advertisement policies are hard gates. Invalid input
-is returned through the shared failure contract instead of raising from the public API.
+Length and language policies are hard gates. Spam and advertisement findings are
+administrator-visible signals only. Advertisement detection uses explicit
+commercial disclosures and calls to purchase (for example, a statement that an
+article is sponsored, affiliate links, discount codes, or purchase prompts), not
+a bare word such as `sponsored`. Source crawlers also exclude explicit
+non-article and sponsor page types before quality evaluation. Invalid input is
+returned through the shared failure contract instead of raising from the public API.
 
-## Keyword cache and startup safety
+## Technical-depth input
 
-- The bundled `keywords.json` is a read-only seed, restored to the pre-contamination
-  core dictionary (113 keywords). The tracked history was cleared because it
-  contained manual/test updates; Git retains that history.
-- Runtime updates write to `~/.cache/tech-article-quality`, or the directory set by
-  `QUALITY_KEYWORD_CACHE_DIR`. Both dictionary and history are stored there, using
-  atomic file replacement. Do not point this setting at the module source folder.
-- The existing refresh behavior is unchanged: initialization checks the cache's
-  24-hour age when the process starts. It is not a daily background scheduler.
-- Empty/failed collection preserves the last valid cache, falling back to the
-  bundled seed and then the built-in core. Invalid caches are ignored. A cache
-  write failure logs a warning and does not prevent initialization.
-- Pytest uses a temporary cache seeded before collection imports the evaluator;
-  tests do not initialize from the operator's runtime cache or update source JSON.
-- No database migration or new production environment variable is required. The
-  default Docker user has `/app` as its home; its cache is disposable across
-  container replacement. Build and recreate the pipeline container to deploy.
-  Confirm the administrator keyword snapshot contains the core keywords and no
-  `alpha`, `beta`, or `gamma` test entries. New startup collection may add real tags.
+The Gemini depth evaluator receives the complete normalized article body, not a
+leading excerpt. This lets technical material, benchmark results, and incident
+analysis that appear later in a long article affect the depth score. The current
+Gemini request timeout remains 10 seconds; an API failure still returns the
+deterministic fallback score of 50.
+
+## Durable keyword dictionary
+
+- The bundled `keywords.json` is a read-only 113-keyword core seed. It is never
+  changed at runtime and is used only when no durable dictionary is available.
+  The bundled `keywords_history.json` remains an empty compatibility template;
+  it is not the operational update history.
+- In the pipeline runtime, MySQL is the source of truth. Migration `008` creates
+  immutable dictionary versions, their keyword items, and successful/failed
+  update history; `009` stores recent observations. Version activation, items,
+  and SUCCESS history are committed in one transaction.
+- The evaluator does not collect during Python module import. After the pipeline
+  has configured its repository, the first request checks the active DB version;
+  later checks run every `QUALITY_KEYWORD_REFRESH_CHECK_SECONDS` seconds (300 by
+  default). These checks only read the DB: snapshots, evaluations, Overview, and
+  health never collect keywords or write history. A failed read retains the last
+  good process snapshot; only an uninitialized process uses the core seed.
+  `loadedVersion`/`loadedActivatedAt` identify the loaded list, separately from
+  the DB's `activeVersion`/`activatedAt`.
+- Only the authenticated internal refresh endpoint collects externally. It uses
+  cancellable async HTTP, a 30-second total collection budget, and a 2 MiB decoded
+  response limit per request. Concurrent refresh returns 409/BUSY; a caller
+  disconnect does not cancel the tracked server operation. Under the deployed
+  single-process runtime, retries reuse a confirmed active KST-day version.
+- Dynamic candidates combine Stack Overflow's popular tags and explicit topics of
+  the three daily GitHub Trending repositories. Repository names/descriptions and
+  broad topic labels are excluded. A GitHub outage leaves Stack Overflow available;
+  an optional `GITHUB_KEYWORD_TOKEN` only raises GitHub's public API quota.
+- The dynamic dictionary retains up to 250 keywords. Daily collection is capped
+  at 125 (half of that maximum): up to 100 candidates from Stack Overflow and 25
+  from GitHub. Source collection order is preserved, duplicates are retained once,
+  and the first source wins attribution.
+  `quality_keyword_observations` records each keyword's first and latest collection
+  timestamp; a repeated keyword updates only its latest timestamp. The active
+  dynamic dictionary is the most recently collected 250 observations.
+- Empty collection, observation failure, or pre-commit storage failure keeps the
+  previous dictionary and returns 503. A usable single source permits a partial
+  refresh with a warning and actual source attribution. Observations commit
+  separately and can remain after a subsequent dictionary save fails.
+- A confirmed commit installs its returned version before SUCCESS is returned.
+  Lost commit acknowledgement is reconciled by version ID and SUCCESS history;
+  unavailable reconciliation returns `KEYWORD_REFRESH_OUTCOME_UNKNOWN`, not an
+  invented failure/success. Failure-history storage itself may be unavailable.
+- `QUALITY_KEYWORD_CACHE_DIR` is retained only for standalone library use without
+  a configured pipeline repository. It is not used as the production source of
+  truth after the DB migration.
+- The administrator Overview response exposes the active storage type, version,
+  stored keyword count, and latest update status without requiring Docker or
+  direct database access.
+- Apply migrations `008` and `009` before deploying the code. Without an active
+  dictionary, an explicit initial refresh is needed if automatic collection is off.
 - Existing stored article evaluations are not recalculated by this change.
 
 
-## Community bonus removal (evaluator 2.2.7)
+## Score contract (evaluator 2.4.5)
 
-New evaluations use only the four weighted axes. Engagement metadata is still
-accepted for input compatibility, but never changes the score, decision, or
-reason. New results omit `score.dimensions.communityBonus`.
-
-Stored evaluations retain their original score, decision, reason, and evaluator
-version; the API can still read their legacy metadata. The administrator UI no
-longer renders a separate bonus indicator. This change does not migrate or
-recalculate historical results. Reprocess selected articles explicitly if they
-need an evaluation under the new version.
+New scores contain exactly the four weighted dimensions and no popularity-based
+addition. GitHub daily stars remain discovery evidence, not scoring input.
+Historical overall scores, decisions, reasons, and versions are preserved; read
+projections omit unsupported historical dimension fields without rewriting DB data.

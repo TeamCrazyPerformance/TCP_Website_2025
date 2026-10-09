@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import { CrawlRunDto } from './tech-articles.dto';
@@ -8,6 +8,7 @@ const SEOUL_UTC_OFFSET_MS = 9 * 60 * 60 * 1000;
 const DEFAULT_MAXIMUM_ARTICLE_COUNT = 10;
 const DEFAULT_MAXIMUM_AGE_HOURS = 48;
 const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
+const KEYWORD_DICTIONARY_REFRESH_PROFILE_ID = 'quality-keyword-dictionary';
 
 interface ScheduledCrawlProfile {
   id: string;
@@ -17,6 +18,17 @@ interface ScheduledCrawlProfile {
 interface CrawlRunAccepted {
   crawlRunId?: string;
   operation?: string;
+}
+
+interface KeywordDictionaryOverview {
+  qualityKeywords?: {
+    activeVersion?: string | null;
+    activatedAt?: string | null;
+    lastUpdate?: {
+      status?: string;
+      completedAt?: string | null;
+    };
+  };
 }
 
 const SCHEDULED_CRAWL_PROFILES: readonly ScheduledCrawlProfile[] = [
@@ -95,15 +107,26 @@ const SCHEDULED_CRAWL_PROFILES: readonly ScheduledCrawlProfile[] = [
 ];
 
 @Injectable()
-export class TechArticleCrawlScheduler {
+export class TechArticleCrawlScheduler implements OnApplicationBootstrap {
   private readonly logger = new Logger(TechArticleCrawlScheduler.name);
   private readonly completedDayByProfile = new Map<string, string>();
   private readonly inFlightKeys = new Set<string>();
+  private keywordRetry?: {
+    dayKey: string;
+    failures: number;
+    nextAttemptAt: number;
+  };
 
   constructor(
     private readonly config: ConfigService,
     private readonly techArticles: TechArticlesService,
   ) {}
+
+  onApplicationBootstrap(): void {
+    void this.runScheduledKeywordDictionaryRefresh().catch(() => {
+      this.logger.error('Startup keyword dictionary check failed');
+    });
+  }
 
   @Cron('0 */10 * * * *', {
     name: 'tech-article-auto-crawl',
@@ -168,6 +191,149 @@ export class TechArticleCrawlScheduler {
         this.inFlightKeys.delete(idempotencyKey);
       }
     }
+  }
+
+  @Cron('0 5,15,25,35,45,55 * * * *', {
+    name: 'tech-article-keyword-dictionary-refresh',
+    timeZone: 'Asia/Seoul',
+  })
+  async runScheduledKeywordDictionaryRefresh(
+    now: Date = new Date(),
+  ): Promise<void> {
+    if (!this.enabled()) return;
+    const seoul = new Date(now.getTime() + SEOUL_UTC_OFFSET_MS);
+    if (
+      !Number.isFinite(now.getTime()) ||
+      (seoul.getUTCHours() === 0 && seoul.getUTCMinutes() < 5)
+    )
+      return;
+    await this.refreshKeywordDictionary(this.dayKey(now), now);
+  }
+
+  private async refreshKeywordDictionary(
+    dayKey: string,
+    now: Date,
+  ): Promise<void> {
+    if (
+      this.completedDayByProfile.get(KEYWORD_DICTIONARY_REFRESH_PROFILE_ID) ===
+      dayKey
+    ) {
+      return;
+    }
+
+    const inFlightKey = `quality-keyword-refresh:v1:${dayKey}`;
+    if (this.inFlightKeys.has(inFlightKey)) return;
+
+    this.inFlightKeys.add(inFlightKey);
+    const startedAt = Date.now();
+    try {
+      let overview: KeywordDictionaryOverview | undefined;
+      try {
+        overview =
+          (await this.techArticles.overview()) as KeywordDictionaryOverview;
+      } catch {
+        this.logger.warn(
+          `Keyword dictionary status lookup failed: day=${dayKey}`,
+        );
+      }
+      const keywords = overview?.qualityKeywords;
+      if (
+        this.confirmedDayVersion(
+          keywords?.activeVersion,
+          keywords?.activatedAt,
+          dayKey,
+          now,
+        )
+      ) {
+        this.completedDayByProfile.set(
+          KEYWORD_DICTIONARY_REFRESH_PROFILE_ID,
+          dayKey,
+        );
+        this.keywordRetry = undefined;
+        return;
+      }
+      if (this.keywordRetry?.dayKey !== dayKey) this.keywordRetry = undefined;
+      if (this.keywordRetry && now.getTime() < this.keywordRetry.nextAttemptAt)
+        return;
+      const lastUpdate = keywords?.lastUpdate;
+      const failedAt = lastUpdate?.completedAt
+        ? Date.parse(lastUpdate.completedAt)
+        : NaN;
+      if (
+        !this.keywordRetry &&
+        lastUpdate?.status === 'FAILED' &&
+        Number.isFinite(failedAt) &&
+        failedAt <= now.getTime() &&
+        now.getTime() < failedAt + 60 * 60_000
+      )
+        return;
+      const result = (await this.techArticles.refreshKeywordDictionary()) as {
+        status?: string;
+        activeVersion?: string;
+        activatedAt?: string;
+      };
+      if (
+        result?.status !== 'SUCCESS' ||
+        !this.confirmedDayVersion(
+          result.activeVersion,
+          result.activatedAt,
+          dayKey,
+          new Date(now.getTime() + Math.max(0, Date.now() - startedAt)),
+        )
+      )
+        throw new Error('Invalid keyword refresh success response');
+      this.completedDayByProfile.set(
+        KEYWORD_DICTIONARY_REFRESH_PROFILE_ID,
+        dayKey,
+      );
+      this.keywordRetry = undefined;
+      this.logger.log(
+        `Scheduled keyword dictionary refresh completed: day=${dayKey}`,
+      );
+    } catch (error) {
+      const failures =
+        (this.keywordRetry?.dayKey === dayKey
+          ? this.keywordRetry.failures
+          : 0) + 1;
+      this.keywordRetry = {
+        dayKey,
+        failures,
+        nextAttemptAt:
+          now.getTime() + [10, 30, 60][Math.min(failures - 1, 2)] * 60_000,
+      };
+      const message = error instanceof Error ? error.message : 'unknown error';
+      this.logger.error(
+        `Scheduled keyword dictionary refresh failed: day=${dayKey} ${message}`,
+      );
+    } finally {
+      this.inFlightKeys.delete(inFlightKey);
+    }
+  }
+
+  private confirmedDayVersion(
+    version: unknown,
+    activatedAt: unknown,
+    dayKey: string,
+    now?: Date,
+  ): boolean {
+    if (
+      typeof version !== 'string' ||
+      !version.trim() ||
+      typeof activatedAt !== 'string'
+    )
+      return false;
+    if (
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|\+00:00)$/.test(
+        activatedAt,
+      )
+    )
+      return false;
+    const activated = new Date(activatedAt);
+    return (
+      Number.isFinite(activated.getTime()) &&
+      (!now || activated.getTime() <= now.getTime()) &&
+      this.dayKey(activated) === dayKey
+    );
   }
 
   private enabled(): boolean {

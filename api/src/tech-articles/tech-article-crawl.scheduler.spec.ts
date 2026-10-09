@@ -20,6 +20,18 @@ describe('TechArticleCrawlScheduler', () => {
         operation: 'CREATED',
         crawlRunId: 'crawl-run-1',
       }),
+      refreshKeywordDictionary: jest.fn().mockResolvedValue({
+        status: 'SUCCESS',
+        activeVersion: 'keyword-version-test',
+        activatedAt: '2026-08-21T00:05:00Z',
+        changed: true,
+        source: 'stack-overflow',
+        warnings: [],
+        snapshot: {},
+      }),
+      overview: jest.fn().mockResolvedValue({
+        qualityKeywords: { lastUpdate: null },
+      }),
     } as unknown as jest.Mocked<TechArticlesService>;
     scheduler = new TechArticleCrawlScheduler(config, techArticles);
     jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
@@ -165,6 +177,72 @@ describe('TechArticleCrawlScheduler', () => {
     );
   });
 
+  it('runs the keyword refresh once per Seoul day', async () => {
+    settings.TECH_ARTICLE_AUTO_CRAWL_ENABLED = 'true';
+    await scheduler.runScheduledKeywordDictionaryRefresh(
+      new Date('2026-08-21T00:05:00Z'),
+    );
+    await scheduler.runScheduledKeywordDictionaryRefresh(
+      new Date('2026-08-21T12:00:00Z'),
+    );
+    techArticles.refreshKeywordDictionary.mockResolvedValueOnce({
+      status: 'SUCCESS',
+      activeVersion: 'keyword-version-next',
+      activatedAt: '2026-08-21T15:05:00Z',
+      changed: true,
+      source: 'stack-overflow',
+      warnings: [],
+      snapshot: {},
+    });
+    await scheduler.runScheduledKeywordDictionaryRefresh(
+      new Date('2026-08-21T15:05:00Z'),
+    );
+
+    expect(techArticles.refreshKeywordDictionary).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not refresh twice when DB history already has a success for the Seoul day', async () => {
+    settings.TECH_ARTICLE_AUTO_CRAWL_ENABLED = 'true';
+    techArticles.overview.mockResolvedValue({
+      qualityKeywords: {
+        activeVersion: 'keyword-version-test',
+        activatedAt: '2026-08-21T03:00:00Z',
+        lastUpdate: {
+          status: 'SUCCESS',
+          completedAt: '2026-08-21T03:00:00Z',
+        },
+      },
+    });
+
+    await scheduler.runScheduledKeywordDictionaryRefresh(
+      new Date('2026-08-21T04:00:00Z'),
+    );
+
+    expect(techArticles.refreshKeywordDictionary).not.toHaveBeenCalled();
+  });
+
+  it('refreshes after a Seoul-day boundary even when the previous success was one second before midnight', async () => {
+    settings.TECH_ARTICLE_AUTO_CRAWL_ENABLED = 'true';
+    techArticles.overview.mockResolvedValue({
+      qualityKeywords: {
+        activeVersion: 'keyword-version-previous',
+        activatedAt: '2026-08-21T14:59:59Z',
+        lastUpdate: {
+          status: 'SUCCESS',
+          // 2026-08-21 23:59:59 KST
+          completedAt: '2026-08-21T14:59:59Z',
+        },
+      },
+    });
+
+    // 2026-08-22 00:05:00 KST
+    await scheduler.runScheduledKeywordDictionaryRefresh(
+      new Date('2026-08-21T15:05:00Z'),
+    );
+
+    expect(techArticles.refreshKeywordDictionary).toHaveBeenCalledTimes(1);
+  });
+
   it('uses bounded operator settings', async () => {
     settings = {
       TECH_ARTICLE_AUTO_CRAWL_ENABLED: ' TRUE ',
@@ -186,5 +264,140 @@ describe('TechArticleCrawlScheduler', () => {
       maximumArticleCount: 3,
       requestTimeoutMs: 15000,
     });
+  });
+
+  it('keeps a day success even when the latest attempt failed after it', async () => {
+    settings.TECH_ARTICLE_AUTO_CRAWL_ENABLED = 'true';
+    techArticles.overview.mockResolvedValue({
+      qualityKeywords: {
+        activeVersion: 'active',
+        activatedAt: '2026-08-21T03:00:00Z',
+        lastUpdate: { status: 'FAILED', completedAt: '2026-08-21T03:30:00Z' },
+      },
+    });
+    await scheduler.runScheduledKeywordDictionaryRefresh(
+      new Date('2026-08-21T04:00:00Z'),
+    );
+    expect(techArticles.refreshKeywordDictionary).not.toHaveBeenCalled();
+  });
+
+  it('skips before 00:05 KST and when automatic collection is disabled', async () => {
+    await scheduler.runScheduledKeywordDictionaryRefresh(
+      new Date('2026-08-21T05:00:00Z'),
+    );
+    settings.TECH_ARTICLE_AUTO_CRAWL_ENABLED = 'true';
+    await scheduler.runScheduledKeywordDictionaryRefresh(
+      new Date('2026-08-21T15:04:59Z'),
+    );
+    expect(techArticles.overview).not.toHaveBeenCalled();
+    expect(techArticles.refreshKeywordDictionary).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { status: 'AVAILABLE' },
+    { status: 'FAILED' },
+    { status: 'SUCCESS', activeVersion: 'active', activatedAt: '2026-08-21' },
+    {
+      status: 'SUCCESS',
+      activeVersion: 'active',
+      activatedAt: '2026-08-21T13:00:00Z',
+    },
+    { status: 'SUCCESS', activeVersion: 'active', activatedAt: 'bad' },
+    { status: 'SUCCESS', activatedAt: '2026-08-21T03:00:00Z' },
+    {
+      status: 'SUCCESS',
+      activeVersion: 'active',
+      activatedAt: '2026-08-20T03:00:00Z',
+    },
+  ])('does not mark an invalid 200 result complete: %j', async (result) => {
+    settings.TECH_ARTICLE_AUTO_CRAWL_ENABLED = 'true';
+    techArticles.refreshKeywordDictionary.mockResolvedValue(result as never);
+    await scheduler.runScheduledKeywordDictionaryRefresh(
+      new Date('2026-08-21T03:00:00Z'),
+    );
+    await scheduler.runScheduledKeywordDictionaryRefresh(
+      new Date('2026-08-21T03:09:59Z'),
+    );
+    expect(techArticles.refreshKeywordDictionary).toHaveBeenCalledTimes(1);
+    await scheduler.runScheduledKeywordDictionaryRefresh(
+      new Date('2026-08-21T03:10:00Z'),
+    );
+    expect(techArticles.refreshKeywordDictionary).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(['503', 'BUSY', 'timeout', 'OUTCOME_UNKNOWN'])(
+    'backs off after %s without blocking article crawls',
+    async (failure) => {
+      settings.TECH_ARTICLE_AUTO_CRAWL_ENABLED = 'true';
+      techArticles.refreshKeywordDictionary.mockRejectedValue(
+        new Error(failure),
+      );
+      for (const time of [
+        '03:00',
+        '03:10',
+        '03:39',
+        '03:40',
+        '04:39',
+        '04:40',
+        '05:39',
+        '05:40',
+      ]) {
+        await scheduler.runScheduledKeywordDictionaryRefresh(
+          new Date(`2026-08-21T${time}:00Z`),
+        );
+      }
+      expect(techArticles.refreshKeywordDictionary).toHaveBeenCalledTimes(5);
+      await scheduler.runScheduledCrawls(new Date('2026-08-21T05:40:00Z'));
+      expect(techArticles.startCrawl).toHaveBeenCalledTimes(9);
+    },
+  );
+
+  it('applies a durable failure cooldown after restart', async () => {
+    settings.TECH_ARTICLE_AUTO_CRAWL_ENABLED = 'true';
+    techArticles.overview.mockResolvedValue({
+      qualityKeywords: {
+        lastUpdate: {
+          status: 'FAILED',
+          completedAt: '2026-08-21T03:00:00Z',
+        },
+      },
+    });
+    await scheduler.runScheduledKeywordDictionaryRefresh(
+      new Date('2026-08-21T03:59:59Z'),
+    );
+    expect(techArticles.refreshKeywordDictionary).not.toHaveBeenCalled();
+    await scheduler.runScheduledKeywordDictionaryRefresh(
+      new Date('2026-08-21T04:00:00Z'),
+    );
+    expect(techArticles.refreshKeywordDictionary).toHaveBeenCalledTimes(1);
+  });
+
+  it('deduplicates overlapping checks including the status lookup', async () => {
+    settings.TECH_ARTICLE_AUTO_CRAWL_ENABLED = 'true';
+    let resolve!: (value: unknown) => void;
+    techArticles.overview.mockImplementation(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
+    const first = scheduler.runScheduledKeywordDictionaryRefresh(
+      new Date('2026-08-21T03:00:00Z'),
+    );
+    await scheduler.runScheduledKeywordDictionaryRefresh(
+      new Date('2026-08-21T03:00:00Z'),
+    );
+    resolve({});
+    await first;
+    expect(techArticles.overview).toHaveBeenCalledTimes(1);
+    expect(techArticles.refreshKeywordDictionary).toHaveBeenCalledTimes(1);
+  });
+
+  it('launches the startup catch-up without waiting for collection', async () => {
+    const check = jest
+      .spyOn(scheduler, 'runScheduledKeywordDictionaryRefresh')
+      .mockImplementation(() => new Promise(() => undefined));
+    expect(scheduler.onApplicationBootstrap()).toBeUndefined();
+    expect(check).toHaveBeenCalledTimes(1);
   });
 });

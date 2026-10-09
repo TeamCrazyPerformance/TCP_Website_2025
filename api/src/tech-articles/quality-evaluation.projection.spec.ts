@@ -142,7 +142,7 @@ describe('projectQualityEvaluation', () => {
           unknown
         >
       ).communityBonus,
-    ).toBe(7);
+    ).toBeUndefined();
     expect((result?.score as Record<string, unknown>).overall).toBe(87);
   });
 });

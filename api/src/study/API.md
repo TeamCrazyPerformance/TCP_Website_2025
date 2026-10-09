@@ -30,7 +30,7 @@
 
 ### GET /api/v1/study
 
-스터디 목록을 조회합니다.
+공개 여부와 관계없이 전체 스터디 목록을 조회합니다.
 
 **권한**: Public
 
@@ -61,10 +61,22 @@ GET /api/v1/study?year=2026
     "place": "온라인",
     "way": "매주 토요일 오후 2시",
     "leader_name": "홍길동",
-    "members_count": 5
+    "members_count": 5,
+    "status": "unknown"
   }
 ]
 ```
+
+`status`는 진행 기간(`period`)을 기준으로 서버가 계산합니다.
+
+| 값 | 의미 |
+|----|------|
+| `upcoming` | 진행 예정 |
+| `ongoing` | 진행 중 |
+| `completed` | 종료 |
+| `unknown` | 기간 없음 또는 해석 불가 |
+
+종료일의 한국 시간 23:59:59까지는 `ongoing`입니다. 월 단위 기간은 마지막 월의 말일까지 포함하며, 모집 마감일(`apply_deadline`)은 진행 상태에 영향을 주지 않습니다.
 
 ---
 
@@ -72,7 +84,7 @@ GET /api/v1/study?year=2026
 
 스터디 상세 정보를 조회합니다.
 
-**권한**: StudyMember, Admin
+**권한**: Member
 
 **Request:**
 ```
@@ -93,6 +105,7 @@ Authorization: Bearer <access_token>
   "apply_deadline": "2026-01-15T23:59:59.000Z",
   "place": "온라인",
   "way": "매주 토요일 오후 2시",
+  "members_count": 5,
   "leader": {
     "user_id": "550e8400-e29b-41d4-a716-446655440000",
     "name": "홍길동",
@@ -113,7 +126,7 @@ Authorization: Bearer <access_token>
 }
 ```
 
-회원 목록은 해당 스터디의 스터디원·스터디장·스터디장 후보 또는 관리자에게만 반환합니다.
+`members_count`는 로그인한 사용자에게 항상 반환합니다. 회원 목록은 해당 스터디의 스터디원·스터디장·스터디장 후보 또는 관리자에게만 반환합니다.
 
 ---
 
@@ -163,7 +176,8 @@ Content-Type: application/json
 ```json
 {
   "success": true,
-  "id": 1
+  "id": 1,
+  "status": "unknown"
 }
 ```
 

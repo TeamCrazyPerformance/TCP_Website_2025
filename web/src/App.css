@@ -1528,6 +1528,63 @@ body {
     box-shadow: none;
 }
 
+.study-status-groups {
+    display: grid;
+    gap: 3rem;
+}
+
+.study-group-heading {
+    display: flex;
+    margin-bottom: 1.25rem;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.625rem;
+}
+
+.study-group-heading h3 {
+    color: #e5e7eb;
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+.study-group-count {
+    color: #9ca3af;
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.study-group-description {
+    margin: -0.5rem 0 1.25rem;
+    color: #9ca3af;
+    font-size: 0.875rem;
+}
+
+.study-group-empty {
+    margin: 0;
+    padding: 1.5rem 1rem;
+    color: #9ca3af;
+    border: 1px dashed var(--card-surface-border);
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+.study-list-card {
+    display: block;
+    min-width: 0;
+}
+
+.study-list-card:focus-visible {
+    outline: 2px solid #60a5fa;
+    outline-offset: 4px;
+}
+
+.study-list-card .study-card-title-row h4 {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
 /* Same value as .study-detail-tags in studyDetail.css. */
 .study-card-tags {
     display: flex;

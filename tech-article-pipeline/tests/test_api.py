@@ -148,6 +148,11 @@ def test_api_auth_submission_replay_and_public_filter(normalized_payload):
             "warnings": [],
             "coreCount": 1,
             "dynamicCount": 1,
+            "storage": "MEMORY",
+            "activeVersion": None,
+            "activatedAt": None,
+            "storedKeywordCount": 0,
+            "lastUpdate": None,
         }
         assert "pipelineVersion" not in str(overview_body)
         assert overview_body["moduleVersions"]["qualityEvaluator"]["moduleVersion"] == "9.1.0"
@@ -185,6 +190,11 @@ def test_api_auth_submission_replay_and_public_filter(normalized_payload):
             "warnings": ["DYNAMIC_KEYWORDS_EMPTY"],
             "coreCount": 1,
             "dynamicCount": 0,
+            "storage": "MEMORY",
+            "activeVersion": None,
+            "activatedAt": None,
+            "storedKeywordCount": 0,
+            "lastUpdate": None,
         }
 
         admin_article = admin.json()["items"][0]

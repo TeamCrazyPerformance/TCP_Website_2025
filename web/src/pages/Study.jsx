@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { apiGet } from '../api/client';
 import RecruitStudyModal from '../components/modals/RecruitStudyModal';
 import PublicPageHero from '../components/public/PublicPageHero';
@@ -7,8 +7,69 @@ import { useScrollReveal } from '../hooks/useScrollReveal';
 import { parseTags, tagColorClass } from '../utils/helpers';
 import { tagColorStyle } from '../utils/tagPalette';
 
+const STUDY_STATUSES = ['upcoming', 'ongoing', 'completed', 'unknown'];
+
+const STUDY_GROUPS = [
+  {
+    id: 'active',
+    title: '예정·진행 중인 스터디',
+    statuses: ['upcoming', 'ongoing'],
+    emptyMessage: '선택한 연도에 예정·진행 중인 스터디가 없습니다.',
+  },
+  {
+    id: 'completed',
+    title: '종료된 스터디',
+    statuses: ['completed'],
+    emptyMessage: '선택한 연도에 종료된 스터디가 없습니다.',
+  },
+  {
+    id: 'unknown',
+    title: '기간 미확인 스터디',
+    statuses: ['unknown'],
+    description: '진행 기간을 확인할 수 없는 스터디입니다.',
+    hideWhenEmpty: true,
+  },
+];
+
+function StudyCard({ study }) {
+  return (
+    <Link
+      to={`/study/${study.id}`}
+      className="study-item study-list-card p-6 rounded-xl card-hover scroll-fade"
+    >
+      <div className="study-card-title-row mb-2">
+        <h4 className="orbitron text-xl font-bold text-white text-left">
+          {study.title}
+        </h4>
+      </div>
+      <div className="study-card-meta-row">
+        <p className="study-card-period text-gray-400 text-left">{study.period}</p>
+        {study.is_public && (
+          <span className="study-card-visibility inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-green-500 bg-opacity-20 text-green-300 whitespace-nowrap">
+            <i className="fas fa-unlock-alt mr-1" aria-hidden="true"></i>
+            공개 스터디
+          </span>
+        )}
+      </div>
+      <p className="study-card-summary text-sm text-gray-500 text-left">
+        {(study.description || '').substring(0, 80)}...
+      </p>
+      <div className="study-card-tags mt-3">
+        {(study.tags || []).map((tag, tagIndex) => (
+          <span
+            key={tagIndex}
+            className={tagColorClass(tag)}
+            style={tagColorStyle(tag)}
+          >
+            {tag}
+          </span>
+        ))}
+      </div>
+    </Link>
+  );
+}
+
 function Study() {
-  const navigate = useNavigate();
   const normalizeBoolean = (value) => value === true || value === 1 || value === '1' || value === 'true';
 
   const [studies, setStudies] = useState([]);
@@ -34,10 +95,6 @@ function Study() {
     setSelectedYear(event.target.value);
   };
 
-  const handleStudyClick = (studyId) => {
-    navigate(`/study/${studyId}`);
-  };
-
   const handleOpenRecruit = () => {
     setIsRecruitModalOpen(true);
   };
@@ -47,7 +104,10 @@ function Study() {
   };
 
   const handleAddStudy = (newStudy) => {
-    setStudies(prev => [newStudy, ...prev]);
+    setStudies(prev => [
+      { ...newStudy, status: STUDY_STATUSES.includes(newStudy.status) ? newStudy.status : 'unknown' },
+      ...prev,
+    ]);
   };
 
   useEffect(() => {
@@ -65,6 +125,7 @@ function Study() {
           description: study.study_description || '',
           tags: parseTags(study.tag).length ? parseTags(study.tag) : ['스터디'],
           is_public: normalizeBoolean(study.is_public),
+          status: STUDY_STATUSES.includes(study.status) ? study.status : 'unknown',
         }));
         if (isMounted) {
           setStudies(mapped);
@@ -92,7 +153,7 @@ function Study() {
     if (hasYearInit || studies.length === 0) return;
     const currentYear = new Date().getFullYear().toString();
     const hasCurrent = studies.some(
-      (study) => study.year.toString() === currentYear
+      (study) => study.year?.toString() === currentYear
     );
     setSelectedYear(hasCurrent ? currentYear : 'all');
     setHasYearInit(true);
@@ -106,9 +167,17 @@ function Study() {
     return visibleStudies.sort((a, b) => (b.year || 0) - (a.year || 0));
   }, [studies, selectedYear]);
 
+  const groupedStudies = useMemo(() => STUDY_GROUPS
+    .map((group) => ({
+      ...group,
+      studies: filteredStudies.filter((study) => group.statuses.includes(study.status)),
+    }))
+    .filter((group) => !group.hideWhenEmpty || group.studies.length > 0),
+  [filteredStudies]);
+
   useScrollReveal(
     '.scroll-fade',
-    `${selectedYear}:${filteredStudies.map((study) => study.id).join(',')}`,
+    `${selectedYear}:${filteredStudies.map((study) => `${study.id}:${study.status}`).join(',')}`,
   );
 
 
@@ -169,59 +238,46 @@ function Study() {
 
           <div
             id="study-container"
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+            className="study-status-groups"
           >
             {isLoading && (
-              <div className="col-span-full text-center py-12 text-gray-500">
+              <div role="status" className="text-center py-12 text-gray-500">
                 <p className="text-xl">스터디 정보를 불러오는 중...</p>
               </div>
             )}
             {errorMessage && !isLoading && (
-              <div className="col-span-full text-center py-12 text-red-400">
+              <div role="alert" className="text-center py-12 text-red-400">
                 <p className="text-xl">{errorMessage}</p>
               </div>
             )}
-            {!isLoading && !errorMessage && filteredStudies.length > 0 ? (
-              filteredStudies.map((study) => (
-                <div
-                  key={study.id}
-                  className="study-item p-6 rounded-xl card-hover scroll-fade"
-                  onClick={() => handleStudyClick(study.id)}
-                >
-                  <div className="study-card-title-row mb-2">
-                    <h3 className="orbitron text-xl font-bold text-white text-left flex-1">
-                      {study.title}
+            {!isLoading && !errorMessage && filteredStudies.length > 0 && (
+              groupedStudies.map((group) => (
+                <section key={group.id} aria-labelledby={`study-group-${group.id}`}>
+                  <div className="study-group-heading">
+                    <h3 id={`study-group-${group.id}`}>
+                      {group.title}
                     </h3>
+                    <span className="study-group-count">{group.studies.length}개</span>
                   </div>
-                  <div className="study-card-meta-row">
-                    <p className="study-card-period text-gray-400 text-left">{study.period}</p>
-                    {normalizeBoolean(study.is_public) && (
-                      <span className="study-card-visibility inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-green-500 bg-opacity-20 text-green-300 whitespace-nowrap">
-                        <i className="fas fa-unlock-alt mr-1"></i>
-                        공개 스터디
-                      </span>
-                    )}
-                  </div>
-                  <p className="study-card-summary text-sm text-gray-500 text-left">
-                    {(study.description || '').substring(0, 80)}...
-                  </p>
-                  <div className="study-card-tags mt-3">
-                    {(study.tags || []).map((tag, tagIndex) => (
-                      <span
-                        key={tagIndex}
-                        className={tagColorClass(tag)}
-                        style={tagColorStyle(tag)}
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
+                  {group.description && (
+                    <p className="study-group-description">{group.description}</p>
+                  )}
+                  {group.studies.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                      {group.studies.map((study) => (
+                        <StudyCard key={study.id} study={study} />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="study-group-empty">{group.emptyMessage}</p>
+                  )}
+                </section>
               ))
-            ) : (
+            )}
+            {!isLoading && !errorMessage && filteredStudies.length === 0 && (
               <div
                 id="no-studies-message"
-                className="col-span-full text-center py-12 text-gray-500"
+                className="text-center py-12 text-gray-500"
               >
                 <i className="fas fa-exclamation-circle text-5xl mb-4"></i>
                 <p className="text-xl">

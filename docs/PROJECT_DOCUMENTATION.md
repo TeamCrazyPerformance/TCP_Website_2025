@@ -200,8 +200,7 @@ TCP_Wetsite_2025/
 │   ├── INCOMPLETE_FEATURES.md   # Known incomplete features
 │   ├── NETWORK_ARCHITECTURE.md  # Network topology details
 │   ├── OPERATIONAL_ROLES.md     # Server operational roles
-│   ├── OPENSOURCE_CREDITS.md    # Open source attributions
-│   └── SERVICE_READINESS_REPORT.md # Pre-launch readiness report
+│   └── OPENSOURCE_CREDITS.md    # Open source attributions
 │
 ├── docker-compose.yml           # Production Docker Compose
 ├── docker-compose.dev.yml       # Development Docker Compose

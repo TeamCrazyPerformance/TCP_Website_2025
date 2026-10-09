@@ -17,6 +17,7 @@ interface PipelineRequest {
   body?: unknown;
   headers?: Record<string, string>;
   write?: boolean;
+  keywordRefresh?: boolean;
 }
 
 @Injectable()
@@ -31,12 +32,14 @@ export class TechArticlePipelineClient {
     path: string,
     body: unknown,
     headers?: Record<string, string>,
+    options?: { keywordRefresh?: boolean },
   ): Promise<T> {
     return this.request<T>(path, {
       method: 'POST',
       body,
       headers,
       write: true,
+      ...options,
     });
   }
 
@@ -81,10 +84,12 @@ export class TechArticlePipelineClient {
 
     const controller = new AbortController();
     const timeout = this.timeout(
-      options.write
-        ? 'TECH_ARTICLE_PIPELINE_WRITE_TIMEOUT_MS'
-        : 'TECH_ARTICLE_PIPELINE_READ_TIMEOUT_MS',
-      options.write ? 5000 : 2000,
+      options.keywordRefresh
+        ? 'TECH_ARTICLE_KEYWORD_REFRESH_TIMEOUT_MS'
+        : options.write
+          ? 'TECH_ARTICLE_PIPELINE_WRITE_TIMEOUT_MS'
+          : 'TECH_ARTICLE_PIPELINE_READ_TIMEOUT_MS',
+      options.keywordRefresh ? 45_000 : options.write ? 5000 : 2000,
     );
     const timer = setTimeout(() => controller.abort(), timeout);
 
@@ -143,6 +148,9 @@ export class TechArticlePipelineClient {
     if (status === 404) throw new NotFoundException(body);
     if (status === 409) throw new ConflictException(body);
     if (status === 422) throw new UnprocessableEntityException(body);
+    if (status === 503 && code.startsWith('KEYWORD_')) {
+      throw new ServiceUnavailableException(body);
+    }
     throw this.unavailable();
   }
 }

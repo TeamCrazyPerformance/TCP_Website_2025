@@ -75,7 +75,6 @@
 - [OPERATIONS.md](../../OPERATIONS.md) - 운영 절차 가이드
 - [INCOMPLETE_FEATURES.md](../INCOMPLETE_FEATURES.md) - 미완성 기능 목록
 - [NETWORK_ARCHITECTURE.md](../NETWORK_ARCHITECTURE.md) - 네트워크 상세 구조
-- [SERVICE_READINESS_REPORT.md](../SERVICE_READINESS_REPORT.md) - 서비스 준비 상태
 
 ---
 

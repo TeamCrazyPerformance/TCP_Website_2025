@@ -81,6 +81,68 @@ profiles that already succeeded. Enabling the setting can create new articles
 and, under the `IMMEDIATE` publication policy, expose eligible articles
 publicly.
 
+## Keyword dictionary refresh
+
+Reads never collect externally or write history. The first read loads the active
+dictionary; subsequent DB checks default to 300 seconds. Failed reads retain the
+last good process snapshot, or the 113-keyword core seed if none was loaded.
+Read-only Overview/health requests do not wait for external collection.
+
+With `TECH_ARTICLE_AUTO_CRAWL_ENABLED=true`, keyword refresh checks run at minutes
+05/15/25/35/45/55 of every hour, starting at 00:05 KST. A non-blocking startup
+check catches up missed days. A confirmed active version's KST activation date
+prevents repeat collection, even if a later attempt failed. Failures retry after
+10, 30, then 60 minutes (60 thereafter). After API restart, the durable latest
+failure imposes a conservative 60-minute cooldown; retry counters are not durable.
+The existing nine article-crawl profiles and daily keys are unchanged.
+
+The token-protected internal refresh POST returns SUCCESS only after durable
+version confirmation and process snapshot installation. Concurrent work returns
+409/BUSY, confirmed failure returns 503, and an unreconciled commit returns
+503/KEYWORD_REFRESH_OUTCOME_UNKNOWN. Caller timeout does not imply cancellation:
+server work remains tracked and retry checks the active day version. These
+controls assume the deployed single pipeline process; they are not a DB-level
+multi-process refresh lock.
+
+External collection uses a 30-second budget and 2 MiB decoded response limit.
+Compose injects `TECH_ARTICLE_KEYWORD_REFRESH_TIMEOUT_MS` into API (default 45000,
+valid range 100..60000); other API read/write defaults remain 2000/5000 ms.
+Observation persistence precedes the atomic version/items/SUCCESS transaction.
+One usable source permits partial success with source attribution and warning;
+observation failure never replaces the dictionary with today's candidates alone.
+
+### 008/009 rollout and rollback
+
+The existing immutable SQL files add only dictionary versions/items/history (008)
+and observations (009). No new article columns or score backfill are required.
+Before applying, check migration history/checksums and actual table columns,
+indexes, foreign keys, and InnoDB engines; then take the matched backup set.
+Deploy migrations, pipeline, API, then web. An already-applied file is skipped;
+checksum mismatch stops deployment and must not be bypassed by editing history.
+
+MySQL DDL can remain after a file fails midway. Inspect both history and actual
+schema; matching partial CREATE TABLE state can be resumed, but a conflicting
+table must be corrected or recovered from backup before retry. Table-name
+existence is not proof of correct structure. Do not automatically DROP these
+tables when rolling application code back. Code rollback and full DB restore
+are separate procedures. Container replacement may cause brief interruption;
+the current automatic rollback scope is frontend-only, not a full release/DB rollback.
+
+Schema migration does not populate an active dictionary. Verify an active version
+and its first refresh success after deployment. If automatic collection is off,
+keep it off and perform one authorized internal refresh for initialization;
+otherwise reads continue using core seed with an administrator warning.
+Existing evaluation overall/decision/reason/version and all LLM behavior remain
+unchanged. The 2.4.5 evaluator uses four axes only for new evaluations.
+
+Run `cd tech-article-pipeline && bash scripts/test_keyword_mysql.sh` for disposable
+MySQL 8.4 checks with Docker running. The schema verifier checks required keyword
+columns/types/nullability/collations, timestamp defaults, indexes, foreign keys,
+the enforced keyword-count check, and InnoDB engines
+before recording or accepting 008/009 history. These tests must
+not use the repository's operational `.env` or production database. Preserve
+main's independent operational prompt improvements when merging this release.
+
 DeepMind entries may redirect from `deepmind.google` to `blog.google`. That target
 is allowed only for entries discovered through the official DeepMind RSS feed, and
 the crawler loads and enforces `blog.google/robots.txt` before following the redirect.

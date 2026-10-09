@@ -237,8 +237,26 @@ AI 요약 단계로 전달한다. 자동 품질 판정과 점수는 덮어쓰지
 품질 점수 재계산 API는 제공하지 않습니다. 기존 평가 기록은 보존합니다.
 관리자 overview의 `qualityKeywords`는 실행 중인 평가 프로세스의 키워드 목록,
 개수, 로드 시각과 SHA-256 식별값을 제공합니다. 목록과 개수가 일치하지 않거나 정보를
-읽을 수 없으면 `status`와 `warnings`로 관리자 화면에 상태를 알립니다. 키워드는 모듈
-로드 시 수집됩니다.
+읽을 수 없으면 `status`와 `warnings`로 관리자 화면에 상태를 알립니다. 조회에서는
+외부 수집·DB 쓰기를 하지 않습니다. 첫 조회와 이후 기본 300초 간격으로 저장된 사전만
+확인하며 읽기에 실패하면 마지막 정상 목록을 유지합니다. `loadedVersion`은 실제 목록의
+버전이며 `activeVersion`은 DB 상태 조회 시점의 활성 버전입니다. `AVAILABLE`은 사전을
+사용할 수 있다는 뜻이며 최근 갱신의 성공 여부는 `lastUpdate`와 경고로 구분합니다.
+
+서비스 토큰을 사용하는 `POST /internal/v1/admin/quality-keywords/refresh`는
+`{status: "SUCCESS", activeVersion, activatedAt, changed, source, warnings, snapshot}`을
+반환합니다. `changed`는 새 버전 생성 여부이며 당일 확정 버전 재사용은 false입니다.
+실패는 503, 진행 중인 갱신은 409/`KEYWORD_REFRESH_BUSY`, 커밋 결과 미확인은
+503/`KEYWORD_REFRESH_OUTCOME_UNKNOWN`입니다. 성공하지 않은 갱신을 AVAILABLE로
+반환하지 않습니다. 이 경로는 공개·관리자 브라우저용 변경 API가 아닙니다.
+
+외부 수집 전체 예산은 30초, API 갱신 전용 대기는 기본 45초입니다.
+`TECH_ARTICLE_KEYWORD_REFRESH_TIMEOUT_MS`는 100~60000ms 범위이며 잘못된 값은
+45000ms로 대체됩니다. 다른 읽기/쓰기의 기본 2초/5초는 유지합니다. 호출자 시간 초과는
+서버 작업 취소를 의미하지 않으며 재시도는 당일 활성 버전 또는 진행 상태를 확인합니다.
+
+신규 평가 버전은 2.4.5이며 35/30/25/10의 네 축만 채점합니다. 과거 평가는 원본 총점과
+판정을 보존하고 응답에서 지원하는 과거 3축·현행 4축 dimensions만 선별합니다.
 
 Bulk 본문은 `{"items": [...]}`이며 최대 50개, ID 중복 금지다. 유효한 요청은 일부 항목이
 실패해도 HTTP 200을 반환하고 입력 순서대로 다음 결과를 제공한다.
