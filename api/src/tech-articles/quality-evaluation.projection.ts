@@ -82,7 +82,8 @@ function suppliedAxes(score: Record<string, unknown>): QualityScoreAxis[] {
       value === null
     )
       continue;
-    if (seen.has(key)) continue;
+    if (seen.has(key) || key === 'communityBonus' || key === 'community_bonus')
+      continue;
     seen.add(key);
     const rawWeight = finiteNumber(axis?.weight);
     const weight =
@@ -146,7 +147,11 @@ export function projectQualityEvaluation(
     options.legacyShape === 'dimensions' &&
     legacyDimensions
   ) {
-    projectedScore.dimensions = legacyDimensions;
+    projectedScore.dimensions = Object.fromEntries(
+      [...LEGACY_V1_AXES, ...LEGACY_V2_AXES]
+        .filter(({ key }) => finiteNumber(legacyDimensions[key]) !== null)
+        .map(({ key }) => [key, legacyDimensions[key]]),
+    );
   }
   if (projectedScore && options.legacyShape === 'flat' && legacyDimensions) {
     for (const definition of LEGACY_V1_AXES) {

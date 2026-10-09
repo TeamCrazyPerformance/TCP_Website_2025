@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import math
 import os
 import re
+import threading
+import time
 import urllib.request
 from collections import Counter
 from collections.abc import Callable, Mapping
@@ -13,6 +16,8 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from . import keywords_manager
+from .keywords_manager import CORE_IMMUTABLE_KEYWORDS, KeywordRefreshError
 from .models import (
     Article,
     Dimensions,
@@ -20,14 +25,13 @@ from .models import (
     Evaluation,
     QualityEvaluationRequest,
     QualityEvaluationResult,
-    QualityPolicy,
     Score,
     ScoreAxis,
     Signals,
 )
 
 Clock = Callable[[], datetime]
-EVALUATOR_VERSION = "2.2.7"
+EVALUATOR_VERSION = "2.4.5"
 # 개편된 4대 평가 축 정의 (개발 관련성 35%, 기술적 깊이 30%, 최신성 25%, 기사 품질 10%)
 QUALITY_AXES = (
     {"key": "relevance", "label": "개발 관련성", "weight": 0.35},
@@ -36,20 +40,40 @@ QUALITY_AXES = (
     {"key": "articleQuality", "label": "기사 품질", "weight": 0.10},
 )
 
-from .keywords_manager import CORE_IMMUTABLE_KEYWORDS, get_combined_developer_keywords
-
-DEVELOPER_KEYWORDS = get_combined_developer_keywords()
-KEYWORDS_LOADED_AT = datetime.now(UTC).isoformat()
+DEVELOPER_KEYWORDS = CORE_IMMUTABLE_KEYWORDS
+try:
+    KEYWORD_REFRESH_CHECK_SECONDS = max(
+        1, int(os.environ.get("QUALITY_KEYWORD_REFRESH_CHECK_SECONDS", "300"))
+    )
+except ValueError:
+    KEYWORD_REFRESH_CHECK_SECONDS = 300
 
 NON_ARTICLE_PATTERN = re.compile(
     r"\b(subscribe|learning center|webinars archives|archive|showcase|landscape|sponsors?)\b",
     re.IGNORECASE,
 )
-ADVERTISEMENT_PATTERN = re.compile(
-    r"(?:sponsored|advertisement|buy now|limited offer|제휴|광고|구매하기|특가)",
-    re.IGNORECASE,
-)
 TOKEN_PATTERN = re.compile(r"[A-Za-z0-9_+#.-]+|[가-힣]+")
+ADVERTISEMENT_PATTERNS = (
+    # A bare word such as "sponsored" is intentionally insufficient: technical
+    # articles often discuss sponsorship without being promotional themselves.
+    ("explicit_sponsorship", re.compile(
+        r"\b(?:this|the)\s+(?:article|post|content)\s+(?:is|was)\s+sponsored(?:\s+by)?\b"
+        r"|\bsponsored\s+(?:content|post|article)\b",
+        re.IGNORECASE,
+    )),
+    ("paid_or_partner_promotion", re.compile(
+        r"\b(?:paid\s+(?:partnership|promotion)|in\s+partnership\s+with)\b",
+        re.IGNORECASE,
+    )),
+    ("affiliate_or_discount", re.compile(
+        r"\b(?:affiliate\s+links?|use\s+(?:code|coupon)\s+[A-Z0-9_-]+|save\s+\d{1,2}%|limited\s+time\s+offer)\b",
+        re.IGNORECASE,
+    )),
+    ("purchase_call_to_action", re.compile(
+        r"\b(?:buy\s+now|shop\s+now|order\s+now)\b|(?:유료\s*광고|스폰서\s*콘텐츠|제휴\s*링크|할인\s*코드|구매하기|한정\s*특가)",
+        re.IGNORECASE,
+    )),
+)
 
 
 def _utcnow() -> datetime:
@@ -61,21 +85,43 @@ class QualityEvaluator:
 
     def __init__(self, *, clock: Clock = _utcnow) -> None:
         self._clock = clock
+        self._keywords = {
+            "keywords": CORE_IMMUTABLE_KEYWORDS,
+            "loadedAt": datetime.now(UTC).isoformat(),
+            "loadedVersion": None,
+            "loadedActivatedAt": None,
+            "warnings": (),
+        }
+        self._last_keyword_check = 0.0
+        self._keyword_read_lock = threading.Lock()
+        self._keyword_state_lock = threading.Lock()
+        self._keyword_refresh_lock = threading.Lock()
+        self._keyword_generation = 0
+        self._refresh_task: asyncio.Task | None = None
+        self._unknown_keyword_version: str | None = None
 
     def keyword_snapshot(self) -> dict[str, Any]:
-        keywords = sorted(DEVELOPER_KEYWORDS)
-        core = sorted(DEVELOPER_KEYWORDS & CORE_IMMUTABLE_KEYWORDS)
-        dynamic = sorted(DEVELOPER_KEYWORDS - CORE_IMMUTABLE_KEYWORDS)
+        self._sync_keywords_if_due()
+        snapshot = self._keywords
+        keywords = sorted(snapshot["keywords"])
+        core = sorted(snapshot["keywords"] & CORE_IMMUTABLE_KEYWORDS)
+        dynamic = sorted(snapshot["keywords"] - CORE_IMMUTABLE_KEYWORDS)
         return {
-            "loadedAt": KEYWORDS_LOADED_AT,
+            "loadedAt": snapshot["loadedAt"],
+            "loadedVersion": snapshot["loadedVersion"],
+            "loadedActivatedAt": snapshot["loadedActivatedAt"],
+            "warnings": list(snapshot["warnings"])
+            + (["KEYWORD_REFRESH_OUTCOME_UNKNOWN"] if self._unknown_keyword_version else []),
             "fingerprint": hashlib.sha256("\n".join(keywords).encode()).hexdigest(),
             "totalCount": len(keywords),
             "coreKeywords": core,
             "dynamicKeywords": dynamic,
-            "refreshPolicy": "PROCESS_START",
+            "refreshPolicy": "READ_ONLY_DATABASE_CHECK",
         }
 
     def evaluate(self, input_data: Mapping[str, Any]) -> dict[str, Any]:
+        self._sync_keywords_if_due()
+        keywords = self._keywords["keywords"]
         article_id = input_data.get("articleId", "") if isinstance(input_data, Mapping) else ""
         try:
             request = QualityEvaluationRequest.model_validate(input_data)
@@ -96,7 +142,7 @@ class QualityEvaluator:
         article = request.article
         content_length = len(article.content)
         spam = self._spam_suspected(article.content)
-        advertisement = bool(ADVERTISEMENT_PATTERN.search(f"{article.title} {article.content}"))
+        advertisement = bool(self._advertisement_indicators(f"{article.title}\n{article.content}"))
         hard_rejections: list[str] = []
         if content_length < policy.minimum_content_length:
             hard_rejections.append("CONTENT_TOO_SHORT")
@@ -104,14 +150,11 @@ class QualityEvaluator:
             hard_rejections.append("CONTENT_TOO_LONG")
         if article.language not in policy.allowed_languages:
             hard_rejections.append("LANGUAGE_NOT_ALLOWED")
-        if policy.reject_spam and spam:
-            hard_rejections.append("SPAM_SUSPECTED")
-        if policy.reject_advertisements and advertisement:
-            hard_rejections.append("ADVERTISEMENT_SUSPECTED")
+        # The curated-source spam heuristic remains an observation signal only.
 
         # 4대 평가 축 채점
         effective_api_key = request.llm_api_key or policy.llm_api_key
-        relevance = self.evaluate_developer_relevance(article)
+        relevance = self.evaluate_developer_relevance(article, keywords=keywords)
         technical_depth = self.evaluate_technical_depth_llm(article, api_key=effective_api_key)
         timeliness = self.evaluate_timeliness(article.original_published_at, now)
         article_quality = self.evaluate_article_quality(request)
@@ -192,8 +235,88 @@ class QualityEvaluator:
         )
         return result.model_dump(by_alias=True, mode="json")
 
+    def _install_keyword_dictionary(self, dictionary: dict[str, Any] | None) -> None:
+        self._keywords = {
+            "keywords": keywords_manager._snapshot_keywords(dictionary) or CORE_IMMUTABLE_KEYWORDS,
+            "loadedAt": datetime.now(UTC).isoformat(),
+            "loadedVersion": dictionary.get("versionId") if dictionary else None,
+            "loadedActivatedAt": dictionary.get("updatedAt") if dictionary else None,
+            "warnings": () if dictionary else ("ACTIVE_KEYWORD_DICTIONARY_MISSING",),
+        }
+        self._keyword_generation += 1
+        if dictionary and dictionary.get("versionId") == self._unknown_keyword_version:
+            self._unknown_keyword_version = None
+
+    async def refresh_keyword_dictionary(self) -> dict[str, Any]:
+        if not self._keyword_refresh_lock.acquire(blocking=False):
+            raise KeywordRefreshError(
+                "KEYWORD_REFRESH_BUSY", "Keyword refresh is already running.", status_code=409
+            )
+        self._refresh_task = asyncio.create_task(self._run_keyword_refresh())
+        self._refresh_task.add_done_callback(
+            lambda task: task.exception() if not task.cancelled() else None
+        )
+        return await asyncio.shield(self._refresh_task)
+
+    async def _run_keyword_refresh(self) -> dict[str, Any]:
+        try:
+            result = await keywords_manager.refresh_keyword_dictionary()
+            dictionary = result["dictionary"]
+            with self._keyword_state_lock:
+                self._install_keyword_dictionary(dictionary)
+                self._last_keyword_check = time.monotonic()
+                self._unknown_keyword_version = None
+            snapshot = self.keyword_snapshot()
+            return {
+                "status": "SUCCESS",
+                "activeVersion": dictionary["versionId"],
+                "activatedAt": dictionary["updatedAt"],
+                "changed": result["changed"],
+                "source": dictionary.get("source"),
+                "warnings": result["warnings"],
+                "snapshot": snapshot,
+            }
+        except keywords_manager.KeywordCommitOutcomeUnknown as error:
+            self._unknown_keyword_version = error.version_id
+            raise
+        finally:
+            self._keyword_refresh_lock.release()
+
+    def _sync_keywords_if_due(self) -> None:
+        now = time.monotonic()
+        if (
+            self._last_keyword_check
+            and now - self._last_keyword_check < KEYWORD_REFRESH_CHECK_SECONDS
+        ):
+            return
+        if not self._keyword_read_lock.acquire(blocking=False):
+            return
+        try:
+            generation = self._keyword_generation
+            try:
+                dictionary = keywords_manager.load_keyword_dictionary()
+                warning = None
+            except Exception:
+                dictionary = None
+                warning = "KEYWORD_DICTIONARY_READ_FAILED"
+            with self._keyword_state_lock:
+                if generation != self._keyword_generation:
+                    return
+                self._last_keyword_check = time.monotonic()
+                if dictionary:
+                    self._install_keyword_dictionary(dictionary)
+                else:
+                    self._keywords = {
+                        **self._keywords,
+                        "warnings": (warning or "ACTIVE_KEYWORD_DICTIONARY_MISSING",),
+                    }
+        finally:
+            self._keyword_read_lock.release()
+
     @staticmethod
-    def evaluate_developer_relevance(article: Article) -> int:
+    def evaluate_developer_relevance(
+        article: Article, *, keywords: frozenset[str] | None = None
+    ) -> int:
         """TF-IDF Sigmoid (math.tanh) 토큰 밀도 알고리즘 (가중치 35%)"""
         if NON_ARTICLE_PATTERN.search(article.title):
             return 0
@@ -205,7 +328,7 @@ class QualityEvaluator:
             return 0
         token_counts = Counter(tokens)
         tf_sum = 0.0
-        for keyword in DEVELOPER_KEYWORDS:
+        for keyword in keywords if keywords is not None else DEVELOPER_KEYWORDS:
             kw = keyword.lower()
             if " " in kw or "-" in kw:
                 pattern = re.compile(r"\b" + re.escape(kw) + r"\b", re.IGNORECASE)
@@ -240,7 +363,7 @@ class QualityEvaluator:
                     "3. Production Engineering & Problem-Solving (0-30 pts): Details real-world outage root-cause analysis, performance tuning, benchmarks, or scalability challenges.\n"
                     "4. Engineering Specificity & Rigor (0-10 pts): Uses precise domain-specific engineering vocabulary instead of high-level marketing hype.\n\n"
                     f"Title: {article.title}\n"
-                    f"Content: {article.content[:1500]}\n\n"
+                    f"Content: {article.content}\n\n"
                     f'Return JSON format only: {{"depth_score": number, "reasoning": "brief explanation"}}'
                 )
                 payload = {
@@ -275,7 +398,7 @@ class QualityEvaluator:
                 "3. Production Engineering & Problem-Solving (0-30 pts): Details real-world outage root-cause analysis, performance tuning, benchmarks, or scalability challenges.\n"
                 "4. Engineering Specificity & Rigor (0-10 pts): Uses precise domain-specific engineering vocabulary instead of high-level marketing hype.\n\n"
                 f"Title: {article.title}\n"
-                f"Content: {article.content[:1500]}\n\n"
+                f"Content: {article.content}\n\n"
                 f'Return JSON format only: {{"depth_score": number, "reasoning": "brief explanation"}}'
             )
             payload = {
@@ -338,6 +461,11 @@ class QualityEvaluator:
             return False
         counts = Counter(tokens)
         return counts.most_common(1)[0][1] / len(tokens) >= 0.35
+
+    @staticmethod
+    def _advertisement_indicators(text: str) -> list[str]:
+        """Return explicit commercial-disclosure signals without affecting decision."""
+        return [label for label, pattern in ADVERTISEMENT_PATTERNS if pattern.search(text)]
 
     def _failure(
         self, article_id: str, code: str, message: str, details: dict[str, Any]

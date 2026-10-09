@@ -15,6 +15,8 @@
  */
 
 import { createServer } from "node:http";
+import { studyPeriodStatus } from "./study-period.mjs";
+import { createSharedDemoData } from "./shared-demo-data.mjs";
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.MOCK_HOST || "localhost";
@@ -23,7 +25,7 @@ const PUBLIC_ARTICLE_COUNT = Math.min(
   Number(process.env.MOCK_PUBLIC_ARTICLE_COUNT || 106),
   ARTICLE_COUNT,
 );
-const LATEST_QUALITY = Object.freeze({ moduleVersion: "2.2.7" });
+const LATEST_QUALITY = Object.freeze({ moduleVersion: "2.4.5" });
 const LATEST_AI_SUMMARY = Object.freeze({
   moduleVersion: "1.0.0",
   model: "gemini-3.5-flash-lite",
@@ -321,12 +323,12 @@ const PRODUCTION_LIKE_ARTICLES = [
   },
   {
     articleId: "article-20260901-000009",
-    title: "Imbad0202/academic-research-skills",
+    title: "[데모] 학술 연구 도구 모음",
     oneLineSummary:
       "Claude Code를 위한 학술 연구 스위트가 v3.8로 업데이트되어 인용 신뢰성 감사 및 강제 차단 게이트를 제공합니다.",
     tags: ["AI", "소프트웨어 품질", "개발자 도구"],
     sourceId: "github-trending",
-    articleUrl: "https://github.com/Imbad0202/academic-research-skills",
+    articleUrl: "https://example.invalid/articles/research-tools",
     originalPublishedAt: "2026-09-01T15:00:57.533Z",
     collectedAt: "2026-09-01T15:30:00.000Z",
   },
@@ -464,9 +466,9 @@ const PRODUCTION_LIKE_ARTICLES = [
   },
   {
     articleId: "article-20260831-000043",
-    title: "FlexGanttFX 오픈소스화",
+    title: "[데모] 자원 스케줄링 UI 프레임워크 공개",
     oneLineSummary:
-      "Dirk Lemmerman이 15년 만에 자원 스케줄링 프레임워크 FlexGanttFX를 AGPL 라이선스로 오픈소스로 공개합니다.",
+      "가상의 개발팀이 자원 스케줄링 UI 프레임워크를 공개하는 예제입니다. 실제 인물의 활동을 나타내지 않습니다.",
     tags: ["오픈소스", "애플리케이션 개발"],
     sourceId: "infoq",
     originalPublishedAt: "2026-08-31T08:40:00.000Z",
@@ -485,12 +487,12 @@ const PRODUCTION_LIKE_ARTICLES = [
   },
   {
     articleId: "article-20260830-000003",
-    title: "Lakr233/vphone-cli",
+    title: "[데모] 가상 모바일 기기 관리 도구",
     oneLineSummary:
       "vphone-cli 도구는 Apple Silicon 맥에서 Virtualization.framework을 활용해 가상 아이폰을 부팅하고 관리합니다.",
     tags: ["애플리케이션 개발", "개발자 도구", "모바일"],
     sourceId: "github-trending",
-    articleUrl: "https://github.com/Lakr233/vphone-cli",
+    articleUrl: "https://example.invalid/articles/mobile-device-tools",
     originalPublishedAt: "2026-08-31T03:00:00.000Z",
     collectedAt: "2026-08-31T15:40:00.000Z",
   },
@@ -541,7 +543,7 @@ const PRODUCTION_LIKE_ARTICLES = [
     articleId: "article-20260829-000003",
     title: "AI가 의도대로 작동하는지 확인하기: 질의응답",
     oneLineSummary:
-      "사우스웍스의 최고기술책임자 조니 할리페는 AI가 코드 생성과 실행에는 뛰어나지만 문제 해결과 판단에는 한계가 있으며 개발자의 역할이 정의와 검증 중심으로 이동한다고 설명합니다.",
+      "가상의 개발팀이 AI 코드 생성 결과를 검증하는 과정을 설명하는 예제입니다. 실제 인물의 발언을 나타내지 않습니다.",
     tags: ["AI", "개발자 도구", "소프트웨어 아키텍처"],
     sourceId: "sdtimes",
     originalPublishedAt: "2026-08-29T10:00:00.000Z",
@@ -700,7 +702,13 @@ const articles = Array.from({ length: ARTICLE_COUNT }, (_, index) => {
     title: title + suffix,
     originalTitle,
     authors: pickN(
-      ["김도현", "박지훈", "이서연", "Sarah Kim", "Marco Rossi"],
+      [
+        "데모 작성자 01",
+        "데모 작성자 02",
+        "데모 작성자 03",
+        "데모 작성자 04",
+        "데모 작성자 05",
+      ],
       intBetween(1, 2),
     ),
     oneLineSummary: pick(SUMMARIES),
@@ -1017,7 +1025,7 @@ const PUBLIC_SOURCES = [
 const resolvedApprovals = new Set();
 
 // Pin one article that was approved and then failed summarization, so the
-  // reprocessing case is always visible.
+// reprocessing case is always visible.
 // On the real server RESOLVED_APPROVE in quality_review_cases fills this role.
 for (const seed of articles
   .filter((a) => a.processingStatus === "PROCESSING_FAILED")
@@ -1235,7 +1243,7 @@ const qualityCases = articles
 const publicationQueue = () =>
   articles
     // Same conditions as the pipeline's publication review queue
-  // (_review_conditions in mysql.py)
+    // (_review_conditions in mysql.py)
     .filter(
       (a) =>
         a.processingStatus === "ENRICHED" &&
@@ -1654,398 +1662,8 @@ const countBy = (rows, key) =>
 /* ------------------------------------------------------------------ *
  * Dummy data for the shared site screens
  * ------------------------------------------------------------------ */
-const demoAnnouncements = [
-  {
-    id: 12,
-    title: "[안내] 2026학년도 2학기 개강총회/파티",
-    summary: "2026학년도 2학기 개강총회/파티 일정 안내예요.",
-    contents: `🎉 안녕하세요 TCP 여러분, 2학기 개강을 맞이하여 개강총회 및 개강파티를 진행해요.
-
-일시: 9월 8일(화) 18:30
-장소: 추후 안내
-
-❓ 2학기 개강총회는 무엇을 하는 자리인가요?
-2학기 개강총회는 동아리가 2학기를 공식적으로 시작하는 시간이에요.
-MT/해커톤/현직자 세미나 등 2학기 일정 안내, 스터디 안내, 프로젝트 성과공유 등이 이루어져요.
-
-❓ 개강파티는 무엇을 하는 자리인가요?
-개강총회 이후에 진행되며, 저녁을 먹으면서 TCP의 여러 사람들을 만나는 자리예요.`,
-    author: { name: "이준수" },
-    publishAt: "2026-09-03T00:00:00.000Z",
-    createdAt: "2026-09-03T06:57:48.225Z",
-    updatedAt: "2026-09-03T15:25:45.424Z",
-    views: 3,
-  },
-  {
-    id: 11,
-    title: "[공지] Tech Articles 서비스 시작 안내",
-    summary: "최신 개발 뉴스를 제공하는 Tech Articles 서비스가 시작됐어요.",
-    contents: `안녕하세요, TCP 여러분
-TCP 여름방학 웹서비스 주니어 팀에서 진행한 **'Tech Articles' 페이지 개발 완료** 및 페이지 추가가 완료되어 안내해 드려요.
-
-Tech Articles 페이지는 최신 개발 및 기술 뉴스를 한곳에 모아놓은 페이지에요.
-매일같이 바뀌는 개발 트렌드를 따라가기 힘드시지 않으셨나요? 바쁜 학업과 프로젝트 일정 속에서 유용한 글을 일일이 찾아보는 것 자체가 꽤 번거로운 일이었을 텐데요.
-'Tech Articles' 페이지는 **검증된 개발 뉴스를 자체 알고리즘으로 필터링 후 요약 및 제공**해요. 따라서, 보다 쉽고 빠르게 선별된 개발 소식을 접할 수 있어요.
-
-❗**주요 기능**❗
-
-📌 **기술 트렌드 통합 제공**
-*GitHub Trending, InfoQ, SD Times, Cloudflare Blog* 등 검증된 기술 블로그와 커뮤니티의 기사를 한눈에 확인할 수 있어요.
-
-📌 **AI 요약 제공**
-원문을 모두 읽지 않아도 핵심을 파악할 수 있도록 AI 기반 요약을 제공해드려요. 원문 링크도 제공되어 있기 때문에 필요 시 원문을 확인할 수도 있어요.
-
-📌 **고가치 기사 선별**
-아무 기사나 제공하는 것이 아닌 이 기사가 최신 정보인지, 개발자에게 도움이 될만한 정보인지 점수를 부여해서 가치가 높은 기사만 선별해서 제공해드려요. 책정한 점수도 제공하므로 참고기준으로 삼을 수 있어요.
-
-다양한 기술 동향을 파악하고 학습하는 데 유용하게 활용하실 수 있어요.
-사용 중 발견된 버그나 개선 의견이 있다면 언제든 문의해 주세요.
-
-📧 문의사항은 아래 이메일로 부탁드려요.
-Tech Articles 프론트엔드 담당 박준우   02346nn@naver.com
-
-※ 현재 Article 점수 책정 시스템에 미흡한 부분이 있어서 점검 중이에요. ※`,
-    author: { name: "김재민" },
-    publishAt: "2026-08-23T00:00:00.000Z",
-    createdAt: "2026-08-23T08:43:13.545Z",
-    updatedAt: "2026-09-03T15:25:47.926Z",
-    views: 44,
-  },
-  {
-    id: 10,
-    title: "[안내] TCP - EC 연합 스터디",
-    summary: "2026학년도 1학기에 TCP와 EC가 연합해서 진행하는 스터디 안내에요.",
-    contents: `**TCP-EC 연합 스터디 안내**
-
-1. **C 스터디**
-스터디 진행 주체: EC
-신청 방법: https://endless-creation.com/ > 회원가입 > "지원하기" > "C스터디 모집(공개)"
-지원 마감일시: 03월 22일(일) 24시
-
-2. **AI 스터디**
-스터디 진행 주체: EC
-신청 방법: https://endless-creation.com/ > 회원가입 > "지원하기" > "AI스터디(공개)"
-지원 마감일시: 03월 22일(일) 24시
-
-3. **인간 시대의 끝이 도래했다**
-스터디 진행 주체: TCP
-신청 방법: https://teamcrazyperformance.com/ > 회원가입 > "Study" > "인간 시대의 끝이 도래했다" > "스터디 참여"
-지원 마감일시: 05월 29일 (무제한)
-스터디 개요: 산업구조를 바꾸고 있는 인공지능을 개발자 관점에서 이해하고, 활용하는 방법, 최신 인공지능 트렌드 강의
-
-4. **2026학년도 TCP 보안 스터디**
-스터디 진행 주체: TCP
-지원 마감일시: 03월 31일(화) 24시
-스터디 개요: 보안 분야에 관심을 가진 학생들에게 Dreamhack을 통한 보안에 대한 기본지식과 스터디 환경 제공
-
-5. **2026 웹 개발 스터디**
-스터디 진행 주체: TCP
-지원 마감일시: 03월 31일(화) 24시
-스터디 개요: 웹 개발에 대한 전반적인 지식 습득 및 웹 프로젝트 진행`,
-    author: { name: "이준수" },
-    publishAt: "2026-03-21T00:00:00.000Z",
-    createdAt: "2026-03-21T09:58:10.975Z",
-    updatedAt: "2026-09-03T15:28:30.311Z",
-    views: 84,
-  },
-  {
-    id: 9,
-    title: "[안내] 2026학년도 1학기 개강총회/파티",
-    summary: "2026학년도 1학기 개강총회/파티 일정 안내예요.",
-    contents: `🎉 안녕하세요 TCP 여러분, 1학기 개강을 맞이하여 개강총회 및 개강파티를 진행해요.
-
-**일시: 3월 18일(수) 18:10**
-**장소: 미래관 202호**
-
-❓ 개강총회는 무엇을 하는 자리인가요?
-개강총회는 **동아리가 한 학기를 공식적으로 시작하는 시간**이에요.
-TCP 소개, 작년 활동 리캡, 연간일정, 회비 안내, 스터디 안내, TCP 커뮤니케이션 채널 안내 등이 이루어져요.
-
-❓ 개강파티는 무엇을 하는 자리인가요?
-개강총회 이후에 진행되며, 저녁을 먹으면서 **TCP의 여러 사람들과 친해지는 자리**예요.`,
-    author: { name: "이준수" },
-    publishAt: "2026-03-15T00:00:00.000Z",
-    createdAt: "2026-03-15T05:44:17.406Z",
-    updatedAt: "2026-09-03T06:51:34.430Z",
-    views: 50,
-  },
-  {
-    id: 8,
-    title: "[모집] TCP 웹서비스 운영팀 모집 안내",
-    summary:
-      "TCP 웹서비스를 함께 관리하고 발전시켜 나갈 5명의 운영진을 찾고 있어요.",
-    contents: `# 🚀 TCP 웹서비스 운영팀 모집 안내
-
-안녕하세요! TCP 웹서비스 운영팀에서 웹서비스를 체계적으로 관리하고 발전시켜 나갈 **5명의 운영진**을 찾고 있어요.
-
-경력있는 신입을 요구하는 지금! TCP는 보유 인프라를 바탕으로 **지식은 있지만 경력은 없는 신입도 학기중에 부담 없이 경력을 쌓을 수 있는 환경**을 제공하고자 해요.
-
----
-
-## 운영진 모집 대상
-
-**기존 TCP 부원이 아니어도 지원 가능해요!** (서비스 기획 & 운영 매니저 제외)
-운영진으로 선발되시면 **TCP 정회원 자격이 자동으로 부여**돼요.
-
----
-
-# 모집 역할
-
-## 1. 🏗️ 서버 인프라 매니저 (Infrastructure Manager)
-**"우리 서비스가 사는 튼튼한 집을 지어요"**
-
-### 🛠️ 이런 기술을 사용해요 (Tech Stack)
-*   **OS/Server**: Proxmox VE, Ubuntu Linux
-*   **Network**: IPTables, Nginx (Reverse Proxy), SSL/TLS
-*   **Tools**: Shell Script (Bash), SSH
-
-## 2. ⚙️ 백엔드 & DB 개발자 (Backend Developer)
-**"눈에 보이지 않는 중요한 기능과 소중한 데이터를 책임져요"**
-
-### 🛠️ 이런 기술을 사용해요 (Tech Stack)
-*   **Language**: TypeScript, Node.js
-*   **Framework**: NestJS
-*   **Database**: PostgreSQL, TypeORM
-*   **Infra**: Docker, Docker Compose
-
-## 3. 프론트엔드 개발자 (Frontend Developer)
-**"사용자가 만나는 첫 화면을 아름답게 만들어요"**
-
-### 🛠️ 이런 기술을 사용해요 (Tech Stack)
-*   **Language**: JavaScript (ES6+)
-*   **Framework / Library**: React 19, React Router 7
-*   **Build / Dev Tools**: Create React App (react-scripts 5), npm
-
-## 4. 🖌️ [신설 운영직] UI/UX 디자이너 (UI/UX Designer)
-## 5. [TCP 부원만 지원 가능]👩‍💼 서비스 기획 & 운영 매니저 (Service Manager & CPO)
-
----
-
-## 운영팀 활동 및 혜택
-*   **활동비 전액 면제**
-*   **TCP인프라실 활용 가능**
-*   **정기 회의 참여 의무** (매주 1회)
-*   **의무 활동 기간** 최소 한 학기(6개월)
-
-## 모집 일정
-- 모집 기간: 2월 13일(금) 00시 ~ 3월 11일(수) 24시
-- 면접 기간: 3월 9일(월) ~ 3월 15일(일)
-- 합격자 발표: 3월 15일(일) 개별 공지
-
-TCP와 함께 성장할 여러분을 기다립니다! 🚀`,
-    author: { name: "이준수" },
-    publishAt: "2026-02-17T00:00:00.000Z",
-    createdAt: "2026-02-17T06:08:03.855Z",
-    updatedAt: "2026-08-23T08:54:36.689Z",
-    views: 82,
-  },
-  {
-    id: 6,
-    title: "[안내] TCP 웹사이트 사용 안내",
-    summary: "TCP 웹사이트를 소개해요.",
-    contents: `❓ 웹사이트에서 무엇을 할 수 있나요?
-
-📄**페이지 소개**
-- **메인 페이지** - TCP에 대한 간략한 소개와 활동 사진이 있어요.
-- **About 페이지** - TCP에 대한 상세한 소개와 지도(예정)가 있어요.
-- **Members 페이지** - TCP의 활동멤버들과 졸업멤버들이 있어요. 같은 관심사를 가진 부원을 찾아봐요!
-- **Recruitment 페이지** - TCP 신입부원 모집을 받아요. 입부 안내와 FAQ(예정)가 있어요.
-- **Announcement 페이지** - TCP부원들을 위한 각종 공지사항이 올라오는 페이지에요, 중요한 정보가 올라올 수 있으니 꼭 확인해주세요!
-
-- 📰 **Tech Articles 페이지** - 매일 따끈따끈한 IT 최신 소식들 중 고가치 정보들만 선별하여 올려드려요!
-- 📓 **Study 페이지** - TCP부원분들은 이 페이지를 통해 스터디 진행상황과 스터디 자료에 접근할 수 있어요.
-- 👥 **Find Your Team 페이지** - TCP 부원이 아니더라도 회원가입만 하면 사용할 수 있어요. 프로젝트, 대회 출전 등 마음이 맞는 사람들을 모아서 팀을 구성해 보세요.
-- 🙋‍♂️ **마이페이지** 프로필 정보를 수정하고 멤버스 카드에 노출되는 정보를 선택할 수 있어요.
-
-이 밖에도 웹페이지를 돌아다니다가 어떤 입력을 하면 **숨겨진 페이지**를 찾을지도 몰라요!`,
-    author: { name: "이준수" },
-    publishAt: "2026-02-13T00:00:00.000Z",
-    createdAt: "2026-02-13T12:29:46.199Z",
-    updatedAt: "2026-08-23T07:35:35.062Z",
-    views: 93,
-  },
-  {
-    id: 1,
-    title: "[모집] TCP 2026학년도 1학기 신입부원 & 웹서비스 운영팀 모집 안내",
-    summary:
-      "TCP(Team Crazy Performance)에서 2026학년도 1학기 신입부원과 웹서비스 운영팀을 모집해요.",
-    contents: `🙇 안녕하세요, 컴퓨터공학과 학술 동아리 TCP(Team Crazy Performance)에서 2026학년도 1학기 신입부원분들과 운영진분들을 모집해요.
-
-- TCP는 **다양한 관심사를 가진 사람들**이 **개발과 탐구라는 공통점**으로 서로 모여서 **자유롭게 함께 성장**하는 동아리예요.
-무언가를 만들고 사랑하고 남들과 공유하는 걸 좋아하는 모두를 환영해요!
-
-- TCP는 **여러분이 만들어가는 동아리**예요. 신입생인지 4학년인지, 재학생인지 복학생인지, 컴퓨터공학과 학생인지 타과 학생인지, 교수님인지 학생인지 관계없이 누구나 와서 스터디를 개설하고 참여할 수 있어요.
-
-### 📝 2026년도 1학기 활동 계획
-
-🗓️ **TCP 공통 일정**
-
-- 1학기 개강총회/파티 - 이번 학기 동아리 활동을 어떻게, 누구랑, 어떤 방식으로 할 지 알려주는 첫 공식 모임이에요.
-- 동아리 MT - 중간고사 직후인 5월 전후에 가는 친목회예요.
-- 1학기 종강총회/파티 - 이번 학기 우리가 뭘 했고, 뭘 남겼는지 정리하는 마무리 모임이에요.
-
-1️⃣ **TCP 메인 스터디**
-
-- 개발자 튜토리얼
-- 인간 시대의 끝이 도래했다
-- 동아리 연합 C 스터디
-
-2️⃣ **TCP 서브 스터디**
-
-- 웹 개발 스터디
-- 컴퓨터공학개론 스터디
-- 보안 스터디 (웹 / 시스템 해킹)
-- 머신러닝 스터디 (핸즈온 머신러닝 3판 사용)
-
-### 📅 신입부원 모집 일정
-
-- 공식 모집 기간: 2월 13일(금) 00시 ~ 3월 11일(수) 24시
-- 면접 기간: 3월 9일(월) ~ 3월 15일(일)
-- 합격자 발표: 3월 15일(일) 개별 공지
-
-☎️ 모집 관련이나 TCP 관련 문의사항은 아래 연락처로 부탁드려요.
-
-- 회장 박연오
-- 부회장 김영진`,
-    author: { name: "관리자" },
-    publishAt: "2026-02-11T00:00:00.000Z",
-    createdAt: "2026-02-11T14:40:25.251Z",
-    updatedAt: "2026-09-02T06:06:12.849Z",
-    views: 112,
-  },
-];
-
-const studyMember = (user_id, name, role, major) => ({
-  user_id,
-  name,
-  role,
-  major,
-  profile_image: "/images/default_profile.webp",
-});
-
-const demoStudies = [
-  {
-    id: 18,
-    study_name: "👶 2026 개발자 튜토리얼",
-    start_year: 2026,
-    study_description: `2026학년도 신입생분들과 신입부원분들, 개발자를 이해하고 싶으신 분들, 컴퓨터 산업 전반을 이해하고 싶으신 분들을 위한 개발자 튜토리얼 스터디입니다.
-
-1주차 03.20\tOT, 컴퓨팅과 하드웨어 이해 및 교과연계도 분석
-2주차 03.26\t컴퓨터와 프로그램의 이해, VSCode
-3주차 04.02\tmarkdown, notion, git github, opensource, cli gui, json
-4주차 04.09\t리눅스와 OS
-중간고사 전주 04.13-04.17 없음
-중간고사 주간 04.20-05.01 없음
-5주차 05.07\t웹서비스의 이해
-6주차 05.14\t-
-7주차 05.21\t가상화 (VM / Clustering, docker과 proxmox)
-8주차 05.28\tAI 맛보기 및 개발자 튜토리얼 뒷풀이
-기말고사 전주 06.01-06.05 없음
-기말고사 기간 06.08-06.17 없음
-
-스터디 공지: https://open.kakao.com/o/gaZ5fmmi`,
-    tag: "개발자 튜토리얼,신입생,컴퓨터공학개론",
-    recruit_count: 30,
-    period: "2026.03 ~ 2026.05",
-    apply_deadline: "2026-03-31T23:59:59+09:00",
-    place: "미래관 202호",
-    way: "매주 금요일 오후 6시",
-    cycle: "주 1회",
-    is_public: false,
-    leader: { user_id: "demo-member-37", name: "이준수" },
-    members: [
-      studyMember("demo-member-37", "이준수", "LEADER", null),
-      studyMember("demo-member-36", "박연오", "MEMBER", null),
-    ],
-  },
-  {
-    id: 19,
-    study_name: "🤖 인간 시대의 끝이 도래했다",
-    start_year: 2026,
-    study_description: `산업구조를 바꾸고 있는 인공지능을 개발자 관점에서 이해하고 활용하는 방법, 최신 인공지능 트렌드 강의
-
-1주차\t03.21\tOT, AI산업현황, 인공신경망 역사 및 이론
-2주차\t03.28\tLarge Language Model (LLM) Part 1
-3주차\t04.04\tLarge Language Model (LLM) Part 2
-4주차\t04.11\tDiffusion Model
-중간고사 전주 04.13-04.17 없음
-중간고사 주간 04.20-05.01 없음
-5주차\t05.09\t다양한 AI 모델과 AI Pipeline / Orchestration
-6주차\t05.16\tMCP와 LLM Agent, Antigravity와 OpenClaw, Mirofish
-
-스터디 공지: https://open.kakao.com/o/gu8jhmmi`,
-    tag: "AI,LLM,머신러닝",
-    recruit_count: 25,
-    period: "2026.03 ~ 2026.05",
-    apply_deadline: "2026-05-29T23:59:59+09:00",
-    place: "미래관 202호",
-    way: "매주 토요일 오후 2시",
-    cycle: "주 1회",
-    is_public: true,
-    leader: { user_id: "demo-member-37", name: "이준수" },
-    members: [
-      studyMember("demo-member-37", "이준수", "LEADER", null),
-      studyMember("demo-member-38", "반재민", "MEMBER", null),
-    ],
-  },
-  {
-    id: 21,
-    study_name: "2026학년도 TCP 보안 스터디",
-    start_year: 2026,
-    study_description: `보안 분야에 관심을 가진 학생들에게 Dreamhack을 통한 보안에 대한 기본지식과 스터디 환경 제공
-
-https://discord.gg/U7Z9ymaMYj
-저희 스터디에서 사용할 디스코드 링크입니다. 다들 참여해주세요!`,
-    tag: "보안,Dreamhack,웹해킹",
-    recruit_count: 20,
-    period: "2026.03 ~ 2026.06",
-    apply_deadline: "2026-03-31T23:59:59+09:00",
-    place: "미래관 310호",
-    way: "매주 화요일 오후 7시",
-    cycle: "주 1회",
-    is_public: true,
-    leader: { user_id: "demo-member-39", name: "김영진" },
-    members: [
-      studyMember("demo-member-39", "김영진", "LEADER", null),
-      studyMember("demo-member-30", "김태형", "MEMBER", null),
-    ],
-  },
-  {
-    id: 22,
-    study_name: "2026 웹 개발 스터디",
-    start_year: 2026,
-    study_description: "웹 개발에 대한 전반적인 지식 습득 및 웹 프로젝트 진행",
-    tag: "웹,프론트엔드,백엔드",
-    recruit_count: 15,
-    period: "2026.03 ~ 2026.06",
-    apply_deadline: "2026-03-31T23:59:59+09:00",
-    place: "미래관 312호",
-    way: "매주 목요일 오후 7시",
-    cycle: "주 1회",
-    is_public: false,
-    leader: { user_id: "demo-member-36", name: "박연오" },
-    members: [{ user_id: "demo-member-36", name: "박연오", role: "LEADER" }],
-  },
-  {
-    id: 23,
-    study_name: "2026 머신러닝 스터디",
-    start_year: 2026,
-    study_description:
-      "머신러닝에 대해 관심 있는 사람들끼리 모여 같이 머신러닝에 대해 공부하고 학습진행도 및 성과를 공유하는 스터디입니다. 학습교재는 Hands On Machine Learning (3판) 입니다. ",
-    tag: "머신러닝,Python,핸즈온",
-    recruit_count: 12,
-    period: "2026.03 ~ 2026.06",
-    apply_deadline: "2026-03-31T23:59:59+09:00",
-    place: "온라인",
-    way: "매주 월요일 오후 8시",
-    cycle: "주 1회",
-    is_public: false,
-    leader: { user_id: "demo-member-38", name: "반재민" },
-    members: [
-      studyMember("demo-member-38", "반재민", "LEADER", null),
-    ],
-  },
-];
+const { demoAnnouncements, demoStudies, demoMembers, demoTeams } =
+  createSharedDemoData();
 
 /* Mixes short posts, a very long title and a link-only post so that line clamping
  * and long-URL overflow can both be checked on one screen. */
@@ -2115,9 +1733,7 @@ https://example.com/tcp-study/react-state-management/benchmark-results-2026-09-2
       content: `Testing Library 로 컴포넌트 테스트를 작성했습니다.
 
 쿼리는 \`getByRole\` 을 우선 쓰고, 접근 가능한 이름이 없을 때만 다른 쿼리를 쓰기로 했습니다.`,
-      resources: [
-        { id: 1004, name: "테스트 작성 규칙.docx", format: "docx" },
-      ],
+      resources: [{ id: 1004, name: "테스트 작성 규칙.docx", format: "docx" }],
     },
   ],
   2: [
@@ -2145,399 +1761,6 @@ Refresh Token 은 httpOnly 쿠키로 내려주고, Access Token 만 응답 본�
     },
   ],
 };
-
-const demoMembers = [
-  ["추민기", "휴학", null, []],
-  ["박준범", "휴학", "", []],
-  ["김정완", "졸업", "게임 개발 공부중입니다!", [], null],
-  ["정세영", "재학", null, []],
-  [
-    "김용래",
-    "졸업",
-    "AI 드리븐 개발중",
-    ["React", "Typescript"],
-    "현 와드(캐치테이블) 프론트엔드 개발자",
-  ],
-  [
-    "고경남",
-    "졸업",
-    "커피챗 언제든 환영합니다~",
-    ["Java", "Spring Boot"],
-    "네이버 백엔드 개발자",
-  ],
-  [
-    "김경준",
-    "졸업",
-    "넥슨에서 게임 기획자로 일하고 있는 김경준입니다. 게임에 관심이 있거나 도움이 필요하시면 언제든 편하게 연락 주세요!",
-    ["Unity", "데이터분석"],
-    "현 넥슨코리아 메이플스토리m 중국실 플레이유닛 게임기획자",
-  ],
-  [
-    "신수민",
-    "졸업",
-    "같이 해킹해요",
-    ["보안"],
-    "현 Theori, Security Researcher",
-  ],
-  ["윤지수", "졸업", "", [], "Product Engineer @Cutback. ex-toss,naver,kakao"],
-  [
-    "함태영",
-    "졸업",
-    "",
-    ["BE", "AI", "ML", "BigData", "Quant Trading"],
-    "LG CNS 근무",
-  ],
-  ["관리자", "휴학", "System Administrator", ["ALL"]],
-  [
-    "이사빈",
-    "졸업",
-    "인간-AI 상호작용을 연구하는 대학원생입니다. 아직 인간과의 상호작용이 더 어려워요..😂",
-    ["LLM", "HCI(Human-Computer Interaction)"],
-    "현 인간중심 인공지능 연구실 석사과정 (서울과학기술대학교 인공지능응용학과)",
-  ],
-  [
-    "조현수",
-    "졸업",
-    "문화 예술{🅰️} / IT /뇌과학🧬💡",
-    ["Overall coding of DATA & interpretation of concept{notion}"],
-    "한양대 융합전자공학과 석/박사(뇌과학 중심/휴학 상태일 수 있음)",
-  ],
-  [
-    "설기현",
-    "졸업",
-    "대전의 등대도 밝습니다.",
-    ["Computer Vision", "Multimodal", "AI Safety"],
-    "현 KAIST EE 대학원, 석사",
-  ],
-  ["마정훈", "휴학", null, []],
-  [
-    "박동혁",
-    "졸업",
-    "취약점 분석과 임베디드 보안을 공부하고 있습니다",
-    ["Cybersecurity"],
-  ],
-  [
-    "서바울",
-    "졸업",
-    "모바일로봇 개발자",
-    ["C++", "C#", "Python", "JavaScript", "React", "Docker", "ROS2"],
-  ],
-  ["신용준", "재학", null, []],
-  ["최유찬", "재학", "", []],
-  ["서준수", "재학", "안녕하세요!", []],
-  [
-    "위현서",
-    "재학",
-    "23학번 컴공 위현서입니다. C++ 위주로 공부하였고 보안에 관심있습니다",
-    ["C++"],
-  ],
-  [
-    "임동원",
-    "재학",
-    "보안과 개발에 관심이 있는 재학생입니다! 스터디 활발하게 참여하도록 하겠습니다!",
-    [],
-  ],
-  ["이석환", "재학", "", [], "서울과학기술대학교"],
-  ["고다연", "재학", "안녕하세요!", ["Python", "AI"]],
-  ["박재우", "재학", "열심히 공부하겠습니다 ㅠㅠ", []],
-  ["김현진", "재학", "", []],
-  [
-    "최승훈",
-    "졸업",
-    "데이터 불균형 문제의 해결 방법을 연구하고 있습니다.\n가볍게 인사 나눌 수 있는 기회가 있으면 좋겠습니다 :)",
-    ["Python", "Medical AI", "PyTorch"],
-    "Medical AI 연구실 (과기대 컴퓨터공학과)",
-  ],
-  [
-    "안태우",
-    "휴학",
-    "반갑습니다. TCP 부원 안태우입니다.\n\n꿈을 펼치기 위해 동아리 및 활동 열심히 하며, 재미있게 활동해보겠습니다.",
-    [
-      "React",
-      "JavaScript",
-      "TypeScript",
-      "Node.js",
-      "Python",
-      "MySQL",
-      "Flutter",
-      "Unity",
-      "CSS",
-      "TailwindCSS",
-      "AI",
-      "PyTorch",
-      "Hugging Face",
-      "Docker",
-      "AWS",
-    ],
-    "공군",
-  ],
-  ["유지민", "재학", "안녕하세요..", [], "서울과학기술대학교"],
-  [
-    "김태형",
-    "재학",
-    "보안(특히 IR/DF)에 관심을 두고 공부하는 복학생입니다. 많이 부족하지만 같이 공부해보실 분은 같이 해봐요!",
-    ["C", "C++", "Python", "volatility3", "autopsy"],
-  ],
-  ["강형준", "재학", "", []],
-  [
-    "이형진",
-    "휴학",
-    "",
-    [
-      "JavaScript",
-      "React",
-      "Python",
-      "Java",
-      "Spring",
-      "AI",
-      "TensorFlow",
-      "PyTorch",
-      "Hugging Face",
-      "DevOps",
-      "Kubernetes",
-      "Docker",
-      "AWS",
-    ],
-  ],
-  ["김은주", "재학", null, []],
-  ["윤태완", "재학", null, []],
-  [
-    "박연오",
-    "재학",
-    "TCP 회장 박연오입니다. CIS Lab에서 학부연구생으로 활동하고 있습니다.",
-    [
-      "React",
-      "JavaScript",
-      "Python",
-      "C++",
-      "Java",
-      "Flutter",
-      "TailwindCSS",
-      "AI",
-      "PyTorch",
-    ],
-    "CIS Lab",
-  ],
-  [
-    "이준수",
-    "재학",
-    "안녕하세요, 하드웨어, IoT, Local LLM, 에이전트, 자동화, 서버 등에 관심이 많고 현재는 신호처리 연구하고 있습니다. 😁",
-    [
-      "C",
-      "Python",
-      "AI",
-      "Docker",
-      "Network",
-      "IoT",
-      "Linux",
-      "Esp32",
-      "Automation",
-      "n8n",
-      "LLM",
-      "3Dprinting",
-      "Proxmox",
-      "Server",
-      "Agent",
-    ],
-    "TCP 웹서비스 운영팀장 및 개인정보보호책임자",
-  ],
-  ["반재민", "재학", ":)", ["Hugging Face", "AI"], "Daint Lab"],
-  [
-    "김영진",
-    "재학",
-    "이창훈 교수님 연구실에서 학부연구생으로 활동하고 있습니다. 보안 관련해서 궁금한게 있으시면 언제든 편하게 연락주세요!",
-    ["C", "AI", "Cryptography", "Digital Forensic"],
-    "CIS Lab",
-  ],
-].map(
-  (
-    [name, education_status, self_description, tech_stack, current_company],
-    index,
-  ) => ({
-    id: `demo-member-${index + 1}`,
-    name,
-    education_status,
-    self_description,
-    tech_stack,
-    profile_image:
-      education_status === "졸업"
-        ? "/profiles/default_graduate_profile_image.webp"
-        : "/profiles/default_profile_image.webp",
-    github_username: null,
-    portfolio_link: null,
-    current_company: current_company ?? null,
-  }),
-);
-
-const demoTeams = [
-  {
-    id: 6,
-    title: "2026 NYPC Master Track",
-    category: "공모전",
-    status: "closed",
-    periodStart: "2026-06-29",
-    periodEnd: "2026-07-08",
-    deadline: "2026-07-01",
-    description: "2026 Nexon Young Programmers Cup Master Track",
-    techStack: "C++, Python",
-    tag: "",
-    executionType: "online",
-    selectionProc: "지원서 검토 후 안내",
-    contact: "02346nn@naver.com",
-    goals: "본선 진출(예선 상위 20등)",
-    projectImage: "/teams/team-1782973419318-532601049.jpg",
-    link: "https://new.nypc.co.kr/ko/",
-    createdAt: "2026-06-28T05:05:46.007Z",
-    updatedAt: "2026-09-03T15:26:21.935Z",
-    leader: {
-      id: "5cd6b3d6-ca63-4924-9539-293c6345be52",
-      name: "박준우",
-      profile_image: "default_admin_profile_image.webp",
-    },
-    roles: [
-      {
-        id: 11,
-        roleName: "전략/아키텍처 리드",
-        recruitCount: 1,
-        currentCount: 0,
-      },
-      {
-        id: 12,
-        roleName: "실험/테스트 담당",
-        recruitCount: 2,
-        currentCount: 0,
-      },
-      {
-        id: 13,
-        roleName: "기록/분석/운영 담당",
-        recruitCount: 1,
-        currentCount: 0,
-      },
-    ],
-  },
-  {
-    id: 5,
-    title: "KAKAO Agentic Player 10",
-    category: "공모전",
-    status: "closed",
-    periodStart: "2026-06-25",
-    periodEnd: "2026-07-07",
-    deadline: "2026-06-25",
-    description:
-      "카카오에서 진행하는 PlayMCP 서버 개발 공모전입니다.\n아래 링크를 참고 부탁드립니다.",
-    techStack: "",
-    tag: null,
-    executionType: "online",
-    selectionProc: "사전 협의",
-    contact: "cshooon@seoultech.ac.kr",
-    goals: "",
-    projectImage: "/teams/team-1782386233045-762874554.jpg",
-    link: "https://b.kakao.com/views/PlayMCP/AGENTIC_PlAYER_10",
-    createdAt: "2026-06-25T11:17:13.187Z",
-    updatedAt: "2026-06-25T11:19:20.996Z",
-    leader: {
-      id: "1e1822d8-0da4-4589-a863-73b0b390ca25",
-      name: "최승훈",
-      profile_image: "1e1822d8-0da4-4589-a863-73b0b390ca25.jpg",
-    },
-    roles: [{ id: 10, roleName: "개발자", recruitCount: 1, currentCount: 0 }],
-  },
-  {
-    id: 4,
-    title: "2026 Summer TCP 웹서비스 주니어팀",
-    category: "프로젝트",
-    status: "closed",
-    periodStart: "2026-06-22",
-    periodEnd: "2026-08-31",
-    deadline: "2026-06-22",
-    description: `2026 여름방학에 진행되는 TCP 웹서비스 주니어 팀원 모집이에요.
-
-개발자 튜토리얼[https://teamcrazyperformance.com/study/18]을 완료하신 분들 대상이에요.`,
-    techStack: "HTML, CSS, JS, React, NextJS, TypeScript, PostgreSQL, etc",
-    tag: "",
-    executionType: "online",
-    selectionProc: "사전선발",
-    contact: "junsulee119@gmail.com",
-    goals: "TCP 웹서비스 결제 페이지 및 기능 개발",
-    projectImage: "/teams/team-1781846023780-3093665.jpg",
-    link: "https://github.com/TeamCrazyPerformance/TCP_Website_2025",
-    createdAt: "2026-06-19T05:13:44.039Z",
-    updatedAt: "2026-06-25T11:19:42.753Z",
-    leader: {
-      id: "92729ac7-428d-4f7e-9124-fd85f911637a",
-      name: "이준수",
-      profile_image: "92729ac7-428d-4f7e-9124-fd85f911637a.jpg",
-    },
-    roles: [
-      {
-        id: 9,
-        roleName: "TCP 웹서비스 주니어 개발자",
-        recruitCount: 4,
-        currentCount: 0,
-      },
-    ],
-  },
-  {
-    id: 3,
-    title: "TCP Website 운영팀 모집",
-    category: "프로젝트",
-    status: "closed",
-    periodStart: "2026-03-15",
-    periodEnd: "2026-08-31",
-    deadline: "2026-03-11",
-    description: `TCP 웹서비스를 함께 체계적으로 관리하고 발전시켜 나갈 5명의 운영진을 모집합니다.
-
-상세 안내:  하단 관련 링크 참조`,
-    techStack: "",
-    tag: "초보환영, 프론트엔드, 백엔드, 서버, 디자이너, 기획",
-    executionType: "hybrid",
-    selectionProc: "상세 안내 참조",
-    contact: "junsulee119@gmail.com",
-    goals: "6개월간의 협업 진행",
-    projectImage: "/teams/team-1773132843950-804881416.jpg",
-    link: "https://teamcrazyperformance.com/announcement/8",
-    createdAt: "2026-02-17T06:52:59.884Z",
-    updatedAt: "2026-06-25T11:19:44.534Z",
-    leader: {
-      id: "92729ac7-428d-4f7e-9124-fd85f911637a",
-      name: "이준수",
-      profile_image: "92729ac7-428d-4f7e-9124-fd85f911637a.jpg",
-    },
-    roles: [
-      {
-        id: 4,
-        roleName: "서버 인프라 매니저 (Infrastructure Manager)",
-        recruitCount: 1,
-        currentCount: 0,
-      },
-      {
-        id: 5,
-        roleName: "백엔드 & DB 개발자 (Backend Developer)",
-        recruitCount: 1,
-        currentCount: 0,
-      },
-      {
-        id: 6,
-        roleName: "프론트엔드 개발자 (Frontend Developer)",
-        recruitCount: 1,
-        currentCount: 0,
-      },
-      {
-        id: 7,
-        roleName: "[신설 운영직] UI/UX 디자이너 (UI/UX Designer)",
-        recruitCount: 1,
-        currentCount: 0,
-      },
-      {
-        id: 8,
-        roleName:
-          "[TCP 부원만 지원 가능]👩‍💼 서비스 기획 & 운영 매니저 (Service Manager & CPO)",
-        recruitCount: 1,
-        currentCount: 0,
-      },
-    ],
-  },
-];
 
 /* ------------------------------------------------------------------ *
  * Routing
@@ -2584,13 +1807,17 @@ function handle(method, pathname, query, body, headers = {}) {
   }
   if (method === "GET" && pathname === "/api/v1/study") {
     const year = query.get("year");
-    // Mirrors the real API: anonymous callers only see public studies.
-    const signedIn = Boolean(headers.authorization);
     return [
       200,
       demoStudies
-        .filter((study) => signedIn || study.is_public)
-        .filter((study) => !year || String(study.start_year) === year),
+        .filter((study) => !year || String(study.start_year) === year)
+        .map((study) => ({
+          ...study,
+          status: studyPeriodStatus(study.period),
+          members_count: (study.members ?? []).filter((member) =>
+            ["LEADER", "MEMBER", "NOMINEE"].includes(member.role),
+          ).length,
+        })),
     ];
   }
   if (method === "GET" && /^\/api\/v1\/study\/\d+\/progress$/.test(pathname)) {
@@ -2601,7 +1828,15 @@ function handle(method, pathname, query, body, headers = {}) {
     const id = Number(pathname.split("/").at(-1));
     const study = demoStudies.find((item) => item.id === id);
     return study
-      ? [200, study]
+      ? [
+          200,
+          {
+            ...study,
+            members_count: (study.members ?? []).filter((member) =>
+              ["LEADER", "MEMBER", "NOMINEE"].includes(member.role),
+            ).length,
+          },
+        ]
       : [404, { statusCode: 404, message: "스터디를 찾을 수 없습니다." }];
   }
   if (method === "GET" && pathname === "/api/v1/members") {
@@ -2630,13 +1865,13 @@ function handle(method, pathname, query, body, headers = {}) {
     return [
       200,
       {
-        competition: "/activities/competition.jpg",
-        study: "/activities/study.jpg",
-        mt: "/activities/mt.jpg",
+        competition: "/logo192.png",
+        study: "/logo192.png",
+        mt: "/logo192.png",
         tags: {
-          competition: ["TCP-EC-NL 해커톤"],
-          study: ["CS 현직자 세미나", "재학생 발표", "@taewoo_an"],
-          mt: ["2025 TCP MT"],
+          competition: ["데모 해커톤"],
+          study: ["데모 기술 세미나", "예제 발표"],
+          mt: ["데모 교류 행사"],
         },
       },
     ];
@@ -2653,7 +1888,7 @@ function handle(method, pathname, query, body, headers = {}) {
   }
 
   if (method === "POST" && pathname === "/api/v1/recruitment") {
-    return [201, { message: "목업 지원서가 접수되었습니다." }];
+    return [201, { message: "Mock 지원서가 접수되었습니다." }];
   }
 
   const page = Number(query.get("page") || 1);
@@ -2796,7 +2031,14 @@ function handle(method, pathname, query, body, headers = {}) {
           dynamicCount: 2,
           coreKeywords: ["python", "javascript"],
           dynamicKeywords: ["fastapi", "webgpu"],
-          refreshPolicy: "PROCESS_START",
+          refreshPolicy: "READ_ONLY_DATABASE_CHECK",
+          loadedVersion: "mock-keyword-version",
+          loadedActivatedAt: "2026-09-06T00:00:00.000Z",
+          storage: "MEMORY",
+          activeVersion: "mock-keyword-version",
+          activatedAt: "2026-09-06T00:00:00.000Z",
+          storedKeywordCount: 4,
+          lastUpdate: { status: "SUCCESS", completedAt: "2026-09-06T00:00:00.000Z" },
         },
         moduleVersions: {
           standards: {
@@ -3117,7 +2359,6 @@ function handle(method, pathname, query, body, headers = {}) {
     ];
   }
 
-
   if (
     method === "POST" &&
     pathname === `${ADMIN_BASE}/summary-regenerations/bulk`
@@ -3429,7 +2670,7 @@ const server = createServer((req, res) => {
     );
     if (status === 404 && !url.pathname.includes("tech-articles")) {
       console.log(
-        `   ↑ 아직 목업 응답을 만들지 않은 경로입니다. 필요한 화면만 추가해 사용하세요.`,
+        `   ↑ 아직 Mock 응답을 만들지 않은 경로입니다. 필요한 화면만 추가해 사용하세요.`,
       );
     }
 
@@ -3445,9 +2686,9 @@ server.listen(PORT, HOST, () => {
   console.log(
     [
       "",
-      "  TCP 프론트엔드 목(mock) API 서버",
+      "  TCP 프론트엔드 Mock API 서버",
       "  ─────────────────────────────────────────────",
-      `  주소        http://${HOST}:${PORT}`,
+      `  주소        http://${HOST}:${server.address().port}`,
       `  더미 아티클  ${articles.length}건 (공개 ${publicCount}건)`,
       `  공용 화면     공지 ${demoAnnouncements.length} · 스터디 ${demoStudies.length}(비공개 ${demoStudies.filter((s) => !s.is_public).length})(주차 기록 ${Object.values(demoStudyProgress).flat().length}) · 멤버 ${demoMembers.length} · 팀 ${demoTeams.length}`,
       `  검수 큐      중복 ${duplicateCases.length} · 품질 ${qualityCases.length} · 공개 ${publicationQueue().length}`,

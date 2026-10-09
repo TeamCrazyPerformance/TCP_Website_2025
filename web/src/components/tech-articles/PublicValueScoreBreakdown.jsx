@@ -17,9 +17,10 @@ export default function PublicValueScoreBreakdown({ breakdown }) {
         <div key={`${item.label}-${index}`}>
           <dt>{item.label}</dt>
           <dd>
-            {finiteNumber(item.contribution) ?? "—"}
+            <span className="score-breakdown-contribution">
+              {finiteNumber(item.contribution) ?? "—"}
+            </span>
             <span className="score-breakdown-raw">
-              {" "}
               | {finiteNumber(item.value) ?? "—"} / 100
             </span>
           </dd>

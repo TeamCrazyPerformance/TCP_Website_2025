@@ -248,6 +248,7 @@ private_qa_ensure_env() {
   private_qa_ensure_value PIPELINE_JOB_MAX_ATTEMPTS 3
   private_qa_ensure_value TECH_ARTICLE_PIPELINE_READ_TIMEOUT_MS 3000
   private_qa_ensure_value TECH_ARTICLE_PIPELINE_WRITE_TIMEOUT_MS 10000
+  private_qa_ensure_value TECH_ARTICLE_KEYWORD_REFRESH_TIMEOUT_MS 45000
   private_qa_ensure_value TECH_ARTICLE_AUTO_CRAWL_ENABLED false
   private_qa_ensure_value TECH_ARTICLE_AUTO_CRAWL_MAX_ARTICLES 10
   private_qa_ensure_value TECH_ARTICLE_AUTO_CRAWL_MAX_AGE_HOURS 48

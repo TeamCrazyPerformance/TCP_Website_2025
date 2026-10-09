@@ -22,10 +22,6 @@ class Article(ContractModel):
     language: str = Field(min_length=2, max_length=16)
     authors: list[str] = Field(default_factory=list)
     original_published_at: datetime | None = Field(alias="originalPublishedAt", default=None)
-    stars_today: int | None = Field(alias="starsToday", default=None)
-    likes: int | None = Field(default=None)
-    views: int | None = Field(default=None)
-    comments: int | None = Field(default=None)
     extra: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("language")
@@ -52,8 +48,10 @@ class QualityPolicy(ContractModel):
     allowed_languages: list[str] = Field(
         alias="allowedLanguages", default_factory=lambda: ["ko", "en"]
     )
-    reject_spam: bool = Field(alias="rejectSpam", default=True)
-    reject_advertisements: bool = Field(alias="rejectAdvertisements", default=True)
+    # Retained for request compatibility. Curated-source spam and advertisement
+    # findings are observational signals, never deterministic rejection gates.
+    reject_spam: bool = Field(alias="rejectSpam", default=False)
+    reject_advertisements: bool = Field(alias="rejectAdvertisements", default=False)
     require_admin_review: bool = Field(alias="requireAdminReview", default=False)
     llm_api_key: str | None = Field(alias="llmApiKey", default=None)
 

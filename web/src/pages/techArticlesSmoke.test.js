@@ -126,7 +126,8 @@ beforeEach(() => {
       dynamicCount: 1,
       coreKeywords: ["python"],
       dynamicKeywords: ["fastapi"],
-      refreshPolicy: "PROCESS_START",
+      refreshPolicy: "READ_ONLY_DATABASE_CHECK",
+      storage: "MEMORY",
     },
     statistics: {
       daily: [
@@ -1182,6 +1183,32 @@ describe("공개 화면", () => {
 });
 
 describe("관리자 화면", () => {
+  test("기존 사전이 있어도 최근 갱신 실패와 저장소 경고를 표시한다", async () => {
+    asAdmin();
+    const normal = await api.getAdminTechArticleOverview();
+    api.getAdminTechArticleOverview.mockResolvedValue({
+      ...normal,
+      qualityKeywords: {
+        ...normal.qualityKeywords,
+        warnings: [
+          "KEYWORD_STORAGE_STATUS_UNAVAILABLE",
+          "KEYWORD_REFRESH_OUTCOME_UNKNOWN",
+        ],
+        lastUpdate: { status: "FAILED", completedAt: "2026-09-05T01:00:00Z" },
+      },
+    });
+    const Overview = require("./admin/AdminTechArticleOverview").default;
+    renderWithAuth(<Overview />);
+    expect(
+      await screen.findByText("기존 사전 사용 중 · 최근 갱신 실패"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("확인 필요")).toBeInTheDocument();
+    expect(
+      screen.getByText(/최근 갱신 결과를 확인하지 못했습니다/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("정상")).not.toBeInTheDocument();
+  });
+
   test("Overview에서 저장량과 모듈 버전을 요청해 표시한다", async () => {
     asAdmin();
     const AdminTechArticleOverview =
@@ -1191,7 +1218,7 @@ describe("관리자 화면", () => {
     await waitFor(() =>
       expect(api.getAdminTechArticleOverview).toHaveBeenCalled(),
     );
-    expect(screen.getByText("Disk Usage")).toBeInTheDocument();
+    expect(await screen.findByText("Disk Usage")).toBeInTheDocument();
     expect(screen.getByText("gemini-test")).toBeInTheDocument();
     expect(screen.getByText("개발 관련성 평가 키워드")).toBeInTheDocument();
     expect(screen.getByText("정상")).toBeInTheDocument();

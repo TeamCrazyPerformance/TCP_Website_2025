@@ -10,7 +10,7 @@ from tech_article_admission import (
 )
 from tech_article_admission.application import ArticleAdmissionService
 from tech_article_admission.persistence import MySQLConnectionPool
-from tech_article_quality import QualityEvaluator
+from tech_article_quality import QualityEvaluator, configure_keyword_store
 from tech_article_quality.evaluator import EVALUATOR_VERSION as QUALITY_EVALUATOR_VERSION
 from tech_article_sources import SourceAdapterRegistry
 
@@ -48,6 +48,7 @@ def build_runtime(settings: Settings) -> Runtime:
         admission = create_mysql_admission_service_from_pool(pool)
     else:
         raise RuntimeError(f"Unsupported PIPELINE_BACKEND: {settings.backend}")
+    configure_keyword_store(repository)
     quality = QualityEvaluator()
     summarizer = DeveloperNewsSummarizer(
         api_key=settings.gemini_api_key,

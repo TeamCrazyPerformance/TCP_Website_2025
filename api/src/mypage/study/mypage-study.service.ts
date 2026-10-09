@@ -8,7 +8,7 @@ import { In, Repository } from 'typeorm';
 import { Study } from '../../study/entities/study.entity';
 import { StudyMember } from '../../study/entities/study-member.entity';
 import { StudyMemberRole } from '../../study/entities/enums/study-member-role.enum';
-import { calculateStudyPeriodProgress } from './study-period';
+import { calculateStudyPeriodProgress } from '../../study/study-period';
 
 @Injectable()
 export class MyPageStudyService {

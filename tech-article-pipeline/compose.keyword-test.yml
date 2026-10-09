@@ -1,0 +1,17 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: tcp_keyword_test
+      MYSQL_USER: keyword_test
+      MYSQL_PASSWORD: keyword-test-only
+      MYSQL_ROOT_PASSWORD: keyword-root-test-only
+    ports:
+      - "127.0.0.1:${KEYWORD_TEST_MYSQL_PORT:-13384}:3306"
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-pkeyword-root-test-only"]
+      interval: 2s
+      timeout: 5s
+      retries: 60

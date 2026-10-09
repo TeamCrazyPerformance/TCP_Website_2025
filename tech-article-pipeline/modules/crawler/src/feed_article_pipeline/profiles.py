@@ -23,6 +23,7 @@ class FeedSourceProfile:
     additional_robots_urls: tuple[str, ...] = ()
     language_hint: str | None = None
     minimum_request_interval_seconds: float = 1.0
+    article_exclude_selectors: tuple[str, ...] = ()
 
     @property
     def source_path(self) -> str:
@@ -80,7 +81,12 @@ FEED_SOURCE_PROFILES: dict[str, FeedSourceProfile] = {
         section_key="BLOG",
         content_mode=FeedContentMode.ARTICLE_PAGE,
         allowed_hosts=("deepmind.google", "www.deepmind.google", "blog.google"),
-        article_selectors=("main article", "main"),
+        article_selectors=("main#page-content", "main article:not(.card)", "main"),
+        article_exclude_selectors=(
+            ".section-cover",
+            "section:has(article.card)",
+            "article.card",
+        ),
         additional_robots_urls=("https://blog.google/robots.txt",),
         language_hint="en",
     ),

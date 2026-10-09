@@ -137,6 +137,7 @@ export default function RecruitStudyModal({ isOpen, onClose, onAddStudy }) {
                     description: form.description,
                     tags: parseTags(form.tags).length ? parseTags(form.tags) : ['스터디'],
                     is_public: normalizeBoolean(newStudy?.is_public ?? form.is_public),
+                    status: newStudy.status || 'unknown',
                 };
                 onAddStudy(mapped);
             }

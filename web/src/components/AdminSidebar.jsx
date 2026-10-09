@@ -15,13 +15,17 @@ function AdminSidebar({ isOpen = false }) {
       id="sidebar"
       className={`sidebar admin-navigation-sidebar ${isOpen ? "open" : ""} flex-shrink-0 p-4`}
     >
-      <div className="flex items-center space-x-3 mb-8 px-2">
+      <Link
+        to="/"
+        className="flex items-center space-x-3 mb-8 px-2"
+        aria-label="TCP 홈페이지로 이동"
+      >
         <img src={logo} alt="TCP 로고" className="w-10 h-10 object-contain" />
         <div>
           <h1 className="orbitron text-xl font-bold gradient-text">TCP</h1>
           <p className="text-xs text-gray-400">Admin Panel</p>
         </div>
-      </div>
+      </Link>
 
       <nav className="space-y-4">
         <div>

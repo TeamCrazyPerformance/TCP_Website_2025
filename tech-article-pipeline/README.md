@@ -32,7 +32,8 @@ durably stores crawl commands, leases, raw crawl events, and links to downstream
 article submissions. Set `CRAWLER_PUBLIC_URL` and `CRAWLER_CONTACT` to an actual
 service URL and operational address before running the Cloudflare or GitHub
 crawler. GitHub Trending uses the public daily listing and unauthenticated README
-API; no GitHub token is read by the pipeline.
+API; no GitHub token is read by the article crawler. The separate keyword-topic
+collector optionally uses `GITHUB_KEYWORD_TOKEN`.
 
 The newer official-site sources use one shared RSS/Atom pipeline with fixed-host
 profiles. Rust uses the article body included in its Atom feed; Tailscale, Hugging
@@ -49,6 +50,25 @@ README-derived normalized content.
 Database changes are applied only by the one-shot migration command. The runner
 records each filename and SHA-256 checksum in `pipeline_migration_history` and
 refuses changed applied migrations.
+
+Quality evaluator 2.4.5 uses only the four weighted axes. Keyword reads do not
+collect or persist. Apply `008` (dictionary versions/items/history) and `009`
+(observations) before starting the pipeline; populate the first active dictionary
+through the authenticated refresh endpoint or the enabled daily scheduler.
+See `modules/quality/README.md` for refresh outcomes and time budgets.
+
+Run disposable MySQL 8.4 integration checks with Docker running:
+
+```bash
+bash scripts/test_keyword_mysql.sh
+```
+
+This uses a unique Compose project, synthetic credentials, loopback port 13384
+(`KEYWORD_TEST_MYSQL_PORT` can override it), and a tmpfs data directory. No
+operational `.env` is loaded. Cleanup stops only that test project and discards
+its test data. The integration fixture rejects other hosts/database names.
+The suite covers 001–007 upgrade to 008/009, unchanged article data, checksums,
+partial-DDL validation/retry, version-save rollback, observations, and restart reads.
 
 Live Gemini calls are absent from the default test suite. Run the explicit manual
 profile only after setting `GEMINI_API_KEY`:

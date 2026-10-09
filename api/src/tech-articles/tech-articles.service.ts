@@ -30,6 +30,7 @@ import {
 } from './public-tech-article.projection';
 import {
   LanguageProjection,
+  KeywordDictionaryRefreshResult,
   PipelineArticle,
   PipelinePublicDetailArticle,
   PipelinePublicListArticle,
@@ -199,6 +200,17 @@ export class TechArticlesService {
     });
   }
 
+  refreshKeywordDictionary() {
+    return this.pipeline.post<KeywordDictionaryRefreshResult>(
+      '/internal/v1/admin/quality-keywords/refresh',
+      undefined,
+      undefined,
+      {
+        keywordRefresh: true,
+      },
+    );
+  }
+
   async adminDetail(articleId: string) {
     const article = await this.pipeline.get<PipelineArticle>(
       `/internal/v1/admin/articles/${encodeURIComponent(articleId)}`,
@@ -299,7 +311,6 @@ export class TechArticlesService {
       (item) => this.summaryRegeneration(item.articleId, item, administratorId),
     );
   }
-
 
   async duplicateResolution(
     caseId: string,

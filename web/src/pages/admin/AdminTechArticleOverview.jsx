@@ -127,6 +127,9 @@ function AdminTechArticleOverview() {
   const keywordWarnings = Array.isArray(keywords?.warnings)
     ? keywords.warnings
     : [];
+  const keywordRefreshFailed = keywords?.lastUpdate?.status === "FAILED";
+  const keywordNeedsAttention =
+    keywordWarnings.length > 0 || keywordRefreshFailed;
 
   return (
     <AdminTechArticleContent>
@@ -363,18 +366,18 @@ function AdminTechArticleOverview() {
               <div>
                 <h3 id="qualityKeywordsTitle">개발 관련성 평가 키워드</h3>
                 <p>
-                  현재 파이프라인 프로세스가 로드한 평가 키워드입니다. 모듈 로드
-                  시 수집되며 기존 아티클 점수는 유지됩니다.
+                  조회는 저장된 사전만 읽습니다. 자동 갱신이 활성화되면 매일 KST
+                  00:05 이후 갱신하며 기존 아티클 점수는 유지됩니다.
                 </p>
               </div>
               <span
                 className={`overview-keyword-status ${
-                  keywordAvailable && keywordWarnings.length === 0
+                  keywordAvailable && !keywordNeedsAttention
                     ? "is-available"
                     : "needs-attention"
                 }`}
               >
-                {keywordAvailable && keywordWarnings.length === 0
+                {keywordAvailable && !keywordNeedsAttention
                   ? "정상"
                   : "확인 필요"}
               </span>
@@ -388,6 +391,60 @@ function AdminTechArticleOverview() {
                 <p className="overview-keyword-fingerprint">
                   목록 식별값 <code>{keywords.fingerprint}</code>
                 </p>
+                <p>
+                  저장소:{" "}
+                  {keywords.storage === "DATABASE"
+                    ? "DB"
+                    : keywords.storage === "MEMORY"
+                      ? "메모리"
+                      : "확인 불가"}
+                  {keywords.lastUpdate?.status === "SUCCESS" &&
+                    " · 최근 갱신 성공"}
+                  {keywords.lastUpdate?.completedAt && (
+                    <>
+                      {" "}
+                      · 최근 갱신 시도{" "}
+                      {formatDateTime(keywords.lastUpdate.completedAt)}
+                    </>
+                  )}
+                </p>
+                {keywordRefreshFailed && (
+                  <p className="overview-keyword-warning" role="status">
+                    기존 사전 사용 중 · 최근 갱신 실패
+                  </p>
+                )}
+                {[
+                  [
+                    "KEYWORD_REFRESH_OUTCOME_UNKNOWN",
+                    "최근 갱신 결과를 확인하지 못했습니다. DB 활성 버전을 확인해 주세요.",
+                  ],
+                  [
+                    "ACTIVE_KEYWORD_DICTIONARY_MISSING",
+                    "저장된 활성 사전이 없습니다. 기본 키워드를 사용하며 최초 갱신이 필요합니다.",
+                  ],
+                  [
+                    "KEYWORD_DICTIONARY_READ_FAILED",
+                    "사전 조회에 실패하여 마지막 정상 목록을 사용합니다.",
+                  ],
+                  [
+                    "KEYWORD_STORAGE_STATUS_UNAVAILABLE",
+                    "저장소 상태를 확인하지 못했습니다.",
+                  ],
+                  [
+                    "KEYWORD_LOADED_VERSION_DIFFERS",
+                    "현재 로드된 목록과 DB 활성 버전이 다릅니다. 다음 사전 확인 시 동기화합니다.",
+                  ],
+                ]
+                  .filter(([code]) => keywordWarnings.includes(code))
+                  .map(([code, message]) => (
+                    <p
+                      key={code}
+                      className="overview-keyword-warning"
+                      role="status"
+                    >
+                      {message}
+                    </p>
+                  ))}
                 {keywordWarnings.includes("DYNAMIC_KEYWORDS_EMPTY") && (
                   <p className="overview-keyword-warning" role="status">
                     동적 키워드가 비어 있습니다. 외부 키워드 수집 상태를 확인해

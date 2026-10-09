@@ -27,7 +27,7 @@ from .http_client import FeedFetchError, FeedHttpClient
 from .parser import FeedEntry, FeedParseError, parse_feed
 from .profiles import FeedContentMode, FeedSourceProfile
 
-CRAWLER_VERSION = "1.0.0"
+CRAWLER_VERSION = "1.0.1"
 
 
 @dataclass(frozen=True, slots=True)
